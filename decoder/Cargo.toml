@@ -1,0 +1,15 @@
+[package]
+name = "decoder"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+context = []
+time = []
+IR = []
+
+[dependencies]
+riscv = "0.10.0"
+riscv-rt = "0.11.0"
+panic-halt = "0.2.0"
+uart_16550 = "0.3.0"
