@@ -5,15 +5,12 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-#[cfg(not(test))]
-extern crate panic_halt;
-
 #[cfg(test)]
 use core::panic::PanicInfo;
 #[cfg(test)]
 use riscv_rt::entry;
 
-mod decoder;
+pub mod decoder;
 
 #[cfg(test)]
 #[entry]
