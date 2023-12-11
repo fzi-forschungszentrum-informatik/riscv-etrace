@@ -104,7 +104,6 @@ impl<'a> Decoder<'a> {
     }
 
     pub fn read_address(&mut self) -> u64 {
-        // TODO full address mode? Is implementation in QEMU correct?
         self.read_u64(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
             << self.conf.iaddress_lsb_p
     }
