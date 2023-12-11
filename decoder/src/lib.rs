@@ -12,6 +12,7 @@ use riscv_rt::entry;
 
 pub mod decoder;
 
+//noinspection RsUnresolvedReference
 #[cfg(test)]
 #[entry]
 fn main() -> ! {

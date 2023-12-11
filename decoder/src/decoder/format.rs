@@ -70,18 +70,18 @@ mod tests {
 
     #[test_case]
     fn sync() {
-        let buffer = [0b1001_0011; 32];
+        let buffer = [0b10_01_00_11; 32];
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
-        assert_eq!(Sync::Trap, Sync::decode(&mut decoder));
-        assert_eq!(Sync::Context, Sync::decode(&mut decoder));
-        assert_eq!(Sync::Start, Sync::decode(&mut decoder));
-        assert_eq!(Sync::Support, Sync::decode(&mut decoder));
+        assert_eq!(Sync::decode(&mut decoder), Sync::Support);
+        assert_eq!(Sync::decode(&mut decoder), Sync::Start);
+        assert_eq!(Sync::decode(&mut decoder), Sync::Trap);
+        assert_eq!(Sync::decode(&mut decoder), Sync::Context);
     }
 
     #[test_case]
     fn extension() {
-        let buffer = [0b0100_0000; 32];
+        let buffer = [0b0010; 32];
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
         assert_eq!(Ext::BranchCount, Ext::decode(&mut decoder));
@@ -91,16 +91,16 @@ mod tests {
     #[test_case]
     fn format() {
         let mut buffer = [0u8; 32];
-        buffer[0] = 0b001_10_01_1;
-        buffer[1] = 0b110_00000;
+        buffer[0] = 0b1_10_01_100;
+        buffer[1] = 0b00000_011;
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
         assert_eq!(
+            Format::decode(&mut decoder),
             Format::Ext(Ext::JumpTargetIndex),
-            Format::decode(&mut decoder)
         );
-        assert_eq!(Format::Branch, Format::decode(&mut decoder));
-        assert_eq!(Format::Addr, Format::decode(&mut decoder));
-        assert_eq!(Format::Sync(Sync::Trap), Format::decode(&mut decoder));
+        assert_eq!(Format::decode(&mut decoder), Format::Branch);
+        assert_eq!(Format::decode(&mut decoder), Format::Addr);
+        assert_eq!(Format::decode(&mut decoder), Format::Sync(Sync::Trap));
     }
 }

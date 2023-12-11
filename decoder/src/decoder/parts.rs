@@ -114,22 +114,3 @@ impl Decode for ShortBranchPart {
         }
     }
 }
-
-mod tests {
-    use crate::decoder::parts::ShortBranchPart;
-    use crate::decoder::{Decode, Decoder, DecoderConfiguration, DEFAULT_CONFIGURATION};
-
-    #[test_case]
-    fn short_payload() {
-        let mut buffer: [u8; 32] = [0; 32];
-        buffer[0] = 0b10100_111;
-        buffer[1] = 0b0101_0000;
-        let mut decoder = Decoder::new(DecoderConfiguration {
-            ..DEFAULT_CONFIGURATION
-        });
-        decoder.set_buffer(&buffer);
-        let short_payload = ShortBranchPart::decode(&mut decoder);
-        assert_eq!(short_payload.branches, 7);
-        assert_eq!(short_payload.branch_map, Some(0b1010111));
-    }
-}

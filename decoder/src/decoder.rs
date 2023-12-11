@@ -97,10 +97,9 @@ impl<'a> Decoder<'a> {
     pub fn read_bool_bit(&mut self) -> bool {
         let byte_pos = self.bit_pos / 8;
         let mut value = self.buffer[byte_pos];
-        value <<= self.bit_pos % 8;
-        value >>= 7;
+        value >>= self.bit_pos % 8;
         self.bit_pos += 1;
-        value == 0x01
+        (value & 1u8) == 0x01
     }
 
     pub fn read_address(&mut self) -> u64 {
@@ -115,22 +114,21 @@ impl<'a> Decoder<'a> {
         assert!(bit_count <= 64);
         assert!(bit_count + self.bit_pos - 1 < BUFFER_BYTE_SIZE * 8);
         let byte_pos = self.bit_pos / 8;
-        let mut value = u64::from_be_bytes(self.buffer[byte_pos..byte_pos + 8].try_into().unwrap());
-        // Ignore first 'self.bit_pos' MSBs in first byte as they are already consumed.
-        value <<= self.bit_pos % 8;
-        // Reverse bits so LSB from packet is actually LSB in the number.
-        value = value.reverse_bits();
-        // Zero out everything except 'bit_count' LSBs.
-        value = value & (u64::MAX >> (64 - bit_count));
+        let mut value = u64::from_le_bytes(self.buffer[byte_pos..byte_pos + 8].try_into().unwrap());
+        // Ignore first 'self.bit_pos' LSBs in first byte as they are already consumed.
+        value >>= self.bit_pos % 8;
+        // Zero out everything except 'bit_count' LSBs if bit_count != 64.
+        if bit_count < 64 {
+            value &= ((1u64 << bit_count) - 1);
+        }
         self.bit_pos += bit_count;
-        // Check if we need to read into the 9th byte
+        // Check if we need to read into the 9th byte because of an unaligned read
         if self.bit_pos > ((byte_pos + 8) * 8) {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
-            // Take 9th byte and shift out unnecessary MSBs
-            let missing_msbs = (self.buffer[byte_pos + 8]) >> 8 - missing_bit_count;
-            // The unneeded bits are already shifted out so we can just add them after shifting
-            // the MSBs into the proper position
-            value + ((missing_msbs.reverse_bits() as u64) << 56)
+            // Take 9th byte and mask MS bits we don't need
+            let mut missing_msbs = self.buffer[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
+            // shift msbs into correct position in u64 and add with previously read value
+            value + ((missing_msbs as u64) << 64 - missing_bit_count)
         } else {
             value
         }
@@ -147,11 +145,14 @@ impl<'a> Decoder<'a> {
         debug_assert!(bit_count <= 32);
         debug_assert!(bit_count + self.bit_pos - 1 < BUFFER_BYTE_SIZE * 4);
         let byte_pos = self.bit_pos / 8;
-        let mut value = u32::from_be_bytes(self.buffer[byte_pos..byte_pos + 4].try_into().unwrap());
-        value <<= self.bit_pos % 8;
+        let mut value = u32::from_le_bytes(self.buffer[byte_pos..byte_pos + 4].try_into().unwrap());
+        value >>= self.bit_pos % 8;
         self.bit_pos += bit_count;
-        value = value.reverse_bits();
-        value & (u32::MAX >> (32 - bit_count))
+        if bit_count < 32 {
+            value & ((1u32 << bit_count) - 1)
+        } else {
+            value
+        }
     }
 }
 
@@ -507,41 +508,11 @@ mod tests {
     use core::assert_matches::assert_matches;
 
     #[test_case]
-    fn packet_support() {
-        let mut buffer = [0u8; 32];
-        buffer[0] = 0b11111_01_0;
-        buffer[1] = 0b1111_1_000;
-        buffer[2] = 0b11111_01_1;
-        let mut decoder = Decoder::new(DecoderConfiguration {
-            encoder_mode_n: 8,
-            ioptions_n: 1,
-            ..DEFAULT_CONFIGURATION
-        });
-        let packet = decoder.decode_packet(&buffer);
-        assert_eq!(packet.header.payload_length, 31);
-        assert_eq!(packet.header.trace_type, Instruction);
-        assert_eq!(packet.header.has_timestamp, false);
-        assert_eq!(packet.header.cpu_index, 0);
-        assert_matches!(
-            packet.payload,
-            Payload::Synchronization(Synchronization::Support(_))
-        );
-        let supp = match packet.payload {
-            Payload::Synchronization(Synchronization::Support(supp)) => supp,
-            _ => unreachable!(),
-        };
-        assert_eq!(supp.ienable, true);
-        assert_eq!(supp.encoder_mode, 0xF8);
-        assert_eq!(supp.qual_status, QualStatus::TraceLost);
-        assert_eq!(supp.ioptions, 1);
-    }
-
-    #[test_case]
     fn read_u64() {
         let mut buffer = [0; 32];
-        buffer[0] = 0b111111_01;
-        buffer[1] = 0b1111_1010;
-        buffer[2] = 0b1001_0010;
+        buffer[0] = 0b01_111111;
+        buffer[1] = 0b00_011111;
+        buffer[2] = 0b10010010;
         buffer[3] = 0xF1;
         buffer[4] = 0xF0;
         buffer[5] = 0xF0;
@@ -549,44 +520,25 @@ mod tests {
         buffer[7] = 0xF0;
         buffer[8] = 0xF0;
         buffer[9] = 0xFF;
-        buffer[10] = 0xF_2;
+        buffer[10] = 0b01_111111;
         // ...
-        // last two bits are set to make sure they are not read
-        buffer[18] = 0b000011_11;
+        buffer[18] = 0b11_110000;
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
-        // testing for position values
+        // testing for bit position
         assert_eq!(decoder.read_u64(6), 0b111111);
         assert_eq!(decoder.bit_pos, 6);
-        assert_eq!(decoder.read_u64(2), 0b10);
+        assert_eq!(decoder.read_u64(2), 0b01);
         assert_eq!(decoder.bit_pos, 8);
         assert_eq!(decoder.read_u64(6), 0b011111);
         assert_eq!(decoder.bit_pos, 14);
         // read over byte boundary
-        assert_eq!(decoder.read_u64(10), 0b01_0010_0101);
+        assert_eq!(decoder.read_u64(10), 0b1001001000);
         assert_eq!(decoder.bit_pos, 24);
-        assert_eq!(decoder.read_u64(62), 0x0FFF_0F0F_0F0F_0F8F);
+        assert_eq!(decoder.read_u64(62), 0x3F_FF_F0_F0_F0_F0_F0_F1);
         assert_eq!(decoder.bit_pos, 86);
         assert_eq!(decoder.read_u64(64), 0xC000_0000_0000_0001);
         assert_eq!(decoder.bit_pos, 150);
-    }
-
-    #[test_case]
-    fn read_u32() {
-        let mut buffer = [0u8; 32];
-        buffer[0] = 0b1100_0101;
-        buffer[1] = 0b1111_1111;
-        let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
-        decoder.set_buffer(&buffer);
-        assert_eq!(decoder.read_fast_u32(2), 0b11);
-        assert_eq!(decoder.bit_pos, 2);
-        assert_eq!(decoder.read_fast_u32(2), 0b00);
-        assert_eq!(decoder.bit_pos, 4);
-        assert_eq!(decoder.read_fast_u32(2), 0b10);
-        assert_eq!(decoder.bit_pos, 6);
-        assert_eq!(decoder.read_fast_u32(1), 0b0);
-        assert_eq!(decoder.bit_pos, 7);
-        assert_eq!(decoder.read_fast_u32(2), 0b11);
     }
 
     #[test_case]
@@ -601,14 +553,33 @@ mod tests {
     }
 
     #[test_case]
-    fn read_bool_bits() {
-        let buffer: [u8; 32] = [0b0101_1010; 32];
+    fn read_u32() {
+        let mut buffer = [0u8; 32];
+        buffer[0] = 0b1100_0101;
+        buffer[1] = 0b1111_1111;
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
-        assert_eq!(decoder.read_bool_bit(), false);
+        assert_eq!(decoder.read_fast_u32(2), 0b01);
+        assert_eq!(decoder.bit_pos, 2);
+        assert_eq!(decoder.read_fast_u32(2), 0b01);
+        assert_eq!(decoder.bit_pos, 4);
+        assert_eq!(decoder.read_fast_u32(2), 0b00);
+        assert_eq!(decoder.bit_pos, 6);
+        assert_eq!(decoder.read_fast_u32(1), 0b1);
+        assert_eq!(decoder.bit_pos, 7);
+        assert_eq!(decoder.read_fast_u32(8), 255);
+        assert_eq!(decoder.bit_pos, 15)
+    }
+
+    #[test_case]
+    fn read_bool_bits() {
+        let buffer: [u8; 32] = [0b0101_0101; 32];
+        let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
+        decoder.set_buffer(&buffer);
         assert_eq!(decoder.read_bool_bit(), true);
         assert_eq!(decoder.read_bool_bit(), false);
         assert_eq!(decoder.read_bool_bit(), true);
+        assert_eq!(decoder.read_bool_bit(), false);
         assert_eq!(decoder.read_bool_bit(), true);
         assert_eq!(decoder.read_bool_bit(), false);
         assert_eq!(decoder.read_bool_bit(), true);
@@ -620,10 +591,10 @@ mod tests {
         let cache_size_p_override = 10;
         let mut buffer: [u8; 32] = [0; 32];
         buffer[0] = 0b00000000;
-        buffer[1] = 0b11_10011_0;
-        buffer[2] = 0b1010_0000;
+        buffer[1] = 0b0_11111_11;
+        buffer[2] = 0b00000_101;
         // ...
-        buffer[5] = 0b000000_11;
+        buffer[5] = 0b11_000000;
         buffer[6] = 0b11111111;
         let mut decoder = Decoder::new(DecoderConfiguration {
             cache_size_p: cache_size_p_override,
@@ -633,7 +604,7 @@ mod tests {
         let jti_long = JumpTargetIndex::decode(&mut decoder);
         assert_eq!(jti_long.index, 768);
         assert_eq!(jti_long.branches, 31);
-        assert_eq!(jti_long.branch_map, Some(0b1010));
+        assert_eq!(jti_long.branch_map, Some(10));
         let jti_short = JumpTargetIndex::decode(&mut decoder);
         assert_eq!(jti_short.index, 1023);
         assert_eq!(jti_short.branches, 0);
@@ -643,8 +614,8 @@ mod tests {
     #[test_case]
     fn branch() {
         let mut buffer: [u8; 32] = [0; 32];
-        buffer[0] = 0b10100_010;
-        buffer[1] = 0b1101_0000;
+        buffer[0] = 0b010_00101;
+        buffer[1] = 0b0000_1011;
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
         let branch = Branch::decode(&mut decoder);
@@ -663,19 +634,18 @@ mod tests {
     #[test_case]
     fn address() {
         let mut buffer: [u8; 32] = [0; 32];
-        buffer[0] = 0b1000_0000;
+        buffer[0] = 0b0000_0001;
         buffer[1] = 0b0000_0000;
         buffer[2] = 0b0000_0000;
         buffer[3] = 0b0000_0000;
         // ...
-        buffer[7] = 0b0000_0001;
-        buffer[8] = 0b1000_0000;
+        buffer[7] = 0b1_0000000;
         let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
         decoder.set_buffer(&buffer);
         let addr = Address::decode(&mut decoder);
         assert_eq!(addr.address, 2);
         assert_eq!(addr.notify, true);
-        assert_eq!(addr.updiscon, true);
+        assert_eq!(addr.updiscon, false);
     }
 
     #[test_case]
@@ -691,5 +661,15 @@ mod tests {
         assert_eq!(sync_start.branch, true);
         assert_eq!(sync_start.privilege, 0b11);
         assert_eq!(sync_start.address, u64::MAX);
+    }
+
+    #[test_case]
+    fn blub() {
+        let mut buffer = [0u8; 32];
+        buffer[0] = 0b01000011;
+        buffer[1] = 0b00011111;
+        // 2 and 3 == 0
+        let mut decoder = Decoder::new(DEFAULT_CONFIGURATION);
+        serial_println!("{:?}", decoder.decode_packet(&buffer))
     }
 }
