@@ -5,15 +5,15 @@ pub struct Header {
     pub payload_len: u8,
     pub trace_type: TraceType,
     pub has_timestamp: bool,
-    pub cpu_index: u8,
+    pub cpu_index: usize,
 }
 
-impl Decode for Header {
-    fn decode(decoder: &mut Decoder) -> Self {
-        let payload_length = decoder.read_fast_u32(5);
+impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN> for Header {
+    fn decode(decoder: &mut Decoder<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+        let payload_length = decoder.read_fast(5);
         let trace_type = TraceType::decode(decoder);
-        let has_timestamp = decoder.read_bool_bit();
-        let cpu_index = decoder.read_fast_u32(decoder.conf.cpu_index_width);
+        let has_timestamp = decoder.read_bit();
+        let cpu_index = decoder.read_fast(decoder.conf.cpu_index_width);
         Header {
             payload_len: payload_length.try_into().unwrap(),
             trace_type,
@@ -23,15 +23,14 @@ impl Decode for Header {
     }
 }
 
-
 #[derive(Debug, Eq, PartialEq)]
 pub enum TraceType {
     Instruction,
 }
 
-impl Decode for TraceType {
-    fn decode(decoder: &mut Decoder) -> Self {
-        match decoder.read_fast_u32(2) {
+impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN> for TraceType {
+    fn decode(decoder: &mut Decoder<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+        match decoder.read_fast(2) {
             0b10 => TraceType::Instruction,
             unknown => panic!("Unknown trace type: {:?}", unknown),
         }
