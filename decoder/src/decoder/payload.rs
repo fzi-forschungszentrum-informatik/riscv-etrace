@@ -8,7 +8,7 @@ pub struct ContextPart {
     pub context: u64,
 }
 
-Aimpl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN> for ContextPart {
+impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN> for ContextPart {
     fn decode(decoder: &mut Decoder<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
         ContextPart {
             privilege: decoder.read(decoder.conf.privilege_width_p),
