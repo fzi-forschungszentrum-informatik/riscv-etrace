@@ -39,7 +39,7 @@ impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_B
             0b01 => Sync::Trap,
             0b10 => Sync::Context,
             0b11 => Sync::Support,
-            _ => panic!(),
+            err => panic!("This should never happen. Sync is {:?}", err),
         }
     }
 }
@@ -57,7 +57,7 @@ impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_B
                 let sync = Sync::decode(decoder);
                 Format::Sync(sync)
             }
-            _ => panic!(),
+            err => panic!("This should never happen. Format is {:?}", err),
         }
     }
 }

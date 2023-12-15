@@ -63,7 +63,7 @@ impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_B
             4..=7 => 7,
             8..=15 => 15,
             16..=31 => 31,
-            _ => panic!(),
+            err => panic!("This should never happen. Branches is {:?}", err),
         };
         BranchPart {
             branches,
@@ -102,7 +102,7 @@ impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_B
             4..=7 => 7,
             8..=15 => 15,
             16..=31 => 31,
-            _ => panic!(),
+            err => panic!("This should never happen. Branches is {:?}", err),
         };
         ShortBranchPart {
             branches,
@@ -164,10 +164,10 @@ impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_B
     fn decode(decoder: &mut Decoder<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => BranchFmt::NoAddr,
-            0b01 => panic!(),
+            0b01 => panic!("BranchFmt cannot be 0b01"),
             0b10 => BranchFmt::Addr,
             0b11 => BranchFmt::AddrFail,
-            _ => panic!(),
+            err => panic!("This should never happen. BranchFmt is {:?}", err),
         }
     }
 }
@@ -403,7 +403,7 @@ impl<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decode<ADDR_B
             0b01 => QualStatus::EndedRep,
             0b10 => QualStatus::TraceLost,
             0b11 => QualStatus::EndedNtr,
-            _ => panic!(),
+            err => panic!("This should never happen. QualStatus is {:?}", err),
         }
     }
 }
