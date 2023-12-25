@@ -5,8 +5,8 @@ use crate::decoder::payload::*;
 use parts::IRPayload;
 
 mod format;
-mod header;
-mod payload;
+pub mod header;
+pub mod payload;
 
 #[cfg(feature = "time")]
 const TIME: u64 = todo!();
