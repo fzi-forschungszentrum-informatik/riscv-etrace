@@ -32,32 +32,123 @@ pub const DEFAULT_CONFIGURATION: DecoderConfiguration = DecoderConfiguration {
     ioptions_n: 0,
 };
 
-pub struct Decoder<'a, const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> {
+pub struct Decoder<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> {
     packet_buffer: &'a [u8; PACKET_BUFFER_LEN],
-    address_buffer: &'a [u64; ADDR_BUFFER_LEN],
+    pc_buffer: &'a mut [u64; PC_BUFFER_LEN],
     bit_pos: usize,
     current_cpu_index: usize,
     conf: DecoderConfiguration,
 }
 
-// TODO DecoderConfiguration impl with Just provide the functions in non-generic implementations:  checking
+// TODO DecoderConfiguration checking
 // 0 <addr width < 65
 // cpu index < 2^5
+// CPU_COUNT <= 2^cpu_index_width
 
-impl<'a> Decoder<'a, 1, 32> {
-    pub fn default(conf: DecoderConfiguration) -> Self {
-        Decoder::new(conf)
+const DEFAULT_CPU_COUNT: usize = 1;
+const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
+
+impl<'a> Decoder<'a, DEFAULT_CPU_COUNT, DEFAULT_PACKET_BUFFER_LEN> {
+    pub fn default(
+        conf: DecoderConfiguration,
+        packet_buffer: &'a [u8; DEFAULT_PACKET_BUFFER_LEN],
+        pc_buffer: &'a mut [u64; DEFAULT_CPU_COUNT],
+    ) -> Self {
+        Decoder::new(conf, packet_buffer, pc_buffer)
     }
 }
 
-impl<'a, const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decoder<'a, ADDR_BUFFER_LEN, PACKET_BUFFER_LEN> {
-    pub fn new(conf: DecoderConfiguration) -> Self {
+impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
+    Decoder<'a, PC_BUFFER_LEN, PACKET_BUFFER_LEN>
+{
+    pub fn new(
+        conf: DecoderConfiguration,
+        packet_buffer: &'a [u8; PACKET_BUFFER_LEN],
+        pc_buffer: &'a mut [u64; PC_BUFFER_LEN],
+    ) -> Self {
         Decoder {
-            packet_buffer: &[0; PACKET_BUFFER_LEN],
-            address_buffer: &[0; ADDR_BUFFER_LEN],
+            packet_buffer,
+            pc_buffer,
             bit_pos: 0,
             current_cpu_index: 0,
             conf,
+        }
+    }
+
+    pub fn get_pc(&self, cpu_index: usize) -> u64 {
+        self.pc_buffer[cpu_index]
+    }
+
+    pub fn set_buffer(&mut self, array: &'a [u8; PACKET_BUFFER_LEN]) {
+        self.bit_pos = 0;
+        self.packet_buffer = array
+    }
+
+    pub fn read_bit(&mut self) -> bool {
+        let byte_pos = self.bit_pos / 8;
+        let mut value = self.packet_buffer[byte_pos];
+        value >>= self.bit_pos % 8;
+        self.bit_pos += 1;
+        (value & 1u8) == 0x01
+    }
+
+    pub fn read(&mut self, bit_count: usize) -> u64 {
+        if bit_count == 0 {
+            return 0;
+        }
+        assert!(bit_count <= 64);
+        assert!(bit_count + self.bit_pos - 1 < PACKET_BUFFER_LEN * 8);
+        let byte_pos = self.bit_pos / 8;
+        let mut value = u64::from_le_bytes(
+            self.packet_buffer[byte_pos..byte_pos + 8]
+                .try_into()
+                .unwrap(),
+        );
+        // Ignore first 'self.bit_pos' LSBs in first byte as they are already consumed.
+        value >>= self.bit_pos % 8;
+        // Zero out everything except 'bit_count' LSBs if bit_count != 64.
+        if bit_count < 64 {
+            value &= (1u64 << bit_count) - 1;
+        }
+        self.bit_pos += bit_count;
+        // Check if we need to read into the 9th byte because of an unaligned read
+        if self.bit_pos > ((byte_pos + 8) * 8) {
+            let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
+            // Take 9th byte and mask MS bits we don't need
+            let missing_msbs = self.packet_buffer[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
+            // shift msbs into correct position in u64 and add with previously read value
+            value + ((missing_msbs as u64) << 64 - missing_bit_count)
+        } else {
+            value
+        }
+    }
+
+    pub fn read_address(&mut self) -> u64 {
+        self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p) << self.conf.iaddress_lsb_p
+    }
+
+    // TODO scary documentation
+    // Many times read value less/equal to 32 bits
+    // Return value fits into a single register
+    // reading 32 bits over byte boundary will not work if read is not aligned
+    pub fn read_fast(&mut self, bit_count: usize) -> u32 {
+        if bit_count == 0 {
+            return 0;
+        }
+        debug_assert!(bit_count <= 32);
+        debug_assert!(bit_count + self.bit_pos - 1 < PACKET_BUFFER_LEN * 4);
+        let byte_pos = self.bit_pos / 8;
+        let mut value = u32::from_le_bytes(
+            self.packet_buffer[byte_pos..byte_pos + 4]
+                .try_into()
+                .unwrap(),
+        );
+        value >>= self.bit_pos % 8;
+        self.bit_pos += bit_count;
+        if bit_count < 32 {
+            value & ((1u32 << bit_count) - 1)
+        } else {
+            value
         }
     }
 
@@ -68,7 +159,11 @@ impl<'a, const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decoder<'
         header
     }
 
-    pub fn decode_payload(&mut self, header: &Header, slice: &'a [u8; PACKET_BUFFER_LEN]) -> Payload {
+    pub fn decode_payload(
+        &mut self,
+        header: &Header,
+        slice: &'a [u8; PACKET_BUFFER_LEN],
+    ) -> Payload {
         self.set_buffer(slice);
         if self.conf.decompress {
             // TODO decompression
@@ -101,71 +196,6 @@ impl<'a, const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> Decoder<'
         };
         payload
     }
-
-    pub fn set_buffer(&mut self, array: &'a [u8; PACKET_BUFFER_LEN]) {
-        self.bit_pos = 0;
-        self.packet_buffer = array
-    }
-
-    pub fn read_bit(&mut self) -> bool {
-        let byte_pos = self.bit_pos / 8;
-        let mut value = self.packet_buffer[byte_pos];
-        value >>= self.bit_pos % 8;
-        self.bit_pos += 1;
-        (value & 1u8) == 0x01
-    }
-
-    pub fn read_address(&mut self) -> u64 {
-        self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p) << self.conf.iaddress_lsb_p
-    }
-
-    pub fn read(&mut self, bit_count: usize) -> u64 {
-        if bit_count == 0 {
-            return 0;
-        }
-        assert!(bit_count <= 64);
-        assert!(bit_count + self.bit_pos - 1 < PACKET_BUFFER_LEN * 8);
-        let byte_pos = self.bit_pos / 8;
-        let mut value = u64::from_le_bytes(self.packet_buffer[byte_pos..byte_pos + 8].try_into().unwrap());
-        // Ignore first 'self.bit_pos' LSBs in first byte as they are already consumed.
-        value >>= self.bit_pos % 8;
-        // Zero out everything except 'bit_count' LSBs if bit_count != 64.
-        if bit_count < 64 {
-            value &= (1u64 << bit_count) - 1;
-        }
-        self.bit_pos += bit_count;
-        // Check if we need to read into the 9th byte because of an unaligned read
-        if self.bit_pos > ((byte_pos + 8) * 8) {
-            let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
-            // Take 9th byte and mask MS bits we don't need
-            let missing_msbs = self.packet_buffer[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
-            // shift msbs into correct position in u64 and add with previously read value
-            value + ((missing_msbs as u64) << 64 - missing_bit_count)
-        } else {
-            value
-        }
-    }
-
-    // TODO scary documentation
-    // Many times read value less/equal to 32 bits
-    // Return value fits into a single register
-    // reading 32 bits over byte boundary will not work if read is not aligned
-    pub fn read_fast(&mut self, bit_count: usize) -> u32 {
-        if bit_count == 0 {
-            return 0;
-        }
-        debug_assert!(bit_count <= 32);
-        debug_assert!(bit_count + self.bit_pos - 1 < PACKET_BUFFER_LEN * 4);
-        let byte_pos = self.bit_pos / 8;
-        let mut value = u32::from_le_bytes(self.packet_buffer[byte_pos..byte_pos + 4].try_into().unwrap());
-        value >>= self.bit_pos % 8;
-        self.bit_pos += bit_count;
-        if bit_count < 32 {
-            value & ((1u32 << bit_count) - 1)
-        } else {
-            value
-        }
-    }
 }
 
 pub struct DecoderConfiguration {
@@ -185,8 +215,8 @@ pub struct DecoderConfiguration {
     pub ioptions_n: usize,
 }
 
-trait Decode<const ADDR_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> {
-    fn decode(decoder: &mut Decoder<ADDR_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self;
+trait Decode<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> {
+    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self;
 }
 
 #[cfg(test)]
@@ -209,7 +239,9 @@ mod tests {
         buffer[10] = 0b01_111111;
         // ...
         buffer[18] = 0b11_110000;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &packet_buffer, &mut pc_buffer);
         decoder.set_buffer(&buffer);
         // testing for bit position
         assert_eq!(decoder.read(6), 0b111111);
@@ -230,7 +262,9 @@ mod tests {
     #[test_case]
     fn read_entire_buffer() {
         let buffer: [u8; 32] = [255; 32];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &packet_buffer, &mut pc_buffer);
         decoder.set_buffer(&buffer);
         assert_eq!(decoder.read(64), u64::MAX);
         assert_eq!(decoder.read(64), u64::MAX);
@@ -243,7 +277,9 @@ mod tests {
         let mut buffer = [0u8; 32];
         buffer[0] = 0b1100_0101;
         buffer[1] = 0b1111_1111;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &packet_buffer, &mut pc_buffer);
         decoder.set_buffer(&buffer);
         assert_eq!(decoder.read_fast(2), 0b01);
         assert_eq!(decoder.bit_pos, 2);
@@ -260,7 +296,9 @@ mod tests {
     #[test_case]
     fn read_bool_bits() {
         let buffer: [u8; 32] = [0b0101_0101; 32];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &packet_buffer, &mut pc_buffer);
         decoder.set_buffer(&buffer);
         assert_eq!(decoder.read_bit(), true);
         assert_eq!(decoder.read_bit(), false);
