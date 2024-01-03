@@ -33,7 +33,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 {
     fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
         AddressPart {
-            address: decoder.read_address(),
+            address: decoder.read_diff_address(),
             notify: decoder.read_bit(),
             updiscon: decoder.read_bit(),
         }
@@ -271,13 +271,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         #[cfg(feature = "IR")]
         let ir_payload = IRPayload::decode(decoder);
         Address {
-            address: if decoder.conf.full_address {
-                part.address
-            } else {
-                let addr = decoder.pc_buffer[decoder.current_cpu_index] + part.address;
-                decoder.pc_buffer[decoder.current_cpu_index] = addr;
-                addr
-            },
+            address: part.address,
             notify: part.notify,
             updiscon: part.updiscon,
             #[cfg(feature = "IR")]
@@ -451,7 +445,6 @@ mod tests {
         Decode, Decoder, DecoderConfiguration, DEFAULT_CONFIGURATION, DEFAULT_CPU_COUNT,
         DEFAULT_PACKET_BUFFER_LEN,
     };
-    use crate::serial_println;
 
     #[test_case]
     fn extension_jti() {
@@ -463,7 +456,7 @@ mod tests {
         // ...
         buffer[5] = 0b11_000000;
         buffer[6] = 0b11111111;
-         [0; DEFAULT_PACKET_BUFFER_LEN];
+        [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
@@ -473,7 +466,7 @@ mod tests {
             &mut pc_buffer,
         );
 
-        decoder.set_buffer(&buffer);
+        decoder.set_buffer(buffer);
         let jti_long = JumpTargetIndex::decode(&mut decoder);
         assert_eq!(jti_long.index, 768);
         assert_eq!(jti_long.branches, 31);
@@ -489,10 +482,10 @@ mod tests {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b010_00101;
         buffer[1] = 0b0000_1011;
-         [0; DEFAULT_PACKET_BUFFER_LEN];
+        [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
-        decoder.set_buffer(&buffer);
+        decoder.set_buffer(buffer);
         let branch = Branch::decode(&mut decoder);
         assert_eq!(branch.branches, 7);
         assert_eq!(branch.branch_map, 0b1011_010);
@@ -514,7 +507,7 @@ mod tests {
         // test differential addr with second address
         buffer[8] = 0b0000_0001;
         buffer[15] = 0b1_0000000;
-         [0; DEFAULT_PACKET_BUFFER_LEN];
+        [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
@@ -527,7 +520,7 @@ mod tests {
             },
             &mut pc_buffer,
         );
-        decoder.set_buffer(&buffer);
+        decoder.set_buffer(buffer);
         assert_eq!(decoder.current_cpu_index, 0);
         assert_eq!(decoder.pc_buffer[0], 0);
         let addr = Address::decode(&mut decoder);
@@ -544,7 +537,7 @@ mod tests {
     #[test_case]
     fn synchronization_start() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-         [0; DEFAULT_PACKET_BUFFER_LEN];
+        [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
@@ -554,7 +547,7 @@ mod tests {
             },
             &mut pc_buffer,
         );
-        decoder.set_buffer(&buffer);
+        decoder.set_buffer(buffer);
         let sync_start = Start::decode(&mut decoder);
         assert_eq!(sync_start.branch, true);
         assert_eq!(sync_start.privilege, 0b11);
