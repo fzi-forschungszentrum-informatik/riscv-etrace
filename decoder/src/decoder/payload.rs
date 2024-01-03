@@ -463,14 +463,13 @@ mod tests {
         // ...
         buffer[5] = 0b11_000000;
         buffer[6] = 0b11111111;
-        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+         [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 cache_size_p: cache_size_p_override,
                 ..DEFAULT_CONFIGURATION
             },
-            &packet_buffer,
             &mut pc_buffer,
         );
 
@@ -490,9 +489,9 @@ mod tests {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b010_00101;
         buffer[1] = 0b0000_1011;
-        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+         [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &packet_buffer, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(&buffer);
         let branch = Branch::decode(&mut decoder);
         assert_eq!(branch.branches, 7);
@@ -515,7 +514,7 @@ mod tests {
         // test differential addr with second address
         buffer[8] = 0b0000_0001;
         buffer[15] = 0b1_0000000;
-        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+         [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
@@ -526,7 +525,6 @@ mod tests {
                 full_address: false,
                 ..DEFAULT_CONFIGURATION
             },
-            &packet_buffer,
             &mut pc_buffer,
         );
         decoder.set_buffer(&buffer);
@@ -546,7 +544,7 @@ mod tests {
     #[test_case]
     fn synchronization_start() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-        let packet_buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+         [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
@@ -554,7 +552,6 @@ mod tests {
                 iaddress_lsb_p: 0,
                 ..DEFAULT_CONFIGURATION
             },
-            &packet_buffer,
             &mut pc_buffer,
         );
         decoder.set_buffer(&buffer);
