@@ -506,7 +506,7 @@ mod tests {
         buffer[7] = 0b11_000000;
         // test differential addr with second address
         buffer[8] = 0b0000_0001;
-        buffer[15] = 0b1_0000000;
+        buffer[15] = 0b10_000000;
         [0; DEFAULT_PACKET_BUFFER_LEN];
         let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
         let mut decoder = Decoder::default(
@@ -530,8 +530,10 @@ mod tests {
         assert_eq!(addr.updiscon, true);
         // differential address
         let diff_addr = Address::decode(&mut decoder);
-        assert_eq!(diff_addr.address, 8);
+        assert_eq!(diff_addr.address, 4);
         assert_eq!(decoder.pc_buffer[0], 8);
+        assert_eq!(diff_addr.notify, false);
+        assert_eq!(diff_addr.updiscon, true);
     }
 
     #[test_case]

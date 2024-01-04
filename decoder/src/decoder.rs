@@ -153,9 +153,9 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         }
         let difference = self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
             << self.conf.iaddress_lsb_p;
-        let addr = self.pc_buffer[self.current_cpu_index] + difference;
+        let addr = self.pc_buffer[self.current_cpu_index].wrapping_add_signed(difference as i64);
         self.pc_buffer[self.current_cpu_index] = addr;
-        addr
+        difference
     }
 
     // TODO scary documentation
