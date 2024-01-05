@@ -66,13 +66,13 @@ pub struct Decoder<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usiz
 // cpu index < 2^5
 // CPU_COUNT <= 2^cpu_index_width
 
-const DEFAULT_CPU_COUNT: usize = 1;
+const DEFAULT_CORE_COUNT: usize = 1;
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-impl<'a> Decoder<'a, DEFAULT_CPU_COUNT, DEFAULT_PACKET_BUFFER_LEN> {
+impl<'a> Decoder<'a, DEFAULT_CORE_COUNT, DEFAULT_PACKET_BUFFER_LEN> {
     pub fn default(
         conf: DecoderConfiguration,
-        pc_buffer: &'a mut [u64; DEFAULT_CPU_COUNT],
+        pc_buffer: &'a mut [u64; DEFAULT_CORE_COUNT],
     ) -> Self {
         Decoder::new(conf, pc_buffer)
     }
@@ -91,7 +91,7 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         }
     }
 
-    pub fn get_pc(&self, cpu_index: usize) -> u64 {
+    pub fn last_pc(&self, cpu_index: usize) -> u64 {
         self.pc_buffer[cpu_index]
     }
 
@@ -100,7 +100,7 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         self.packet_data = Some(array)
     }
 
-    pub fn read_bit(&mut self) -> bool {
+    fn read_bit(&mut self) -> bool {
         let byte_pos = self.bit_pos / 8;
         let mut value = self.packet_data.unwrap()[byte_pos];
         value >>= self.bit_pos % 8;
@@ -108,7 +108,7 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         (value & 1u8) == 0x01
     }
 
-    pub fn read(&mut self, bit_count: usize) -> u64 {
+    fn read(&mut self, bit_count: usize) -> u64 {
         if bit_count == 0 {
             return 0;
         }
@@ -133,14 +133,15 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
             // Take 9th byte and mask MS bits we don't need
             let missing_msbs =
                 self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
+            let msbs_u64 = (missing_msbs as u64) << 64 - missing_bit_count;
             // shift msbs into correct position in u64 and add with previously read value
-            value + ((missing_msbs as u64) << 64 - missing_bit_count)
+            value + msbs_u64
         } else {
             value
         }
     }
 
-    pub fn read_address(&mut self) -> u64 {
+    fn read_address(&mut self) -> u64 {
         let addr = self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
             << self.conf.iaddress_lsb_p;
         self.pc_buffer[self.current_cpu_index] = addr;
@@ -162,7 +163,10 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
     // Many times read value less/equal to 32 bits
     // Return value fits into a single register
     // reading 32 bits over byte boundary will not work if read is not aligned
-    pub fn read_fast(&mut self, bit_count: usize) -> u32 {
+    fn read_fast(&mut self, bit_count: usize) -> u32 {
+        if bit_count == 0 {
+            return 0;
+        }
         debug_assert!(bit_count <= 32);
         debug_assert!(bit_count + self.bit_pos - 1 < PACKET_BUFFER_LEN * 4);
         let byte_pos = self.bit_pos / 8;
@@ -238,8 +242,8 @@ mod tests {
     #[test_case]
     fn read_u64() {
         let mut buffer = [0; 32];
-        buffer[0] = 0b01_111111;
-        buffer[1] = 0b00_011111;
+        buffer[0] = 0b01_011111;
+        buffer[1] = 0b01_011111;
         buffer[2] = 0b10010010;
         buffer[3] = 0xF1;
         buffer[4] = 0xF0;
@@ -251,19 +255,18 @@ mod tests {
         buffer[10] = 0b01_111111;
         // ...
         buffer[18] = 0b11_110000;
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         // testing for bit position
-        assert_eq!(decoder.read(6), 0b111111);
+        assert_eq!(decoder.read(6), 0b011111);
         assert_eq!(decoder.bit_pos, 6);
         assert_eq!(decoder.read(2), 0b01);
         assert_eq!(decoder.bit_pos, 8);
         assert_eq!(decoder.read(6), 0b011111);
         assert_eq!(decoder.bit_pos, 14);
         // read over byte boundary
-        assert_eq!(decoder.read(10), 0b1001001000);
+        assert_eq!(decoder.read(10), 0b1001001001);
         assert_eq!(decoder.bit_pos, 24);
         assert_eq!(decoder.read(62), 0x3F_FF_F0_F0_F0_F0_F0_F1);
         assert_eq!(decoder.bit_pos, 86);
@@ -272,10 +275,28 @@ mod tests {
     }
 
     #[test_case]
+    fn read_i64(){
+        let mut buffer = [0; 32];
+        buffer[0] = 0b1101000_0;
+        buffer[1] = 0xFF;
+        buffer[2] = 0xFF;
+        buffer[3] = 0xFF;
+        buffer[4] = 0xFF;
+        buffer[5] = 0xFF;
+        buffer[6] = 0xFF;
+        buffer[7] = 0xFF;
+        buffer[8] = 0b1;
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        decoder.set_buffer(buffer);
+        assert_eq!(decoder.read(1), 0);
+        assert_eq!(decoder.read(64) as i64, -24);
+    }
+
+    #[test_case]
     fn read_entire_buffer() {
         let buffer: [u8; 32] = [255; 32];
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(64), u64::MAX);
@@ -289,8 +310,7 @@ mod tests {
         let mut buffer = [0u8; 32];
         buffer[0] = 0b1100_0101;
         buffer[1] = 0b1111_1111;
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_fast(2), 0b01);
@@ -308,8 +328,7 @@ mod tests {
     #[test_case]
     fn read_bool_bits() {
         let buffer: [u8; 32] = [0b0101_0101; 32];
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_bit(), true);

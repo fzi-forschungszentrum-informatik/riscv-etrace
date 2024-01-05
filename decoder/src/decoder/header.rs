@@ -1,6 +1,6 @@
 use crate::decoder::{Decode, Decoder};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Header {
     pub payload_len: u8,
     pub trace_type: TraceType,
@@ -25,7 +25,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TraceType {
     Instruction,
 }

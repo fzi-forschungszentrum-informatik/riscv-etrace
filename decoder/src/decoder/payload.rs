@@ -65,7 +65,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 {
     fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
         let branches = match decoder.read_fast(5) {
-            0 => 31,
+            0 => 0,
             1 => 1,
             2..=3 => 3,
             4..=7 => 7,
@@ -75,7 +75,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         };
         BranchPart {
             branches,
-            branch_map: decoder.read(branches).try_into().unwrap(),
+            branch_map: decoder.read(if branches == 0 { 31 } else { branches }).try_into().unwrap(),
         }
     }
 }
@@ -128,7 +128,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Payload {
     Extension(Extension),
     Branch(Branch),
@@ -136,14 +136,14 @@ pub enum Payload {
     Synchronization(Synchronization),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Extension {
     BranchCount(BranchCount),
     JumpTargetIndex(JumpTargetIndex),
 }
 
 // Format 0, sub format 0
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct BranchCount {
     pub branch_count: u32,
     pub branch_fmt: BranchFmt,
@@ -167,7 +167,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum BranchFmt {
     NoAddr,
     // does not exist
@@ -190,7 +190,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 0, sub format 1
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct JumpTargetIndex {
     pub index: usize,
     pub branches: usize,
@@ -222,7 +222,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 1
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Branch {
     pub branches: usize,
     pub branch_map: u32,
@@ -252,7 +252,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 2
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Address {
     pub address: u64,
     pub notify: bool,
@@ -283,7 +283,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 0
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Synchronization {
     Start(Start),
     Trap(Trap),
@@ -292,7 +292,7 @@ pub enum Synchronization {
 }
 
 /// Format 0, sub format 0
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Start {
     pub branch: bool,
     pub privilege: u64,
@@ -323,7 +323,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 0, sub format 1
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Trap {
     pub branch: bool,
     pub privilege: u64,
@@ -366,7 +366,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 0, sub format 2
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Context {
     pub privilege: u64,
     #[cfg(feature = "time")]
@@ -391,7 +391,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 }
 
 /// Format 0, sub format 3
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Support {
     pub ienable: bool,
     pub encoder_mode: u8,
@@ -416,7 +416,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum QualStatus {
     NoChange,
     EndedRep,
@@ -442,7 +442,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 mod tests {
     use crate::decoder::payload::{Address, Branch, JumpTargetIndex, Start};
     use crate::decoder::{
-        Decode, Decoder, DecoderConfiguration, DEFAULT_CONFIGURATION, DEFAULT_CPU_COUNT,
+        Decode, Decoder, DecoderConfiguration, DEFAULT_CONFIGURATION, DEFAULT_CORE_COUNT,
         DEFAULT_PACKET_BUFFER_LEN,
     };
 
@@ -457,7 +457,7 @@ mod tests {
         buffer[5] = 0b11_000000;
         buffer[6] = 0b11111111;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 cache_size_p: cache_size_p_override,
@@ -483,7 +483,7 @@ mod tests {
         buffer[0] = 0b010_00101;
         buffer[1] = 0b0000_1011;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         let branch = Branch::decode(&mut decoder);
@@ -500,6 +500,20 @@ mod tests {
     }
 
     #[test_case]
+    fn branch_with_zero_branches_has_no_addr() {
+        let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+        buffer[0] = 0b000_00000;
+        buffer[1] = 0b100;
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        decoder.set_buffer(buffer);
+        let branch_no_addr = Branch::decode(&mut decoder);
+        assert_eq!(branch_no_addr.branches, 0);
+        assert_eq!(branch_no_addr.branch_map, 32);
+        assert_eq!(branch_no_addr.address, None);
+    }
+
+    #[test_case]
     fn address() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b0000_0001;
@@ -508,7 +522,7 @@ mod tests {
         buffer[8] = 0b0000_0001;
         buffer[15] = 0b10_000000;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 // Changed address width and lsb, so that the entire
@@ -540,7 +554,7 @@ mod tests {
     fn synchronization_start() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 iaddress_width_p: 64,

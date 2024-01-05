@@ -72,14 +72,14 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 mod tests {
     use crate::decoder::format::{Ext, Format, Sync};
     use crate::decoder::{
-        Decode, Decoder, DEFAULT_CONFIGURATION, DEFAULT_CPU_COUNT, DEFAULT_PACKET_BUFFER_LEN,
+        Decode, Decoder, DEFAULT_CONFIGURATION, DEFAULT_CORE_COUNT, DEFAULT_PACKET_BUFFER_LEN,
     };
 
     #[test_case]
     fn sync() {
         let buffer = [0b10_01_00_11u8; 32];
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(Sync::decode(&mut decoder), Sync::Support);
@@ -92,7 +92,7 @@ mod tests {
     fn extension() {
         let buffer = [0b0010u8; 32];
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(Ext::BranchCount, Ext::decode(&mut decoder));
@@ -105,7 +105,7 @@ mod tests {
         buffer[0] = 0b1_10_01_100;
         buffer[1] = 0b00000_011;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CPU_COUNT];
+        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(
