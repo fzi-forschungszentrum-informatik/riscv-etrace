@@ -15,10 +15,10 @@ pub enum Ext {
     JumpTargetIndex,
 }
 
-impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT, PACKET_BUFFER_LEN>
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for Ext
 {
-    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_bit() {
             false => BranchCount,
             true => JumpTargetIndex,
@@ -34,10 +34,10 @@ pub enum Sync {
     Support,
 }
 
-impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT, PACKET_BUFFER_LEN>
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for Sync
 {
-    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => Sync::Start,
             0b01 => Sync::Trap,
@@ -48,10 +48,10 @@ impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT,
     }
 }
 
-impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT, PACKET_BUFFER_LEN>
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for Format
 {
-    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => {
                 let ext = Ext::decode(decoder);
@@ -72,15 +72,13 @@ impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT,
 mod tests {
     use crate::decoder::format::{Ext, Format, Sync};
     use crate::decoder::{
-        Decode, Decoder, DEFAULT_CONFIGURATION, DEFAULT_HART_COUNT, DEFAULT_PACKET_BUFFER_LEN,
+        Decode, Decoder, DEFAULT_CONFIGURATION,
     };
 
     #[test_case]
     fn sync() {
         let buffer = [0b10_01_00_11u8; 32];
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(Sync::decode(&mut decoder), Sync::Support);
         assert_eq!(Sync::decode(&mut decoder), Sync::Start);
@@ -91,9 +89,7 @@ mod tests {
     #[test_case]
     fn extension() {
         let buffer = [0b0010u8; 32];
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(Ext::BranchCount, Ext::decode(&mut decoder));
         assert_eq!(Ext::JumpTargetIndex, Ext::decode(&mut decoder));
@@ -104,9 +100,7 @@ mod tests {
         let mut buffer = [0u8; 32];
         buffer[0] = 0b1_10_01_100;
         buffer[1] = 0b00000_011;
-        [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(
             Format::decode(&mut decoder),

@@ -53,11 +53,9 @@ pub const DEFAULT_CONFIGURATION: DecoderConfiguration = DecoderConfiguration {
     ioptions_n: 0,
 };
 
-pub struct Decoder<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> {
+pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
     packet_data: Option<[u8; PACKET_BUFFER_LEN]>,
-    pc_buffer: &'a mut [u64; HART_COUNT],
     bit_pos: usize,
-    current_hart: Option<usize>,
     conf: DecoderConfiguration,
 }
 
@@ -66,43 +64,26 @@ pub struct Decoder<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> 
 // cpu index < 2^5
 // CPU_COUNT <= 2^cpu_index_width
 
-const DEFAULT_HART_COUNT: usize = 1;
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-impl<'a> Decoder<'a, DEFAULT_HART_COUNT, DEFAULT_PACKET_BUFFER_LEN> {
-    pub fn default(
-        conf: DecoderConfiguration,
-        pc_buffer: &'a mut [u64; DEFAULT_HART_COUNT],
-    ) -> Self {
-        Decoder::new(conf, pc_buffer)
+impl Decoder<DEFAULT_PACKET_BUFFER_LEN> {
+    pub fn default(conf: DecoderConfiguration, ) -> Self {
+        Decoder::new(conf)
     }
 }
 
-impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
-    Decoder<'a, HART_COUNT, PACKET_BUFFER_LEN>
-{
-    pub fn new(conf: DecoderConfiguration, pc_buffer: &'a mut [u64; HART_COUNT]) -> Self {
+impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
+    pub fn new(conf: DecoderConfiguration) -> Self {
         Decoder {
             packet_data: None,
-            current_hart: None,
-            pc_buffer,
             bit_pos: 0,
             conf,
         }
     }
 
-    pub fn last_pc(&self, cpu_index: usize) -> u64 {
-        self.pc_buffer[cpu_index]
-    }
-
     pub fn set_buffer(&mut self, array: [u8; PACKET_BUFFER_LEN]) {
         self.bit_pos = 0;
         self.packet_data = Some(array);
-    }
-
-    #[cfg(test)]
-    fn set_current_hart(&mut self, current_hart: usize) {
-        self.current_hart = Some(current_hart);
     }
 
     fn read_bit(&mut self) -> bool {
@@ -148,22 +129,8 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
     }
 
     fn read_address(&mut self) -> u64 {
-        let addr = self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
-            << self.conf.iaddress_lsb_p;
-        self.pc_buffer[self.current_hart.expect("self.current_hart is None")] = addr;
-        addr
-    }
-
-    fn read_diff_address(&mut self) -> u64 {
-        if self.conf.full_address {
-            return self.read_address();
-        }
-        let difference = self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
-            << self.conf.iaddress_lsb_p;
-        let addr = self.pc_buffer[self.current_hart.expect("self.current_hart is None")]
-            .wrapping_add_signed(difference as i64);
-        self.pc_buffer[self.current_hart.expect("self.current_hart is None")] = addr;
-        difference
+        self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
+            << self.conf.iaddress_lsb_p
     }
 
     // TODO scary documentation
@@ -205,7 +172,6 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
             todo!("decompression");
         }
         let format = Format::decode(self);
-        self.current_hart = Some(header.cpu_index);
 
         let payload = match format {
             Format::Ext(Ext::BranchCount) => {
@@ -229,7 +195,6 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
                 Payload::Synchronization(Synchronization::Support(Support::decode(self)))
             }
         };
-        self.current_hart = None;
         Packet { header, payload }
     }
 }
@@ -239,8 +204,8 @@ pub struct Packet {
     pub payload: Payload,
 }
 
-trait Decode<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> {
-    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self;
+trait Decode<const PACKET_BUFFER_LEN: usize> {
+    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self;
 }
 
 #[cfg(test)]
@@ -264,8 +229,7 @@ mod tests {
         buffer[11] = 0b1;
         // ...
         buffer[18] = 0b11_110000;
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         // testing for bit position
         assert_eq!(decoder.read(6), 0b011111);
@@ -295,8 +259,7 @@ mod tests {
         buffer[6] = 0xFF;
         buffer[7] = 0xFF;
         buffer[8] = 0b1;
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(1), 0);
         assert_eq!(decoder.read(64) as i64, -24);
@@ -305,8 +268,7 @@ mod tests {
     #[test_case]
     fn read_entire_buffer() {
         let buffer: [u8; 32] = [255; 32];
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(64), u64::MAX);
         assert_eq!(decoder.read(64), u64::MAX);
@@ -319,8 +281,7 @@ mod tests {
         let mut buffer = [0u8; 32];
         buffer[0] = 0b1100_0101;
         buffer[1] = 0b1111_1111;
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_fast(2), 0b01);
         assert_eq!(decoder.bit_pos, 2);
@@ -337,8 +298,7 @@ mod tests {
     #[test_case]
     fn read_bool_bits() {
         let buffer: [u8; 32] = [0b0101_0101; 32];
-        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
+        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_bit(), true);
         assert_eq!(decoder.read_bit(), false);
