@@ -8,10 +8,10 @@ pub struct ContextPart {
     pub context: u64,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for ContextPart
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for ContextPart
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         ContextPart {
             privilege: decoder.read(decoder.conf.privilege_width_p),
             #[cfg(feature = "time")]
@@ -28,10 +28,10 @@ pub struct AddressPart {
     pub updiscon: bool,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for AddressPart
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for AddressPart
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         AddressPart {
             address: decoder.read_diff_address(),
             notify: decoder.read_bit(),
@@ -47,10 +47,10 @@ pub struct IRPayload {
 }
 
 #[cfg(feature = "IR")]
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for IRPayload
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for IRPayload
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         unimplemented!()
     }
 }
@@ -60,10 +60,10 @@ pub struct BranchPart {
     pub branch_map: u32,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for BranchPart
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for BranchPart
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let branches = match decoder.read_fast(5) {
             0 => 0,
             1 => 1,
@@ -88,10 +88,10 @@ pub struct BranchCountPart {
     pub branch_fmt: BranchFmt,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for BranchCountPart
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for BranchCountPart
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         // FIXME too large read_fast
         let branch_count = decoder.read_fast(32) - 31;
         let branch_fmt = BranchFmt::decode(decoder);
@@ -107,10 +107,10 @@ pub struct ShortBranchPart {
     pub branch_map: Option<u32>,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for ShortBranchPart
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for ShortBranchPart
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let branches = match decoder.read_fast(5) {
             0 => 0,
             1 => 1,
@@ -153,10 +153,10 @@ pub struct BranchCount {
     pub address: Option<Address>,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for BranchCount
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for BranchCount
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let count_payload = BranchCountPart::decode(decoder);
         BranchCount {
             branch_count: count_payload.branch_count,
@@ -178,10 +178,10 @@ pub enum BranchFmt {
     AddrFail,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for BranchFmt
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for BranchFmt
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => BranchFmt::NoAddr,
             0b01 => panic!("BranchFmt cannot be 0b01"),
@@ -204,10 +204,10 @@ pub struct JumpTargetIndex {
     pub irdepth: usize,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for JumpTargetIndex
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for JumpTargetIndex
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let index = decoder.read(decoder.conf.cache_size_p) as usize;
         let short_payload = ShortBranchPart::decode(decoder);
         #[cfg(feature = "IR")]
@@ -232,10 +232,10 @@ pub struct Branch {
     pub address: Option<Address>,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for Branch
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Branch
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let branch_payload = BranchPart::decode(decoder);
         if branch_payload.branches == 0 {
             Branch {
@@ -266,10 +266,10 @@ pub struct Address {
     pub irdepth: usize,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for Address
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Address
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let part = AddressPart::decode(decoder);
         #[cfg(feature = "IR")]
         let ir_payload = IRPayload::decode(decoder);
@@ -306,10 +306,10 @@ pub struct Start {
     pub address: u64,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for Start
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Start
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let branch = decoder.read_bit();
         let ctx_payload = ContextPart::decode(decoder);
         let address = decoder.read_address();
@@ -341,10 +341,10 @@ pub struct Trap {
     pub tval: u64,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for Trap
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Trap
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let branch = decoder.read_bit();
         let ctx_payload = ContextPart::decode(decoder);
         let ecause = decoder.read(decoder.conf.ecause_width_p);
@@ -378,10 +378,10 @@ pub struct Context {
     pub context: u64,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for Context
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Context
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let ctx = ContextPart::decode(decoder);
         Context {
             privilege: ctx.privilege,
@@ -402,10 +402,10 @@ pub struct Support {
     pub ioptions: u8,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for Support
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Support
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         let ienable = decoder.read_bit();
         let encoder_mode = decoder.read_fast(decoder.conf.encoder_mode_n);
         let qual_status = QualStatus::decode(decoder);
@@ -427,10 +427,10 @@ pub enum QualStatus {
     EndedNtr,
 }
 
-impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<PC_BUFFER_LEN, PACKET_BUFFER_LEN> for QualStatus
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decode<HART_COUNT, PACKET_BUFFER_LEN> for QualStatus
 {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => QualStatus::NoChange,
             0b01 => QualStatus::EndedRep,
@@ -445,7 +445,7 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
 mod tests {
     use crate::decoder::payload::{Address, Branch, JumpTargetIndex, Start};
     use crate::decoder::{
-        Decode, Decoder, DecoderConfiguration, DEFAULT_CONFIGURATION, DEFAULT_CORE_COUNT,
+        Decode, Decoder, DecoderConfiguration, DEFAULT_CONFIGURATION, DEFAULT_HART_COUNT,
         DEFAULT_PACKET_BUFFER_LEN,
     };
 
@@ -460,7 +460,7 @@ mod tests {
         buffer[5] = 0b11_000000;
         buffer[6] = 0b11111111;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 cache_size_p: cache_size_p_override,
@@ -486,7 +486,7 @@ mod tests {
         buffer[0] = 0b010_00101;
         buffer[1] = 0b0000_1011;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         let branch = Branch::decode(&mut decoder);
@@ -507,7 +507,7 @@ mod tests {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b000_00000;
         buffer[1] = 0b100;
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         let branch_no_addr = Branch::decode(&mut decoder);
@@ -525,7 +525,7 @@ mod tests {
         buffer[8] = 0b0000_0001;
         buffer[15] = 0b10_000000;
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 // Changed address width and lsb, so that the entire
@@ -557,7 +557,7 @@ mod tests {
     fn synchronization_start() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
         [0; DEFAULT_PACKET_BUFFER_LEN];
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(
             DecoderConfiguration {
                 iaddress_width_p: 64,

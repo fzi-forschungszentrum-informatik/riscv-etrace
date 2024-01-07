@@ -53,9 +53,9 @@ pub const DEFAULT_CONFIGURATION: DecoderConfiguration = DecoderConfiguration {
     ioptions_n: 0,
 };
 
-pub struct Decoder<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> {
+pub struct Decoder<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> {
     packet_data: Option<[u8; PACKET_BUFFER_LEN]>,
-    pc_buffer: &'a mut [u64; PC_BUFFER_LEN],
+    pc_buffer: &'a mut [u64; HART_COUNT],
     bit_pos: usize,
     current_cpu_index: usize,
     conf: DecoderConfiguration,
@@ -66,22 +66,22 @@ pub struct Decoder<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usiz
 // cpu index < 2^5
 // CPU_COUNT <= 2^cpu_index_width
 
-const DEFAULT_CORE_COUNT: usize = 1;
+const DEFAULT_HART_COUNT: usize = 1;
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-impl<'a> Decoder<'a, DEFAULT_CORE_COUNT, DEFAULT_PACKET_BUFFER_LEN> {
+impl<'a> Decoder<'a, DEFAULT_HART_COUNT, DEFAULT_PACKET_BUFFER_LEN> {
     pub fn default(
         conf: DecoderConfiguration,
-        pc_buffer: &'a mut [u64; DEFAULT_CORE_COUNT],
+        pc_buffer: &'a mut [u64; DEFAULT_HART_COUNT],
     ) -> Self {
         Decoder::new(conf, pc_buffer)
     }
 }
 
-impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
-    Decoder<'a, PC_BUFFER_LEN, PACKET_BUFFER_LEN>
+impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
+    Decoder<'a, HART_COUNT, PACKET_BUFFER_LEN>
 {
-    pub fn new(conf: DecoderConfiguration, pc_buffer: &'a mut [u64; PC_BUFFER_LEN]) -> Self {
+    pub fn new(conf: DecoderConfiguration, pc_buffer: &'a mut [u64; HART_COUNT]) -> Self {
         Decoder {
             packet_data: None,
             pc_buffer,
@@ -232,8 +232,8 @@ pub struct Packet {
     pub payload: Payload,
 }
 
-trait Decode<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize> {
-    fn decode(decoder: &mut Decoder<PC_BUFFER_LEN, PACKET_BUFFER_LEN>) -> Self;
+trait Decode<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> {
+    fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self;
 }
 
 #[cfg(test)]
@@ -257,7 +257,7 @@ mod tests {
         buffer[11] = 0b1;
         // ...
         buffer[18] = 0b11_110000;
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         // testing for bit position
@@ -288,7 +288,7 @@ mod tests {
         buffer[6] = 0xFF;
         buffer[7] = 0xFF;
         buffer[8] = 0b1;
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(1), 0);
@@ -298,7 +298,7 @@ mod tests {
     #[test_case]
     fn read_entire_buffer() {
         let buffer: [u8; 32] = [255; 32];
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(64), u64::MAX);
@@ -312,7 +312,7 @@ mod tests {
         let mut buffer = [0u8; 32];
         buffer[0] = 0b1100_0101;
         buffer[1] = 0b1111_1111;
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_fast(2), 0b01);
@@ -330,7 +330,7 @@ mod tests {
     #[test_case]
     fn read_bool_bits() {
         let buffer: [u8; 32] = [0b0101_0101; 32];
-        let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
+        let mut pc_buffer = [0; DEFAULT_HART_COUNT];
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION, &mut pc_buffer);
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_bit(), true);
