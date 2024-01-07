@@ -253,6 +253,7 @@ mod tests {
         buffer[8] = 0xF0;
         buffer[9] = 0xFF;
         buffer[10] = 0b01_111111;
+        buffer[11] = 0b1;
         // ...
         buffer[18] = 0b11_110000;
         let mut pc_buffer = [0; DEFAULT_CORE_COUNT];
@@ -268,14 +269,14 @@ mod tests {
         // read over byte boundary
         assert_eq!(decoder.read(10), 0b1001001001);
         assert_eq!(decoder.bit_pos, 24);
-        assert_eq!(decoder.read(62), 0x3F_FF_F0_F0_F0_F0_F0_F1);
+        assert_eq!(decoder.read(62), 0x3FFF_F0F0_F0F0_F0F1);
         assert_eq!(decoder.bit_pos, 86);
-        assert_eq!(decoder.read(64), 0xC000_0000_0000_0001);
+        assert_eq!(decoder.read(64), 0xC000_0000_0000_0005);
         assert_eq!(decoder.bit_pos, 150);
     }
 
     #[test_case]
-    fn read_i64(){
+    fn read_i64() {
         let mut buffer = [0; 32];
         buffer[0] = 0b1101000_0;
         buffer[1] = 0xFF;

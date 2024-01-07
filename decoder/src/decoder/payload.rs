@@ -75,7 +75,10 @@ impl<const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
         };
         BranchPart {
             branches,
-            branch_map: decoder.read(if branches == 0 { 31 } else { branches }).try_into().unwrap(),
+            branch_map: decoder
+                .read(if branches == 0 { 31 } else { branches })
+                .try_into()
+                .unwrap(),
         }
     }
 }
