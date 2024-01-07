@@ -57,7 +57,7 @@ pub struct Decoder<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> 
     packet_data: Option<[u8; PACKET_BUFFER_LEN]>,
     pc_buffer: &'a mut [u64; HART_COUNT],
     bit_pos: usize,
-    current_cpu_index: usize,
+    current_hart: Option<usize>,
     conf: DecoderConfiguration,
 }
 
@@ -84,9 +84,9 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
     pub fn new(conf: DecoderConfiguration, pc_buffer: &'a mut [u64; HART_COUNT]) -> Self {
         Decoder {
             packet_data: None,
+            current_hart: None,
             pc_buffer,
             bit_pos: 0,
-            current_cpu_index: 0,
             conf,
         }
     }
@@ -97,7 +97,12 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
 
     pub fn set_buffer(&mut self, array: [u8; PACKET_BUFFER_LEN]) {
         self.bit_pos = 0;
-        self.packet_data = Some(array)
+        self.packet_data = Some(array);
+    }
+
+    #[cfg(test)]
+    fn set_current_hart(&mut self, current_hart: usize) {
+        self.current_hart = Some(current_hart);
     }
 
     fn read_bit(&mut self) -> bool {
@@ -145,7 +150,7 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
     fn read_address(&mut self) -> u64 {
         let addr = self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
             << self.conf.iaddress_lsb_p;
-        self.pc_buffer[self.current_cpu_index] = addr;
+        self.pc_buffer[self.current_hart.expect("self.current_hart is None")] = addr;
         addr
     }
 
@@ -155,8 +160,9 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
         }
         let difference = self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
             << self.conf.iaddress_lsb_p;
-        let addr = self.pc_buffer[self.current_cpu_index].wrapping_add_signed(difference as i64);
-        self.pc_buffer[self.current_cpu_index] = addr;
+        let addr = self.pc_buffer[self.current_hart.expect("self.current_hart is None")]
+            .wrapping_add_signed(difference as i64);
+        self.pc_buffer[self.current_hart.expect("self.current_hart is None")] = addr;
         difference
     }
 
@@ -199,7 +205,7 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
             todo!("decompression");
         }
         let format = Format::decode(self);
-        self.current_cpu_index = header.cpu_index;
+        self.current_hart = Some(header.cpu_index);
 
         let payload = match format {
             Format::Ext(Ext::BranchCount) => {
@@ -223,6 +229,7 @@ impl<'a, const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
                 Payload::Synchronization(Synchronization::Support(Support::decode(self)))
             }
         };
+        self.current_hart = None;
         Packet { header, payload }
     }
 }

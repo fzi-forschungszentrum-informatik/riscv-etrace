@@ -15,8 +15,8 @@ pub enum Ext {
     JumpTargetIndex,
 }
 
-impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Ext
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT, PACKET_BUFFER_LEN>
+    for Ext
 {
     fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_bit() {
@@ -34,8 +34,8 @@ pub enum Sync {
     Support,
 }
 
-impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Sync
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT, PACKET_BUFFER_LEN>
+    for Sync
 {
     fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
@@ -48,8 +48,8 @@ impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
     }
 }
 
-impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize>
-    Decode<HART_COUNT, PACKET_BUFFER_LEN> for Format
+impl<const HART_COUNT: usize, const PACKET_BUFFER_LEN: usize> Decode<HART_COUNT, PACKET_BUFFER_LEN>
+    for Format
 {
     fn decode(decoder: &mut Decoder<HART_COUNT, PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
