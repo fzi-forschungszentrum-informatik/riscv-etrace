@@ -37,82 +37,6 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     }
 }
 
-pub struct BranchPart {
-    pub branches: usize,
-    pub branch_map: u32,
-}
-
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for BranchPart
-{
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        let branches = match decoder.read_fast(5) {
-            0 => 0,
-            1 => 1,
-            2..=3 => 3,
-            4..=7 => 7,
-            8..=15 => 15,
-            16..=31 => 31,
-            err => panic!("This should never happen. Branches is {:?}", err),
-        };
-        BranchPart {
-            branches,
-            branch_map: decoder
-                .read(if branches == 0 { 31 } else { branches })
-                .try_into()
-                .unwrap(),
-        }
-    }
-}
-
-pub struct BranchCountPart {
-    pub branch_count: u32,
-    pub branch_fmt: BranchFmt,
-}
-
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for BranchCountPart
-{
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        // FIXME too large read_fast
-        let branch_count = decoder.read_fast(32) - 31;
-        let branch_fmt = BranchFmt::decode(decoder);
-        BranchCountPart {
-            branch_count,
-            branch_fmt,
-        }
-    }
-}
-
-pub struct ShortBranchPart {
-    pub branches: usize,
-    pub branch_map: Option<u32>,
-}
-
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for ShortBranchPart
-{
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        let branches = match decoder.read_fast(5) {
-            0 => 0,
-            1 => 1,
-            2..=3 => 3,
-            4..=7 => 7,
-            8..=15 => 15,
-            16..=31 => 31,
-            err => panic!("This should never happen. Branches is {:?}", err),
-        };
-        ShortBranchPart {
-            branches,
-            branch_map: if branches == 0 {
-                None
-            } else {
-                Some(decoder.read(branches).try_into().unwrap())
-            },
-        }
-    }
-}
-
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Payload {
     Extension(Extension),
@@ -139,15 +63,18 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for BranchCount
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        let count_payload = BranchCountPart::decode(decoder);
+        // FIXME too large read_fast
+        let branch_count = decoder.read_fast(32) - 31;
+        let branch_fmt = BranchFmt::decode(decoder);
+        let address = if branch_fmt == BranchFmt::NoAddr {
+            None
+        } else {
+            Some(Address::decode(decoder))
+        };
         BranchCount {
-            branch_count: count_payload.branch_count,
-            address: if count_payload.branch_fmt == BranchFmt::NoAddr {
-                None
-            } else {
-                Some(Address::decode(decoder))
-            },
-            branch_fmt: count_payload.branch_fmt,
+            branch_count,
+            address,
+            branch_fmt,
         }
     }
 }
@@ -191,13 +118,28 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         let index = decoder.read(decoder.conf.cache_size_p) as usize;
-        let short_payload = ShortBranchPart::decode(decoder);
+        let branches = match decoder.read_fast(5) {
+            0 => 0,
+            1 => 1,
+            2..=3 => 3,
+            4..=7 => 7,
+            8..=15 => 15,
+            16..=31 => 31,
+            err => panic!("This should never happen. Branches is {:?}", err),
+        };
+        let branch_map = if branches == 0 {
+            None
+        } else {
+            Some(decoder.read(branches).try_into().unwrap())
+        };
+
+
         #[cfg(feature = "IR")]
         let ir_payload = IRPayload::decode(decoder);
         JumpTargetIndex {
             index,
-            branches: short_payload.branches,
-            branch_map: short_payload.branch_map,
+            branches,
+            branch_map,
             #[cfg(feature = "IR")]
             irreport: ir_payload.irreport,
             #[cfg(feature = "IR")]
@@ -218,20 +160,29 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for Branch
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        let branch_payload = BranchPart::decode(decoder);
-        if branch_payload.branches == 0 {
-            Branch {
-                branches: branch_payload.branches,
-                branch_map: branch_payload.branch_map,
-                address: None,
-            }
+        let branches = match decoder.read_fast(5) {
+            0 => 0,
+            1 => 1,
+            2..=3 => 3,
+            4..=7 => 7,
+            8..=15 => 15,
+            16..=31 => 31,
+            err => panic!("This should never happen. Branches is {:?}", err),
+        };
+        let branch_map = decoder
+            .read(if branches == 0 { 31 } else { branches })
+            .try_into()
+            .unwrap();
+
+        let address = if branches != 0 {
+            Some(Address::decode(decoder))
         } else {
-            let addr = Address::decode(decoder);
-            Branch {
-                branches: branch_payload.branches,
-                branch_map: branch_payload.branch_map,
-                address: Some(addr),
-            }
+            None
+        };
+        Branch {
+            branches,
+            branch_map,
+            address
         }
     }
 }
