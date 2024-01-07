@@ -133,7 +133,8 @@ impl<'a, const PC_BUFFER_LEN: usize, const PACKET_BUFFER_LEN: usize>
             // Take 9th byte and mask MS bits we don't need
             let missing_msbs =
                 self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
-            let msbs_u64 = (missing_msbs as u64) << 64 - missing_bit_count;
+            // TODO unit test
+            let msbs_u64 = (missing_msbs as u64) << bit_count - missing_bit_count;
             // shift msbs into correct position in u64 and add with previously read value
             value + msbs_u64
         } else {
