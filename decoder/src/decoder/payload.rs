@@ -80,8 +80,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for BranchCount
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        // FIXME too large read_fast
-        let branch_count = decoder.read_fast(32) - 31;
+        let branch_count = decoder.read(32) - 31;
         let branch_fmt = BranchFmt::decode(decoder);
         let address = if branch_fmt == BranchFmt::NoAddr {
             None
@@ -89,7 +88,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
             Some(Address::decode(decoder))
         };
         BranchCount {
-            branch_count,
+            branch_count: branch_count.try_into().unwrap(),
             address,
             branch_fmt,
         }
@@ -210,9 +209,9 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
         #[cfg(feature = "IR")]
         let ir_payload = IRPayload::decode(decoder);
         Address {
-            address: address,
-            notify: notify,
-            updiscon: updiscon,
+            address,
+            notify,
+            updiscon,
             #[cfg(feature = "IR")]
             irreport: ir_payload.irreport,
             #[cfg(feature = "IR")]
