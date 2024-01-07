@@ -128,11 +128,6 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
         }
     }
 
-    fn read_address(&mut self) -> u64 {
-        self.read(self.conf.iaddress_width_p - self.conf.iaddress_lsb_p)
-            << self.conf.iaddress_lsb_p
-    }
-
     // TODO scary documentation
     // Many times read value less/equal to 32 bits
     // Return value fits into a single register

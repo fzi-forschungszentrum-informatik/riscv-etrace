@@ -1,5 +1,22 @@
 use crate::decoder::{Decode, Decoder};
 
+fn read_address<const PACKET_BUFFER_LEN: usize>(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> u64 {
+    decoder.read(decoder.conf.iaddress_width_p - decoder.conf.iaddress_lsb_p)
+        << decoder.conf.iaddress_lsb_p
+}
+
+fn read_branches<const PACKET_BUFFER_LEN: usize>(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> usize {
+    match decoder.read_fast(5) {
+        0 => 0,
+        1 => 1,
+        2..=3 => 3,
+        4..=7 => 7,
+        8..=15 => 15,
+        16..=31 => 31,
+        err => panic!("This should never happen. Branches is {:?}", err),
+    }
+}
+
 pub struct ContextPart {
     pub privilege: u64,
     #[cfg(feature = "time")]
@@ -118,15 +135,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         let index = decoder.read(decoder.conf.cache_size_p) as usize;
-        let branches = match decoder.read_fast(5) {
-            0 => 0,
-            1 => 1,
-            2..=3 => 3,
-            4..=7 => 7,
-            8..=15 => 15,
-            16..=31 => 31,
-            err => panic!("This should never happen. Branches is {:?}", err),
-        };
+        let branches = read_branches(decoder);
         let branch_map = if branches == 0 {
             None
         } else {
@@ -160,15 +169,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for Branch
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        let branches = match decoder.read_fast(5) {
-            0 => 0,
-            1 => 1,
-            2..=3 => 3,
-            4..=7 => 7,
-            8..=15 => 15,
-            16..=31 => 31,
-            err => panic!("This should never happen. Branches is {:?}", err),
-        };
+        let branches = read_branches(decoder);
         let branch_map = decoder
             .read(if branches == 0 { 31 } else { branches })
             .try_into()
@@ -203,7 +204,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     for Address
 {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
-        let address = decoder.read_address();
+        let address = read_address(decoder);
         let notify= decoder.read_bit();
         let updiscon= decoder.read_bit();
         #[cfg(feature = "IR")]
@@ -247,7 +248,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         let branch = decoder.read_bit();
         let ctx_payload = ContextPart::decode(decoder);
-        let address = decoder.read_address();
+        let address = read_address(decoder);
         Start {
             branch,
             privilege: ctx_payload.privilege,
@@ -285,7 +286,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
         let ecause = decoder.read(decoder.conf.ecause_width_p);
         let interrupt = decoder.read_bit();
         let thaddr = decoder.read_bit();
-        let address = decoder.read_address();
+        let address = read_address(decoder);
         let tval = decoder.read(decoder.conf.iaddress_width_p);
         Trap {
             branch,
