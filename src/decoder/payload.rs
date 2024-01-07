@@ -506,13 +506,16 @@ impl Decode for Support {
 #[cfg(test)]
 mod tests {
     use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Privilege, Start};
-    use crate::decoder::{Decode, Decoder, DEFAULT_DECODER_CONFIG};
-    use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
+    use crate::decoder::{Decode, Decoder, DecoderConfiguration};
+    use crate::{ProtocolConfiguration};
 
     const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
     #[test]
     fn extension_jti() {
+        let protocol_config = ProtocolConfiguration::default();
+        let decoder_config = DecoderConfiguration::default();
+
         let cache_size_p_override = 10;
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b00000000;
@@ -524,9 +527,9 @@ mod tests {
         let mut decoder = Decoder::new(
             ProtocolConfiguration {
                 cache_size_p: cache_size_p_override,
-                ..DEFAULT_PROTOCOL_CONFIG
+                ..protocol_config
             },
-            DEFAULT_DECODER_CONFIG,
+            decoder_config,
         );
 
         decoder.reset();
@@ -575,6 +578,9 @@ mod tests {
 
     #[test]
     fn address() {
+        let protocol_config = ProtocolConfiguration::default();
+        let decoder_config = DecoderConfiguration::default();
+
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b0000_0001;
         buffer[7] = 0b11_000000;
@@ -587,9 +593,9 @@ mod tests {
                 // packet aligns with 64 bit
                 iaddress_width_p: 64,
                 iaddress_lsb_p: 2,
-                ..DEFAULT_PROTOCOL_CONFIG
+                ..protocol_config
             },
-            DEFAULT_DECODER_CONFIG,
+            decoder_config,
         );
         decoder.reset();
         let addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
@@ -605,14 +611,17 @@ mod tests {
 
     #[test]
     fn synchronization_start() {
+        let protocol_config = ProtocolConfiguration::default();
+        let decoder_config = DecoderConfiguration::default();
+
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::new(
             ProtocolConfiguration {
                 iaddress_width_p: 64,
                 iaddress_lsb_p: 0,
-                ..DEFAULT_PROTOCOL_CONFIG
+                ..protocol_config
             },
-            DEFAULT_DECODER_CONFIG,
+            decoder_config,
         );
         decoder.reset();
         let sync_start = Start::decode(&mut decoder, &buffer).unwrap();

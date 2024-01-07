@@ -6,7 +6,7 @@ use crate::decoder::format::Format;
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
 use crate::decoder::DecodeError::ReadTooLong;
-use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
+use crate::{ProtocolConfiguration};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
 
@@ -21,13 +21,17 @@ const CONTEXT: u64 = todo!();
 #[cfg(feature = "IR")]
 const IR: u64 = todo!();
 
-/// Defines the decoder specific configuration. Used only be the [decoder](self).
+/// Defines the decoder specific configuration. Used only by the [decoder](self).
 #[derive(Copy, Clone, Debug)]
 pub struct DecoderConfiguration {
     pub decompress: bool,
 }
 
-pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: true };
+impl Default for DecoderConfiguration {
+    fn default() -> Self {
+        DecoderConfiguration { decompress: true }
+    }
+}
 
 /// A list of possible errors during decoding of a single packet.
 #[derive(Debug)]
@@ -45,7 +49,7 @@ pub enum DecodeError {
         buffer_size: usize,
     },
     // The privilege level is not known. You might want to implement it.
-    UnknownPrivilege(u8)
+    UnknownPrivilege(u8),
 }
 
 /// The maximum length a payload can have decompressed. Found by changing this value until the
@@ -63,7 +67,7 @@ pub struct Decoder {
 
 impl Default for Decoder {
     fn default() -> Self {
-        Decoder::new(DEFAULT_PROTOCOL_CONFIG, DEFAULT_DECODER_CONFIG)
+        Decoder::new(ProtocolConfiguration::default(), DecoderConfiguration::default())
     }
 }
 

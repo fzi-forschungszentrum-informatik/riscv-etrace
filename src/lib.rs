@@ -119,17 +119,22 @@ pub struct ProtocolConfiguration {
     pub ioptions_n: usize,
 }
 
-pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration {
-    #[cfg(feature = "context")]
-    context_width_p: 0,
-    #[cfg(feature = "time")]
-    time_width_p: 0,
-    ecause_width_p: 6,
-    iaddress_lsb_p: 1,
-    iaddress_width_p: 64,
-    cache_size_p: 0,
-    privilege_width_p: 2,
-    cpu_index_width: 2,
-    encoder_mode_n: 1,
-    ioptions_n: 5,
-};
+impl Default for ProtocolConfiguration {
+    fn default() -> Self {
+        ProtocolConfiguration {
+            #[cfg(feature = "context")]
+            context_width_p: 0,
+            #[cfg(feature = "time")]
+            time_width_p: 0,
+            ecause_width_p: 6,
+            iaddress_lsb_p: 1,
+            iaddress_width_p: 64,
+            cache_size_p: 0,
+            privilege_width_p: 2,
+            cpu_index_width: 2,
+            encoder_mode_n: 1,
+            ioptions_n: 5,
+        }
+    }
+}
+
