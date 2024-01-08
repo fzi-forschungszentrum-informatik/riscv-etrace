@@ -71,7 +71,7 @@ mod tests {
     #[test_case]
     fn sync() {
         let buffer = [0b10_01_00_11u8; 32];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(Sync::decode(&mut decoder), Sync::Support);
         assert_eq!(Sync::decode(&mut decoder), Sync::Start);
@@ -82,7 +82,7 @@ mod tests {
     #[test_case]
     fn extension() {
         let buffer = [0b0010u8; 32];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(Ext::BranchCount, Ext::decode(&mut decoder));
         assert_eq!(Ext::JumpTargetIndex, Ext::decode(&mut decoder));
@@ -93,7 +93,7 @@ mod tests {
         let mut buffer = [0u8; 32];
         buffer[0] = 0b1_10_01_100;
         buffer[1] = 0b00000_011;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(
             Format::decode(&mut decoder),

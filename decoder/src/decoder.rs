@@ -1,7 +1,7 @@
 use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
-use crate::TraceConfiguration;
+use crate::{DEFAULT_CONFIGURATION, TraceConfiguration};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
 
@@ -30,8 +30,8 @@ pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
 impl Decoder<DEFAULT_PACKET_BUFFER_LEN> {
-    pub fn default(conf: TraceConfiguration) -> Self {
-        Decoder::new(conf)
+    pub fn default() -> Self {
+        Decoder::new(DEFAULT_CONFIGURATION)
     }
 }
 
@@ -174,7 +174,7 @@ mod tests {
 
     #[test_case]
     fn read_u64() {
-        let mut buffer = [0; 32];
+        let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b01_011111;
         buffer[1] = 0b01_011111;
         buffer[2] = 0b10010010;
@@ -189,7 +189,7 @@ mod tests {
         buffer[11] = 0b1;
         // ...
         buffer[18] = 0b11_110000;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         // testing for bit position
         assert_eq!(decoder.read(6), 0b011111);
@@ -209,7 +209,7 @@ mod tests {
 
     #[test_case]
     fn read_i64() {
-        let mut buffer = [0; 32];
+        let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b1101000_0;
         buffer[1] = 0xFF;
         buffer[2] = 0xFF;
@@ -219,7 +219,7 @@ mod tests {
         buffer[6] = 0xFF;
         buffer[7] = 0xFF;
         buffer[8] = 0b1;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(1), 0);
         assert_eq!(decoder.read(64) as i64, -24);
@@ -227,8 +227,8 @@ mod tests {
 
     #[test_case]
     fn read_entire_buffer() {
-        let buffer: [u8; 32] = [255; 32];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read(64), u64::MAX);
         assert_eq!(decoder.read(64), u64::MAX);
@@ -238,10 +238,10 @@ mod tests {
 
     #[test_case]
     fn read_u32() {
-        let mut buffer = [0u8; 32];
+        let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b1100_0101;
         buffer[1] = 0b1111_1111;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_fast(2), 0b01);
         assert_eq!(decoder.bit_pos, 2);
@@ -257,8 +257,8 @@ mod tests {
 
     #[test_case]
     fn read_bool_bits() {
-        let buffer: [u8; 32] = [0b0101_0101; 32];
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         assert_eq!(decoder.read_bit(), true);
         assert_eq!(decoder.read_bit(), false);

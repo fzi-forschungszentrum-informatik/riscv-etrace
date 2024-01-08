@@ -371,7 +371,7 @@ mod tests {
         // ...
         buffer[5] = 0b11_000000;
         buffer[6] = 0b11111111;
-        let mut decoder = Decoder::default(TraceConfiguration {
+        let mut decoder = Decoder::new(TraceConfiguration {
             cache_size_p: cache_size_p_override,
             ..DEFAULT_CONFIGURATION
         });
@@ -392,7 +392,7 @@ mod tests {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b010_00101;
         buffer[1] = 0b0000_1011;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         let branch = Branch::decode(&mut decoder);
         assert_eq!(branch.branches, 7);
@@ -412,7 +412,7 @@ mod tests {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b000_00000;
         buffer[1] = 0b100;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
+        let mut decoder = Decoder::default();
         decoder.set_buffer(buffer);
         let branch_no_addr = Branch::decode(&mut decoder);
         assert_eq!(branch_no_addr.branches, 0);
@@ -428,7 +428,7 @@ mod tests {
         // test differential addr with second address
         buffer[8] = 0b0000_0001;
         buffer[15] = 0b10_000000;
-        let mut decoder = Decoder::default(TraceConfiguration {
+        let mut decoder = Decoder::new(TraceConfiguration {
             // Changed address width and lsb, so that the entire
             // packet aligns with 64 bit
             iaddress_width_p: 64,
@@ -451,7 +451,7 @@ mod tests {
     #[test_case]
     fn synchronization_start() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-        let mut decoder = Decoder::default(TraceConfiguration {
+        let mut decoder = Decoder::new(TraceConfiguration {
             iaddress_width_p: 64,
             iaddress_lsb_p: 0,
             ..DEFAULT_CONFIGURATION
