@@ -12,6 +12,44 @@ use riscv_rt::entry;
 
 pub mod decoder;
 
+// TODO TraceConfiguration checking
+// 0 <addr width < 65
+// cpu index < 2^5
+// CPU_COUNT <= 2^cpu_index_width
+pub struct TraceConfiguration {
+    pub decompress: bool,
+    pub full_address: bool,
+    #[cfg(feature = "context")]
+    pub context_width_p: usize,
+    #[cfg(feature = "time")]
+    pub time_width_p: usize,
+    pub ecause_width_p: usize,
+    pub iaddress_lsb_p: usize,
+    pub iaddress_width_p: usize,
+    pub cache_size_p: usize,
+    pub privilege_width_p: usize,
+    pub cpu_index_width: usize,
+    pub encoder_mode_n: usize,
+    pub ioptions_n: usize,
+}
+
+pub const DEFAULT_CONFIGURATION: TraceConfiguration = TraceConfiguration {
+    decompress: false,
+    full_address: false,
+    #[cfg(feature = "context")]
+    context_width_p: 0,
+    #[cfg(feature = "time")]
+    time_width_p: 0,
+    ecause_width_p: 6,
+    iaddress_lsb_p: 1,
+    iaddress_width_p: 64,
+    cache_size_p: 0,
+    privilege_width_p: 2,
+    cpu_index_width: 0,
+    encoder_mode_n: 0,
+    ioptions_n: 0,
+};
+
 //noinspection RsUnresolvedReference
 #[cfg(test)]
 #[entry]

@@ -1,6 +1,7 @@
 use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
+use crate::TraceConfiguration;
 #[cfg(feature = "IR")]
 use payload::IRPayload;
 
@@ -15,51 +16,13 @@ const CONTEXT: u64 = todo!();
 #[cfg(feature = "IR")]
 const IR: u64 = todo!();
 
-// TODO DecoderConfiguration checking
-// 0 <addr width < 65
-// cpu index < 2^5
-// CPU_COUNT <= 2^cpu_index_width
-pub struct DecoderConfiguration {
-    pub decompress: bool,
-    pub full_address: bool,
-    #[cfg(feature = "context")]
-    pub context_width_p: usize,
-    #[cfg(feature = "time")]
-    pub time_width_p: usize,
-    pub ecause_width_p: usize,
-    pub iaddress_lsb_p: usize,
-    pub iaddress_width_p: usize,
-    pub cache_size_p: usize,
-    pub privilege_width_p: usize,
-    pub cpu_index_width: usize,
-    pub encoder_mode_n: usize,
-    pub ioptions_n: usize,
-}
-
-pub const DEFAULT_CONFIGURATION: DecoderConfiguration = DecoderConfiguration {
-    decompress: false,
-    full_address: false,
-    #[cfg(feature = "context")]
-    context_width_p: 0,
-    #[cfg(feature = "time")]
-    time_width_p: 0,
-    ecause_width_p: 6,
-    iaddress_lsb_p: 1,
-    iaddress_width_p: 64,
-    cache_size_p: 0,
-    privilege_width_p: 2,
-    cpu_index_width: 0,
-    encoder_mode_n: 0,
-    ioptions_n: 0,
-};
-
 pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
     packet_data: Option<[u8; PACKET_BUFFER_LEN]>,
     bit_pos: usize,
-    conf: DecoderConfiguration,
+    conf: TraceConfiguration,
 }
 
-// TODO DecoderConfiguration checking
+// TODO TraceConfiguration checking
 // 0 <addr width < 65
 // cpu index < 2^5
 // CPU_COUNT <= 2^cpu_index_width
@@ -67,13 +30,13 @@ pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
 impl Decoder<DEFAULT_PACKET_BUFFER_LEN> {
-    pub fn default(conf: DecoderConfiguration, ) -> Self {
+    pub fn default(conf: TraceConfiguration) -> Self {
         Decoder::new(conf)
     }
 }
 
 impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
-    pub fn new(conf: DecoderConfiguration) -> Self {
+    pub fn new(conf: TraceConfiguration) -> Self {
         Decoder {
             packet_data: None,
             bit_pos: 0,
@@ -81,6 +44,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
         }
     }
 
+    // TODO make private
     pub fn set_buffer(&mut self, array: [u8; PACKET_BUFFER_LEN]) {
         self.bit_pos = 0;
         self.packet_data = Some(array);
@@ -206,6 +170,7 @@ trait Decode<const PACKET_BUFFER_LEN: usize> {
 #[cfg(test)]
 mod tests {
     use crate::decoder::*;
+    use crate::DEFAULT_CONFIGURATION;
 
     #[test_case]
     fn read_u64() {

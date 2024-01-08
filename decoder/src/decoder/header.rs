@@ -8,9 +8,7 @@ pub struct Header {
     pub cpu_index: usize,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for Header
-{
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Header {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         let payload_length = decoder.read_fast(5);
         let trace_type = TraceType::decode(decoder);
@@ -30,9 +28,7 @@ pub enum TraceType {
     Instruction,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for TraceType
-{
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for TraceType {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b10 => TraceType::Instruction,

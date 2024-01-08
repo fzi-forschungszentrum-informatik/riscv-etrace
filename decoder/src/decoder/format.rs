@@ -15,9 +15,7 @@ pub enum Ext {
     JumpTargetIndex,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for Ext
-{
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Ext {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_bit() {
             false => BranchCount,
@@ -34,9 +32,7 @@ pub enum Sync {
     Support,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for Sync
-{
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Sync {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => Sync::Start,
@@ -48,9 +44,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
-    for Format
-{
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Format {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self {
         match decoder.read_fast(2) {
             0b00 => {
@@ -71,9 +65,8 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN>
 #[cfg(test)]
 mod tests {
     use crate::decoder::format::{Ext, Format, Sync};
-    use crate::decoder::{
-        Decode, Decoder, DEFAULT_CONFIGURATION,
-    };
+    use crate::decoder::{Decode, Decoder};
+    use crate::DEFAULT_CONFIGURATION;
 
     #[test_case]
     fn sync() {
