@@ -66,7 +66,6 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Format {
 mod tests {
     use crate::decoder::format::{Ext, Format, Sync};
     use crate::decoder::{Decode, Decoder};
-    use crate::DEFAULT_CONFIGURATION;
 
     #[test_case]
     fn sync() {

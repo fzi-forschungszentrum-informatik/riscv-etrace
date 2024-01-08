@@ -169,7 +169,6 @@ trait Decode<const PACKET_BUFFER_LEN: usize> {
 #[cfg(test)]
 mod tests {
     use crate::decoder::*;
-    use crate::DEFAULT_CONFIGURATION;
 
     #[test_case]
     fn read_u64() {
