@@ -83,7 +83,6 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
             // Take 9th byte and mask MS bits we don't need
             let missing_msbs =
                 self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
-            // TODO unit test
             let msbs_u64 = (missing_msbs as u64) << bit_count - missing_bit_count;
             // shift msbs into correct position in u64 and add with previously read value
             value + msbs_u64
@@ -268,5 +267,24 @@ mod tests {
         assert_eq!(decoder.read_bit(), false);
         assert_eq!(decoder.read_bit(), true);
         assert_eq!(decoder.read_bit(), false);
+    }
+
+    #[test_case]
+    fn missing_msb_shift_is_correct() {
+        let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+        buffer[0] = 0b00_000000;
+        buffer[1] = 0xE1;
+        buffer[2] = 0xFF;
+        buffer[3] = 0xFF;
+        buffer[4] = 0xFF;
+        buffer[5] = 0xFF;
+        buffer[6] = 0xFF;
+        buffer[7] = 0xFF;
+        buffer[8] = 0b00_111111;
+        let mut decoder = Decoder::default();
+        decoder.set_buffer(buffer);
+        assert_eq!(decoder.read(6), 0);
+        // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
+        assert_eq!((decoder.read(63) << 1), -248i64 as u64);
     }
 }
