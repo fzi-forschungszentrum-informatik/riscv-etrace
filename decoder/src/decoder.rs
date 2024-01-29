@@ -1,7 +1,7 @@
 use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
-use crate::{DEFAULT_CONFIGURATION, TraceConfiguration};
+use crate::{TraceConfiguration, DEFAULT_CONFIGURATION};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
 
@@ -80,11 +80,11 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
         // Check if we need to read into the 9th byte because of an unaligned read
         if self.bit_pos > ((byte_pos + 8) * 8) {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
-            // Take 9th byte and mask MS bits we don't need
+            // Take 9th byte and mask MSBs that are not read
             let missing_msbs =
                 self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
             let msbs_u64 = (missing_msbs as u64) << bit_count - missing_bit_count;
-            // shift msbs into correct position in u64 and add with previously read value
+            // Shift MSBs into correct position in u64 and add with previously read value
             value + msbs_u64
         } else {
             value
@@ -100,7 +100,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
             return 0;
         }
         debug_assert!(bit_count <= 32);
-        debug_assert!(bit_count + self.bit_pos - 1 < PACKET_BUFFER_LEN * 4);
+        debug_assert!(self.bit_pos + bit_count - 1 < PACKET_BUFFER_LEN * 4);
         let byte_pos = self.bit_pos / 8;
         let mut value = u32::from_le_bytes(
             self.packet_data.unwrap()[byte_pos..byte_pos + 4]
@@ -157,13 +157,13 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
     }
 }
 
+trait Decode<const PACKET_BUFFER_LEN: usize> {
+    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self;
+}
+
 pub struct Packet {
     pub header: Header,
     pub payload: Payload,
-}
-
-trait Decode<const PACKET_BUFFER_LEN: usize> {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Self;
 }
 
 #[cfg(test)]
