@@ -1,5 +1,17 @@
 use crate::decoder::{Decode, Decoder};
 
+pub fn get_address(payload: &Payload) -> Option<&Address> {
+    return if let Payload::Address(addr) = payload {
+        Some(addr)
+    } else if let Payload::Branch(branch) = payload {
+        branch.address.as_ref()
+    } else if let Payload::Extension(Extension::BranchCount(branch_count)) = payload {
+        branch_count.address.as_ref()
+    } else {
+        None
+    }
+}
+
 fn read_address<const PACKET_BUFFER_LEN: usize>(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> u64 {
     decoder.read(decoder.conf.iaddress_width_p - decoder.conf.iaddress_lsb_p)
         << decoder.conf.iaddress_lsb_p
