@@ -83,7 +83,7 @@ impl Tracer {
                 let local_previous_address = self.pc;
                 self.inferred_address = false;
                 loop {
-                    let mut local_stop_here = self.next_pc(local_previous_address);
+                    let local_stop_here = self.next_pc(local_previous_address);
                     self.report_pc(self.pc);
                     if local_stop_here {
                         return;
