@@ -1,0 +1,268 @@
+use crate::decoder::payload::{get_address, Payload, QualStatus, Support, Synchronization, Trap};
+use crate::disassembler::{BinaryInstruction, Instruction};
+use crate::disassembler::OpCode::{c_ebreak, c_j, c_jal, c_jalr, c_jr, dret, ebreak, ecall, jal, jalr, mret, sret, uret};
+use crate::TraceConfiguration;
+
+struct Tracer {
+    pc: u64,
+    last_pc: u64,
+    branches: usize,
+    branch_map: u32,
+    stop_at_last_branch: bool,
+    inferred_address: bool,
+    start_of_trace: bool,
+    address: u64,
+    conf: TraceConfiguration,
+    notify: bool,
+    updiscon: bool,
+}
+
+impl Tracer {
+    fn get_instr(&self, pc: u64) -> Instruction {
+        let binary = BinaryInstruction::read_binary(pc);
+        Instruction::from_binary(&binary)
+    }
+
+    fn incr_pc(&mut self, incr: u64) {
+        self.pc += incr;
+    }
+
+    fn recover_status_fields(&mut self, payload: &Payload) {
+        if let Some(addr) = get_address(payload) {
+            // TODO why "- 1"?
+            let msb = if (addr.address & (1 << (self.conf.iaddress_width_p - 1))) == 0 { false } else { true };
+            self.notify = addr.notify != msb;
+            self.updiscon = addr.updiscon != addr.notify;
+        }
+    }
+
+    fn process_te_inst(&mut self, payload: &Payload) {
+        if let Payload::Synchronization(sync) = payload {
+            if let Synchronization::Support(sup) = sync {
+                self.process_support(&sup);
+                return;
+            } else if let Synchronization::Context(_ctx) = sync {
+                todo!("context processing not yet implemented");
+            } else if let Synchronization::Trap(trap) = sync {
+                self.report_trap(&trap);
+                if !trap.interrupt {
+                    let addr = self.exception_address(&trap);
+                    self.report_epc(addr);
+                }
+                if !trap.thaddr {
+                    return;
+                }
+                self.inferred_address = false;
+                self.address = trap.address;
+            }
+        } else {
+            if self.start_of_trace {
+                panic!("ERROR: Expecting trace to start with format 3");
+            } else if let Payload::Address(addr) = payload {
+                self.update_address(addr.address);
+            } else if let Payload::Branch(branch) = payload {
+                if branch.address.is_some() {
+                    self.update_address(branch.address.unwrap().address);
+                }
+                self.stop_at_last_branch = branch.branches == 0;
+                self.branch_map |= branch.branch_map << self.branches;
+                self.branches = if branch.branches == 0 {
+                    self.branches + 31
+                } else {
+                    self.branches + branch.branches
+                };
+            }
+        }
+    }
+
+    fn process_support(&mut self, support: &Support) {
+        if support.qual_status != QualStatus::NoChange {
+            self.start_of_trace = true;
+
+            if support.qual_status == QualStatus::EndedNtr && self.inferred_address {
+                let local_previous_address = self.pc;
+                self.inferred_address = false;
+                loop {
+                    let mut local_stop_here = self.next_pc(local_previous_address);
+                    self.report_pc(self.pc);
+                    if local_stop_here {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    fn follow_execution_path(&mut self, address: u64, payload: &Payload) {
+        fn branch_limit(tracer: &Tracer) -> usize {
+            if tracer.get_instr(tracer.pc).is_branch() {
+                1
+            } else {
+                0
+            }
+        }
+        let previous_address = self.pc;
+        let mut stop_here = false;
+        loop {
+            if self.inferred_address {
+                stop_here = self.next_pc(previous_address);
+                self.report_pc(previous_address);
+                if stop_here {
+                    self.inferred_address = false;
+                }
+            } else {
+                stop_here = self.next_pc(address);
+                self.report_pc(self.pc);
+                if self.branches == 1
+                    && self.get_instr(self.pc).is_branch()
+                    && self.stop_at_last_branch
+                {
+                    self.stop_at_last_branch = true;
+                    return;
+                }
+                if stop_here {
+                    if self.branches
+                        > (if self.get_instr(self.pc).is_branch() {
+                            1
+                        } else {
+                            0
+                        })
+                    {
+                        panic!("ERROR: unprocessed branches");
+                    }
+                    return;
+                }
+                if !matches!(payload, Payload::Synchronization(_))
+                    && self.pc == address
+                    && !self.stop_at_last_branch
+                    && self.notify
+                    && self.branches == branch_limit(&self)
+                {
+                    return;
+                }
+                if !matches!(payload, Payload::Synchronization(_))
+                    && self.pc == address
+                    && !self.stop_at_last_branch
+                    && !self.is_uninferable_discon(&self.get_instr(self.last_pc))
+                    && !self.updiscon
+                    && self.branches == branch_limit(&self)
+                // && ignore return stack
+                {
+                    self.inferred_address = true;
+                    return;
+                }
+                if matches!(payload, Payload::Synchronization(_))
+                    && self.pc == address
+                    && self.branches == branch_limit(&self)
+                {
+                    return;
+                }
+            }
+        }
+    }
+
+    fn next_pc(&mut self, address: u64) -> bool {
+        let local_instr = self.get_instr(self.pc);
+        let local_this_pc = self.pc;
+        let mut local_stop_here = false;
+
+        if self.is_inferable_jump(&local_instr) {
+            self.incr_pc(local_instr.imm as u64);
+            if local_instr.imm == 0 {
+                local_stop_here = true;
+            }
+        } else if self.is_uninferable_discon(&local_instr) {
+            assert!(
+                !self.stop_at_last_branch,
+                "Error: Unexpected uninferable discontinuity"
+            );
+            self.pc = address;
+            local_stop_here = true;
+        } else if self.is_taken_branch(&local_instr) {
+            self.incr_pc(local_instr.imm as u64);
+            if local_instr.imm == 0 {
+                local_stop_here = true;
+            }
+        } else {
+            self.incr_pc(local_instr.size as u64)
+        }
+
+        self.last_pc = local_this_pc;
+
+        return local_stop_here;
+    }
+
+    fn is_taken_branch(&mut self, instr: &Instruction) -> bool {
+        if !instr.is_branch() {
+            return false;
+        }
+        debug_assert!(self.branches != 0, "Error: cannot resolve branch");
+        let local_taken = self.branch_map & 1 == 0;
+        self.branches -= 1;
+        self.branch_map >>= 1;
+        local_taken
+    }
+
+    fn is_inferable_jump(&self, instr: &Instruction) -> bool {
+        return instr.opcode == jal
+            || instr.opcode == c_jal
+            || instr.opcode == c_j
+            || (instr.opcode == jalr && instr.is_rs1_zero);
+    }
+
+    fn is_uninferable_jump(&self, instr: &Instruction) -> bool {
+        return instr.opcode == c_jalr
+            || instr.opcode == c_jr
+            || (instr.opcode == jalr && !instr.is_rs1_zero);
+    }
+
+    fn is_uninferable_discon(&self, instr: &Instruction) -> bool {
+        return self.is_uninferable_jump(instr)
+            || instr.opcode == uret
+            || instr.opcode == sret
+            || instr.opcode == mret
+            || instr.opcode == dret
+            || instr.opcode == ecall
+            || instr.opcode == ebreak
+            || instr.opcode == c_ebreak;
+    }
+
+    fn exception_address(&mut self, trap: &Trap) -> u64 {
+        let local_instr = self.get_instr(self.pc);
+        let local_address;
+
+        if self.is_uninferable_discon(&local_instr) && trap.thaddr {
+            local_address = trap.address
+        } else if local_instr.opcode == ecall
+            || local_instr.opcode == ebreak
+            || local_instr.opcode == c_ebreak
+        {
+            local_address = self.pc;
+        } else {
+            // TODO ???
+            local_address = self.next_pc(self.pc) as u64;
+        }
+
+        local_address
+    }
+
+    fn update_address(&mut self, address: u64) {
+        if self.conf.full_address {
+            self.address = address;
+        } else {
+            self.address += address;
+        }
+    }
+
+    fn report_pc(&self, address: u64) {
+        todo!()
+    }
+
+    fn report_epc(&self, address: u64) {
+        todo!()
+    }
+
+    fn report_trap(&self, trap: &Trap) {
+        todo!()
+    }
+}

@@ -11,6 +11,8 @@ use core::panic::PanicInfo;
 use riscv_rt::entry;
 
 pub mod decoder;
+pub mod disassembler;
+pub mod tracer;
 
 // TODO TraceConfiguration checking
 // 0 <addr width < 65
