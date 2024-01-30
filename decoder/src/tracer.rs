@@ -55,8 +55,8 @@ impl Tracer {
                 }
             }
             self.inferred_address = false;
-            // TODO what/where/why is the address?
-            self.address += 1;
+            self.address = payload.get_address().unwrap().address;
+            assert_ne!(self.address, 0);
             if matches!(sync, Synchronization::Trap(_)) || self.start_of_trace {
                 self.branches = 0;
                 self.branch_map = 0;
@@ -77,14 +77,15 @@ impl Tracer {
             self.start_of_trace = false;
         } else {
             assert!(!self.start_of_trace);
-            // TODO python L374-380
-            if let Payload::Address(addr) = payload {
-                self.update_address(addr.address);
+            if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
+                self.stop_at_last_branch = false;
+                if self.conf.full_address {
+                    self.address = payload.get_address().unwrap().address;
+                } else {
+                    self.address += payload.get_address().unwrap().address;
+                }
             }
             if let Payload::Branch(branch) = payload {
-                if branch.address.is_some() {
-                    self.update_address(branch.address.unwrap().address);
-                }
                 self.stop_at_last_branch = branch.branches == 0;
                 self.branch_map |= branch.branch_map << self.branches;
                 self.branches = if branch.branches == 0 {
@@ -214,7 +215,7 @@ impl Tracer {
         if !instr.is_branch() {
             return false;
         }
-        debug_assert!(self.branches != 0, "Error: cannot resolve branch");
+        assert_ne!(self.branches, 0, "Error: cannot resolve branch");
         let local_taken = self.branch_map & 1 == 0;
         self.branches -= 1;
         self.branch_map >>= 1;
@@ -261,14 +262,6 @@ impl Tracer {
             local_address = self.next_pc(self.pc) as u64;
         }
         local_address
-    }
-
-    fn update_address(&mut self, address: u64) {
-        if self.conf.full_address {
-            self.address = address;
-        } else {
-            self.address += address;
-        }
     }
 
     fn report_pc(&self, address: u64) {

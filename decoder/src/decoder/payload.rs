@@ -72,6 +72,13 @@ impl Payload {
             None
         }
     }
+
+    pub fn get_branches(&self) -> Option<usize> {
+        match self {
+            Payload::Branch(branch) => Some(branch.branches),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
