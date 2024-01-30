@@ -1,4 +1,4 @@
-use crate::decoder::payload::{get_address, Payload, QualStatus, Support, Synchronization, Trap};
+use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::disassembler::{BinaryInstruction, Instruction};
 use crate::disassembler::OpCode::{c_ebreak, c_j, c_jal, c_jalr, c_jr, dret, ebreak, ecall, jal, jalr, mret, sret, uret};
 use crate::TraceConfiguration;
@@ -39,28 +39,45 @@ impl Tracer {
     fn process_te_inst(&mut self, payload: &Payload) {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
-                self.process_support(&sup);
-                return;
+                self.process_support(sup)
             } else if let Synchronization::Context(_ctx) = sync {
                 todo!("context processing not yet implemented");
             } else if let Synchronization::Trap(trap) = sync {
-                self.report_trap(&trap);
+                self.report_trap(trap);
                 if !trap.interrupt {
-                    let addr = self.exception_address(&trap);
+                    let addr = self.exception_address(trap);
                     self.report_epc(addr);
                 }
                 if !trap.thaddr {
                     return;
                 }
-                self.inferred_address = false;
-                self.address = trap.address;
             }
+            self.inferred_address = false;
+            // TODO what/where/why is the address?
+            self.address += 1;
+            if matches!(sync, Synchronization::Trap(_)) || self.start_of_trace {
+                self.branches = 0;
+                self.branch_map = 0;
+            }
+            if self.get_instr(self.address).is_branch() {
+                self.branch_map |= (sync.get_branch() as u32) << self.branches;
+                self.branches += 1;
+            }
+            if matches!(payload, Payload::Synchronization(Synchronization::Start(_))) && !self.start_of_trace {
+                self.follow_execution_path(self.address, payload)
+            } else {
+                self.pc = self.address;
+                self.report_pc(self.pc);
+                self.last_pc = self.pc;
+            }
+            self.start_of_trace = false;
         } else {
-            if self.start_of_trace {
-                panic!("ERROR: Expecting trace to start with format 3");
-            } else if let Payload::Address(addr) = payload {
+            assert!(!self.start_of_trace);
+            // TODO python L374-380
+            if let Payload::Address(addr) = payload {
                 self.update_address(addr.address);
-            } else if let Payload::Branch(branch) = payload {
+            }
+            if let Payload::Branch(branch) = payload {
                 if branch.address.is_some() {
                     self.update_address(branch.address.unwrap().address);
                 }
@@ -239,7 +256,8 @@ impl Tracer {
         {
             local_address = self.pc;
         } else {
-            // TODO ???
+            // TODO is the python code correct?
+
             local_address = self.next_pc(self.pc) as u64;
         }
 
