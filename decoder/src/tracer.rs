@@ -1,6 +1,8 @@
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
+use crate::disassembler::OpCode::{
+    c_ebreak, c_j, c_jal, c_jalr, c_jr, dret, ebreak, ecall, jal, jalr, mret, sret, uret,
+};
 use crate::disassembler::{BinaryInstruction, Instruction};
-use crate::disassembler::OpCode::{c_ebreak, c_j, c_jal, c_jalr, c_jr, dret, ebreak, ecall, jal, jalr, mret, sret, uret};
 use crate::TraceConfiguration;
 
 struct Tracer {
@@ -63,7 +65,9 @@ impl Tracer {
                 self.branch_map |= (sync.get_branch() as u32) << self.branches;
                 self.branches += 1;
             }
-            if matches!(payload, Payload::Synchronization(Synchronization::Start(_))) && !self.start_of_trace {
+            if matches!(payload, Payload::Synchronization(Synchronization::Start(_)))
+                && !self.start_of_trace
+            {
                 self.follow_execution_path(self.address, payload)
             } else {
                 self.pc = self.address;
@@ -138,7 +142,10 @@ impl Tracer {
                     return;
                 }
                 if local_stop_here {
-                    assert!(self.branches <= branch_limit(self), "Error: unprocessed branches");
+                    assert!(
+                        self.branches <= branch_limit(self),
+                        "Error: unprocessed branches"
+                    );
                     return;
                 }
                 if !matches!(payload, Payload::Synchronization(_))
