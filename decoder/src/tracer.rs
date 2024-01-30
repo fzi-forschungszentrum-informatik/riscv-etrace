@@ -183,8 +183,9 @@ impl Tracer {
         let mut local_stop_here = false;
 
         if self.is_inferable_jump(&local_instr) {
-            self.incr_pc(local_instr.imm as u64);
-            if local_instr.imm == 0 {
+            assert!(local_instr.imm.is_some());
+            self.incr_pc(local_instr.imm.unwrap() as u64);
+            if local_instr.imm.unwrap()  == 0 {
                 local_stop_here = true;
             }
         } else if self.is_uninferable_discon(&local_instr) {
@@ -195,8 +196,9 @@ impl Tracer {
             self.pc = address;
             local_stop_here = true;
         } else if self.is_taken_branch(&local_instr) {
-            self.incr_pc(local_instr.imm as u64);
-            if local_instr.imm == 0 {
+            assert!(local_instr.imm.is_some());
+            self.incr_pc(local_instr.imm.unwrap() as u64);
+            if local_instr.imm.unwrap() == 0 {
                 local_stop_here = true;
             }
         } else {

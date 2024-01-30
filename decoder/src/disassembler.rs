@@ -119,18 +119,18 @@ impl InstructionType {
         }
     }
 
-    fn calc_imm(&self, num: u32) -> u32 {
+    fn calc_imm(&self, num: u32) -> Option<u32> {
         match self {
             CB => Self::calc_imm_cb(num as u16),
             CJ => Self::calc_imm_cj(num as u16),
             B => Self::calc_imm_b(num),
             J => Self::calc_imm_j(num),
             I => Self::calc_imm_i(num),
-            Ignored => 0,
+            Ignored => None,
         }
     }
 
-    fn calc_imm_cb(num: u16) -> u32 {
+    fn calc_imm_cb(num: u16) -> Option<u32> {
         const MASK_IMM_BIT_1_TO_2: u16 = 0x18;
         const MASK_IMM_BIT_3_TO_4: u16 = 0x1800;
         const MASK_IMM_BIT_5: u16 = 0x4;
@@ -142,15 +142,15 @@ impl InstructionType {
         imm |= (num & MASK_IMM_BIT_5) << 3;
         imm |= (num & MASK_IMM_BIT_6_TO_7) << 1;
         imm |= (num & MASK_IMM_BIT_8) >> (12 - 8);
-        imm as u32
+        Some(imm as u32)
     }
 
-    fn calc_imm_cj(num: u16) -> u32 {
+    fn calc_imm_cj(num: u16) -> Option<u32> {
         const MASK: u16 = 0b0001_1111_1111_1100;
-        ((num & MASK) >> 2) as u32
+        Some(((num & MASK) >> 2) as u32)
     }
 
-    fn calc_imm_b(num: u32) -> u32 {
+    fn calc_imm_b(num: u32) -> Option<u32> {
         const MASK_IMM_BIT_1_TO_4: u32 = 0xF00;
         const MASK_IMM_BIT_5_TO_10: u32 = 0x1E000000;
         const MASK_IMM_BIT_11: u32 = 0x40;
@@ -160,10 +160,10 @@ impl InstructionType {
         imm |= (num & MASK_IMM_BIT_5_TO_10) >> 15;
         imm |= (num & MASK_IMM_BIT_11) << 4;
         imm |= (num & MASK_IMM_BIT_12) >> 20;
-        imm
+        Some(imm)
     }
 
-    fn calc_imm_j(num: u32) -> u32 {
+    fn calc_imm_j(num: u32) -> Option<u32> {
         const MASK_IMM_BIT_1_TO_10: u32 = 0x7FC00000;
         const MASK_IMM_BIT_11: u32 = 0x10000;
         const MASK_IMM_BIT_12_TO_19: u32 = 0x7F000;
@@ -173,19 +173,19 @@ impl InstructionType {
         imm |= (num & MASK_IMM_BIT_11) >> 9;
         imm |= num & MASK_IMM_BIT_12_TO_19;
         imm |= (num & MASK_IMM_BIT_20) >> 12;
-        imm
+        Some(imm)
     }
 
-    fn calc_imm_i(num: u32) -> u32 {
+    fn calc_imm_i(num: u32) -> Option<u32> {
         const MASK: u32 = 0xFFF00000;
-        (num & MASK) >> 20
+        Some((num & MASK) >> 20)
     }
 }
 
 pub struct Instruction {
     pub opcode: OpCode,
     pub instr_type: InstructionType,
-    pub imm: u32,
+    pub imm: Option<u32>,
     pub is_rs1_zero: bool,
     pub size: u32,
 }
