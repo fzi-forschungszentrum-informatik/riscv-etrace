@@ -102,16 +102,16 @@ impl Tracer {
             }
         }
         let previous_address = self.pc;
-        let mut stop_here = false;
+        let mut local_stop_here = false;
         loop {
             if self.inferred_address {
-                stop_here = self.next_pc(previous_address);
+                local_stop_here = self.next_pc(previous_address);
                 self.report_pc(previous_address);
-                if stop_here {
+                if local_stop_here {
                     self.inferred_address = false;
                 }
             } else {
-                stop_here = self.next_pc(address);
+                local_stop_here = self.next_pc(address);
                 self.report_pc(self.pc);
                 if self.branches == 1
                     && self.get_instr(self.pc).is_branch()
@@ -120,7 +120,7 @@ impl Tracer {
                     self.stop_at_last_branch = true;
                     return;
                 }
-                if stop_here {
+                if local_stop_here {
                     if self.branches
                         > (if self.get_instr(self.pc).is_branch() {
                             1
@@ -136,7 +136,7 @@ impl Tracer {
                     && self.pc == address
                     && !self.stop_at_last_branch
                     && self.notify
-                    && self.branches == branch_limit(&self)
+                    && self.branches == branch_limit(self)
                 {
                     return;
                 }
@@ -145,7 +145,7 @@ impl Tracer {
                     && !self.stop_at_last_branch
                     && !self.is_uninferable_discon(&self.get_instr(self.last_pc))
                     && !self.updiscon
-                    && self.branches == branch_limit(&self)
+                    && self.branches == branch_limit(self)
                 // && ignore return stack
                 {
                     self.inferred_address = true;
@@ -153,7 +153,7 @@ impl Tracer {
                 }
                 if matches!(payload, Payload::Synchronization(_))
                     && self.pc == address
-                    && self.branches == branch_limit(&self)
+                    && self.branches == branch_limit(self)
                 {
                     return;
                 }
@@ -189,7 +189,7 @@ impl Tracer {
 
         self.last_pc = local_this_pc;
 
-        return local_stop_here;
+        local_stop_here
     }
 
     fn is_taken_branch(&mut self, instr: &Instruction) -> bool {
@@ -204,27 +204,27 @@ impl Tracer {
     }
 
     fn is_inferable_jump(&self, instr: &Instruction) -> bool {
-        return instr.opcode == jal
+        instr.opcode == jal
             || instr.opcode == c_jal
             || instr.opcode == c_j
-            || (instr.opcode == jalr && instr.is_rs1_zero);
+            || (instr.opcode == jalr && instr.is_rs1_zero)
     }
 
     fn is_uninferable_jump(&self, instr: &Instruction) -> bool {
-        return instr.opcode == c_jalr
+        instr.opcode == c_jalr
             || instr.opcode == c_jr
-            || (instr.opcode == jalr && !instr.is_rs1_zero);
+            || (instr.opcode == jalr && !instr.is_rs1_zero)
     }
 
     fn is_uninferable_discon(&self, instr: &Instruction) -> bool {
-        return self.is_uninferable_jump(instr)
+        self.is_uninferable_jump(instr)
             || instr.opcode == uret
             || instr.opcode == sret
             || instr.opcode == mret
             || instr.opcode == dret
             || instr.opcode == ecall
             || instr.opcode == ebreak
-            || instr.opcode == c_ebreak;
+            || instr.opcode == c_ebreak
     }
 
     fn exception_address(&mut self, trap: &Trap) -> u64 {
