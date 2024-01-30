@@ -9,7 +9,7 @@ pub enum BinaryInstruction {
 impl BinaryInstruction {
     pub unsafe fn read_binary(address: u64) -> Self {
         const MASK_32_BITS: u64 = 0xFFFFFFFF;
-        let bits = u32::try_from(MASK_32_BITS & *&address).unwrap();
+        let bits = u32::try_from(MASK_32_BITS & *(address as *const u64)).unwrap();
         let bytes = bits.to_be_bytes();
         if bytes[0] & 0x3 == 0x3 {
             return BinaryInstruction::Bit16(u16::from_be_bytes(bytes[0..2].try_into().unwrap()));
@@ -76,10 +76,10 @@ pub enum OpCode {
 impl OpCode {
     fn read_instr(bin_instr: &BinaryInstruction) -> Self {
         match bin_instr {
-            BinaryInstruction::Bit32(num) => {
+            BinaryInstruction::Bit32(_num) => {
                 todo!()
             }
-            BinaryInstruction::Bit16(num) => {
+            BinaryInstruction::Bit16(_num) => {
                 todo!()
             }
         }
@@ -207,7 +207,7 @@ impl Instruction {
     }
 
     pub fn is_branch(&self) -> bool {
-        return self.instr_type == B || self.instr_type == CB;
+        self.instr_type == B || self.instr_type == CB
     }
 }
 
