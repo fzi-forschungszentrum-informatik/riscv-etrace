@@ -1,17 +1,5 @@
 use crate::decoder::{Decode, Decoder};
 
-pub fn get_address(payload: &Payload) -> Option<&Address> {
-    return if let Payload::Address(addr) = payload {
-        Some(addr)
-    } else if let Payload::Branch(branch) = payload {
-        branch.address.as_ref()
-    } else if let Payload::Extension(Extension::BranchCount(branch_count)) = payload {
-        branch_count.address.as_ref()
-    } else {
-        None
-    }
-}
-
 fn read_address<const PACKET_BUFFER_LEN: usize>(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> u64 {
     decoder.read(decoder.conf.iaddress_width_p - decoder.conf.iaddress_lsb_p)
         << decoder.conf.iaddress_lsb_p
@@ -70,6 +58,20 @@ pub enum Payload {
     Branch(Branch),
     Address(Address),
     Synchronization(Synchronization),
+}
+
+impl Payload {
+    pub fn get_address(&self) -> Option<&Address> {
+        return if let Payload::Address(addr) = self {
+            Some(addr)
+        } else if let Payload::Branch(branch) = self {
+            branch.address.as_ref()
+        } else if let Payload::Extension(Extension::BranchCount(branch_count)) = self {
+            branch_count.address.as_ref()
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -228,6 +230,17 @@ pub enum Synchronization {
     Trap(Trap),
     Context(Context),
     Support(Support),
+}
+
+impl Synchronization {
+    pub fn get_branch(&self) -> bool {
+        match self {
+            Synchronization::Start(start) => start.branch,
+            Synchronization::Trap(trap) => trap.branch,
+            Synchronization::Context(_) => panic!("Context has no branch!"),
+            Synchronization::Support(_) => panic!("Support has no branch!"),
+        }
+    }
 }
 
 /// Format 0, sub format 0

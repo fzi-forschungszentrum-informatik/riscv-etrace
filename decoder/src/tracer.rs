@@ -28,9 +28,9 @@ impl Tracer {
     }
 
     fn recover_status_fields(&mut self, payload: &Payload) {
-        if let Some(addr) = get_address(payload) {
+        if let Some(addr) = payload.get_address() {
             // TODO why "- 1"?
-            let msb = if (addr.address & (1 << (self.conf.iaddress_width_p - 1))) == 0 { false } else { true };
+            let msb = (addr.address & (1 << (self.conf.iaddress_width_p - 1))) != 0;
             self.notify = addr.notify != msb;
             self.updiscon = addr.updiscon != addr.notify;
         }
