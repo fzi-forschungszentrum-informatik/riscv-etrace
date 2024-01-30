@@ -19,7 +19,7 @@ struct Tracer {
 
 impl Tracer {
     fn get_instr(&self, pc: u64) -> Instruction {
-        let binary = BinaryInstruction::read_binary(pc);
+        let binary = unsafe { BinaryInstruction::read_binary(pc) };
         Instruction::from_binary(&binary)
     }
 
