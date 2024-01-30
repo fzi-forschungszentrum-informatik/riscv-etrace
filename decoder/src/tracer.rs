@@ -138,15 +138,7 @@ impl Tracer {
                     return;
                 }
                 if local_stop_here {
-                    if self.branches
-                        > (if self.get_instr(self.pc).is_branch() {
-                            1
-                        } else {
-                            0
-                        })
-                    {
-                        panic!("ERROR: unprocessed branches");
-                    }
+                    assert!(self.branches <= branch_limit(self), "Error: unprocessed branches");
                     return;
                 }
                 if !matches!(payload, Payload::Synchronization(_))
@@ -257,10 +249,8 @@ impl Tracer {
             local_address = self.pc;
         } else {
             // TODO is the python code correct?
-
             local_address = self.next_pc(self.pc) as u64;
         }
-
         local_address
     }
 
