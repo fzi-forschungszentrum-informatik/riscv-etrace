@@ -7,14 +7,14 @@ pub enum BinaryInstruction {
 }
 
 impl BinaryInstruction {
-    pub fn read_binary(address: u64) -> Self {
-        // TODO read binary
-        let instruction: u32 = 0;
-        let bytes = instruction.to_be_bytes();
+    pub unsafe fn read_binary(address: u64) -> Self {
+        const MASK_32_BITS: u64 = 0xFFFFFFFF;
+        let bits = u32::try_from(MASK_32_BITS & *&address).unwrap();
+        let bytes = bits.to_be_bytes();
         if bytes[0] & 0x3 == 0x3 {
             return BinaryInstruction::Bit16(u16::from_be_bytes(bytes[0..2].try_into().unwrap()));
         } else if bytes[0] & 0x1F < 0x1F {
-            return BinaryInstruction::Bit32(instruction);
+            return BinaryInstruction::Bit32(bits);
         }
         panic!("Cannot parse instruction at {:?}", address);
     }
