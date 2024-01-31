@@ -3,9 +3,9 @@ use crate::disassembler::OpCode::{
     c_ebreak, c_j, c_jal, c_jalr, c_jr, dret, ebreak, ecall, jal, jalr, mret, sret, uret,
 };
 use crate::disassembler::{BinaryInstruction, Instruction};
-use crate::TraceConfiguration;
+use crate::{binary_end, binary_start, TraceConfiguration};
 
-struct Tracer {
+pub struct Tracer {
     pc: u64,
     last_pc: u64,
     branches: usize,
@@ -21,7 +21,15 @@ struct Tracer {
 
 impl Tracer {
     fn get_instr(&self, pc: u64) -> Instruction {
+        unsafe {
+            assert!(pc >= binary_start && pc < binary_end, "pc not in binary");
+        }
         let binary = unsafe { BinaryInstruction::read_binary(pc) };
+        match binary {
+            BinaryInstruction::Bit32(_) => assert_eq!(pc % 4, 0, "32 bit instruction not aligned"),
+
+            BinaryInstruction::Bit16(_) => assert_eq!(pc % 2, 0, "16 bit instruction not aligned"),
+        }
         Instruction::from_binary(&binary)
     }
 
@@ -29,7 +37,7 @@ impl Tracer {
         self.pc += incr;
     }
 
-    fn recover_status_fields(&mut self, payload: &Payload) {
+    pub fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address() {
             // TODO why "- 1"?
             let msb = (addr.address & (1 << (self.conf.iaddress_width_p - 1))) != 0;
@@ -38,7 +46,7 @@ impl Tracer {
         }
     }
 
-    fn process_te_inst(&mut self, payload: &Payload) {
+    pub fn process_te_inst(&mut self, payload: &Payload) {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
                 self.process_support(sup)
@@ -124,7 +132,7 @@ impl Tracer {
             }
         }
         let previous_address = self.pc;
-        let mut local_stop_here = false;
+        let mut local_stop_here;
         loop {
             if self.inferred_address {
                 local_stop_here = self.next_pc(previous_address);
@@ -186,7 +194,7 @@ impl Tracer {
         if self.is_inferable_jump(&local_instr) {
             assert!(local_instr.imm.is_some());
             self.incr_pc(local_instr.imm.unwrap() as u64);
-            if local_instr.imm.unwrap()  == 0 {
+            if local_instr.imm.unwrap() == 0 {
                 local_stop_here = true;
             }
         } else if self.is_uninferable_discon(&local_instr) {
@@ -264,15 +272,15 @@ impl Tracer {
         local_address
     }
 
-    fn report_pc(&self, address: u64) {
+    fn report_pc(&self, _address: u64) {
         todo!()
     }
 
-    fn report_epc(&self, address: u64) {
+    fn report_epc(&self, _address: u64) {
         todo!()
     }
 
-    fn report_trap(&self, trap: &Trap) {
+    fn report_trap(&self, _trap: &Trap) {
         todo!()
     }
 }

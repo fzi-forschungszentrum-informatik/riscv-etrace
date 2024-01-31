@@ -14,6 +14,11 @@ pub mod decoder;
 pub mod disassembler;
 pub mod tracer;
 
+extern "C" {
+    static binary_start: u64;
+    static binary_end: u64;
+}
+
 // TODO TraceConfiguration checking
 // 0 <addr width < 65
 // cpu index < 2^5

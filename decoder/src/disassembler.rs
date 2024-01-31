@@ -1,4 +1,5 @@
 use crate::disassembler::InstructionType::{Ignored, B, CB, CJ, I, J};
+use crate::disassembler::OpCode::{c_benz, c_beqz, c_ebreak, c_j, c_jalr, c_jr};
 
 #[derive(Copy, Clone)]
 pub enum BinaryInstruction {
@@ -37,7 +38,7 @@ impl BinaryInstruction {
 #[allow(non_camel_case_types)]
 #[derive(Eq, PartialEq)]
 pub enum OpCode {
-    // SYS
+    // SYS (I)
     ecall,
     ebreak,
     mret,
@@ -75,13 +76,71 @@ pub enum OpCode {
 
 impl OpCode {
     fn read_instr(bin_instr: &BinaryInstruction) -> Self {
+        const MASK_32_BIT_OPCODE: u32 = 0x7F;
+        const MASK_16_BIT_OPCODE: u16 = 0x3;
         match bin_instr {
-            BinaryInstruction::Bit32(_num) => {
-                todo!()
+            BinaryInstruction::Bit32(num) => Self::parse_full_instr(*num),
+            BinaryInstruction::Bit16(num) => Self::parse_compressed_instr(*num),
+        }
+    }
+
+    fn parse_full_instr(num: u32) -> Self {
+        const OPCODE_MASK: u32 = 0x7F;
+        let opcode = num & OPCODE_MASK;
+        match opcode {
+            0b1100011 => Self::parse_b_type(num),
+            0b1101111 => Self::parse_j_type(num),
+            0b1100111 => Self::parse_i_type(num),
+            _ => OpCode::Ignored,
+        }
+    }
+
+    fn parse_b_type(num: u32) -> Self {
+        todo!()
+    }
+
+    fn parse_j_type(num: u32) -> Self {
+        todo!()
+    }
+
+    fn parse_i_type(num: u32) -> Self {
+        todo!()
+    }
+
+    fn parse_compressed_instr(num: u16) -> Self {
+        const MASK_OP: u16 = 0x3;
+        const MASK_FUNCT3: u16 = 0xE000;
+        let op = num & MASK_OP;
+        let funct3 = (num & MASK_FUNCT3) >> 13;
+        match op {
+            0b01 => match funct3 {
+                0b101 => c_j,
+                0b110 => c_beqz,
+                0b111 => c_benz,
+                _ => OpCode::Ignored,
+            },
+            0b10 => {
+                const MASK_BIT_12: u16 = 0x800;
+                const MASK_RS1: u16 = 0xF80;
+                const MASK_RS2: u16 = 0x7C;
+                let bit12 = (num & MASK_BIT_12) >> 12;
+                let rs1 = (num & MASK_RS1) >> 7;
+                let rs2 = (num & MASK_RS2) >> 2;
+                if funct3 != 0b100 {
+                    return OpCode::Ignored;
+                }
+                if bit12 == 0 && rs1 != 0 && rs2 == 0 {
+                    return c_jr;
+                }
+                if bit12 == 1 && rs1 == 0 && rs2 == 0 {
+                    return c_ebreak;
+                }
+                if bit12 == 1 && rs1 != 0 && rs2 == 0 {
+                    return c_jalr;
+                }
+                OpCode::Ignored
             }
-            BinaryInstruction::Bit16(_num) => {
-                todo!()
-            }
+            _ => OpCode::Ignored,
         }
     }
 }
