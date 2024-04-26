@@ -1,11 +1,34 @@
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
-use crate::disassembler::OpCode::{
-    c_ebreak, c_j, c_jal, c_jalr, c_jr, dret, ebreak, ecall, jal, jalr, mret, sret, uret,
-};
+use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::disassembler::{BinaryInstruction, Instruction};
-use crate::{binary_end, binary_start, TraceConfiguration};
+use crate::tracer::TraceError::UnresolvableBranch;
+use crate::{ProtocolConfiguration, TraceConfiguration};
 
-pub struct Tracer {
+pub enum TraceError {
+    AddressIsZero(TracerState),
+    StartOfTrace(TracerState),
+    UnprocessedBranches {
+        state: TracerState,
+        branch_limit: usize,
+    },
+    ImmediateIsNone {
+        state: TracerState,
+        instr: Instruction,
+    },
+    UnexpectedUninferableDiscon(TracerState),
+    UnresolvableBranch(TracerState),
+    WrongGetBranchType {
+        state: TracerState,
+        sync: Synchronization   
+    },
+    UnknownInstruction {
+        state: TracerState,
+        address: u64,
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct TracerState {
     pc: u64,
     last_pc: u64,
     branches: usize,
@@ -14,273 +37,317 @@ pub struct Tracer {
     inferred_address: bool,
     start_of_trace: bool,
     address: u64,
-    conf: TraceConfiguration,
     notify: bool,
     updiscon: bool,
 }
 
+pub struct Tracer {
+    state: TracerState,
+    proto_conf: ProtocolConfiguration,
+    trace_conf: TraceConfiguration,
+    report_pc: fn(u64),
+    report_epc: fn(u64),
+    report_trap: fn(&Trap),
+}
+
 impl Tracer {
-    fn get_instr(&self, pc: u64) -> Instruction {
-        unsafe {
-            assert!(pc >= binary_start && pc < binary_end, "pc not in binary");
+    fn new(
+        proto_conf: ProtocolConfiguration,
+        trace_conf: TraceConfiguration,
+        report_pc: fn(u64),
+        report_epc: fn(u64),
+        report_trap: fn(&Trap),
+    ) -> Self {
+        Tracer {
+            state: TracerState {
+                pc: 0,
+                last_pc: 0,
+                branches: 0,
+                branch_map: 0,
+                stop_at_last_branch: false,
+                inferred_address: false,
+                start_of_trace: true,
+                address: 0,
+                notify: false,
+                updiscon: false,
+            },
+            trace_conf,
+            proto_conf,
+            report_pc,
+            report_epc,
+            report_trap,
         }
-        let binary = unsafe { BinaryInstruction::read_binary(pc) };
+    }
+
+    fn get_instr(&self, pc: u64) -> Result<Instruction, TraceError> {
+        assert!(
+            pc >= self.trace_conf.binary_start && pc < self.trace_conf.binary_end,
+            "pc not in binary"
+        );
+        let binary = match unsafe { BinaryInstruction::read_binary(pc as *const u64) } {
+            Ok(binary) => binary, 
+            Err(()) => {
+                return Err(TraceError::UnknownInstruction {
+                    state: self.state,
+                    address: pc,
+                })
+            }
+        };
+        
         match binary {
             BinaryInstruction::Bit32(_) => assert_eq!(pc % 4, 0, "32 bit instruction not aligned"),
-
             BinaryInstruction::Bit16(_) => assert_eq!(pc % 2, 0, "16 bit instruction not aligned"),
         }
-        Instruction::from_binary(&binary)
+        Ok(Instruction::from_binary(&binary))
     }
 
     fn incr_pc(&mut self, incr: u64) {
-        self.pc += incr;
+        self.state.pc += incr;
     }
 
     pub fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address() {
             // TODO why "- 1"?
-            let msb = (addr.address & (1 << (self.conf.iaddress_width_p - 1))) != 0;
-            self.notify = addr.notify != msb;
-            self.updiscon = addr.updiscon != addr.notify;
+            let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) != 0;
+            self.state.notify = addr.notify != msb;
+            self.state.updiscon = addr.updiscon != addr.notify;
         }
     }
 
-    pub fn process_te_inst(&mut self, payload: &Payload) {
+    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceError> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
-                self.process_support(sup)
+                self.process_support(sup)?
             } else if let Synchronization::Context(_ctx) = sync {
                 todo!("context processing not yet implemented");
             } else if let Synchronization::Trap(trap) = sync {
-                self.report_trap(trap);
+                (self.report_trap)(trap);
                 if !trap.interrupt {
-                    let addr = self.exception_address(trap);
-                    self.report_epc(addr);
+                    let addr = self.exception_address(trap)?;
+                    (self.report_epc)(addr);
                 }
                 if !trap.thaddr {
-                    return;
+                    return Ok(());
                 }
             }
-            self.inferred_address = false;
-            self.address = payload.get_address().unwrap().address;
-            assert_ne!(self.address, 0);
-            if matches!(sync, Synchronization::Trap(_)) || self.start_of_trace {
-                self.branches = 0;
-                self.branch_map = 0;
+            self.state.inferred_address = false;
+            self.state.address = payload.get_address().unwrap().address;
+            if self.state.address == 0 {
+                return Err(TraceError::AddressIsZero(self.state));
             }
-            if self.get_instr(self.address).is_branch() {
-                self.branch_map |= (sync.get_branch() as u32) << self.branches;
-                self.branches += 1;
+            if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
+                self.state.branches = 0;
+                self.state.branch_map = 0;
+            }
+            if self.get_instr(self.state.address)?.is_branch {
+                let branch = match sync.get_branch() {
+                    Ok(branch) => branch as u32,
+                    Err(()) => {
+                        return Err(TraceError::WrongGetBranchType {
+                            state: self.state,
+                            sync: *sync,
+                        })
+                    }
+                };
+                self.state.branch_map |= branch << self.state.branches;
+                self.state.branches += 1;
             }
             if matches!(payload, Payload::Synchronization(Synchronization::Start(_)))
-                && !self.start_of_trace
+                && !self.state.start_of_trace
             {
-                self.follow_execution_path(self.address, payload)
+                self.follow_execution_path(self.state.address, payload)?
             } else {
-                self.pc = self.address;
-                self.report_pc(self.pc);
-                self.last_pc = self.pc;
+                self.state.pc = self.state.address;
+                (self.report_pc)(self.state.pc);
+                self.state.last_pc = self.state.pc;
             }
-            self.start_of_trace = false;
+            self.state.start_of_trace = false;
         } else {
-            assert!(!self.start_of_trace);
+            if self.state.start_of_trace {
+                return Err(TraceError::StartOfTrace(self.state));
+            }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
-                self.stop_at_last_branch = false;
-                if self.conf.full_address {
-                    self.address = payload.get_address().unwrap().address;
+                self.state.stop_at_last_branch = false;
+                if self.trace_conf.full_address {
+                    self.state.address = payload.get_address().unwrap().address;
                 } else {
-                    self.address += payload.get_address().unwrap().address;
+                    self.state.address += payload.get_address().unwrap().address;
                 }
             }
             if let Payload::Branch(branch) = payload {
-                self.stop_at_last_branch = branch.branches == 0;
-                self.branch_map |= branch.branch_map << self.branches;
-                self.branches = if branch.branches == 0 {
-                    self.branches + 31
+                self.state.stop_at_last_branch = branch.branches == 0;
+                self.state.branch_map |= branch.branch_map << self.state.branches;
+                self.state.branches = if branch.branches == 0 {
+                    self.state.branches + 31
                 } else {
-                    self.branches + branch.branches
+                    self.state.branches + branch.branches
                 };
             }
         }
+        Ok(())
     }
 
-    fn process_support(&mut self, support: &Support) {
+    fn process_support(&mut self, support: &Support) -> Result<(), TraceError> {
         if support.qual_status != QualStatus::NoChange {
-            self.start_of_trace = true;
+            self.state.start_of_trace = true;
 
-            if support.qual_status == QualStatus::EndedNtr && self.inferred_address {
-                let local_previous_address = self.pc;
-                self.inferred_address = false;
+            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address {
+                let local_previous_address = self.state.pc;
+                self.state.inferred_address = false;
                 loop {
-                    let local_stop_here = self.next_pc(local_previous_address);
-                    self.report_pc(self.pc);
+                    let local_stop_here = self.next_pc(local_previous_address)?;
+                    (self.report_pc)(self.state.pc);
                     if local_stop_here {
-                        return;
+                        return Ok(());
                     }
                 }
             }
         }
+        Ok(())
     }
 
-    fn follow_execution_path(&mut self, address: u64, payload: &Payload) {
-        fn branch_limit(tracer: &Tracer) -> usize {
-            if tracer.get_instr(tracer.pc).is_branch() {
-                1
+    fn follow_execution_path(&mut self, address: u64, payload: &Payload) -> Result<(), TraceError> {
+        fn branch_limit(tracer: &Tracer) -> Result<usize, TraceError> {
+            if tracer.get_instr(tracer.state.pc)?.is_branch {
+                Ok(1)
             } else {
-                0
+                Ok(0)
             }
         }
-        let previous_address = self.pc;
+        let previous_address = self.state.pc;
         let mut local_stop_here;
         loop {
-            if self.inferred_address {
-                local_stop_here = self.next_pc(previous_address);
-                self.report_pc(previous_address);
+            if self.state.inferred_address {
+                local_stop_here = self.next_pc(previous_address)?;
+                (self.report_pc)(previous_address);
                 if local_stop_here {
-                    self.inferred_address = false;
+                    self.state.inferred_address = false;
                 }
             } else {
-                local_stop_here = self.next_pc(address);
-                self.report_pc(self.pc);
-                if self.branches == 1
-                    && self.get_instr(self.pc).is_branch()
-                    && self.stop_at_last_branch
+                local_stop_here = self.next_pc(address)?;
+                (self.report_pc)(self.state.pc);
+                if self.state.branches == 1
+                    && self.get_instr(self.state.pc)?.is_branch
+                    && self.state.stop_at_last_branch
                 {
-                    self.stop_at_last_branch = true;
-                    return;
+                    self.state.stop_at_last_branch = true;
+                    return Ok(());
                 }
                 if local_stop_here {
-                    assert!(
-                        self.branches <= branch_limit(self),
-                        "Error: unprocessed branches"
-                    );
-                    return;
+                    if self.state.branches > branch_limit(self)? {
+                        return Err(TraceError::UnprocessedBranches {
+                            state: self.state,
+                            branch_limit: branch_limit(self)?,
+                        });
+                    }
+                    return Ok(());
                 }
                 if !matches!(payload, Payload::Synchronization(_))
-                    && self.pc == address
-                    && !self.stop_at_last_branch
-                    && self.notify
-                    && self.branches == branch_limit(self)
+                    && self.state.pc == address
+                    && !self.state.stop_at_last_branch
+                    && self.state.notify
+                    && self.state.branches == branch_limit(self)?
                 {
-                    return;
+                    return Ok(());
                 }
                 if !matches!(payload, Payload::Synchronization(_))
-                    && self.pc == address
-                    && !self.stop_at_last_branch
-                    && !self.is_uninferable_discon(&self.get_instr(self.last_pc))
-                    && !self.updiscon
-                    && self.branches == branch_limit(self)
-                // && ignore return stack
+                    && self.state.pc == address
+                    && !self.state.stop_at_last_branch
+                    && !&self.get_instr(self.state.last_pc)?.is_uninferable_discon()
+                    && !self.state.updiscon
+                    && self.state.branches == branch_limit(self)?
                 {
-                    self.inferred_address = true;
-                    return;
+                    self.state.inferred_address = true;
+                    return Ok(());
                 }
                 if matches!(payload, Payload::Synchronization(_))
-                    && self.pc == address
-                    && self.branches == branch_limit(self)
+                    && self.state.pc == address
+                    && self.state.branches == branch_limit(self)?
                 {
-                    return;
+                    return Ok(());
                 }
             }
         }
     }
 
-    fn next_pc(&mut self, address: u64) -> bool {
-        let local_instr = self.get_instr(self.pc);
-        let local_this_pc = self.pc;
+    fn next_pc(&mut self, address: u64) -> Result<bool, TraceError> {
+        let local_instr = self.get_instr(self.state.pc)?;
+        let local_this_pc = self.state.pc;
         let mut local_stop_here = false;
 
-        if self.is_inferable_jump(&local_instr) {
-            assert!(local_instr.imm.is_some());
-            self.incr_pc(local_instr.imm.unwrap() as u64);
-            if local_instr.imm.unwrap() == 0 {
-                local_stop_here = true;
+        if local_instr.is_inferable_jump() {
+            match local_instr.imm {
+                Some(imm) => {
+                    self.incr_pc(imm as u64);
+                    if imm == 0 {
+                        local_stop_here = true;
+                    }
+                }
+                None => {
+                    return Err(TraceError::ImmediateIsNone {
+                        state: self.state,
+                        instr: local_instr,
+                    });
+                }
             }
-        } else if self.is_uninferable_discon(&local_instr) {
-            assert!(
-                !self.stop_at_last_branch,
-                "Error: Unexpected uninferable discontinuity"
-            );
-            self.pc = address;
+        } else if local_instr.is_uninferable_discon() {
+            if self.state.stop_at_last_branch {
+                return Err(TraceError::UnexpectedUninferableDiscon(self.state));
+            }
+            self.state.pc = address;
             local_stop_here = true;
-        } else if self.is_taken_branch(&local_instr) {
-            assert!(local_instr.imm.is_some());
-            self.incr_pc(local_instr.imm.unwrap() as u64);
-            if local_instr.imm.unwrap() == 0 {
-                local_stop_here = true;
+        } else if self.is_taken_branch(&local_instr)? {
+            match local_instr.imm {
+                Some(_) => {
+                    self.incr_pc(local_instr.imm.unwrap() as u64);
+                    if local_instr.imm.unwrap() == 0 {
+                        local_stop_here = true;
+                    }
+                }
+                None => {
+                    return Err(TraceError::ImmediateIsNone {
+                        state: self.state,
+                        instr: local_instr,
+                    });
+                }
             }
         } else {
             self.incr_pc(local_instr.size as u64)
         }
 
-        self.last_pc = local_this_pc;
+        self.state.last_pc = local_this_pc;
 
-        local_stop_here
+        Ok(local_stop_here)
     }
 
-    fn is_taken_branch(&mut self, instr: &Instruction) -> bool {
-        if !instr.is_branch() {
-            return false;
+    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceError> {
+        if !instr.is_branch {
+            return Ok(false);
         }
-        assert_ne!(self.branches, 0, "Error: cannot resolve branch");
-        let local_taken = self.branch_map & 1 == 0;
-        self.branches -= 1;
-        self.branch_map >>= 1;
-        local_taken
+        if self.state.branches == 0 {
+            return Err(UnresolvableBranch(self.state));
+        }
+        let local_taken = self.state.branch_map & 1 == 0;
+        self.state.branches -= 1;
+        self.state.branch_map >>= 1;
+        Ok(local_taken)
     }
 
-    fn is_inferable_jump(&self, instr: &Instruction) -> bool {
-        instr.opcode == jal
-            || instr.opcode == c_jal
-            || instr.opcode == c_j
-            || (instr.opcode == jalr && instr.is_rs1_zero)
-    }
-
-    fn is_uninferable_jump(&self, instr: &Instruction) -> bool {
-        instr.opcode == c_jalr
-            || instr.opcode == c_jr
-            || (instr.opcode == jalr && !instr.is_rs1_zero)
-    }
-
-    fn is_uninferable_discon(&self, instr: &Instruction) -> bool {
-        self.is_uninferable_jump(instr)
-            || instr.opcode == uret
-            || instr.opcode == sret
-            || instr.opcode == mret
-            || instr.opcode == dret
-            || instr.opcode == ecall
-            || instr.opcode == ebreak
-            || instr.opcode == c_ebreak
-    }
-
-    fn exception_address(&mut self, trap: &Trap) -> u64 {
-        let local_instr = self.get_instr(self.pc);
+    fn exception_address(&mut self, trap: &Trap) -> Result<u64, TraceError> {
+        let local_instr = self.get_instr(self.state.pc)?;
         let local_address;
 
-        if self.is_uninferable_discon(&local_instr) && trap.thaddr {
+        if local_instr.is_uninferable_discon() && trap.thaddr {
             local_address = trap.address
-        } else if local_instr.opcode == ecall
-            || local_instr.opcode == ebreak
-            || local_instr.opcode == c_ebreak
+        } else if local_instr.name == ecall
+            || local_instr.name == ebreak
+            || local_instr.name == c_ebreak
         {
-            local_address = self.pc;
+            local_address = self.state.pc;
         } else {
             // TODO is the python code correct?
-            local_address = self.next_pc(self.pc) as u64;
+            local_address = self.next_pc(self.state.pc)? as u64;
         }
-        local_address
-    }
-
-    fn report_pc(&self, _address: u64) {
-        todo!()
-    }
-
-    fn report_epc(&self, _address: u64) {
-        todo!()
-    }
-
-    fn report_trap(&self, _trap: &Trap) {
-        todo!()
+        Ok(local_address)
     }
 }

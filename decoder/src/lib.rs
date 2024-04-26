@@ -14,18 +14,7 @@ pub mod decoder;
 pub mod disassembler;
 pub mod tracer;
 
-extern "C" {
-    static binary_start: u64;
-    static binary_end: u64;
-}
-
-// TODO TraceConfiguration checking
-// 0 <addr width < 65
-// cpu index < 2^5
-// CPU_COUNT <= 2^cpu_index_width
-pub struct TraceConfiguration {
-    pub decompress: bool,
-    pub full_address: bool,
+pub struct ProtocolConfiguration {
     #[cfg(feature = "context")]
     pub context_width_p: usize,
     #[cfg(feature = "time")]
@@ -40,9 +29,17 @@ pub struct TraceConfiguration {
     pub ioptions_n: usize,
 }
 
-pub const DEFAULT_CONFIGURATION: TraceConfiguration = TraceConfiguration {
-    decompress: false,
-    full_address: false,
+pub struct DecoderConfiguration {
+    pub decompress: bool,
+}
+
+pub struct TraceConfiguration {
+    pub binary_start: u64,
+    pub binary_end: u64,
+    pub full_address: bool,
+}
+
+pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration {
     #[cfg(feature = "context")]
     context_width_p: 0,
     #[cfg(feature = "time")]
@@ -53,8 +50,16 @@ pub const DEFAULT_CONFIGURATION: TraceConfiguration = TraceConfiguration {
     cache_size_p: 0,
     privilege_width_p: 2,
     cpu_index_width: 0,
-    encoder_mode_n: 0,
-    ioptions_n: 0,
+    encoder_mode_n: 1,
+    ioptions_n: 5,
+};
+
+pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: false };
+
+pub const DEFAULT_TRACE_CONFIG: TraceConfiguration = TraceConfiguration {
+    binary_start: 0x80000000,
+    binary_end: 0x80001000,
+    full_address: false,
 };
 
 //noinspection RsUnresolvedReference
