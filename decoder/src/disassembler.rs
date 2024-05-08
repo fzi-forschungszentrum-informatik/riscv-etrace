@@ -1,6 +1,7 @@
 use crate::disassembler::Name::*;
 use crate::disassembler::OpCode::*;
 use core::ops::Range;
+use crate::Segment;
 
 #[derive(Copy, Clone)]
 pub enum BinaryInstruction {
@@ -9,10 +10,9 @@ pub enum BinaryInstruction {
 }
 
 impl BinaryInstruction {
-    pub unsafe fn read_binary(address: u64, offset: i64) -> Result<Self, (u64, u32)> {
+    pub unsafe fn read_binary(address: u64, segment: &Segment) -> Result<Self, (u64, u32)> {
         const MASK_32_BITS: u64 = 0xFFFFFFFF;
-        let pointer = (address as i64 + offset) as *const u64;
-
+        let pointer = (address - segment.vaddr_start + segment.in_mem_start) as *const u64;
         let value = *pointer;
         let num = u32::try_from(MASK_32_BITS & value).unwrap();
         let bytes = num.to_le_bytes();
@@ -100,7 +100,7 @@ pub struct Instruction {
     pub is_rs1_zero: bool,
     pub size: u32,
     pub is_branch: bool,
-    pub imm: Option<u32>,
+    pub imm: Option<i32>,
 }
 
 impl Instruction {
@@ -279,7 +279,7 @@ impl Instruction {
         }
     }
 
-    fn calc_imm(name: Name, is_rs1_zero: bool, is_branch: bool, num: u32) -> Option<u32> {
+    fn calc_imm(name: Name, is_rs1_zero: bool, is_branch: bool, num: u32) -> Option<i32> {
         if is_branch {
             Some(Self::calc_imm_b(num))
         } else {
@@ -291,7 +291,7 @@ impl Instruction {
         }
     }
 
-    fn calc_compressed_imm(name: Name, is_branch: bool, num: u16) -> Option<u32> {
+    fn calc_compressed_imm(name: Name, is_branch: bool, num: u16) -> Option<i32> {
         if is_branch {
             Some(Self::calc_imm_cb(num))
         } else {
@@ -330,7 +330,7 @@ impl Instruction {
         }
     }
 
-    fn calc_imm_cb(num: u16) -> u32 {
+    fn calc_imm_cb(num: u16) -> i32 {
         const MASK_SIGN: u16 = 0xFF80;
         let mut imm: u16 = Self::get_bits_u16(num, 3..5, 1);
         imm |= Self::get_bits_u16(num, 10..12, 3);
@@ -338,13 +338,13 @@ impl Instruction {
         imm |= Self::get_bits_u16(num, 5..7, 6);
         let sign = Self::get_bits_u16(num, 12..13, 0) == 1;
         if sign {
-            (imm | MASK_SIGN) as i16 as u32
+            (imm | MASK_SIGN) as i16 as i32
         } else {
-            imm as u32
+            imm as i32
         }
     }
 
-    fn calc_imm_cj(num: u16) -> u32 {
+    fn calc_imm_cj(num: u16) -> i32 {
         const MASK_SIGN: u16 = 0xF800;
         let mut imm: u16 = Self::get_bits_u16(num, 3..6, 1);
         imm |= Self::get_bits_u16(num, 11..12, 4);
@@ -355,26 +355,26 @@ impl Instruction {
         imm |= Self::get_bits_u16(num, 8..9, 10);
         let sign = Self::get_bits_u16(num, 12..13, 0) == 1;
         if sign {
-            (imm | MASK_SIGN) as i16 as u32
+            (imm | MASK_SIGN) as i16 as i32
         } else {
-            imm as u32
+            imm as i32
         }
     }
 
-    fn calc_imm_b(num: u32) -> u32 {
+    fn calc_imm_b(num: u32) -> i32 {
         const MASK_SIGN: u32 = 0xFFFFF000;
         let mut imm = Self::get_bits_u32(num, 8..12, 1);
         imm |= Self::get_bits_u32(num, 25..31, 5);
         imm |= Self::get_bits_u32(num, 7..8, 11);
         let sign = Self::get_bits_u32(num, 31..32, 0) == 1;
         if sign {
-            imm | MASK_SIGN
+            (imm | MASK_SIGN) as i32
         } else {
-            imm
+            imm as i32
         }
     }
 
-    fn calc_imm_j(num: u32) -> u32 {
+    fn calc_imm_j(num: u32) -> i32 {
         const MASK_SIGN: u32 = 0xFFF00000;
         let mut imm = Self::get_bits_u32(num, 21..25, 1);
         imm |= Self::get_bits_u32(num, 25..31, 5);
@@ -382,20 +382,20 @@ impl Instruction {
         imm |= Self::get_bits_u32(num, 12..20, 12);
         let sign = Self::get_bits_u32(num, 31..32, 0) == 1;
         if sign {
-            imm | MASK_SIGN
+            (imm | MASK_SIGN) as i32
         } else {
-            imm
+            imm as i32
         }
     }
 
-    fn calc_imm_i(num: u32) -> u32 {
+    fn calc_imm_i(num: u32) -> i32 {
         const MASK_SIGN: u32 = 0xFFFFF800;
         let imm = Self::get_bits_u32(num, 20..31, 0);
         let sign = Self::get_bits_u32(num, 31..32, 0) == 1;
         if sign {
-            imm | MASK_SIGN
+            (imm | MASK_SIGN) as i32
         } else {
-            imm
+            imm as i32
         }
     }
 }
@@ -500,10 +500,13 @@ mod tests {
     #[test_case]
     fn fence_i() {
         let bin = Bit32(0x0000100f);
-        assert_eq!(Instruction::from_binary(&bin), Instruction {
-            name: Name::fence_i,
-            ..DEFAULT_INSTR
-        })
+        assert_eq!(
+            Instruction::from_binary(&bin),
+            Instruction {
+                name: Name::fence_i,
+                ..DEFAULT_INSTR
+            }
+        )
     }
 
     #[test_case]
@@ -514,7 +517,7 @@ mod tests {
             Instruction {
                 name: Name::beq,
                 is_branch: true,
-                imm: Some(-3402i32 as u32),
+                imm: Some(-3402),
                 ..DEFAULT_INSTR
             }
         )
@@ -528,7 +531,7 @@ mod tests {
             Instruction {
                 name: Name::bne,
                 is_branch: true,
-                imm: Some(-2222i32 as u32),
+                imm: Some(-2222),
                 ..DEFAULT_INSTR
             }
         )
@@ -556,7 +559,7 @@ mod tests {
             Instruction {
                 name: Name::bge,
                 is_branch: true,
-                imm: Some(-1954i32 as u32),
+                imm: Some(-1954),
                 ..DEFAULT_INSTR
             }
         )
@@ -627,7 +630,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 name: Name::jal,
-                is_branch: false, // TODO fixme????
+                is_branch: false,
                 imm: Some(55554),
                 ..DEFAULT_INSTR
             }
@@ -657,7 +660,7 @@ mod tests {
             Instruction {
                 name: Name::c_jal,
                 is_branch: false,
-                imm: Some(-772i16 as u32),
+                imm: Some(-772),
                 is_rs1_zero: false,
                 size: 2
             }
