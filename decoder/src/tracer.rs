@@ -1,30 +1,45 @@
+//! Implements the instruction tracing algorithm version 2.0.1
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::disassembler::{BinaryInstruction, Instruction};
-use crate::{ProtocolConfiguration, Segment, TraceConfiguration};
+use crate::segment::Segment;
+use crate::{ProtocolConfiguration, TraceConfiguration};
 use core::fmt;
 
+/// [TraceError] captures the tracing algorithm error and adds the current [TraceState]
+/// in which the underlying error occured.
 #[derive(Debug)]
 pub struct TraceError {
-    pub state: TracerState,
+    pub state: TraceState,
     pub error_type: TraceErrorType,
 }
 
 pub enum TraceErrorType {
+    /// The PC cannot be set to the address, as the address is 0.
     AddressIsZero,
+    /// No starting synchronization packet was read and the tracer is still at the start of the trace.
     StartOfTrace,
+    /// Some branches which should have been processed are still unprocessed. The number of
+    /// unprocessed branches is given.
     UnprocessedBranches(usize),
+    /// The immediate of the disassembled instruction is zero but shouldn't be.
     ImmediateIsNone(Instruction),
+    /// An unexpected uninferable discontinuity was encountered.
     UnexpectedUninferableDiscon,
+    /// The tracer cannot resolve the branch because all branches have been processed.
     UnresolvableBranch,
+    /// The processed packet has no branching information.
     WrongGetBranchType(Synchronization),
+    /// The processed packet has no privilege information.
     WrongGetPrivilegeType,
+    /// The instruction at the `address` cannot be parsed.
     UnknownInstruction {
         address: u64,
         value: u64,
         truncated: u32,
         segment: Segment,
     },
+    /// The address is not inside a [Segment].
     SegmentationFault(u64),
 }
 
@@ -50,8 +65,14 @@ impl fmt::Debug for TraceErrorType {
     }
 }
 
+/// TracerState captures all necessary information for the tracing algorithm to trace the
+/// the instruction execution.
+///
+/// For specifics see either the pseudo code in the
+/// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
+/// and the specification.
 #[derive(Copy, Clone)]
-pub struct TracerState {
+pub struct TraceState {
     pc: u64,
     last_pc: u64,
     address: u64,
@@ -65,7 +86,7 @@ pub struct TracerState {
     privilege: u64,
 }
 
-impl fmt::Debug for TracerState {
+impl fmt::Debug for TraceState {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         f.write_fmt(format_args!(
             "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
@@ -95,7 +116,7 @@ pub enum ReportReason {
 }
 
 pub struct Tracer<'a> {
-    pub state: TracerState,
+    pub state: TraceState,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     report_pc: fn(ReportReason, u64),
@@ -116,7 +137,7 @@ impl<'a> Tracer<'a> {
         report_branch: fn(usize, u32, bool),
     ) -> Self {
         Tracer {
-            state: TracerState {
+            state: TraceState {
                 pc: 0,
                 last_pc: 0,
                 branches: 0,
@@ -140,12 +161,8 @@ impl<'a> Tracer<'a> {
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, TraceErrorType> {
-        let segment = match self
-            .trace_conf
-            .memory_regions
-            .iter()
-            .find(|mem| mem.contains(pc))
-        {
+        // TODO maybe optimize by saving index
+        let segment = match self.trace_conf.segments.iter().find(|mem| mem.contains(pc)) {
             None => return Err(TraceErrorType::SegmentationFault(pc)),
             Some(segment) => segment,
         };
@@ -188,6 +205,7 @@ impl<'a> Tracer<'a> {
     }
 
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceError> {
+        self.recover_status_fields(payload);
         self._process_te_inst(payload)
             .map_err(|error_type| TraceError {
                 state: self.state,

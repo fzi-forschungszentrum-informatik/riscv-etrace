@@ -1,3 +1,4 @@
+//! Implements the packet decoder.
 use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;

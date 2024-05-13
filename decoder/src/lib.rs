@@ -1,3 +1,92 @@
+//! # Rust implementation of Efficient Trace for RISC-V's instruction decoder and tracing algorithm (Version 2.0.1)
+//!
+//! This project implements the instruction packet decoder and instruction tracing algorithm for
+//! [Efficient Trace for RISC-V (Version 2.0.1)](https://github.com/riscv-non-isa/riscv-trace-spec/).
+//! It assumes each packet is written in a given specific memory location. This crate is not
+//! concerned how the encoder signals a new packet or how the packet is transported to the decoder.
+//!
+//! See [decoder] for the implementation of the packet decoder and [tracer] for the tracing
+//! algorithm.
+//!
+//! # ETrace features
+//! - instruction tracing
+//! - delta/full address mode
+//! - configurable bit width of packet fields
+//! - (partially implemented) optional context for instructions
+//! - (partially implemented) optional timestamp in header
+//! - (not yet implemented) optional implicit return mode
+//!
+//! # Example
+//! ```
+//! extern crate decoder;
+//!
+//! use decoder::{DecoderConfiguration, DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration, TraceConfiguration};
+//! use decoder::decoder::{Decoder, DEFAULT_PACKET_BUFFER_LEN};
+//! use decoder::disassembler::Instruction;
+//! use decoder::segment::Segment;
+//! use decoder::tracer::Tracer;
+//!
+//! // Create your segments from your ELF files.
+//! let mut segments: Vec<Segment> = Vec::new();
+//!
+//! // Create the protocol level configuration which will define the bit lengths of packet fields.
+//! let proto_conf = ProtocolConfiguration {
+//!     // In this example we assume a maximum of 2^10   of CPU cores...
+//!     cpu_index_width: 10,
+//!     // ...but everything else will be default.
+//!     ..DEFAULT_PROTOCOL_CONFIG
+//! };
+//!
+//! // Create the decoder configuration.
+//! let decoder_conf = DecoderConfiguration {
+//!     decompress: false,
+//! };
+//!
+//! // A single tracing configuration will be used for all tracers.
+//! let trace_conf = TraceConfiguration {
+//!     // Pass your parsed ELF segments.
+//!     segments: &segments,
+//!     // We will use compressed addresses for better efficiency.
+//!     full_address: false,
+//! };
+//!
+//! // Define your report callbacks such as report_pc:
+//! let report_pc = |reason, pc| println!("pc: 0x{:x} ({:?})", pc, reason);
+//! let report_epc = |epc| println!("epc: 0x{:x}", epc);
+//! let report_trap = |trap| println!("trap: {:?}", trap);
+//! let report_instr = |instr: Instruction| { println!("instr: {:?}", instr) };
+//! let report_branch = |branches: usize, branch_map: u32, local_taken: bool|
+//!     { println!("branch: {:?} {:032b} {}", branches, branch_map, local_taken) };
+//!
+//! // Create the packet decoder.
+//! let mut decoder = Decoder::new(proto_conf, decoder_conf);
+//!
+//! // Create each tracer, one for each hart.
+//! let mut tracers: Vec<Tracer> = Vec::new();
+//! for i in 0..1024 {
+//!     tracers.push(Tracer::new(
+//!             proto_conf,
+//!             trace_conf,
+//!             report_pc,
+//!             report_epc,
+//!             report_trap,
+//!             report_instr,
+//!             report_branch,
+//!         ));
+//! }
+//!
+//! // Assuming we have a slice given with a packet already written in binary in it:
+//! # let packet_vec: Vec<u8> = Vec::new();
+//! #
+//! # let packet_slice: [u8; DEFAULT_PACKET_BUFFER_LEN] = [0; DEFAULT_PACKET_BUFFER_LEN];
+//! let packet = decoder.decode(packet_slice).unwrap();
+//! println!("{:?}", packet);
+//!
+//! // Get the correct tracer based on the CPU index...
+//! let mut tracer = &tracers[packet.header.cpu_index];
+//! // ...and trace it.
+//! tracer.process_te_inst(&packet.payload).unwrap();
+//! ```
 #![no_std]
 #![no_main]
 #![feature(assert_matches)]
@@ -5,8 +94,7 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-extern crate alloc;
-
+use crate::segment::Segment;
 #[cfg(test)]
 use core::panic::PanicInfo;
 #[cfg(test)]
@@ -14,6 +102,7 @@ use riscv_rt::entry;
 
 pub mod decoder;
 pub mod disassembler;
+pub mod segment;
 pub mod tracer;
 
 #[derive(Copy, Clone)]
@@ -39,21 +128,8 @@ pub struct DecoderConfiguration {
 
 #[derive(Copy, Clone)]
 pub struct TraceConfiguration<'a> {
-    pub memory_regions: &'a [Segment],
+    pub segments: &'a [Segment],
     pub full_address: bool,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct Segment {
-    pub vaddr_start: u64,
-    pub vaddr_end: u64,
-    pub in_mem_start: u64,
-}
-
-impl Segment {
-    pub fn contains(&self, addr: u64) -> bool {
-        self.vaddr_start <= addr && addr <= self.vaddr_end
-    }
 }
 
 pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration {
