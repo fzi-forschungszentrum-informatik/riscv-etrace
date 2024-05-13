@@ -5,6 +5,8 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+extern crate alloc;
+
 #[cfg(test)]
 use core::panic::PanicInfo;
 #[cfg(test)]
@@ -14,6 +16,7 @@ pub mod decoder;
 pub mod disassembler;
 pub mod tracer;
 
+#[derive(Copy, Clone)]
 pub struct ProtocolConfiguration {
     #[cfg(feature = "context")]
     pub context_width_p: usize,
@@ -29,14 +32,28 @@ pub struct ProtocolConfiguration {
     pub ioptions_n: usize,
 }
 
+#[derive(Copy, Clone)]
 pub struct DecoderConfiguration {
     pub decompress: bool,
 }
 
-pub struct TraceConfiguration {
-    pub binary_start: u64,
-    pub binary_end: u64,
+#[derive(Copy, Clone)]
+pub struct TraceConfiguration<'a> {
+    pub memory_regions: &'a [Segment],
     pub full_address: bool,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Segment {
+    pub vaddr_start: u64,
+    pub vaddr_end: u64,
+    pub in_mem_start: u64,
+}
+
+impl Segment {
+    pub fn contains(&self, addr: u64) -> bool {
+        self.vaddr_start <= addr && addr <= self.vaddr_end
+    }
 }
 
 pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration {
@@ -56,18 +73,11 @@ pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration
 
 pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: false };
 
-pub const DEFAULT_TRACE_CONFIG: TraceConfiguration = TraceConfiguration {
-    binary_start: 0x80000000,
-    binary_end: 0x80001000,
-    full_address: false,
-};
-
-//noinspection RsUnresolvedReference
 #[cfg(test)]
 #[entry]
 fn main() -> ! {
+    use uart_16550::MmioSerialPort;
     unsafe {
-        use uart_16550::MmioSerialPort;
         let mut serial = MmioSerialPort::new(serial::SERIAL_PORT_BASE_ADDRESS);
         serial.init();
         serial::SERIAL1 = Some(serial)

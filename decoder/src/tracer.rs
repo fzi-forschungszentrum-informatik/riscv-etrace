@@ -1,29 +1,52 @@
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::disassembler::{BinaryInstruction, Instruction};
-use crate::tracer::TraceError::UnresolvableBranch;
-use crate::{ProtocolConfiguration, TraceConfiguration};
+use crate::{ProtocolConfiguration, Segment, TraceConfiguration};
+use core::fmt;
 
-pub enum TraceError {
-    AddressIsZero(TracerState),
-    StartOfTrace(TracerState),
-    UnprocessedBranches {
-        state: TracerState,
-        branch_limit: usize,
-    },
-    ImmediateIsNone {
-        state: TracerState,
-        instr: Instruction,
-    },
-    UnexpectedUninferableDiscon(TracerState),
-    UnresolvableBranch(TracerState),
-    WrongGetBranchType {
-        state: TracerState,
-        sync: Synchronization   
-    },
+#[derive(Debug)]
+pub struct TraceError {
+    pub state: TracerState,
+    pub error_type: TraceErrorType,
+}
+
+pub enum TraceErrorType {
+    AddressIsZero,
+    StartOfTrace,
+    UnprocessedBranches(usize),
+    ImmediateIsNone(Instruction),
+    UnexpectedUninferableDiscon,
+    UnresolvableBranch,
+    WrongGetBranchType(Synchronization),
+    WrongGetPrivilegeType,
     UnknownInstruction {
-        state: TracerState,
         address: u64,
+        value: u64,
+        truncated: u32,
+        segment: Segment,
+    },
+    SegmentationFault(u64),
+}
+
+impl fmt::Debug for TraceErrorType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TraceErrorType::AddressIsZero => f.write_str("AddressIsZero"),
+            TraceErrorType::StartOfTrace => f.write_str("StartOfTrace"),
+            TraceErrorType::UnprocessedBranches(count) => f.write_fmt(format_args!("UnprocessedBranches({})", count)),
+            TraceErrorType::ImmediateIsNone(instr) => f.write_fmt(format_args!("ImmediateIsNone({:?})", instr)),
+            TraceErrorType::UnexpectedUninferableDiscon => f.write_str("UnexpectedUninferableDiscon"),
+            TraceErrorType::UnresolvableBranch => f.write_str("UnresolvableBranch"),
+            TraceErrorType::WrongGetBranchType(sync) => f.write_fmt(format_args!("WrongGetBranchType({:?})", sync)),
+            TraceErrorType::WrongGetPrivilegeType => f.write_str("WrongGetPrivilegeType"),
+            TraceErrorType::UnknownInstruction {address, value, truncated, segment} =>
+                f.write_fmt(format_args!("UnknownInstruction {{ address: {:#0x}, value: {:#0x}, truncated: {:#0x}, segment: {:?} }}",
+                                         address,
+                                         value,
+                                         truncated,
+                                         segment)),
+            TraceErrorType::SegmentationFault(addr) => f.write_fmt(format_args!("SegmentationFault({:#0x})", addr)),
+        }
     }
 }
 
@@ -31,32 +54,66 @@ pub enum TraceError {
 pub struct TracerState {
     pc: u64,
     last_pc: u64,
+    address: u64,
     branches: usize,
     branch_map: u32,
     stop_at_last_branch: bool,
     inferred_address: bool,
     start_of_trace: bool,
-    address: u64,
     notify: bool,
     updiscon: bool,
+    privilege: u64,
 }
 
-pub struct Tracer {
-    state: TracerState,
+impl fmt::Debug for TracerState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
+        f.write_fmt(format_args!(
+            "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
+        branches: {}, branch_map: {}, stop_at_last_branch: {},\
+        inferred_address: {}, start_of_trace: {}, notify: {}, updiscon: {}, privilege: {}",
+            self.pc,
+            self.last_pc,
+            self.address,
+            self.branches,
+            self.branch_map,
+            self.stop_at_last_branch,
+            self.inferred_address,
+            self.start_of_trace,
+            self.notify,
+            self.updiscon,
+            self.privilege
+        ))
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ReportReason {
+    CopyStateAddr,
+    NextPcLocalPrevAddr,
+    NextPcPrevAddr,
+    NextPcAddr,
+}
+
+pub struct Tracer<'a> {
+    pub state: TracerState,
     proto_conf: ProtocolConfiguration,
-    trace_conf: TraceConfiguration,
-    report_pc: fn(u64),
+    trace_conf: TraceConfiguration<'a>,
+    report_pc: fn(ReportReason, u64),
     report_epc: fn(u64),
-    report_trap: fn(&Trap),
+    report_trap: fn(Trap),
+    report_instr: fn(Instruction),
+    report_branch: fn(usize, u32, bool),
 }
 
-impl Tracer {
-    fn new(
+impl<'a> Tracer<'a> {
+    pub fn new(
         proto_conf: ProtocolConfiguration,
-        trace_conf: TraceConfiguration,
-        report_pc: fn(u64),
+        trace_conf: TraceConfiguration<'a>,
+        report_pc: fn(ReportReason, u64),
         report_epc: fn(u64),
-        report_trap: fn(&Trap),
+        report_trap: fn(Trap),
+        report_instr: fn(Instruction),
+        report_branch: fn(usize, u32, bool),
     ) -> Self {
         Tracer {
             state: TracerState {
@@ -70,43 +127,59 @@ impl Tracer {
                 address: 0,
                 notify: false,
                 updiscon: false,
+                privilege: 0,
             },
             trace_conf,
             proto_conf,
             report_pc,
             report_epc,
             report_trap,
+            report_instr,
+            report_branch,
         }
     }
 
-    fn get_instr(&self, pc: u64) -> Result<Instruction, TraceError> {
-        assert!(
-            pc >= self.trace_conf.binary_start && pc < self.trace_conf.binary_end,
-            "pc not in binary"
-        );
-        let binary = match unsafe { BinaryInstruction::read_binary(pc as *const u64) } {
-            Ok(binary) => binary, 
-            Err(()) => {
-                return Err(TraceError::UnknownInstruction {
-                    state: self.state,
+    fn get_instr(&mut self, pc: u64) -> Result<Instruction, TraceErrorType> {
+        let segment = match self
+            .trace_conf
+            .memory_regions
+            .iter()
+            .find(|mem| mem.contains(pc))
+        {
+            None => return Err(TraceErrorType::SegmentationFault(pc)),
+            Some(segment) => segment,
+        };
+        let binary = match unsafe { BinaryInstruction::read_binary(pc, segment) } {
+            Ok(binary) => binary,
+            Err((value, num)) => {
+                return Err(TraceErrorType::UnknownInstruction {
                     address: pc,
+                    value,
+                    truncated: num,
+                    segment: *segment,
                 })
             }
         };
-        
+
         match binary {
             BinaryInstruction::Bit32(_) => assert_eq!(pc % 4, 0, "32 bit instruction not aligned"),
             BinaryInstruction::Bit16(_) => assert_eq!(pc % 2, 0, "16 bit instruction not aligned"),
         }
-        Ok(Instruction::from_binary(&binary))
+        let instr = Instruction::from_binary(&binary);
+        (self.report_instr)(instr);
+        Ok(instr)
     }
 
-    fn incr_pc(&mut self, incr: u64) {
-        self.state.pc += incr;
+    fn incr_pc(&mut self, incr: i32) {
+        self.state.pc = if incr.is_negative() {
+            self.state.pc - incr.wrapping_abs() as u64
+        } else {
+            self.state.pc + incr as u64
+        }
     }
 
     pub fn recover_status_fields(&mut self, payload: &Payload) {
-        if let Some(addr) = payload.get_address() {
+        if let Some(addr) = payload.get_address_info() {
             // TODO why "- 1"?
             let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) != 0;
             self.state.notify = addr.notify != msb;
@@ -115,13 +188,21 @@ impl Tracer {
     }
 
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceError> {
+        self._process_te_inst(payload)
+            .map_err(|error_type| TraceError {
+                state: self.state,
+                error_type,
+            })
+    }
+
+    fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
-                self.process_support(sup)?
+                return self.process_support(sup);
             } else if let Synchronization::Context(_ctx) = sync {
                 todo!("context processing not yet implemented");
             } else if let Synchronization::Trap(trap) = sync {
-                (self.report_trap)(trap);
+                (self.report_trap)(*trap);
                 if !trap.interrupt {
                     let addr = self.exception_address(trap)?;
                     (self.report_epc)(addr);
@@ -131,63 +212,60 @@ impl Tracer {
                 }
             }
             self.state.inferred_address = false;
-            self.state.address = payload.get_address().unwrap().address;
+            self.state.address = payload.get_address();
             if self.state.address == 0 {
-                return Err(TraceError::AddressIsZero(self.state));
+                return Err(TraceErrorType::AddressIsZero);
             }
             if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
                 self.state.branches = 0;
                 self.state.branch_map = 0;
             }
             if self.get_instr(self.state.address)?.is_branch {
-                let branch = match sync.get_branch() {
-                    Ok(branch) => branch as u32,
-                    Err(()) => {
-                        return Err(TraceError::WrongGetBranchType {
-                            state: self.state,
-                            sync: *sync,
-                        })
-                    }
-                };
+                let branch = sync.get_branch()?;
                 self.state.branch_map |= branch << self.state.branches;
                 self.state.branches += 1;
             }
-            if matches!(payload, Payload::Synchronization(Synchronization::Start(_)))
-                && !self.state.start_of_trace
-            {
-                self.follow_execution_path(self.state.address, payload)?
+            if matches!(sync, Synchronization::Start(_)) && !self.state.start_of_trace {
+                self.follow_execution_path(payload)?
             } else {
                 self.state.pc = self.state.address;
-                (self.report_pc)(self.state.pc);
+                (self.report_pc)(ReportReason::CopyStateAddr, self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
+            self.state.privilege = sync.get_privilege()?;
             self.state.start_of_trace = false;
+            Ok(())
         } else {
             if self.state.start_of_trace {
-                return Err(TraceError::StartOfTrace(self.state));
+                return Err(TraceErrorType::StartOfTrace);
             }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
                 self.state.stop_at_last_branch = false;
                 if self.trace_conf.full_address {
-                    self.state.address = payload.get_address().unwrap().address;
+                    self.state.address = payload.get_address();
                 } else {
-                    self.state.address += payload.get_address().unwrap().address;
+                    let addr = payload.get_address() as i64;
+                    if addr.is_negative() {
+                        self.state.address -= addr.wrapping_abs() as u64;
+                    } else {
+                        self.state.address += addr as u64;
+                    }
                 }
             }
             if let Payload::Branch(branch) = payload {
                 self.state.stop_at_last_branch = branch.branches == 0;
-                self.state.branch_map |= branch.branch_map << self.state.branches;
+                self.state.branch_map |= (branch.branch_map) << self.state.branches;
                 self.state.branches = if branch.branches == 0 {
                     self.state.branches + 31
                 } else {
                     self.state.branches + branch.branches
                 };
             }
+            self.follow_execution_path(payload)
         }
-        Ok(())
     }
 
-    fn process_support(&mut self, support: &Support) -> Result<(), TraceError> {
+    fn process_support(&mut self, support: &Support) -> Result<(), TraceErrorType> {
         if support.qual_status != QualStatus::NoChange {
             self.state.start_of_trace = true;
 
@@ -196,7 +274,7 @@ impl Tracer {
                 self.state.inferred_address = false;
                 loop {
                     let local_stop_here = self.next_pc(local_previous_address)?;
-                    (self.report_pc)(self.state.pc);
+                    (self.report_pc)(ReportReason::NextPcLocalPrevAddr, self.state.pc);
                     if local_stop_here {
                         return Ok(());
                     }
@@ -206,26 +284,23 @@ impl Tracer {
         Ok(())
     }
 
-    fn follow_execution_path(&mut self, address: u64, payload: &Payload) -> Result<(), TraceError> {
-        fn branch_limit(tracer: &Tracer) -> Result<usize, TraceError> {
-            if tracer.get_instr(tracer.state.pc)?.is_branch {
-                Ok(1)
-            } else {
-                Ok(0)
-            }
-        }
+    fn branch_limit(&mut self) -> Result<usize, TraceErrorType> {
+        Ok(self.get_instr(self.state.pc)?.is_branch as usize)
+    }
+
+    fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         let previous_address = self.state.pc;
         let mut local_stop_here;
         loop {
             if self.state.inferred_address {
                 local_stop_here = self.next_pc(previous_address)?;
-                (self.report_pc)(previous_address);
+                (self.report_pc)(ReportReason::NextPcPrevAddr, previous_address);
                 if local_stop_here {
                     self.state.inferred_address = false;
                 }
             } else {
-                local_stop_here = self.next_pc(address)?;
-                (self.report_pc)(self.state.pc);
+                local_stop_here = self.next_pc(self.state.address)?;
+                (self.report_pc)(ReportReason::NextPcAddr, self.state.pc);
                 if self.state.branches == 1
                     && self.get_instr(self.state.pc)?.is_branch
                     && self.state.stop_at_last_branch
@@ -234,35 +309,34 @@ impl Tracer {
                     return Ok(());
                 }
                 if local_stop_here {
-                    if self.state.branches > branch_limit(self)? {
-                        return Err(TraceError::UnprocessedBranches {
-                            state: self.state,
-                            branch_limit: branch_limit(self)?,
-                        });
+                    if self.state.branches > self.branch_limit()? {
+                        return Err(TraceErrorType::UnprocessedBranches(self.branch_limit()?));
                     }
                     return Ok(());
                 }
                 if !matches!(payload, Payload::Synchronization(_))
-                    && self.state.pc == address
+                    && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
                     && self.state.notify
-                    && self.state.branches == branch_limit(self)?
+                    && self.state.branches == self.branch_limit()?
                 {
                     return Ok(());
                 }
                 if !matches!(payload, Payload::Synchronization(_))
-                    && self.state.pc == address
+                    && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
                     && !&self.get_instr(self.state.last_pc)?.is_uninferable_discon()
                     && !self.state.updiscon
-                    && self.state.branches == branch_limit(self)?
+                    && self.state.branches == self.branch_limit()?
                 {
                     self.state.inferred_address = true;
                     return Ok(());
                 }
                 if matches!(payload, Payload::Synchronization(_))
-                    && self.state.pc == address
-                    && self.state.branches == branch_limit(self)?
+                    && self.state.pc == self.state.address
+                    && self.state.branches == self.branch_limit()?
+                    && (payload.get_privilege()? == self.state.privilege
+                        || self.get_instr(self.state.last_pc)?.is_return_from_trap())
                 {
                     return Ok(());
                 }
@@ -270,49 +344,35 @@ impl Tracer {
         }
     }
 
-    fn next_pc(&mut self, address: u64) -> Result<bool, TraceError> {
+    fn next_pc(&mut self, address: u64) -> Result<bool, TraceErrorType> {
         let local_instr = self.get_instr(self.state.pc)?;
         let local_this_pc = self.state.pc;
         let mut local_stop_here = false;
 
         if local_instr.is_inferable_jump() {
-            match local_instr.imm {
-                Some(imm) => {
-                    self.incr_pc(imm as u64);
-                    if imm == 0 {
-                        local_stop_here = true;
-                    }
-                }
-                None => {
-                    return Err(TraceError::ImmediateIsNone {
-                        state: self.state,
-                        instr: local_instr,
-                    });
-                }
+            let imm = local_instr
+                .imm
+                .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
+            self.incr_pc(imm);
+            if imm == 0 {
+                local_stop_here = true;
             }
         } else if local_instr.is_uninferable_discon() {
             if self.state.stop_at_last_branch {
-                return Err(TraceError::UnexpectedUninferableDiscon(self.state));
+                return Err(TraceErrorType::UnexpectedUninferableDiscon);
             }
             self.state.pc = address;
             local_stop_here = true;
         } else if self.is_taken_branch(&local_instr)? {
-            match local_instr.imm {
-                Some(_) => {
-                    self.incr_pc(local_instr.imm.unwrap() as u64);
-                    if local_instr.imm.unwrap() == 0 {
-                        local_stop_here = true;
-                    }
-                }
-                None => {
-                    return Err(TraceError::ImmediateIsNone {
-                        state: self.state,
-                        instr: local_instr,
-                    });
-                }
+            let imm = local_instr
+                .imm
+                .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
+            self.incr_pc(imm);
+            if imm == 0 {
+                local_stop_here = true;
             }
         } else {
-            self.incr_pc(local_instr.size as u64)
+            self.incr_pc(local_instr.size as i32)
         }
 
         self.state.last_pc = local_this_pc;
@@ -320,34 +380,32 @@ impl Tracer {
         Ok(local_stop_here)
     }
 
-    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceError> {
+    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceErrorType> {
         if !instr.is_branch {
             return Ok(false);
         }
         if self.state.branches == 0 {
-            return Err(UnresolvableBranch(self.state));
+            return Err(TraceErrorType::UnresolvableBranch);
         }
         let local_taken = self.state.branch_map & 1 == 0;
+        (self.report_branch)(self.state.branches, self.state.branch_map, local_taken);
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
         Ok(local_taken)
     }
 
-    fn exception_address(&mut self, trap: &Trap) -> Result<u64, TraceError> {
+    fn exception_address(&mut self, trap: &Trap) -> Result<u64, TraceErrorType> {
         let local_instr = self.get_instr(self.state.pc)?;
-        let local_address;
 
         if local_instr.is_uninferable_discon() && trap.thaddr {
-            local_address = trap.address
+            Ok(trap.address)
         } else if local_instr.name == ecall
             || local_instr.name == ebreak
             || local_instr.name == c_ebreak
         {
-            local_address = self.state.pc;
+            Ok(self.state.pc)
         } else {
-            // TODO is the python code correct?
-            local_address = self.next_pc(self.state.pc)? as u64;
+            panic!("WHAT IS THIS HERE???") //Ok(self.next_pc(self.state.pc)?)
         }
-        Ok(local_address)
     }
 }

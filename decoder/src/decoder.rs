@@ -2,7 +2,9 @@ use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
 use crate::decoder::DecodeError::ReadTooLong;
-use crate::{DecoderConfiguration, DEFAULT_DECODER_CONFIG, DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration};
+use crate::{
+    DecoderConfiguration, ProtocolConfiguration, DEFAULT_DECODER_CONFIG, DEFAULT_PROTOCOL_CONFIG,
+};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
 
@@ -31,13 +33,9 @@ pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
 
 pub const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-impl Decoder<DEFAULT_PACKET_BUFFER_LEN> {
-    pub fn default() -> Self {
+impl Default for Decoder<DEFAULT_PACKET_BUFFER_LEN> {
+    fn default() -> Self {
         Decoder::new(DEFAULT_PROTOCOL_CONFIG, DEFAULT_DECODER_CONFIG)
-    }
-    
-    pub fn default_buffer_len(proto_conf: ProtocolConfiguration, decoder_conf: DecoderConfiguration) -> Self {
-        Decoder::new(proto_conf, decoder_conf)
     }
 }
 
@@ -88,7 +86,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
             return Ok(0);
         }
         assert!(bit_count <= 64);
-        if bit_count + self.bit_pos - 1 >= PACKET_BUFFER_LEN * 8 {
+        if bit_count + self.bit_pos > PACKET_BUFFER_LEN * 8 {
             return Err(ReadTooLong {
                 buffer_size: PACKET_BUFFER_LEN * 8,
                 bit_count,
@@ -113,8 +111,8 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
             // Take 9th byte and mask MSBs that are not read
             let missing_msbs =
-                self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> 8 - missing_bit_count;
-            let msbs_u64 = (missing_msbs as u64) << bit_count - missing_bit_count;
+                self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
+            let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
             // Shift MSBs into correct position in u64 and add with previously read value
             Ok(value + msbs_u64)
         } else {
@@ -174,7 +172,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
                 Payload::Extension(Extension::JumpTargetIndex(JumpTargetIndex::decode(self)?))
             }
             Format::Branch => Payload::Branch(Branch::decode(self)?),
-            Format::Addr => Payload::Address(Address::decode(self)?),
+            Format::Addr => Payload::Address(AddressInfo::decode(self)?),
             Format::Sync(Sync::Start) => {
                 Payload::Synchronization(Synchronization::Start(Start::decode(self)?))
             }

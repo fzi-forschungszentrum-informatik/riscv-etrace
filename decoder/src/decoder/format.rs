@@ -100,6 +100,9 @@ mod tests {
         );
         assert_eq!(Format::decode(&mut decoder).unwrap(), Format::Branch);
         assert_eq!(Format::decode(&mut decoder).unwrap(), Format::Addr);
-        assert_eq!(Format::decode(&mut decoder).unwrap(), Format::Sync(Sync::Trap));
+        assert_eq!(
+            Format::decode(&mut decoder).unwrap(),
+            Format::Sync(Sync::Trap)
+        );
     }
 }

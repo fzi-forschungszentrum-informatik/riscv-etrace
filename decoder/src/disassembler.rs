@@ -1,7 +1,7 @@
 use crate::disassembler::Name::*;
 use crate::disassembler::OpCode::*;
-use core::ops::Range;
 use crate::Segment;
+use core::ops::Range;
 
 #[derive(Copy, Clone)]
 pub enum BinaryInstruction {
@@ -10,6 +10,9 @@ pub enum BinaryInstruction {
 }
 
 impl BinaryInstruction {
+    /// # Safety
+    ///
+    /// This should be safe as long as the segments are initialized correctly.
     pub unsafe fn read_binary(address: u64, segment: &Segment) -> Result<Self, (u64, u32)> {
         const MASK_32_BITS: u64 = 0xFFFFFFFF;
         let pointer = (address - segment.vaddr_start + segment.in_mem_start) as *const u64;
@@ -33,8 +36,8 @@ impl BinaryInstruction {
 enum OpCode {
     MiscMem = 0b0001111,
     Branch = 0b1100011,
-    JALR = 0b1100111,
-    JAL = 0b1101111,
+    Jalr = 0b1100111,
+    Jal = 0b1101111,
     System = 0b1110011,
     Ignored,
 }
@@ -45,8 +48,8 @@ impl From<u32> for OpCode {
         match value & MASK {
             x if x == MiscMem as u32 => MiscMem,
             x if x == Branch as u32 => Branch,
-            x if x == JALR as u32 => JALR,
-            x if x == JAL as u32 => JAL,
+            x if x == Jalr as u32 => Jalr,
+            x if x == Jal as u32 => Jal,
             x if x == System as u32 => System,
             _ => OpCode::Ignored,
         }
@@ -60,7 +63,7 @@ pub enum Name {
     mret,
     sret,
     uret, // TODO uret is legacy
-    dret, // TODO dret is only in release candidate
+    dret, // TODO dret is only in rc
     fence,
     sfence_vma,
     wfi,
@@ -115,12 +118,13 @@ impl Instruction {
         self.name == c_jalr || self.name == c_jr || (matches!(self.name, jalr) && !self.is_rs1_zero)
     }
 
+    pub fn is_return_from_trap(&self) -> bool {
+        self.name == sret || self.name == mret || self.name == dret
+    }
+
     pub fn is_uninferable_discon(&self) -> bool {
         Self::is_uninferable_jump(self)
-            || self.name == uret
-            || self.name == sret
-            || self.name == mret
-            || self.name == dret
+            || Self::is_return_from_trap(self)
             || self.name == ecall
             || self.name == ebreak
             || self.name == c_ebreak
@@ -154,14 +158,13 @@ impl Instruction {
     }
 
     fn parse_bin_instr(num: u32) -> Self {
-        let name;
         let mut is_rs1_zero = false;
 
         let opcode = OpCode::from(num);
 
         let funct3 = Self::funct3(num);
 
-        name = match opcode {
+        let name = match opcode {
             MiscMem => match funct3 {
                 0b000 => fence,
                 0b001 => fence_i,
@@ -176,11 +179,11 @@ impl Instruction {
                 0b111 => bgeu,
                 _ => Name::Ignored,
             },
-            JALR => {
+            Jalr => {
                 is_rs1_zero = 0 == Self::rs1(num);
                 jalr
             }
-            JAL => jal,
+            Jal => jal,
             System => {
                 let rd = Self::rd(num);
                 if rd != 0 || funct3 != 0 {
@@ -255,16 +258,14 @@ impl Instruction {
                 let rs2 = Self::c_rs2(num);
                 if funct3 != 0b100 {
                     Name::Ignored
+                } else if !bit12 && rs1 != 0 && rs2 == 0 {
+                    c_jr
+                } else if bit12 && rs1 == 0 && rs2 == 0 {
+                    c_ebreak
+                } else if bit12 && rs1 != 0 && rs2 == 0 {
+                    c_jalr
                 } else {
-                    if !bit12 && rs1 != 0 && rs2 == 0 {
-                        c_jr
-                    } else if bit12 && rs1 == 0 && rs2 == 0 {
-                        c_ebreak
-                    } else if bit12 && rs1 != 0 && rs2 == 0 {
-                        c_jalr
-                    } else {
-                        Name::Ignored
-                    }
+                    Name::Ignored
                 }
             }
             _ => Name::Ignored,
