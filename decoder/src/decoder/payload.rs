@@ -1,4 +1,6 @@
 use crate::decoder::{Decode, DecodeError, Decoder};
+use crate::tracer::TraceErrorType;
+use core::fmt;
 
 fn read_address<const PACKET_BUFFER_LEN: usize>(
     decoder: &mut Decoder<PACKET_BUFFER_LEN>,
@@ -57,16 +59,16 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for IRPayload {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Payload {
     Extension(Extension),
     Branch(Branch),
-    Address(Address),
+    Address(AddressInfo),
     Synchronization(Synchronization),
 }
 
 impl Payload {
-    pub fn get_address(&self) -> Option<&Address> {
+    pub fn get_address_info(&self) -> Option<&AddressInfo> {
         return if let Payload::Address(addr) = self {
             Some(addr)
         } else if let Payload::Branch(branch) = self {
@@ -78,10 +80,33 @@ impl Payload {
         };
     }
 
+    pub fn get_address(&self) -> u64 {
+        match self.get_address_info() {
+            None => {
+                if let Payload::Synchronization(Synchronization::Start(start)) = self {
+                    start.address
+                } else if let Payload::Synchronization(Synchronization::Trap(trap)) = self {
+                    trap.address
+                } else {
+                    panic!("{:?} does not have an address", self)
+                }
+            }
+            Some(addr_info) => addr_info.address,
+        }
+    }
+
     pub fn get_branches(&self) -> Option<usize> {
         match self {
             Payload::Branch(branch) => Some(branch.branches),
             _ => None,
+        }
+    }
+
+    pub fn get_privilege(&self) -> Result<u64, TraceErrorType> {
+        if let Payload::Synchronization(sync) = self {
+            Ok(sync.get_privilege()?)
+        } else {
+            Err(TraceErrorType::WrongGetPrivilegeType)
         }
     }
 }
@@ -93,11 +118,20 @@ pub enum Extension {
 }
 
 // Format 0, sub format 0
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub struct BranchCount {
     pub branch_count: u32,
     pub branch_fmt: BranchFmt,
-    pub address: Option<Address>,
+    pub address: Option<AddressInfo>,
+}
+
+impl fmt::Debug for BranchCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "BranchCount {{ branch_count: {:x}, branch_fmt: {:?}, address: {:#0?} }}",
+            self.branch_count, self.branch_fmt, self.address
+        ))
+    }
 }
 
 impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for BranchCount {
@@ -107,7 +141,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for BranchCount {
         let address = if branch_fmt == BranchFmt::NoAddr {
             None
         } else {
-            Some(Address::decode(decoder)?)
+            Some(AddressInfo::decode(decoder)?)
         };
         Ok(BranchCount {
             branch_count: branch_count.try_into().unwrap(),
@@ -178,7 +212,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for JumpTargetInd
 pub struct Branch {
     pub branches: usize,
     pub branch_map: u32,
-    pub address: Option<Address>,
+    pub address: Option<AddressInfo>,
 }
 
 impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
@@ -190,7 +224,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
             .unwrap();
 
         let address = if branches != 0 {
-            Some(Address::decode(decoder)?)
+            Some(AddressInfo::decode(decoder)?)
         } else {
             None
         };
@@ -205,8 +239,8 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
 }
 
 /// Format 2
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub struct Address {
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct AddressInfo {
     pub address: u64,
     pub notify: bool,
     pub updiscon: bool,
@@ -216,14 +250,23 @@ pub struct Address {
     pub irdepth: usize,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Address {
+impl fmt::Debug for AddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_fmt(format_args!(
+            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
+            self.address, self.notify, self.updiscon
+        ))
+    }
+}
+
+impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for AddressInfo {
     fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
         let address = read_address(decoder)?;
         let notify = decoder.read_bit()?;
         let updiscon = decoder.read_bit()?;
         #[cfg(feature = "IR")]
         let ir_payload = IRPayload::decode(decoder)?;
-        Ok(Address {
+        Ok(AddressInfo {
             address,
             notify,
             updiscon,
@@ -245,17 +288,27 @@ pub enum Synchronization {
 }
 
 impl Synchronization {
-    pub fn get_branch(&self) -> Result<bool, ()> {
+    pub fn get_branch(&self) -> Result<u32, TraceErrorType> {
         match self {
             Synchronization::Start(start) => Ok(start.branch),
             Synchronization::Trap(trap) => Ok(trap.branch),
-            _ => Err(()),
+            _ => Err(TraceErrorType::WrongGetBranchType(*self)),
+        }
+        .map(|b| b as u32)
+    }
+
+    pub fn get_privilege(&self) -> Result<u64, TraceErrorType> {
+        match self {
+            Synchronization::Start(start) => Ok(start.privilege),
+            Synchronization::Trap(trap) => Ok(trap.privilege),
+            Synchronization::Context(ctx) => Ok(ctx.privilege),
+            Synchronization::Support(_) => Err(TraceErrorType::WrongGetPrivilegeType),
         }
     }
 }
 
 /// Format 0, sub format 0
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Start {
     pub branch: bool,
     pub privilege: u64,
@@ -264,6 +317,15 @@ pub struct Start {
     #[cfg(feature = "context")]
     pub context: u64,
     pub address: u64,
+}
+
+impl fmt::Debug for Start {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "Start {{ branch: {:?}, privilege: {:?}, address: {:#0x} }}",
+            self.branch, self.privilege, self.address
+        ))
+    }
 }
 
 impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Start {
@@ -284,7 +346,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Start {
 }
 
 /// Format 0, sub format 1
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Trap {
     pub branch: bool,
     pub privilege: u64,
@@ -297,6 +359,14 @@ pub struct Trap {
     pub thaddr: bool,
     pub address: u64,
     pub tval: u64,
+}
+
+impl fmt::Debug for Trap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(
+            format_args!("Trap {{ branch: {:?}, privilege: {:?}, ecause: {:?}, interrupt: {:?}, thaddr: {:?}, address: {:#0x}, tval: {:?} }}",
+            self.branch, self.privilege, self.ecause, self.interrupt, self.thaddr, self.address, self.tval))
+    }
 }
 
 impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Trap {
@@ -402,7 +472,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for QualStatus {
 
 #[cfg(test)]
 mod tests {
-    use crate::decoder::payload::{Address, Branch, JumpTargetIndex, Start};
+    use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Start};
     use crate::decoder::{Decode, Decoder, DEFAULT_PACKET_BUFFER_LEN};
     use crate::{ProtocolConfiguration, DEFAULT_DECODER_CONFIG, DEFAULT_PROTOCOL_CONFIG};
 
@@ -447,7 +517,7 @@ mod tests {
         assert_eq!(branch.branch_map, 0b1011_010);
         assert_eq!(
             branch.address,
-            Some(Address {
+            Some(AddressInfo {
                 address: 0,
                 notify: false,
                 updiscon: false,
@@ -487,12 +557,12 @@ mod tests {
             DEFAULT_DECODER_CONFIG,
         );
         decoder.set_buffer(buffer);
-        let addr = Address::decode(&mut decoder).unwrap();
+        let addr = AddressInfo::decode(&mut decoder).unwrap();
         assert_eq!(addr.address, 4);
         assert_eq!(addr.notify, true);
         assert_eq!(addr.updiscon, true);
         // differential address
-        let diff_addr = Address::decode(&mut decoder).unwrap();
+        let diff_addr = AddressInfo::decode(&mut decoder).unwrap();
         assert_eq!(diff_addr.address, 4);
         assert_eq!(diff_addr.notify, false);
         assert_eq!(diff_addr.updiscon, true);
