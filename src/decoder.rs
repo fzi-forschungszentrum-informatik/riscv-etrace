@@ -34,7 +34,8 @@ pub enum DecodeError {
     WrongTraceType(TraceType),
     /// The branch format in [BranchCount] is `0b01`.
     BadBranchFmt,
-    /// The packet cannot be parsed because the next read of bits would be outside the packet buffer.
+    /// The packet cannot be parsed because the next read of bits would be outside the packet buffer
+    /// or too many bits (> 64) were requested.
     ReadTooLong {
         bit_pos: usize,
         bit_count: usize,
@@ -51,8 +52,6 @@ pub struct Decoder {
     proto_conf: ProtocolConfiguration,
     decoder_conf: DecoderConfiguration,
 }
-
-pub const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
 impl Default for Decoder {
     fn default() -> Self {
@@ -93,8 +92,13 @@ impl Decoder {
         if bit_count == 0 {
             return Ok(0);
         }
-        // TODO make Err
-        assert!(bit_count <= 64);
+        if bit_count > 64 {
+            return Err(ReadTooLong {
+                buffer_size: slice.len() * 8,
+                bit_count,
+                bit_pos: self.bit_pos,
+            })
+        }
         if bit_count + self.bit_pos > slice.len() * 8 {
             return Err(ReadTooLong {
                 buffer_size: slice.len() * 8,
@@ -206,7 +210,7 @@ impl Decoder {
 }
 
 trait Decode {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<(Self), DecodeError>
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>
     where
         Self: Sized;
 }
@@ -222,6 +226,8 @@ pub struct Packet {
 #[cfg(test)]
 mod tests {
     use crate::decoder::*;
+
+    const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
     #[test_case]
     fn read_u64() {

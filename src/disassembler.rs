@@ -2,11 +2,12 @@ use crate::disassembler::Name::*;
 use crate::disassembler::OpCode::*;
 use core::ops::Range;
 
-/// A segment of executable RISC-V code which is also used by the encoder.
+/// A segment of executable RISC-V code which is executed on the traced system.
 /// `vaddr_start` is the same address the encoder uses for instructions in this segment.
 /// No instruction in this segment has a larger address than `vaddr_end`.
 /// A single continuous slice of `[u8; vaddr_end - vaddr_start]` containing instructions lies at
 /// the address `in_mem_start` and is used internal by the disassembler.
+/// It is assumed the segments **do not overlap** with each other.
 #[derive(Copy, Clone, Debug)]
 pub struct Segment {
     pub vaddr_start: u64,

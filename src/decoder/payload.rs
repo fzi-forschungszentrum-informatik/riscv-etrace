@@ -468,8 +468,10 @@ impl Decode for QualStatus {
 #[cfg(test)]
 mod tests {
     use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Start};
-    use crate::decoder::{Decode, Decoder, DEFAULT_DECODER_CONFIG, DEFAULT_PACKET_BUFFER_LEN};
+    use crate::decoder::{Decode, Decoder, DEFAULT_DECODER_CONFIG};
     use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
+
+    const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
     #[test_case]
     fn extension_jti() {
