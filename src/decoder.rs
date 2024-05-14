@@ -2,7 +2,7 @@
 use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
-use crate::decoder::DecodeError::ReadTooLong;
+use crate::decoder::DecodeError::{ReadTooLong, WrongTraceType};
 use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
@@ -31,6 +31,7 @@ pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { 
 pub enum DecodeError {
     /// [TraceType] does not indicate an instruction trace. The unknown trace type is returned.
     UnknownTraceType(u64),
+    WrongTraceType(TraceType),
     /// The branch format in [BranchCount] is `0b01`.
     BadBranchFmt,
     /// The packet cannot be parsed because the next read of bits would be outside the packet buffer.
@@ -39,13 +40,13 @@ pub enum DecodeError {
         bit_count: usize,
         buffer_size: usize,
     },
+    DataNotSet
 }
 
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different CPUs/Cores/... may be sequentially parsed by a single decoder
 /// instance.
-pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
-    packet_data: Option<[u8; PACKET_BUFFER_LEN]>,
+pub struct Decoder {
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
     decoder_conf: DecoderConfiguration,
@@ -53,16 +54,15 @@ pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
 
 pub const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-impl Default for Decoder<DEFAULT_PACKET_BUFFER_LEN> {
+impl Default for Decoder {
     fn default() -> Self {
         Decoder::new(DEFAULT_PROTOCOL_CONFIG, DEFAULT_DECODER_CONFIG)
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
+impl Decoder {
     pub fn new(proto_conf: ProtocolConfiguration, decoder_conf: DecoderConfiguration) -> Self {
         Decoder {
-            packet_data: None,
             bit_pos: 0,
             proto_conf,
             decoder_conf,
@@ -70,41 +70,41 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
     }
 
     // TODO make private
-    pub fn set_buffer(&mut self, array: [u8; PACKET_BUFFER_LEN]) {
+    pub fn reset(&mut self) {
         self.bit_pos = 0;
-        self.packet_data = Some(array);
     }
 
-    fn read_bit(&mut self) -> Result<bool, DecodeError> {
-        if self.bit_pos >= PACKET_BUFFER_LEN * 8 {
+    fn read_bit(&mut self, slice: &[u8]) -> Result<bool, DecodeError> {
+        if self.bit_pos >= slice.len() * 8 {
             return Err(ReadTooLong {
-                buffer_size: PACKET_BUFFER_LEN * 8,
+                buffer_size: slice.len() * 8,
                 bit_count: 1,
                 bit_pos: self.bit_pos,
             });
         }
         let byte_pos = self.bit_pos / 8;
-        let mut value = self.packet_data.unwrap()[byte_pos];
+        let mut value = slice[byte_pos];
         value >>= self.bit_pos % 8;
         self.bit_pos += 1;
         Ok((value & 1u8) == 0x01)
     }
 
-    fn read(&mut self, bit_count: usize) -> Result<u64, DecodeError> {
+    fn read(&mut self, bit_count: usize, slice: &[u8]) -> Result<u64, DecodeError> {
         if bit_count == 0 {
             return Ok(0);
         }
+        // TODO make Err
         assert!(bit_count <= 64);
-        if bit_count + self.bit_pos > PACKET_BUFFER_LEN * 8 {
+        if bit_count + self.bit_pos > slice.len() * 8 {
             return Err(ReadTooLong {
-                buffer_size: PACKET_BUFFER_LEN * 8,
+                buffer_size: slice.len() * 8,
                 bit_count,
                 bit_pos: self.bit_pos,
             });
         }
         let byte_pos = self.bit_pos / 8;
         let mut value = u64::from_le_bytes(
-            self.packet_data.unwrap()[byte_pos..byte_pos + 8]
+            slice[byte_pos..byte_pos + 8]
                 .try_into()
                 .unwrap(),
         );
@@ -120,7 +120,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
             // Take 9th byte and mask MSBs that are not read
             let missing_msbs =
-                self.packet_data.unwrap()[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
+                slice[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
             let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
             // Shift MSBs into correct position in u64 and add with previously read value
             Ok(value + msbs_u64)
@@ -154,9 +154,11 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
         Ok(value & ((1u32 << bit_count) - 1))
     }*/
 
-    pub fn decode_header(&mut self) -> Result<Header, DecodeError> {
-        let header = Header::decode(self)?;
-        assert_eq!(header.trace_type, TraceType::Instruction);
+    pub fn decode_header(&mut self, slice: &[u8]) -> Result<Header, DecodeError> {
+        let header = Header::decode(self, slice)?;
+        if header.trace_type != TraceType::Instruction {
+            return Err(WrongTraceType(header.trace_type))
+        }
         // Set the bit position for payload decoding if not at the first bit of the first payload byte
         if self.bit_pos % 8 != 0 {
             self.bit_pos += 8 - (self.bit_pos % 8);
@@ -164,35 +166,35 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
         Ok(header)
     }
 
-    pub fn decode(&mut self, slice: [u8; PACKET_BUFFER_LEN]) -> Result<Packet, DecodeError> {
-        self.set_buffer(slice);
-        let header = self.decode_header()?;
+    pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
+        self.reset();
+        let header = self.decode_header(slice)?;
         if self.decoder_conf.decompress {
             // TODO decompression
             todo!("decompression");
         }
-        let format = Format::decode(self)?;
+        let format = Format::decode(self, slice)?;
 
         let payload = match format {
             Format::Ext(Ext::BranchCount) => {
-                Payload::Extension(Extension::BranchCount(BranchCount::decode(self)?))
+                Payload::Extension(Extension::BranchCount(BranchCount::decode(self, slice)?))
             }
             Format::Ext(Ext::JumpTargetIndex) => {
-                Payload::Extension(Extension::JumpTargetIndex(JumpTargetIndex::decode(self)?))
+                Payload::Extension(Extension::JumpTargetIndex(JumpTargetIndex::decode(self, slice)?))
             }
-            Format::Branch => Payload::Branch(Branch::decode(self)?),
-            Format::Addr => Payload::Address(AddressInfo::decode(self)?),
+            Format::Branch => Payload::Branch(Branch::decode(self, slice)?),
+            Format::Addr => Payload::Address(AddressInfo::decode(self, slice)?),
             Format::Sync(Sync::Start) => {
-                Payload::Synchronization(Synchronization::Start(Start::decode(self)?))
+                Payload::Synchronization(Synchronization::Start(Start::decode(self, slice)?))
             }
             Format::Sync(Sync::Trap) => {
-                Payload::Synchronization(Synchronization::Trap(Trap::decode(self)?))
+                Payload::Synchronization(Synchronization::Trap(Trap::decode(self, slice)?))
             }
             Format::Sync(Sync::Context) => {
-                Payload::Synchronization(Synchronization::Context(Context::decode(self)?))
+                Payload::Synchronization(Synchronization::Context(Context::decode(self, slice)?))
             }
             Format::Sync(Sync::Support) => {
-                Payload::Synchronization(Synchronization::Support(Support::decode(self)?))
+                Payload::Synchronization(Synchronization::Support(Support::decode(self, slice)?))
             }
         };
         Ok(Packet { header, payload })
@@ -203,8 +205,8 @@ impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
     }
 }
 
-trait Decode<const PACKET_BUFFER_LEN: usize> {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError>
+trait Decode {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<(Self), DecodeError>
     where
         Self: Sized;
 }
@@ -239,20 +241,20 @@ mod tests {
         // ...
         buffer[18] = 0b11_110000;
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
+        decoder.reset();
         // testing for bit position
-        assert_eq!(decoder.read(6).unwrap(), 0b011111);
+        assert_eq!(decoder.read(6, &buffer).unwrap(), 0b011111);
         assert_eq!(decoder.bit_pos, 6);
-        assert_eq!(decoder.read(2).unwrap(), 0b01);
+        assert_eq!(decoder.read(2, &buffer).unwrap(), 0b01);
         assert_eq!(decoder.bit_pos, 8);
-        assert_eq!(decoder.read(6).unwrap(), 0b011111);
+        assert_eq!(decoder.read(6, &buffer).unwrap(), 0b011111);
         assert_eq!(decoder.bit_pos, 14);
         // read over byte boundary
-        assert_eq!(decoder.read(10).unwrap(), 0b1001001001);
+        assert_eq!(decoder.read(10, &buffer).unwrap(), 0b1001001001);
         assert_eq!(decoder.bit_pos, 24);
-        assert_eq!(decoder.read(62).unwrap(), 0x3FFF_F0F0_F0F0_F0F1);
+        assert_eq!(decoder.read(62, &buffer).unwrap(), 0x3FFF_F0F0_F0F0_F0F1);
         assert_eq!(decoder.bit_pos, 86);
-        assert_eq!(decoder.read(64).unwrap(), 0xC000_0000_0000_0005);
+        assert_eq!(decoder.read(64, &buffer).unwrap(), 0xC000_0000_0000_0005);
         assert_eq!(decoder.bit_pos, 150);
     }
 
@@ -269,20 +271,20 @@ mod tests {
         buffer[7] = 0xFF;
         buffer[8] = 0b1;
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        assert_eq!(decoder.read(1).unwrap(), 0);
-        assert_eq!(decoder.read(64).unwrap() as i64, -24);
+        decoder.reset();
+        assert_eq!(decoder.read(1, &buffer).unwrap(), 0);
+        assert_eq!(decoder.read(64, &buffer).unwrap() as i64, -24);
     }
 
     #[test_case]
     fn read_entire_buffer() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        assert_eq!(decoder.read(64).unwrap(), u64::MAX);
-        assert_eq!(decoder.read(64).unwrap(), u64::MAX);
-        assert_eq!(decoder.read(64).unwrap(), u64::MAX);
-        assert_eq!(decoder.read(64).unwrap(), u64::MAX);
+        decoder.reset();
+        assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
+        assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
+        assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
+        assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
     }
 
     /*#[test_case]
@@ -292,15 +294,15 @@ mod tests {
         buffer[1] = 0b1111_1111;
         let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
         decoder.set_buffer(buffer);
-        assert_eq!(decoder.read_fast(2).unwrap(), 0b01);
+        assert_eq!(decoder.read_fast(2, &buffer).unwrap(), 0b01);
         assert_eq!(decoder.bit_pos, 2);
-        assert_eq!(decoder.read_fast(2).unwrap(), 0b01);
+        assert_eq!(decoder.read_fast(2, &buffer).unwrap(), 0b01);
         assert_eq!(decoder.bit_pos, 4);
-        assert_eq!(decoder.read_fast(2).unwrap(), 0b00);
+        assert_eq!(decoder.read_fast(2, &buffer).unwrap(), 0b00);
         assert_eq!(decoder.bit_pos, 6);
-        assert_eq!(decoder.read_fast(1).unwrap(), 0b1);
+        assert_eq!(decoder.read_fast(1, &buffer).unwrap(), 0b1);
         assert_eq!(decoder.bit_pos, 7);
-        assert_eq!(decoder.read_fast(8).unwrap(), 255);
+        assert_eq!(decoder.read_fast(8, &buffer).unwrap(), 255);
         assert_eq!(decoder.bit_pos, 15)
     }*/
 
@@ -308,15 +310,15 @@ mod tests {
     fn read_bool_bits() {
         let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        assert_eq!(decoder.read_bit().unwrap(), true);
-        assert_eq!(decoder.read_bit().unwrap(), false);
-        assert_eq!(decoder.read_bit().unwrap(), true);
-        assert_eq!(decoder.read_bit().unwrap(), false);
-        assert_eq!(decoder.read_bit().unwrap(), true);
-        assert_eq!(decoder.read_bit().unwrap(), false);
-        assert_eq!(decoder.read_bit().unwrap(), true);
-        assert_eq!(decoder.read_bit().unwrap(), false);
+        decoder.reset();
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
+        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
     }
 
     #[test_case]
@@ -332,9 +334,9 @@ mod tests {
         buffer[7] = 0xFF;
         buffer[8] = 0b00_111111;
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        assert_eq!(decoder.read(6).unwrap(), 0);
+        decoder.reset();
+        assert_eq!(decoder.read(6, &buffer).unwrap(), 0);
         // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
-        assert_eq!((decoder.read(63).unwrap() << 1), -248i64 as u64);
+        assert_eq!((decoder.read(63, &buffer).unwrap() << 1), -248i64 as u64);
     }
 }

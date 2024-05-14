@@ -14,7 +14,7 @@
 //! - configurable bit width of packet fields
 //! - (partially implemented) optional context for instructions
 //! - (partially implemented) optional timestamp in header
-//! - (not yet implemented) optional implicit return mode
+//! - (partially implemented) optional implicit return mode
 //!
 //! # Example
 //! ```

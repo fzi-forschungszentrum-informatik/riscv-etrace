@@ -2,19 +2,15 @@ use crate::decoder::{Decode, DecodeError, Decoder};
 use crate::tracer::TraceErrorType;
 use core::fmt;
 
-fn read_address<const PACKET_BUFFER_LEN: usize>(
-    decoder: &mut Decoder<PACKET_BUFFER_LEN>,
-) -> Result<u64, DecodeError> {
+fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, DecodeError> {
     Ok(
-        decoder.read(decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p)?
+        decoder.read(decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p, slice)?
             << decoder.proto_conf.iaddress_lsb_p,
     )
 }
 
-fn read_branches<const PACKET_BUFFER_LEN: usize>(
-    decoder: &mut Decoder<PACKET_BUFFER_LEN>,
-) -> Result<usize, DecodeError> {
-    let value = decoder.read(5)?;
+fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<usize, DecodeError> {
+    let value = decoder.read(5, slice)?;
     Ok(match value {
         0 => 0,
         1 => 1,
@@ -34,14 +30,14 @@ pub struct ContextPart {
     pub context: u64,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for ContextPart {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
+impl Decode for ContextPart {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         Ok(ContextPart {
-            privilege: decoder.read(decoder.proto_conf.privilege_width_p)?,
+            privilege: decoder.read(decoder.proto_conf.privilege_width_p, slice)?,
             #[cfg(feature = "time")]
-            time: decoder.read(decoder.proto_conf.time_width_p)?,
+            time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
             #[cfg(feature = "context")]
-            context: decoder.read(decoder.proto_conf.context_width_p)?,
+            context: decoder.read(decoder.proto_conf.context_width_p, slice)?,
         })
     }
 }
@@ -53,8 +49,8 @@ pub struct IRPayload {
 }
 
 #[cfg(feature = "IR")]
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for IRPayload {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
+impl Decode for IRPayload {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         unimplemented!()
     }
 }
@@ -135,14 +131,14 @@ impl fmt::Debug for BranchCount {
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for BranchCount {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let branch_count = decoder.read(32)? - 31;
-        let branch_fmt = BranchFmt::decode(decoder)?;
+impl Decode for BranchCount {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let branch_count = decoder.read(32, slice)? - 31;
+        let branch_fmt = BranchFmt::decode(decoder, slice)?;
         let address = if branch_fmt == BranchFmt::NoAddr {
             None
         } else {
-            Some(AddressInfo::decode(decoder)?)
+            Some(AddressInfo::decode(decoder, slice)?)
         };
         Ok(BranchCount {
             branch_count: branch_count.try_into().unwrap(),
@@ -160,9 +156,9 @@ pub enum BranchFmt {
     AddrFail,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for BranchFmt {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        match decoder.read(2)? {
+impl Decode for BranchFmt {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        match decoder.read(2, slice)? {
             0b00 => Ok(BranchFmt::NoAddr),
             0b01 => Err(DecodeError::BadBranchFmt),
             0b10 => Ok(BranchFmt::Addr),
@@ -184,18 +180,18 @@ pub struct JumpTargetIndex {
     pub irdepth: usize,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for JumpTargetIndex {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let index = decoder.read(decoder.proto_conf.cache_size_p)? as usize;
-        let branches = read_branches(decoder)?;
+impl Decode for JumpTargetIndex {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let index = decoder.read(decoder.proto_conf.cache_size_p, slice)? as usize;
+        let branches = read_branches(decoder, slice)?;
         let branch_map = if branches == 0 {
             None
         } else {
-            Some(decoder.read(branches)?.try_into().unwrap())
+            Some(decoder.read(branches, slice)?.try_into().unwrap())
         };
 
         #[cfg(feature = "IR")]
-        let ir_payload = IRPayload::decode(decoder)?;
+        let ir_payload = IRPayload::decode(decoder, slice)?;
         Ok(JumpTargetIndex {
             index,
             branches,
@@ -237,16 +233,16 @@ pub struct Branch {
     pub address: Option<AddressInfo>,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let branches = read_branches(decoder)?;
+impl Decode for Branch {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let branches = read_branches(decoder, slice)?;
         let branch_map = decoder
-            .read(if branches == 0 { 31 } else { branches })?
+            .read(if branches == 0 { 31 } else { branches }, slice)?
             .try_into()
             .unwrap();
 
         let address = if branches != 0 {
-            Some(AddressInfo::decode(decoder)?)
+            Some(AddressInfo::decode(decoder, slice)?)
         } else {
             None
         };
@@ -258,13 +254,13 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for AddressInfo {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let address = read_address(decoder)?;
-        let notify = decoder.read_bit()?;
-        let updiscon = decoder.read_bit()?;
+impl Decode for AddressInfo {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let address = read_address(decoder, slice)?;
+        let notify = decoder.read_bit(slice)?;
+        let updiscon = decoder.read_bit(slice)?;
         #[cfg(feature = "IR")]
-        let ir_payload = IRPayload::decode(decoder)?;
+        let ir_payload = IRPayload::decode(decoder, slice)?;
         Ok(AddressInfo {
             address,
             notify,
@@ -327,11 +323,11 @@ impl fmt::Debug for Start {
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Start {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let branch = decoder.read_bit()?;
-        let ctx_payload = ContextPart::decode(decoder)?;
-        let address = read_address(decoder)?;
+impl Decode for Start {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let branch = decoder.read_bit(slice)?;
+        let ctx_payload = ContextPart::decode(decoder, slice)?;
+        let address = read_address(decoder, slice)?;
         Ok(Start {
             branch,
             privilege: ctx_payload.privilege,
@@ -368,15 +364,15 @@ impl fmt::Debug for Trap {
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Trap {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let branch = decoder.read_bit()?;
-        let ctx_payload = ContextPart::decode(decoder)?;
-        let ecause = decoder.read(decoder.proto_conf.ecause_width_p)?;
-        let interrupt = decoder.read_bit()?;
-        let thaddr = decoder.read_bit()?;
-        let address = read_address(decoder)?;
-        let tval = decoder.read(decoder.proto_conf.iaddress_width_p)?;
+impl Decode for Trap {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let branch = decoder.read_bit(slice)?;
+        let ctx_payload = ContextPart::decode(decoder, slice)?;
+        let ecause = decoder.read(decoder.proto_conf.ecause_width_p, slice)?;
+        let interrupt = decoder.read_bit(slice)?;
+        let thaddr = decoder.read_bit(slice)?;
+        let address = read_address(decoder, slice)?;
+        let tval = decoder.read(decoder.proto_conf.iaddress_width_p, slice)?;
         Ok(Trap {
             branch,
             privilege: ctx_payload.privilege,
@@ -403,9 +399,9 @@ pub struct Context {
     pub context: u64,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Context {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let ctx = ContextPart::decode(decoder)?;
+impl Decode for Context {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let ctx = ContextPart::decode(decoder, slice)?;
         Ok(Context {
             privilege: ctx.privilege,
             #[cfg(feature = "time")]
@@ -428,15 +424,15 @@ pub struct Support {
     pub doptions: u64,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Support {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let ienable = decoder.read_bit()?;
-        let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n)?;
-        let qual_status = QualStatus::decode(decoder)?;
-        let ioptions = decoder.read(decoder.proto_conf.ioptions_n)?;
-        let denable = decoder.read_bit()?;
-        let dloss = decoder.read_bit()?;
-        let doptions = decoder.read(4)?;
+impl Decode for Support {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let ienable = decoder.read_bit(slice)?;
+        let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n, slice)?;
+        let qual_status = QualStatus::decode(decoder, slice)?;
+        let ioptions = decoder.read(decoder.proto_conf.ioptions_n, slice)?;
+        let denable = decoder.read_bit(slice)?;
+        let dloss = decoder.read_bit(slice)?;
+        let doptions = decoder.read(4, slice)?;
         Ok(Support {
             ienable,
             encoder_mode,
@@ -457,9 +453,9 @@ pub enum QualStatus {
     EndedNtr,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for QualStatus {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        Ok(match decoder.read(2)? {
+impl Decode for QualStatus {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        Ok(match decoder.read(2, slice)? {
             0b00 => QualStatus::NoChange,
             0b01 => QualStatus::EndedRep,
             0b10 => QualStatus::TraceLost,
@@ -493,12 +489,12 @@ mod tests {
             DEFAULT_DECODER_CONFIG,
         );
 
-        decoder.set_buffer(buffer);
-        let jti_long = JumpTargetIndex::decode(&mut decoder).unwrap();
+        decoder.reset();
+        let jti_long = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(jti_long.index, 768);
         assert_eq!(jti_long.branches, 31);
         assert_eq!(jti_long.branch_map, Some(10));
-        let jti_short = JumpTargetIndex::decode(&mut decoder).unwrap();
+        let jti_short = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(jti_short.index, 1023);
         assert_eq!(jti_short.branches, 0);
         assert_eq!(jti_short.branch_map, None);
@@ -510,8 +506,8 @@ mod tests {
         buffer[0] = 0b010_00101;
         buffer[1] = 0b0000_1011;
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        let branch = Branch::decode(&mut decoder).unwrap();
+        decoder.reset();
+        let branch = Branch::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(branch.branches, 7);
         assert_eq!(branch.branch_map, 0b1011_010);
         assert_eq!(
@@ -530,8 +526,8 @@ mod tests {
         buffer[0] = 0b000_00000;
         buffer[1] = 0b100;
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        let branch_no_addr = Branch::decode(&mut decoder).unwrap();
+        decoder.reset();
+        let branch_no_addr = Branch::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(branch_no_addr.branches, 0);
         assert_eq!(branch_no_addr.branch_map, 32);
         assert_eq!(branch_no_addr.address, None);
@@ -555,13 +551,13 @@ mod tests {
             },
             DEFAULT_DECODER_CONFIG,
         );
-        decoder.set_buffer(buffer);
-        let addr = AddressInfo::decode(&mut decoder).unwrap();
+        decoder.reset();
+        let addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(addr.address, 4);
         assert_eq!(addr.notify, true);
         assert_eq!(addr.updiscon, true);
         // differential address
-        let diff_addr = AddressInfo::decode(&mut decoder).unwrap();
+        let diff_addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(diff_addr.address, 4);
         assert_eq!(diff_addr.notify, false);
         assert_eq!(diff_addr.updiscon, true);
@@ -578,8 +574,8 @@ mod tests {
             },
             DEFAULT_DECODER_CONFIG,
         );
-        decoder.set_buffer(buffer);
-        let sync_start = Start::decode(&mut decoder).unwrap();
+        decoder.reset();
+        let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(sync_start.branch, true);
         assert_eq!(sync_start.privilege, 0b11);
         assert_eq!(sync_start.address, u64::MAX);

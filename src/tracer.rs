@@ -65,7 +65,7 @@ impl fmt::Debug for TraceErrorType {
     }
 }
 
-/// Necessary configuration used only by the [tracer](self::Tracer::new).
+/// Necessary configuration used only by the [tracer](Tracer::new).
 #[derive(Copy, Clone)]
 pub struct TraceConfiguration<'a> {
     pub segments: &'a [Segment],
@@ -73,9 +73,9 @@ pub struct TraceConfiguration<'a> {
 }
 
 /// TracerState captures all necessary information for the tracing algorithm to trace the
-/// the instruction execution.
+/// instruction execution.
 ///
-/// For specifics see either the pseudo code in the
+/// For specifics see either the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
 #[derive(Copy, Clone)]
@@ -92,6 +92,7 @@ pub struct TraceState {
     notify: bool,
     updiscon: bool,
     privilege: u64,
+    segment_idx: usize,
 }
 
 impl fmt::Debug for TraceState {
@@ -99,7 +100,8 @@ impl fmt::Debug for TraceState {
         f.write_fmt(format_args!(
             "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
         branches: {}, branch_map: {}, stop_at_last_branch: {},\
-        inferred_address: {}, start_of_trace: {}, notify: {}, updiscon: {}, privilege: {}",
+        inferred_address: {}, start_of_trace: {}, notify: {},\
+        updiscon: {}, privilege: {}, segment_idx: {}",
             self.pc,
             self.last_pc,
             self.address,
@@ -110,7 +112,8 @@ impl fmt::Debug for TraceState {
             self.start_of_trace,
             self.notify,
             self.updiscon,
-            self.privilege
+            self.privilege,
+            self.segment_idx,
         ))
     }
 }
@@ -157,6 +160,7 @@ impl<'a> Tracer<'a> {
                 notify: false,
                 updiscon: false,
                 privilege: 0,
+                segment_idx: 0,
             },
             trace_conf,
             proto_conf,
@@ -169,19 +173,27 @@ impl<'a> Tracer<'a> {
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, TraceErrorType> {
-        // TODO maybe optimize by saving index
-        let segment = match self.trace_conf.segments.iter().find(|mem| mem.contains(pc)) {
-            None => return Err(TraceErrorType::SegmentationFault(pc)),
-            Some(segment) => segment,
-        };
-        let binary = match unsafe { BinaryInstruction::read_binary(pc, segment) } {
+        if !self.trace_conf.segments[self.state.segment_idx].contains(pc) {
+            let old = self.state.segment_idx;
+            for i in 0..self.trace_conf.segments.len() {
+                if self.trace_conf.segments[i].contains(pc) {
+                    self.state.segment_idx = i;
+                    break
+                }
+            }
+            // The segment index should now point to the segment which contains the pc.
+            if old == self.state.segment_idx {
+                return Err(TraceErrorType::SegmentationFault(pc));
+            }
+        }
+        let binary = match unsafe { BinaryInstruction::read_binary(pc, &self.trace_conf.segments[self.state.segment_idx]) } {
             Ok(binary) => binary,
             Err((value, num)) => {
                 return Err(TraceErrorType::UnknownInstruction {
                     address: pc,
                     value,
                     truncated: num,
-                    segment: *segment,
+                    segment: self.trace_conf.segments[self.state.segment_idx],
                 })
             }
         };
@@ -203,7 +215,7 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    pub fn recover_status_fields(&mut self, payload: &Payload) {
+    fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address_info() {
             // TODO why "- 1"?
             let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) != 0;
@@ -336,7 +348,7 @@ impl<'a> Tracer<'a> {
                 }
                 if local_stop_here {
                     if self.state.branches > self.branch_limit()? {
-                        return Err(TraceErrorType::UnprocessedBranches(self.branch_limit()?));
+                        return Err(TraceErrorType::UnprocessedBranches(self.state.branches));
                     }
                     return Ok(());
                 }
@@ -432,7 +444,7 @@ impl<'a> Tracer<'a> {
         {
             Ok(self.state.pc)
         } else {
-            panic!("WHAT IS THIS HERE???") //Ok(self.next_pc(self.state.pc)?)
+            todo!("local_address = self.next_pc(self.pc)")
         }
     }
 }

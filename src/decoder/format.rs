@@ -15,9 +15,9 @@ pub enum Ext {
     JumpTargetIndex,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Ext {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        Ok(match decoder.read_bit()? {
+impl Decode for Ext {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        Ok(match decoder.read_bit(slice)? {
             false => BranchCount,
             true => JumpTargetIndex,
         })
@@ -32,9 +32,9 @@ pub enum Sync {
     Support,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Sync {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        Ok(match decoder.read(2)? {
+impl Decode for Sync {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        Ok(match decoder.read(2, slice)? {
             0b00 => Sync::Start,
             0b01 => Sync::Trap,
             0b10 => Sync::Context,
@@ -44,17 +44,17 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Sync {
     }
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Format {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        Ok(match decoder.read(2)? {
+impl Decode for Format {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        Ok(match decoder.read(2, slice)? {
             0b00 => {
-                let ext = Ext::decode(decoder)?;
+                let ext = Ext::decode(decoder, slice)?;
                 Format::Ext(ext)
             }
             0b01 => Format::Branch,
             0b10 => Format::Addr,
             0b11 => {
-                let sync = Sync::decode(decoder)?;
+                let sync = Sync::decode(decoder, slice)?;
                 Format::Sync(sync)
             }
             _ => unreachable!(),
@@ -71,20 +71,20 @@ mod tests {
     fn sync() {
         let buffer = [0b10_01_00_11u8; 32];
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        assert_eq!(Sync::decode(&mut decoder).unwrap(), Sync::Support);
-        assert_eq!(Sync::decode(&mut decoder).unwrap(), Sync::Start);
-        assert_eq!(Sync::decode(&mut decoder).unwrap(), Sync::Trap);
-        assert_eq!(Sync::decode(&mut decoder).unwrap(), Sync::Context);
+        decoder.reset();
+        assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Support);
+        assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Start);
+        assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Trap);
+        assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Context);
     }
 
     #[test_case]
     fn extension() {
         let buffer = [0b0010u8; 32];
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
-        assert_eq!(Ext::decode(&mut decoder).unwrap(), Ext::BranchCount);
-        assert_eq!(Ext::decode(&mut decoder).unwrap(), Ext::JumpTargetIndex);
+        decoder.reset();
+        assert_eq!(Ext::decode(&mut decoder, &buffer).unwrap(), Ext::BranchCount);
+        assert_eq!(Ext::decode(&mut decoder, &buffer).unwrap(), Ext::JumpTargetIndex);
     }
 
     #[test_case]
@@ -93,15 +93,15 @@ mod tests {
         buffer[0] = 0b1_10_01_100;
         buffer[1] = 0b00000_011;
         let mut decoder = Decoder::default();
-        decoder.set_buffer(buffer);
+        decoder.reset();
         assert_eq!(
-            Format::decode(&mut decoder).unwrap(),
+            Format::decode(&mut decoder, &buffer).unwrap(),
             Format::Ext(Ext::JumpTargetIndex),
         );
-        assert_eq!(Format::decode(&mut decoder).unwrap(), Format::Branch);
-        assert_eq!(Format::decode(&mut decoder).unwrap(), Format::Addr);
+        assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Branch);
+        assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Addr);
         assert_eq!(
-            Format::decode(&mut decoder).unwrap(),
+            Format::decode(&mut decoder, &buffer).unwrap(),
             Format::Sync(Sync::Trap)
         );
     }

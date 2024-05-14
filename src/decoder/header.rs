@@ -9,12 +9,12 @@ pub struct Header {
     pub cpu_index: usize,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Header {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        let payload_length = decoder.read(5)?;
-        let trace_type = TraceType::decode(decoder)?;
-        let has_timestamp = decoder.read_bit()?;
-        let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width)?;
+impl Decode for Header {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let payload_length = decoder.read(5, slice)?;
+        let trace_type = TraceType::decode(decoder, slice)?;
+        let has_timestamp = decoder.read_bit(slice)?;
+        let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width, slice)?;
         Ok(Header {
             payload_len: payload_length.try_into().unwrap(),
             trace_type,
@@ -29,9 +29,9 @@ pub enum TraceType {
     Instruction,
 }
 
-impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for TraceType {
-    fn decode(decoder: &mut Decoder<PACKET_BUFFER_LEN>) -> Result<Self, DecodeError> {
-        match decoder.read(2)? {
+impl Decode for TraceType {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        match decoder.read(2, slice)? {
             0b10 => Ok(TraceType::Instruction),
             unknown => Err(DecodeError::UnknownTraceType(unknown)),
         }
