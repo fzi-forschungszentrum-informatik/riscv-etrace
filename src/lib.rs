@@ -103,7 +103,7 @@ pub mod decoder;
 mod disassembler;
 pub mod tracer;
 
-pub use crate::disassembler::{Instruction, InstructionType, InstructionLength, Name, Segment};
+pub use crate::disassembler::{Instruction, InstructionLength, InstructionType, Name, Segment};
 
 /// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
 #[derive(Copy, Clone)]

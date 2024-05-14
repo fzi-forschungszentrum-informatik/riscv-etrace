@@ -132,7 +132,7 @@ pub enum InstructionType {
         /// branching (not a B or compressed B type instruction, this even excludes control flow
         /// changing instructions such as `jalr`) `is_branch` is `false`.
         is_branch: bool,
-        /// Defaults to [None]. Only parsed if the immediate is necessary for the tracing algorithm. 
+        /// Defaults to [None]. Only parsed if the immediate is necessary for the tracing algorithm.
         imm: Option<i32>,
     },
 }
