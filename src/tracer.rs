@@ -1,7 +1,7 @@
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
-use crate::disassembler::{BinaryInstruction, Instruction, InstructionLength, Segment};
+use crate::disassembler::{BinaryInstruction, Instruction, Segment};
 use crate::ProtocolConfiguration;
 use core::fmt;
 
