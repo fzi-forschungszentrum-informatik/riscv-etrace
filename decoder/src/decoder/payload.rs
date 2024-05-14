@@ -111,13 +111,14 @@ impl Payload {
     }
 }
 
+/// Format 3
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Extension {
     BranchCount(BranchCount),
     JumpTargetIndex(JumpTargetIndex),
 }
 
-// Format 0, sub format 0
+/// Format 3, sub format 0
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct BranchCount {
     pub branch_count: u32,
@@ -171,7 +172,7 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for BranchFmt {
     }
 }
 
-/// Format 0, sub format 1
+/// Format 3, sub format 1
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct JumpTargetIndex {
     pub index: usize,
@@ -207,6 +208,27 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for JumpTargetInd
     }
 }
 
+/// Format 2
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct AddressInfo {
+    pub address: u64,
+    pub notify: bool,
+    pub updiscon: bool,
+    #[cfg(feature = "IR")]
+    pub irreport: usize,
+    #[cfg(feature = "IR")]
+    pub irdepth: usize,
+}
+
+impl fmt::Debug for AddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
+            self.address, self.notify, self.updiscon
+        ))
+    }
+}
+
 /// Format 1
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Branch {
@@ -235,27 +257,6 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
             branch_map,
             address,
         })
-    }
-}
-
-/// Format 2
-#[derive(Eq, PartialEq, Copy, Clone)]
-pub struct AddressInfo {
-    pub address: u64,
-    pub notify: bool,
-    pub updiscon: bool,
-    #[cfg(feature = "IR")]
-    pub irreport: usize,
-    #[cfg(feature = "IR")]
-    pub irdepth: usize,
-}
-
-impl fmt::Debug for AddressInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_fmt(format_args!(
-            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
-            self.address, self.notify, self.updiscon
-        ))
     }
 }
 
@@ -473,8 +474,8 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for QualStatus {
 #[cfg(test)]
 mod tests {
     use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Start};
-    use crate::decoder::{Decode, Decoder, DEFAULT_PACKET_BUFFER_LEN};
-    use crate::{ProtocolConfiguration, DEFAULT_DECODER_CONFIG, DEFAULT_PROTOCOL_CONFIG};
+    use crate::decoder::{Decode, Decoder, DEFAULT_DECODER_CONFIG, DEFAULT_PACKET_BUFFER_LEN};
+    use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
 
     #[test_case]
     fn extension_jti() {

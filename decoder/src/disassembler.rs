@@ -1,7 +1,26 @@
+//!
 use crate::disassembler::Name::*;
 use crate::disassembler::OpCode::*;
-use crate::Segment;
 use core::ops::Range;
+
+/// A segment of executable RISC-V code which is also used by the encoder.
+/// `vaddr_start` is the same address the encoder uses for instructions in this segment.
+/// No instruction in this segment has a larger address than `vaddr_end`.
+/// A single continuous slice of `[u8; vaddr_end - vaddr_start]` containing instructions lies at
+/// the address `in_mem_start` and is used internal by the disassembler.
+#[derive(Copy, Clone, Debug)]
+pub struct Segment {
+    pub vaddr_start: u64,
+    pub vaddr_end: u64,
+    pub in_mem_start: u64,
+}
+
+impl Segment {
+    /// Returns true if `vaddr_start <= addr <= vaddr_end`.
+    pub fn contains(&self, addr: u64) -> bool {
+        self.vaddr_start <= addr && addr <= self.vaddr_end
+    }
+}
 
 #[derive(Copy, Clone)]
 pub enum BinaryInstruction {
@@ -51,11 +70,12 @@ impl From<u32> for OpCode {
             x if x == Jalr as u32 => Jalr,
             x if x == Jal as u32 => Jal,
             x if x == System as u32 => System,
-            _ => OpCode::Ignored,
+            _ => Ignored,
         }
     }
 }
 
+/// A list of the name of all control flow changing instructions the tracing algorithm needs to know.  
 #[allow(non_camel_case_types)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Name {
@@ -93,41 +113,113 @@ pub enum Name {
     c_ebreak,
     // I
     jalr,
-    // other
-    Ignored,
 }
 
+/// An [Instruction] can be ignored or partially parsed by the disassembler.
+/// Only information necessary for the tracing algorithm is retained.
+/// An instruction is only parsed if it is defined in [Name].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum InstructionType {
+    /// The instruction is not listed in [Name] and was not parsed.
+    Ignored,
+    Parsed {
+        /// The name is always available.
+        name: Name,
+        /// Defaults to `false`. Only parsed for [Name::jalr]. For other instructions a value of
+        /// `false` has no relation to RS1 and whether it is zero.
+        is_rs1_zero: bool,
+        /// Only true for branching and compressed branching instructions. If the instruction is not
+        /// branching (not a B or compressed B type instruction, this even excludes control flow
+        /// changing instructions such as `jalr`) `is_branch` is `false`.
+        is_branch: bool,
+        /// Defaults to [None]. Only parsed if the immediate is necessary for the tracing algorithm. 
+        imm: Option<i32>,
+    },
+}
+
+/// Represents the possible byte length of single RISC-V [Instruction].
+/// It is either [4 bytes](InstructionLength::Normal) or [2 bytes](InstructionLength::Compressed).
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum InstructionLength {
+    Compressed = 2,
+    Normal = 4,
+}
+
+/// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
+/// instructions which are parsed) additional fields and information about the instruction such as
+/// the [immediate](InstructionType::Parsed) may be available. For an exhaustive list of parameters
+/// see [InstructionType::Parsed].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Instruction {
-    pub name: Name,
-    pub is_rs1_zero: bool,
-    pub size: u32,
-    pub is_branch: bool,
-    pub imm: Option<i32>,
+    pub size: InstructionLength,
+    pub insn_type: InstructionType,
 }
 
 impl Instruction {
+    pub fn name(&self) -> Option<Name> {
+        if let InstructionType::Parsed { name, .. } = self.insn_type {
+            Some(name)
+        } else {
+            None
+        }
+    }
+
+    pub fn imm(&self) -> Option<i32> {
+        if let InstructionType::Parsed { imm, .. } = self.insn_type {
+            imm
+        } else {
+            None
+        }
+    }
+
+    pub fn is_branch(&self) -> bool {
+        if let InstructionType::Parsed { is_branch, .. } = self.insn_type {
+            is_branch
+        } else {
+            false
+        }
+    }
+
     pub fn is_inferable_jump(&self) -> bool {
-        matches!(self.name, jal)
-            || matches!(self.name, c_jal)
-            || matches!(self.name, c_j)
-            || (matches!(self.name, jalr) && self.is_rs1_zero)
+        if let InstructionType::Parsed {
+            name, is_rs1_zero, ..
+        } = self.insn_type
+        {
+            name == jal || name == c_jal || name == c_j || (name == jalr && is_rs1_zero)
+        } else {
+            false
+        }
     }
 
     pub fn is_uninferable_jump(&self) -> bool {
-        self.name == c_jalr || self.name == c_jr || (matches!(self.name, jalr) && !self.is_rs1_zero)
+        if let InstructionType::Parsed {
+            name, is_rs1_zero, ..
+        } = self.insn_type
+        {
+            name == c_jalr || name == c_jr || (name == jalr && !is_rs1_zero)
+        } else {
+            false
+        }
     }
 
     pub fn is_return_from_trap(&self) -> bool {
-        self.name == sret || self.name == mret || self.name == dret
+        if let InstructionType::Parsed { name, .. } = self.insn_type {
+            name == sret || name == mret || name == dret
+        } else {
+            false
+        }
     }
 
     pub fn is_uninferable_discon(&self) -> bool {
-        Self::is_uninferable_jump(self)
-            || Self::is_return_from_trap(self)
-            || self.name == ecall
-            || self.name == ebreak
-            || self.name == c_ebreak
+        if let InstructionType::Parsed { name, .. } = self.insn_type {
+            self.is_uninferable_jump()
+                || self.is_return_from_trap()
+                || name == ecall
+                || name == ebreak
+                || name == c_ebreak
+        } else {
+            false
+        }
     }
 
     pub fn from_binary(bin_instr: &BinaryInstruction) -> Self {
@@ -158,8 +250,13 @@ impl Instruction {
     }
 
     fn parse_bin_instr(num: u32) -> Self {
-        let mut is_rs1_zero = false;
+        let size = InstructionLength::Normal;
+        let ignored = Instruction {
+            size,
+            insn_type: InstructionType::Ignored,
+        };
 
+        let mut is_rs1_zero = false;
         let opcode = OpCode::from(num);
 
         let funct3 = Self::funct3(num);
@@ -168,7 +265,7 @@ impl Instruction {
             MiscMem => match funct3 {
                 0b000 => fence,
                 0b001 => fence_i,
-                _ => Name::Ignored,
+                _ => return ignored,
             },
             Branch => match funct3 {
                 0b000 => beq,
@@ -177,7 +274,7 @@ impl Instruction {
                 0b101 => bge,
                 0b110 => bltu,
                 0b111 => bgeu,
-                _ => Name::Ignored,
+                _ => return ignored,
             },
             Jalr => {
                 is_rs1_zero = 0 == Self::rs1(num);
@@ -187,7 +284,7 @@ impl Instruction {
             System => {
                 let rd = Self::rd(num);
                 if rd != 0 || funct3 != 0 {
-                    Name::Ignored
+                    return ignored;
                 } else {
                     let rs1 = Self::rs1(num);
                     let funct7 = Self::funct7(num);
@@ -205,18 +302,20 @@ impl Instruction {
                     } else if funct7 == 0b0001001 {
                         sfence_vma
                     } else {
-                        Name::Ignored
+                        return ignored;
                     }
                 }
             }
-            OpCode::Ignored => Name::Ignored,
+            Ignored => return ignored,
         };
         Instruction {
-            name,
-            is_rs1_zero,
-            size: 4,
-            is_branch: opcode == Branch,
-            imm: Self::calc_imm(name, is_rs1_zero, opcode == Branch, num),
+            size,
+            insn_type: InstructionType::Parsed {
+                name,
+                is_rs1_zero,
+                is_branch: opcode == Branch,
+                imm: Self::calc_imm(name, is_rs1_zero, opcode == Branch, num),
+            },
         }
     }
 
@@ -241,6 +340,12 @@ impl Instruction {
     }
 
     fn parse_compressed_instr(num: u16) -> Self {
+        let size = InstructionLength::Compressed;
+        let ignored = Instruction {
+            size,
+            insn_type: InstructionType::Ignored,
+        };
+
         let op = Self::c_op(num);
         let funct3 = Self::c_funct3(num);
 
@@ -250,14 +355,14 @@ impl Instruction {
                 0b101 => c_j,
                 0b110 => c_beqz,
                 0b111 => c_bnez,
-                _ => Name::Ignored,
+                _ => return ignored,
             },
             0b10 => {
                 let bit12 = Self::bit12(num);
                 let rs1 = Self::c_rs1(num);
                 let rs2 = Self::c_rs2(num);
                 if funct3 != 0b100 {
-                    Name::Ignored
+                    return ignored;
                 } else if !bit12 && rs1 != 0 && rs2 == 0 {
                     c_jr
                 } else if bit12 && rs1 == 0 && rs2 == 0 {
@@ -265,18 +370,20 @@ impl Instruction {
                 } else if bit12 && rs1 != 0 && rs2 == 0 {
                     c_jalr
                 } else {
-                    Name::Ignored
+                    return ignored;
                 }
             }
-            _ => Name::Ignored,
+            _ => return ignored,
         };
         let is_branch = name == c_beqz || name == c_bnez;
         Instruction {
-            is_branch,
-            size: 2,
-            is_rs1_zero: false,
-            name,
-            imm: Self::calc_compressed_imm(name, is_branch, num),
+            size,
+            insn_type: InstructionType::Parsed {
+                is_branch,
+                is_rs1_zero: false,
+                name,
+                imm: Self::calc_compressed_imm(name, is_branch, num),
+            },
         }
     }
 
@@ -406,22 +513,19 @@ mod tests {
     use crate::disassembler::BinaryInstruction::{Bit16, Bit32};
     use crate::disassembler::*;
 
-    const DEFAULT_INSTR: Instruction = Instruction {
-        name: Name::mret,
-        is_rs1_zero: false,
-        size: 4,
-        is_branch: false,
-        imm: None,
-    };
-
     #[test_case]
     fn mret() {
         let bin = Bit32(0x30200073);
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::mret,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::mret,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         )
     }
@@ -432,8 +536,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::sret,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::sret,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         );
     }
@@ -444,8 +553,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::fence,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::fence,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         );
     }
@@ -456,8 +570,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::sfence_vma,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::sfence_vma,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         )
     }
@@ -468,8 +587,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::wfi,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::wfi,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         )
     }
@@ -480,8 +604,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::ecall,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::ecall,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         )
     }
@@ -492,8 +621,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::ebreak,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::ebreak,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         )
     }
@@ -504,8 +638,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::fence_i,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::fence_i,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                    imm: None,
+                }
             }
         )
     }
@@ -516,10 +655,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::beq,
-                is_branch: true,
-                imm: Some(-3402),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::beq,
+                    is_branch: true,
+                    imm: Some(-3402),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -530,10 +672,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::bne,
-                is_branch: true,
-                imm: Some(-2222),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::bne,
+                    is_branch: true,
+                    imm: Some(-2222),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -544,10 +689,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::blt,
-                is_branch: true,
-                imm: Some(12),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::blt,
+                    is_branch: true,
+                    imm: Some(12),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -558,10 +706,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::bge,
-                is_branch: true,
-                imm: Some(-1954),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::bge,
+                    is_branch: true,
+                    imm: Some(-1954),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -572,10 +723,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::bltu,
-                is_branch: true,
-                imm: Some(4094),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::bltu,
+                    is_branch: true,
+                    imm: Some(4094),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -586,10 +740,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::bgeu,
-                is_branch: true,
-                imm: Some(0),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::bgeu,
+                    is_branch: true,
+                    imm: Some(0),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -600,11 +757,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::c_beqz,
-                is_branch: true,
-                size: 2,
-                imm: Some(178),
-                is_rs1_zero: false,
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: Name::c_beqz,
+                    is_branch: true,
+                    imm: Some(178),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -615,11 +774,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: c_bnez,
-                is_branch: true,
-                imm: Some(170),
-                size: 2,
-                is_rs1_zero: false
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: c_bnez,
+                    is_branch: true,
+                    imm: Some(170),
+                    is_rs1_zero: false
+                }
             }
         )
     }
@@ -630,10 +791,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::jal,
-                is_branch: false,
-                imm: Some(55554),
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::jal,
+                    is_branch: false,
+                    imm: Some(55554),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -644,11 +808,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::c_j,
-                is_branch: false,
-                imm: Some(1364),
-                is_rs1_zero: false,
-                size: 2
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: Name::c_j,
+                    is_branch: false,
+                    imm: Some(1364),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -659,11 +825,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::c_jal,
-                is_branch: false,
-                imm: Some(-772),
-                is_rs1_zero: false,
-                size: 2
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: Name::c_jal,
+                    is_branch: false,
+                    imm: Some(-772),
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -674,11 +842,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::c_jr,
-                is_branch: false,
-                imm: None,
-                is_rs1_zero: false,
-                size: 2
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: Name::c_jr,
+                    is_branch: false,
+                    imm: None,
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -689,11 +859,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::c_jalr,
-                is_branch: false,
-                imm: None,
-                is_rs1_zero: false,
-                size: 2
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: Name::c_jalr,
+                    is_branch: false,
+                    imm: None,
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -704,11 +876,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::c_ebreak,
-                is_branch: false,
-                imm: None,
-                is_rs1_zero: false,
-                size: 2
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: Name::c_ebreak,
+                    is_branch: false,
+                    imm: None,
+                    is_rs1_zero: false,
+                }
             }
         )
     }
@@ -719,9 +893,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::jalr,
-                imm: None,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::jalr,
+                    imm: None,
+                    is_rs1_zero: false,
+                    is_branch: false,
+                }
             }
         )
     }
@@ -732,10 +910,13 @@ mod tests {
         assert_eq!(
             Instruction::from_binary(&bin),
             Instruction {
-                name: Name::jalr,
-                imm: Some(1633),
-                is_rs1_zero: true,
-                ..DEFAULT_INSTR
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: Name::jalr,
+                    imm: Some(1633),
+                    is_rs1_zero: true,
+                    is_branch: false,
+                }
             }
         )
     }

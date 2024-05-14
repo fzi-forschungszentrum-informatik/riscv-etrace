@@ -3,9 +3,7 @@ use crate::decoder::format::{Ext, Format, Sync};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
 use crate::decoder::DecodeError::ReadTooLong;
-use crate::{
-    DecoderConfiguration, ProtocolConfiguration, DEFAULT_DECODER_CONFIG, DEFAULT_PROTOCOL_CONFIG,
-};
+use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
 
@@ -20,6 +18,32 @@ const CONTEXT: u64 = todo!();
 #[cfg(feature = "IR")]
 const IR: u64 = todo!();
 
+/// Defines the decoder specific configuration. Used only be the [decoder](self).
+#[derive(Copy, Clone)]
+pub struct DecoderConfiguration {
+    pub decompress: bool,
+}
+
+pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: false };
+
+/// A list of possible errors during decoding of a single packet.
+#[derive(Debug)]
+pub enum DecodeError {
+    /// [TraceType] does not indicate an instruction trace. The unknown trace type is returned.
+    UnknownTraceType(u64),
+    /// The branch format in [BranchCount] is `0b01`.
+    BadBranchFmt,
+    /// The packet cannot be parsed because the next read of bits would be outside the packet buffer.
+    ReadTooLong {
+        bit_pos: usize,
+        bit_count: usize,
+        buffer_size: usize,
+    },
+}
+
+/// A decoder for packets. The decoder is stateless in respect to a single packet parse.
+/// Multiple packets from different CPUs/Cores/... may be sequentially parsed by a single decoder
+/// instance.
 pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
     packet_data: Option<[u8; PACKET_BUFFER_LEN]>,
     bit_pos: usize,
@@ -27,28 +51,12 @@ pub struct Decoder<const PACKET_BUFFER_LEN: usize> {
     decoder_conf: DecoderConfiguration,
 }
 
-// TODO TraceConfiguration checking
-// 0 <addr width < 65
-// cpu index < 2^5
-// CPU_COUNT <= 2^cpu_index_width
-
 pub const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
 impl Default for Decoder<DEFAULT_PACKET_BUFFER_LEN> {
     fn default() -> Self {
         Decoder::new(DEFAULT_PROTOCOL_CONFIG, DEFAULT_DECODER_CONFIG)
     }
-}
-
-#[derive(Debug)]
-pub enum DecodeError {
-    UnknownTraceType(u64),
-    BadBranchFmt,
-    ReadTooLong {
-        bit_pos: usize,
-        bit_count: usize,
-        buffer_size: usize,
-    },
 }
 
 impl<const PACKET_BUFFER_LEN: usize> Decoder<PACKET_BUFFER_LEN> {
@@ -201,6 +209,8 @@ trait Decode<const PACKET_BUFFER_LEN: usize> {
         Self: Sized;
 }
 
+/// A single protocol packet emitted by the encoder.
+/// Each packet consists of a single header and a payload.
 #[derive(Debug)]
 pub struct Packet {
     pub header: Header,

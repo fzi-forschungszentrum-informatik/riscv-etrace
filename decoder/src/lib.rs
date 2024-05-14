@@ -20,11 +20,11 @@
 //! ```
 //! extern crate decoder;
 //!
-//! use decoder::{DecoderConfiguration, DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration, TraceConfiguration};
-//! use decoder::decoder::{Decoder, DEFAULT_PACKET_BUFFER_LEN};
-//! use decoder::disassembler::Instruction;
-//! use decoder::segment::Segment;
-//! use decoder::tracer::Tracer;
+//! use decoder::{DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration};
+//! use decoder::decoder::{Decoder, DecoderConfiguration, DEFAULT_PACKET_BUFFER_LEN};
+//! use decoder::Instruction;
+//! use decoder::Segment;
+//! use decoder::tracer::{TraceConfiguration, Tracer};
 //!
 //! // Create your segments from your ELF files.
 //! let mut segments: Vec<Segment> = Vec::new();
@@ -94,17 +94,18 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use crate::segment::Segment;
 #[cfg(test)]
 use core::panic::PanicInfo;
 #[cfg(test)]
 use riscv_rt::entry;
-
 pub mod decoder;
-pub mod disassembler;
-pub mod segment;
+
+mod disassembler;
 pub mod tracer;
 
+pub use crate::disassembler::{Instruction, InstructionType, InstructionLength, Name, Segment};
+
+/// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
 #[derive(Copy, Clone)]
 pub struct ProtocolConfiguration {
     #[cfg(feature = "context")]
@@ -121,17 +122,6 @@ pub struct ProtocolConfiguration {
     pub ioptions_n: usize,
 }
 
-#[derive(Copy, Clone)]
-pub struct DecoderConfiguration {
-    pub decompress: bool,
-}
-
-#[derive(Copy, Clone)]
-pub struct TraceConfiguration<'a> {
-    pub segments: &'a [Segment],
-    pub full_address: bool,
-}
-
 pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration {
     #[cfg(feature = "context")]
     context_width_p: 0,
@@ -146,8 +136,6 @@ pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration
     encoder_mode_n: 1,
     ioptions_n: 5,
 };
-
-pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: false };
 
 #[cfg(test)]
 #[entry]

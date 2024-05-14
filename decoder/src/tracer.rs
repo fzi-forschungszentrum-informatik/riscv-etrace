@@ -1,9 +1,8 @@
-//! Implements the instruction tracing algorithm version 2.0.1
+//! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
-use crate::disassembler::{BinaryInstruction, Instruction};
-use crate::segment::Segment;
-use crate::{ProtocolConfiguration, TraceConfiguration};
+use crate::disassembler::{BinaryInstruction, Instruction, InstructionLength, Segment};
+use crate::ProtocolConfiguration;
 use core::fmt;
 
 /// [TraceError] captures the tracing algorithm error and adds the current [TraceState]
@@ -65,6 +64,13 @@ impl fmt::Debug for TraceErrorType {
     }
 }
 
+/// Necessary configuration used only by the [tracer](self::Tracer::new).
+#[derive(Copy, Clone)]
+pub struct TraceConfiguration<'a> {
+    pub segments: &'a [Segment],
+    pub full_address: bool,
+}
+
 /// TracerState captures all necessary information for the tracing algorithm to trace the
 /// the instruction execution.
 ///
@@ -77,6 +83,7 @@ pub struct TraceState {
     last_pc: u64,
     address: u64,
     branches: usize,
+    /// u32 because there can be a maximum of 31 branches.
     branch_map: u32,
     stop_at_last_branch: bool,
     inferred_address: bool,
@@ -238,7 +245,7 @@ impl<'a> Tracer<'a> {
                 self.state.branches = 0;
                 self.state.branch_map = 0;
             }
-            if self.get_instr(self.state.address)?.is_branch {
+            if self.get_instr(self.state.address)?.is_branch() {
                 let branch = sync.get_branch()?;
                 self.state.branch_map |= branch << self.state.branches;
                 self.state.branches += 1;
@@ -303,7 +310,7 @@ impl<'a> Tracer<'a> {
     }
 
     fn branch_limit(&mut self) -> Result<usize, TraceErrorType> {
-        Ok(self.get_instr(self.state.pc)?.is_branch as usize)
+        Ok(self.get_instr(self.state.pc)?.is_branch() as usize)
     }
 
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
@@ -320,7 +327,7 @@ impl<'a> Tracer<'a> {
                 local_stop_here = self.next_pc(self.state.address)?;
                 (self.report_pc)(ReportReason::NextPcAddr, self.state.pc);
                 if self.state.branches == 1
-                    && self.get_instr(self.state.pc)?.is_branch
+                    && self.get_instr(self.state.pc)?.is_branch()
                     && self.state.stop_at_last_branch
                 {
                     self.state.stop_at_last_branch = true;
@@ -369,7 +376,7 @@ impl<'a> Tracer<'a> {
 
         if local_instr.is_inferable_jump() {
             let imm = local_instr
-                .imm
+                .imm()
                 .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
             self.incr_pc(imm);
             if imm == 0 {
@@ -383,7 +390,7 @@ impl<'a> Tracer<'a> {
             local_stop_here = true;
         } else if self.is_taken_branch(&local_instr)? {
             let imm = local_instr
-                .imm
+                .imm()
                 .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
             self.incr_pc(imm);
             if imm == 0 {
@@ -399,7 +406,7 @@ impl<'a> Tracer<'a> {
     }
 
     fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceErrorType> {
-        if !instr.is_branch {
+        if !instr.is_branch() {
             return Ok(false);
         }
         if self.state.branches == 0 {
@@ -417,9 +424,10 @@ impl<'a> Tracer<'a> {
 
         if local_instr.is_uninferable_discon() && trap.thaddr {
             Ok(trap.address)
-        } else if local_instr.name == ecall
-            || local_instr.name == ebreak
-            || local_instr.name == c_ebreak
+        } else if local_instr
+            .name()
+            .filter(|name| *name == ecall || *name == ebreak || *name == c_ebreak)
+            .is_some()
         {
             Ok(self.state.pc)
         } else {

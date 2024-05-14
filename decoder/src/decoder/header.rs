@@ -2,6 +2,7 @@ use crate::decoder::{Decode, DecodeError, Decoder};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Header {
+    /// [Payload](crate::decoder::Payload) length in bytes.
     pub payload_len: u8,
     pub trace_type: TraceType,
     pub has_timestamp: bool,
