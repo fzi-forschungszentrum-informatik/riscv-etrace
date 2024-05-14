@@ -13,6 +13,7 @@ pub struct TraceError {
     pub error_type: TraceErrorType,
 }
 
+/// Possible errors which can occur during the tracing algorithm.
 pub enum TraceErrorType {
     /// The PC cannot be set to the address, as the address is 0.
     AddressIsZero,
@@ -27,9 +28,9 @@ pub enum TraceErrorType {
     UnexpectedUninferableDiscon,
     /// The tracer cannot resolve the branch because all branches have been processed.
     UnresolvableBranch,
-    /// The processed packet has no branching information.
+    /// The current synchronization packet has no branching information.
     WrongGetBranchType(Synchronization),
-    /// The processed packet has no privilege information.
+    /// The current packet has no privilege information.
     WrongGetPrivilegeType,
     /// The instruction at the `address` cannot be parsed.
     UnknownInstruction {
@@ -94,7 +95,7 @@ pub struct TraceState {
 }
 
 impl fmt::Debug for TraceState {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_fmt(format_args!(
             "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
         branches: {}, branch_map: {}, stop_at_last_branch: {},\

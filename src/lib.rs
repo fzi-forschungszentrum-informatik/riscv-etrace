@@ -18,13 +18,13 @@
 //!
 //! # Example
 //! ```
-//! extern crate decoder;
+//! extern crate riscv_etrace;
 //!
-//! use decoder::{DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration};
-//! use decoder::decoder::{Decoder, DecoderConfiguration, DEFAULT_PACKET_BUFFER_LEN};
-//! use decoder::Instruction;
-//! use decoder::Segment;
-//! use decoder::tracer::{TraceConfiguration, Tracer};
+//! use riscv_etrace::{DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration};
+//! use riscv_etrace::decoder::{Decoder, DecoderConfiguration, DEFAULT_PACKET_BUFFER_LEN};
+//! use riscv_etrace::Instruction;
+//! use riscv_etrace::Segment;
+//! use riscv_etrace::tracer::{TraceConfiguration, Tracer};
 //!
 //! // Create your segments from your ELF files.
 //! let mut segments: Vec<Segment> = Vec::new();

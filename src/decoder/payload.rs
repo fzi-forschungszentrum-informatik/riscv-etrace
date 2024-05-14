@@ -250,8 +250,6 @@ impl<const PACKET_BUFFER_LEN: usize> Decode<PACKET_BUFFER_LEN> for Branch {
         } else {
             None
         };
-        // FIXME is this correct or buggy?
-        // assert!(address.is_some() && address.unwrap().address != 0);
         Ok(Branch {
             branches,
             branch_map,
