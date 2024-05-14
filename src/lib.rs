@@ -78,7 +78,7 @@
 //! // Assuming we have a slice given with a packet already written in binary in it:
 //! # let packet_vec: Vec<u8> = Vec::new();
 //! #
-//! # let packet_slice: [u8; DEFAULT_PACKET_BUFFER_LEN] = [0; DEFAULT_PACKET_BUFFER_LEN];
+//! # let packet_slice = packet_vec.as_slice();
 //! let packet = decoder.decode(packet_slice).unwrap();
 //! println!("{:?}", packet);
 //!
