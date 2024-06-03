@@ -8,7 +8,7 @@
 //! See [decoder] for the implementation of the packet decoder and [tracer] for the tracing
 //! algorithm.
 //!
-//! # ETrace features
+//! # `ETrace` features
 //! - instruction tracing
 //! - delta/full address mode
 //! - configurable bit width of packet fields
@@ -94,6 +94,7 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![warn(clippy::cast_possible_truncation)]
 
 #[cfg(test)]
 use core::panic::PanicInfo;

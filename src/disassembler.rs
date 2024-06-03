@@ -435,24 +435,23 @@ impl Instruction {
                 c_lui => {
                     let imm = Self::calc_imm_cu(num);
                     if imm == 0 {
-                        todo!("imm should not be zero")
+                        todo!("riscv spec: imm should not be zero for c.lui")
                     } else {
                         Some(imm)
                     }
                 }
-                c_j => Some(Self::calc_imm_cj(num)),
-                c_jal => Some(Self::calc_imm_cj(num)),
+                c_j | c_jal => Some(Self::calc_imm_cj(num)),
                 _ => None,
             }
         }
     }
 
     fn mask_u32(r: &Range<i32>) -> u32 {
-        ((1u32 << r.len()) - 1) << r.start
+        ((1_u32 << r.len()) - 1) << r.start
     }
 
     fn mask_u16(r: &Range<i32>) -> u16 {
-        ((1u16 << r.len()) - 1) << r.start
+        ((1_u16 << r.len()) - 1) << r.start
     }
 
     fn get_bits_u32(source: u32, r: Range<i32>, start: i32) -> u32 {

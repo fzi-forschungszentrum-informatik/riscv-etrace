@@ -6,7 +6,7 @@ use crate::ProtocolConfiguration;
 use core::fmt;
 
 /// [TraceError] captures the tracing algorithm error and adds the current [TraceState]
-/// in which the underlying error occured.
+/// in which the underlying error occurred.
 #[derive(Debug)]
 pub struct TraceError {
     pub state: TraceState,
@@ -50,17 +50,17 @@ impl fmt::Debug for TraceErrorType {
             TraceErrorType::AddressIsZero => f.write_str("AddressIsZero"),
             TraceErrorType::StartOfTrace => f.write_str("StartOfTrace"),
             TraceErrorType::UnprocessedBranches(count) => {
-                f.write_fmt(format_args!("UnprocessedBranches({})", count))
+                f.write_fmt(format_args!("UnprocessedBranches({count})"))
             }
             TraceErrorType::ImmediateIsNone(instr) => {
-                f.write_fmt(format_args!("ImmediateIsNone({:?})", instr))
+                f.write_fmt(format_args!("ImmediateIsNone({instr:?})"))
             }
             TraceErrorType::UnexpectedUninferableDiscon => {
                 f.write_str("UnexpectedUninferableDiscon")
             }
             TraceErrorType::UnresolvableBranch => f.write_str("UnresolvableBranch"),
             TraceErrorType::WrongGetBranchType(sync) => {
-                f.write_fmt(format_args!("WrongGetBranchType({:?})", sync))
+                f.write_fmt(format_args!("WrongGetBranchType({sync:?})"))
             }
             TraceErrorType::WrongGetPrivilegeType => f.write_str("WrongGetPrivilegeType"),
             TraceErrorType::UnknownInstruction {
@@ -75,7 +75,7 @@ impl fmt::Debug for TraceErrorType {
                 address, bytes, segment_idx, vaddr_start, vaddr_end
             )),
             TraceErrorType::SegmentationFault(addr) => {
-                f.write_fmt(format_args!("SegmentationFault({:#0x})", addr))
+                f.write_fmt(format_args!("SegmentationFault({addr:#0x})"))
             }
         }
     }
@@ -90,7 +90,7 @@ pub struct TraceConfiguration<'a> {
     pub full_address: bool,
 }
 
-/// TracerState captures all necessary information for the tracing algorithm to trace the
+/// `TracerState` captures all necessary information for the tracing algorithm to trace the
 /// instruction execution.
 ///
 /// For specifics see the pseudocode in the
@@ -285,7 +285,7 @@ impl<'a> Tracer<'a> {
                 self.state.branches += 1;
             }
             if matches!(sync, Synchronization::Start(_)) && !self.state.start_of_trace {
-                self.follow_execution_path(payload)?
+                return self.follow_execution_path(payload);
             } else {
                 self.state.pc = self.state.address;
                 (self.report_pc)(ReportReason::CopyStateAddr, self.state.pc);
@@ -431,7 +431,7 @@ impl<'a> Tracer<'a> {
                 local_stop_here = true;
             }
         } else {
-            self.incr_pc(local_instr.size as i32)
+            self.incr_pc(local_instr.size as i32);
         }
 
         self.state.last_pc = local_this_pc;

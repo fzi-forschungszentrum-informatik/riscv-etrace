@@ -84,7 +84,7 @@ impl Decoder {
         let mut value = slice[byte_pos];
         value >>= self.bit_pos % 8;
         self.bit_pos += 1;
-        Ok((value & 1u8) == 0x01)
+        Ok((value & 1_u8) == 0x01)
     }
 
     fn read(&mut self, bit_count: usize, slice: &[u8]) -> Result<u64, DecodeError> {
@@ -115,7 +115,7 @@ impl Decoder {
         value >>= self.bit_pos % 8;
         // Zero out everything except 'bit_count' LSBs if bit_count != 64.
         if bit_count < 64 {
-            value &= (1u64 << bit_count) - 1;
+            value &= (1_u64 << bit_count) - 1;
         }
         self.bit_pos += bit_count;
         // Check if we need to read into the 9th byte because of an unaligned read

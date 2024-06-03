@@ -17,9 +17,10 @@ pub enum Ext {
 
 impl Decode for Ext {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        Ok(match decoder.read_bit(slice)? {
-            false => BranchCount,
-            true => JumpTargetIndex,
+        Ok(if decoder.read_bit(slice)? {
+            JumpTargetIndex
+        } else {
+            BranchCount
         })
     }
 }
@@ -69,7 +70,7 @@ mod tests {
 
     #[test_case]
     fn sync() {
-        let buffer = [0b10_01_00_11u8; 32];
+        let buffer = [0b10_01_00_11_u8; 32];
         let mut decoder = Decoder::default();
         decoder.reset();
         assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Support);
@@ -83,8 +84,14 @@ mod tests {
         let buffer = [0b0010u8; 32];
         let mut decoder = Decoder::default();
         decoder.reset();
-        assert_eq!(Ext::decode(&mut decoder, &buffer).unwrap(), Ext::BranchCount);
-        assert_eq!(Ext::decode(&mut decoder, &buffer).unwrap(), Ext::JumpTargetIndex);
+        assert_eq!(
+            Ext::decode(&mut decoder, &buffer).unwrap(),
+            Ext::BranchCount
+        );
+        assert_eq!(
+            Ext::decode(&mut decoder, &buffer).unwrap(),
+            Ext::JumpTargetIndex
+        );
     }
 
     #[test_case]
@@ -98,7 +105,10 @@ mod tests {
             Format::decode(&mut decoder, &buffer).unwrap(),
             Format::Ext(Ext::JumpTargetIndex),
         );
-        assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Branch);
+        assert_eq!(
+            Format::decode(&mut decoder, &buffer).unwrap(),
+            Format::Branch
+        );
         assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Addr);
         assert_eq!(
             Format::decode(&mut decoder, &buffer).unwrap(),
