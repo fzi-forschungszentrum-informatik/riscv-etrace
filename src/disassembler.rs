@@ -5,18 +5,28 @@ use core::ops::Range;
 /// A segment of executable RISC-V code which is executed on the traced system.
 /// `vaddr_start` is the same address the encoder uses for instructions in this segment.
 /// No instruction in this segment has a larger address than `vaddr_end`.
-/// A single continuous slice of `[u8; vaddr_end - vaddr_start]` containing instructions lies at
-/// the address `in_mem_start` and is used internal by the disassembler.
-/// It is assumed the segments **do not overlap** with each other.
+/// `mem` is a slice of `[u8; vaddr_end - vaddr_start]` bytes containing the instructions.
 #[derive(Copy, Clone, Debug)]
-pub struct Segment {
+pub struct Segment<'a> {
     pub vaddr_start: u64,
     pub vaddr_end: u64,
-    // TODO rework with slices
-    pub in_mem_start: u64,
+    mem: &'a [u8],
 }
 
-impl Segment {
+impl<'a> Segment<'a> {
+    pub fn new(vaddr_start: u64, vaddr_end: u64, mem: &'a [u8]) -> Self {
+        assert_eq!(
+            (vaddr_end - vaddr_start) as usize,
+            mem.len(),
+            "vaddr length does not equal memory slice length"
+        );
+        Segment {
+            vaddr_start,
+            vaddr_end,
+            mem,
+        }
+    }
+
     /// Returns true if `vaddr_start <= addr <= vaddr_end`.
     pub fn contains(&self, addr: u64) -> bool {
         self.vaddr_start <= addr && addr <= self.vaddr_end
@@ -30,24 +40,19 @@ pub enum BinaryInstruction {
 }
 
 impl BinaryInstruction {
-    /// # Safety
-    ///
-    /// This should be safe as long as the segments are initialized correctly.
-    // TODO make safe
-    pub unsafe fn read_binary(address: u64, segment: &Segment) -> Result<Self, (u64, u32)> {
-        const MASK_32_BITS: u64 = 0xFFFFFFFF;
-        let pointer = (address - segment.vaddr_start + segment.in_mem_start) as *const u64;
-        let value = *pointer;
-        let num = u32::try_from(MASK_32_BITS & value).unwrap();
-        let bytes = num.to_le_bytes();
+    pub fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
+        let pointer = address - segment.vaddr_start;
+        let bytes = &segment.mem[pointer as usize..pointer as usize + 4];
         if (bytes[0] & 0x3) != 0x3 {
-            Ok(BinaryInstruction::Bit16(u16::from_be_bytes(
+            Ok(BinaryInstruction::Bit16(u16::from_le_bytes(
                 bytes[0..2].try_into().unwrap(),
             )))
         } else if (bytes[0] & 0x1F) >= 0x3 && (bytes[0] & 0x1F) < 0x1F {
-            Ok(BinaryInstruction::Bit32(num))
+            Ok(BinaryInstruction::Bit32(u32::from_le_bytes(
+                bytes.try_into().unwrap(),
+            )))
         } else {
-            Err((value, num))
+            Err(bytes.try_into().unwrap())
         }
     }
 }
@@ -370,9 +375,9 @@ impl Instruction {
                     if rd != 0 || rd != 2 {
                         c_lui
                     } else {
-                        return ignored
+                        return ignored;
                     }
-                },
+                }
                 0b101 => c_j,
                 0b110 => c_beqz,
                 0b111 => c_bnez,
@@ -434,7 +439,7 @@ impl Instruction {
                     } else {
                         Some(imm)
                     }
-                },
+                }
                 c_j => Some(Self::calc_imm_cj(num)),
                 c_jal => Some(Self::calc_imm_cj(num)),
                 _ => None,

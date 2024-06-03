@@ -35,9 +35,10 @@ pub enum TraceErrorType {
     /// The instruction at the `address` cannot be parsed.
     UnknownInstruction {
         address: u64,
-        value: u64,
-        truncated: u32,
-        segment: Segment,
+        bytes: [u8; 4],
+        segment_idx: usize,
+        vaddr_start: u64,
+        vaddr_end: u64,
     },
     /// The address is not inside a [Segment].
     SegmentationFault(u64),
@@ -48,19 +49,34 @@ impl fmt::Debug for TraceErrorType {
         match self {
             TraceErrorType::AddressIsZero => f.write_str("AddressIsZero"),
             TraceErrorType::StartOfTrace => f.write_str("StartOfTrace"),
-            TraceErrorType::UnprocessedBranches(count) => f.write_fmt(format_args!("UnprocessedBranches({})", count)),
-            TraceErrorType::ImmediateIsNone(instr) => f.write_fmt(format_args!("ImmediateIsNone({:?})", instr)),
-            TraceErrorType::UnexpectedUninferableDiscon => f.write_str("UnexpectedUninferableDiscon"),
+            TraceErrorType::UnprocessedBranches(count) => {
+                f.write_fmt(format_args!("UnprocessedBranches({})", count))
+            }
+            TraceErrorType::ImmediateIsNone(instr) => {
+                f.write_fmt(format_args!("ImmediateIsNone({:?})", instr))
+            }
+            TraceErrorType::UnexpectedUninferableDiscon => {
+                f.write_str("UnexpectedUninferableDiscon")
+            }
             TraceErrorType::UnresolvableBranch => f.write_str("UnresolvableBranch"),
-            TraceErrorType::WrongGetBranchType(sync) => f.write_fmt(format_args!("WrongGetBranchType({:?})", sync)),
+            TraceErrorType::WrongGetBranchType(sync) => {
+                f.write_fmt(format_args!("WrongGetBranchType({:?})", sync))
+            }
             TraceErrorType::WrongGetPrivilegeType => f.write_str("WrongGetPrivilegeType"),
-            TraceErrorType::UnknownInstruction {address, value, truncated, segment} =>
-                f.write_fmt(format_args!("UnknownInstruction {{ address: {:#0x}, value: {:#0x}, truncated: {:#0x}, segment: {:?} }}",
-                                         address,
-                                         value,
-                                         truncated,
-                                         segment)),
-            TraceErrorType::SegmentationFault(addr) => f.write_fmt(format_args!("SegmentationFault({:#0x})", addr)),
+            TraceErrorType::UnknownInstruction {
+                address,
+                bytes,
+                segment_idx,
+                vaddr_start,
+                vaddr_end,
+            } => f.write_fmt(format_args!(
+                "UnknownInstruction {{ address: {:#0x}, num: {:x?}, \
+                segment: {:?}, vaddr_start {:#0x}, vaddr_end: {:#0x}  }}",
+                address, bytes, segment_idx, vaddr_start, vaddr_end
+            )),
+            TraceErrorType::SegmentationFault(addr) => {
+                f.write_fmt(format_args!("SegmentationFault({:#0x})", addr))
+            }
         }
     }
 }
@@ -70,7 +86,7 @@ impl fmt::Debug for TraceErrorType {
 pub struct TraceConfiguration<'a> {
     /// The memory segments which will be traced. It is assumed the segments **do not overlap**
     /// with each other.
-    pub segments: &'a [Segment],
+    pub segments: &'a [Segment<'a>],
     pub full_address: bool,
 }
 
@@ -180,7 +196,7 @@ impl<'a> Tracer<'a> {
             for i in 0..self.trace_conf.segments.len() {
                 if self.trace_conf.segments[i].contains(pc) {
                     self.state.segment_idx = i;
-                    break
+                    break;
                 }
             }
             // The segment index should now point to the segment which contains the pc.
@@ -188,14 +204,17 @@ impl<'a> Tracer<'a> {
                 return Err(TraceErrorType::SegmentationFault(pc));
             }
         }
-        let binary = match unsafe { BinaryInstruction::read_binary(pc, &self.trace_conf.segments[self.state.segment_idx]) } {
+        let binary = match {
+            BinaryInstruction::read_binary(pc, &self.trace_conf.segments[self.state.segment_idx])
+        } {
             Ok(binary) => binary,
-            Err((value, num)) => {
+            Err(bytes) => {
                 return Err(TraceErrorType::UnknownInstruction {
                     address: pc,
-                    value,
-                    truncated: num,
-                    segment: self.trace_conf.segments[self.state.segment_idx],
+                    bytes,
+                    segment_idx: self.state.segment_idx,
+                    vaddr_start: self.trace_conf.segments[self.state.segment_idx].vaddr_start,
+                    vaddr_end: self.trace_conf.segments[self.state.segment_idx].vaddr_end,
                 })
             }
         };
@@ -240,7 +259,7 @@ impl<'a> Tracer<'a> {
                 return self.process_support(sup);
             } else if let Synchronization::Context(ctx) = sync {
                 self.state.privilege = ctx.privilege;
-                return Ok(())
+                return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
                 (self.report_trap)(*trap);
                 if !trap.interrupt {
@@ -420,6 +439,7 @@ impl<'a> Tracer<'a> {
         Ok(local_stop_here)
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceErrorType> {
         if !instr.is_branch() {
             return Ok(false);
