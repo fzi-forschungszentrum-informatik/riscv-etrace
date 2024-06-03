@@ -1,5 +1,5 @@
 //! Implements the instruction tracing algorithm.
-use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
+use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::disassembler::{BinaryInstruction, Instruction, Segment};
 use crate::ProtocolConfiguration;
@@ -77,7 +77,7 @@ pub struct TraceConfiguration<'a> {
 /// TracerState captures all necessary information for the tracing algorithm to trace the
 /// instruction execution.
 ///
-/// For specifics see either the pseudocode in the
+/// For specifics see the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
 #[derive(Copy, Clone)]
@@ -93,7 +93,7 @@ pub struct TraceState {
     start_of_trace: bool,
     notify: bool,
     updiscon: bool,
-    privilege: u64,
+    privilege: Privilege,
     segment_idx: usize,
 }
 
@@ -101,9 +101,9 @@ impl fmt::Debug for TraceState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_fmt(format_args!(
             "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
-        branches: {}, branch_map: {}, stop_at_last_branch: {},\
-        inferred_address: {}, start_of_trace: {}, notify: {},\
-        updiscon: {}, privilege: {}, segment_idx: {}",
+        branches: {}, branch_map: 0b{:b}, stop_at_last_branch: {}, \
+        inferred_address: {}, start_of_trace: {}, notify: {}, \
+        updiscon: {}, privilege: {:?}, segment_idx: {} }}",
             self.pc,
             self.last_pc,
             self.address,
@@ -161,7 +161,7 @@ impl<'a> Tracer<'a> {
                 address: 0,
                 notify: false,
                 updiscon: false,
-                privilege: 0,
+                privilege: Privilege::U,
                 segment_idx: 0,
             },
             trace_conf,
@@ -219,7 +219,6 @@ impl<'a> Tracer<'a> {
 
     fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address_info() {
-            // TODO why "- 1"?
             let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) != 0;
             self.state.notify = addr.notify != msb;
             self.state.updiscon = addr.updiscon != addr.notify;
@@ -239,8 +238,9 @@ impl<'a> Tracer<'a> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup);
-            } else if let Synchronization::Context(_ctx) = sync {
-                todo!("context processing not yet implemented");
+            } else if let Synchronization::Context(ctx) = sync {
+                self.state.privilege = ctx.privilege;
+                return Ok(())
             } else if let Synchronization::Trap(trap) = sync {
                 (self.report_trap)(*trap);
                 if !trap.interrupt {
@@ -295,10 +295,10 @@ impl<'a> Tracer<'a> {
             if let Payload::Branch(branch) = payload {
                 self.state.stop_at_last_branch = branch.branches == 0;
                 self.state.branch_map |= (branch.branch_map) << self.state.branches;
-                self.state.branches = if branch.branches == 0 {
-                    self.state.branches + 31
+                self.state.branches += if branch.branches == 0 {
+                    31
                 } else {
-                    self.state.branches + branch.branches
+                    branch.branches
                 };
             }
             self.follow_execution_path(payload)

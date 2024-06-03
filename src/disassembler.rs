@@ -12,6 +12,7 @@ use core::ops::Range;
 pub struct Segment {
     pub vaddr_start: u64,
     pub vaddr_end: u64,
+    // TODO rework with slices
     pub in_mem_start: u64,
 }
 
@@ -32,6 +33,7 @@ impl BinaryInstruction {
     /// # Safety
     ///
     /// This should be safe as long as the segments are initialized correctly.
+    // TODO make safe
     pub unsafe fn read_binary(address: u64, segment: &Segment) -> Result<Self, (u64, u32)> {
         const MASK_32_BITS: u64 = 0xFFFFFFFF;
         let pointer = (address - segment.vaddr_start + segment.in_mem_start) as *const u64;
@@ -54,6 +56,8 @@ impl BinaryInstruction {
 #[derive(Eq, PartialEq)]
 enum OpCode {
     MiscMem = 0b0001111,
+    Lui = 0b0110111,
+    Aupic = 0b0010111,
     Branch = 0b1100011,
     Jalr = 0b1100111,
     Jal = 0b1101111,
@@ -65,6 +69,8 @@ impl From<u32> for OpCode {
     fn from(value: u32) -> Self {
         const MASK: u32 = 0x7F;
         match value & MASK {
+            x if x == Aupic as u32 => Aupic,
+            x if x == Lui as u32 => Lui,
             x if x == MiscMem as u32 => MiscMem,
             x if x == Branch as u32 => Branch,
             x if x == Jalr as u32 => Jalr,
@@ -99,6 +105,9 @@ pub enum Name {
     bge,
     bltu,
     bgeu,
+    // U
+    aupic,
+    lui,
     // CB
     c_beqz,
     c_bnez,
@@ -107,6 +116,8 @@ pub enum Name {
     // CJ
     c_j,
     c_jal,
+    // CU
+    c_lui,
     // CR
     c_jr,
     c_jalr,
@@ -267,6 +278,8 @@ impl Instruction {
                 0b001 => fence_i,
                 _ => return ignored,
             },
+            Lui => lui,
+            Aupic => aupic,
             Branch => match funct3 {
                 0b000 => beq,
                 0b001 => bne,
@@ -352,6 +365,14 @@ impl Instruction {
         let name = match op {
             0b01 => match funct3 {
                 0b001 => c_jal,
+                0b011 => {
+                    let rd = Self::c_rs1(num);
+                    if rd != 0 || rd != 2 {
+                        c_lui
+                    } else {
+                        return ignored
+                    }
+                },
                 0b101 => c_j,
                 0b110 => c_beqz,
                 0b111 => c_bnez,
@@ -392,6 +413,8 @@ impl Instruction {
             Some(Self::calc_imm_b(num))
         } else {
             match name {
+                lui => Some(Self::calc_imm_u(num)),
+                aupic => Some(Self::calc_imm_u(num)),
                 jal => Some(Self::calc_imm_j(num)),
                 jalr if is_rs1_zero => Some(Self::calc_imm_i(num)),
                 _ => None,
@@ -404,6 +427,14 @@ impl Instruction {
             Some(Self::calc_imm_cb(num))
         } else {
             match name {
+                c_lui => {
+                    let imm = Self::calc_imm_cu(num);
+                    if imm == 0 {
+                        todo!("imm should not be zero")
+                    } else {
+                        Some(imm)
+                    }
+                },
                 c_j => Some(Self::calc_imm_cj(num)),
                 c_jal => Some(Self::calc_imm_cj(num)),
                 _ => None,
@@ -419,7 +450,6 @@ impl Instruction {
         ((1u16 << r.len()) - 1) << r.start
     }
 
-    // TODO should be a trait?
     fn get_bits_u32(source: u32, r: Range<i32>, start: i32) -> u32 {
         let mask = Self::mask_u32(&r);
         if r.start >= start {
@@ -454,13 +484,24 @@ impl Instruction {
 
     fn calc_imm_cj(num: u16) -> i32 {
         const MASK_SIGN: u16 = 0xF800;
-        let mut imm: u16 = Self::get_bits_u16(num, 3..6, 1);
+        let mut imm = Self::get_bits_u16(num, 3..6, 1);
         imm |= Self::get_bits_u16(num, 11..12, 4);
         imm |= Self::get_bits_u16(num, 2..3, 5);
         imm |= Self::get_bits_u16(num, 6..7, 7);
         imm |= Self::get_bits_u16(num, 7..8, 6);
         imm |= Self::get_bits_u16(num, 9..11, 8);
         imm |= Self::get_bits_u16(num, 8..9, 10);
+        let sign = Self::get_bits_u16(num, 12..13, 0) == 1;
+        if sign {
+            (imm | MASK_SIGN) as i16 as i32
+        } else {
+            imm as i32
+        }
+    }
+
+    fn calc_imm_cu(num: u16) -> i32 {
+        const MASK_SIGN: u16 = 0xFFF0;
+        let imm = Self::get_bits_u16(num, 2..7, 0);
         let sign = Self::get_bits_u16(num, 12..13, 0) == 1;
         if sign {
             (imm | MASK_SIGN) as i16 as i32
@@ -499,6 +540,17 @@ impl Instruction {
     fn calc_imm_i(num: u32) -> i32 {
         const MASK_SIGN: u32 = 0xFFFFF800;
         let imm = Self::get_bits_u32(num, 20..31, 0);
+        let sign = Self::get_bits_u32(num, 31..32, 0) == 1;
+        if sign {
+            (imm | MASK_SIGN) as i32
+        } else {
+            imm as i32
+        }
+    }
+
+    fn calc_imm_u(num: u32) -> i32 {
+        const MASK_SIGN: u32 = 0xFFF80000;
+        let imm = Self::get_bits_u32(num, 12..31, 0);
         let sign = Self::get_bits_u32(num, 31..32, 0) == 1;
         if sign {
             (imm | MASK_SIGN) as i32
@@ -780,6 +832,57 @@ mod tests {
                     is_branch: true,
                     imm: Some(170),
                     is_rs1_zero: false
+                }
+            }
+        )
+    }
+
+    #[test_case]
+    fn auipc() {
+        let bin = Bit32(0xf2ab3697);
+        assert_eq!(
+            Instruction::from_binary(&bin),
+            Instruction {
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: aupic,
+                    is_branch: false,
+                    imm: Some(-54605),
+                    is_rs1_zero: false,
+                }
+            }
+        )
+    }
+
+    #[test_case]
+    fn lui() {
+        let bin = Bit32(0xfff0f8b7);
+        assert_eq!(
+            Instruction::from_binary(&bin),
+            Instruction {
+                size: InstructionLength::Normal,
+                insn_type: InstructionType::Parsed {
+                    name: lui,
+                    is_branch: false,
+                    imm: Some(-241),
+                    is_rs1_zero: false,
+                }
+            }
+        )
+    }
+
+    #[test_case]
+    fn c_lui() {
+        let bin = Bit16(0x7255);
+        assert_eq!(
+            Instruction::from_binary(&bin),
+            Instruction {
+                size: InstructionLength::Compressed,
+                insn_type: InstructionType::Parsed {
+                    name: c_lui,
+                    is_branch: false,
+                    imm: Some(-11),
+                    is_rs1_zero: false,
                 }
             }
         )

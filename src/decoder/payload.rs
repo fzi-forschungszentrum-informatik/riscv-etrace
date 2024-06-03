@@ -23,7 +23,7 @@ fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<usize, DecodeErr
 }
 
 pub struct ContextPart {
-    pub privilege: u64,
+    pub privilege: Privilege,
     #[cfg(feature = "time")]
     pub time: u64,
     #[cfg(feature = "context")]
@@ -33,11 +33,29 @@ pub struct ContextPart {
 impl Decode for ContextPart {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         Ok(ContextPart {
-            privilege: decoder.read(decoder.proto_conf.privilege_width_p, slice)?,
+            privilege: Privilege::decode(decoder, slice)?,
             #[cfg(feature = "time")]
             time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
             #[cfg(feature = "context")]
             context: decoder.read(decoder.proto_conf.context_width_p, slice)?,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum Privilege {
+    U = 0b00,
+    S = 0b01,
+    M = 0b11,
+}
+
+impl Decode for Privilege {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> where Self: Sized {
+        Ok(match decoder.read(2, slice)? {
+            0b00 => Privilege::U,
+            0b01 => Privilege::S,
+            0b11 => Privilege::M,
+            _ => unreachable!()
         })
     }
 }
@@ -98,7 +116,7 @@ impl Payload {
         }
     }
 
-    pub fn get_privilege(&self) -> Result<u64, TraceErrorType> {
+    pub fn get_privilege(&self) -> Result<Privilege, TraceErrorType> {
         if let Payload::Synchronization(sync) = self {
             Ok(sync.get_privilege()?)
         } else {
@@ -216,6 +234,25 @@ pub struct AddressInfo {
     pub irdepth: usize,
 }
 
+impl Decode for AddressInfo {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let address = read_address(decoder, slice)?;
+        let notify = decoder.read_bit(slice)?;
+        let updiscon = decoder.read_bit(slice)?;
+        #[cfg(feature = "IR")]
+            let ir_payload = IRPayload::decode(decoder, slice)?;
+        Ok(AddressInfo {
+            address,
+            notify,
+            updiscon,
+            #[cfg(feature = "IR")]
+            irreport: ir_payload.irreport,
+            #[cfg(feature = "IR")]
+            irdepth: ir_payload.irdepth,
+        })
+    }
+}
+
 impl fmt::Debug for AddressInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
@@ -226,7 +263,7 @@ impl fmt::Debug for AddressInfo {
 }
 
 /// Format 1
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Branch {
     pub branches: usize,
     pub branch_map: u32,
@@ -254,22 +291,12 @@ impl Decode for Branch {
     }
 }
 
-impl Decode for AddressInfo {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        let address = read_address(decoder, slice)?;
-        let notify = decoder.read_bit(slice)?;
-        let updiscon = decoder.read_bit(slice)?;
-        #[cfg(feature = "IR")]
-        let ir_payload = IRPayload::decode(decoder, slice)?;
-        Ok(AddressInfo {
-            address,
-            notify,
-            updiscon,
-            #[cfg(feature = "IR")]
-            irreport: ir_payload.irreport,
-            #[cfg(feature = "IR")]
-            irdepth: ir_payload.irdepth,
-        })
+impl fmt::Debug for Branch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "Branch {{ branches: {}, branch_map: 0b{:b}, adress: {:?} }}",
+            self.branches, self.branch_map, self.address
+        ))
     }
 }
 
@@ -292,7 +319,7 @@ impl Synchronization {
         .map(|b| b as u32)
     }
 
-    pub fn get_privilege(&self) -> Result<u64, TraceErrorType> {
+    pub fn get_privilege(&self) -> Result<Privilege, TraceErrorType> {
         match self {
             Synchronization::Start(start) => Ok(start.privilege),
             Synchronization::Trap(trap) => Ok(trap.privilege),
@@ -306,21 +333,12 @@ impl Synchronization {
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Start {
     pub branch: bool,
-    pub privilege: u64,
+    pub privilege: Privilege,
     #[cfg(feature = "time")]
     pub time: u64,
     #[cfg(feature = "context")]
     pub context: u64,
     pub address: u64,
-}
-
-impl fmt::Debug for Start {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "Start {{ branch: {:?}, privilege: {:?}, address: {:#0x} }}",
-            self.branch, self.privilege, self.address
-        ))
-    }
 }
 
 impl Decode for Start {
@@ -340,11 +358,20 @@ impl Decode for Start {
     }
 }
 
+impl fmt::Debug for Start {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "Start {{ branch: {:?}, privilege: {:?}, address: {:#0x} }}",
+            self.branch, self.privilege, self.address
+        ))
+    }
+}
+
 /// Format 0, sub format 1
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Trap {
     pub branch: bool,
-    pub privilege: u64,
+    pub privilege: Privilege,
     #[cfg(feature = "time")]
     pub time: u64,
     #[cfg(feature = "context")]
@@ -392,7 +419,7 @@ impl Decode for Trap {
 /// Format 0, sub format 2
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Context {
-    pub privilege: u64,
+    pub privilege: Privilege,
     #[cfg(feature = "time")]
     pub time: u64,
     #[cfg(feature = "context")]
@@ -467,7 +494,7 @@ impl Decode for QualStatus {
 
 #[cfg(test)]
 mod tests {
-    use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Start};
+    use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Privilege, Start};
     use crate::decoder::{Decode, Decoder, DEFAULT_DECODER_CONFIG};
     use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
 
@@ -579,7 +606,7 @@ mod tests {
         decoder.reset();
         let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(sync_start.branch, true);
-        assert_eq!(sync_start.privilege, 0b11);
+        assert_eq!(sync_start.privilege, Privilege::M);
         assert_eq!(sync_start.address, u64::MAX);
     }
 }

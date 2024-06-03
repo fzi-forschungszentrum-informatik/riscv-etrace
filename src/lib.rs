@@ -15,13 +15,14 @@
 //! - (partially implemented) optional context for instructions
 //! - (partially implemented) optional timestamp in header
 //! - (partially implemented) optional implicit return mode
+//! - disassembler support for instructions for sequentially inferable jumps
 //!
 //! # Example
 //! ```
 //! extern crate riscv_etrace;
 //!
 //! use riscv_etrace::{DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration};
-//! use riscv_etrace::decoder::{Decoder, DecoderConfiguration, DEFAULT_PACKET_BUFFER_LEN};
+//! use riscv_etrace::decoder::{Decoder, DecoderConfiguration};
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::Segment;
 //! use riscv_etrace::tracer::{TraceConfiguration, Tracer};

@@ -68,8 +68,7 @@ impl Decoder {
         }
     }
 
-    // TODO make private
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.bit_pos = 0;
     }
 
@@ -122,7 +121,7 @@ impl Decoder {
         // Check if we need to read into the 9th byte because of an unaligned read
         if self.bit_pos > ((byte_pos + 8) * 8) {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
-            // Take 9th byte and mask MSBs that are not read
+            // Take 9th byte and mask MSBs that will not be read
             let missing_msbs =
                 slice[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
             let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
@@ -133,53 +132,27 @@ impl Decoder {
         }
     }
 
-    // Many times values are read with a size <= 32 bits
-    // Reading 32 bits over byte boundary will not work if read is not aligned
-    /*fn read_fast(&mut self, bit_count: usize) -> Result<u32, DecodeError> {
-        if bit_count == 0 {
-            return Ok(0);
-        }
-        assert!(bit_count <= 32);
-        if self.bit_pos + bit_count - 1 >= PACKET_BUFFER_LEN * 8 {
-            return Err(ReadTooLong {
-                bit_pos: self.bit_pos,
-                bit_count,
-                buffer_size: PACKET_BUFFER_LEN * 8,
-            });
-        }
-        let byte_pos = self.bit_pos / 8;
-        let mut value = u32::from_le_bytes(
-            self.packet_data.unwrap()[byte_pos..byte_pos + 4]
-                .try_into()
-                .unwrap(),
-        );
-        value >>= self.bit_pos % 8;
-        self.bit_pos += bit_count;
-        Ok(value & ((1u32 << bit_count) - 1))
-    }*/
-
-    pub fn decode_header(&mut self, slice: &[u8]) -> Result<Header, DecodeError> {
-        let header = Header::decode(self, slice)?;
-        if header.trace_type != TraceType::Instruction {
-            return Err(WrongTraceType(header.trace_type))
-        }
-        // Set the bit position for payload decoding if not at the first bit of the first payload byte
-        if self.bit_pos % 8 != 0 {
-            self.bit_pos += 8 - (self.bit_pos % 8);
-        }
-        Ok(header)
-    }
-
+    /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
+    /// Returns immediately after parsing one packet. Further bytes are ignored.
     pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
         self.reset();
-        let header = self.decode_header(slice)?;
+
         if self.decoder_conf.decompress {
             // TODO decompression
             todo!("decompression");
         }
-        let format = Format::decode(self, slice)?;
 
-        let payload = match format {
+        let header = Header::decode(self, slice)?;
+        if header.trace_type != TraceType::Instruction {
+            return Err(WrongTraceType(header.trace_type))
+        }
+        // Set the bit position to the beginning of the start of the next byte for payload decoding
+        // if not at the first bit of the first payload byte.
+        if self.bit_pos % 8 != 0 {
+            self.bit_pos += 8 - (self.bit_pos % 8);
+        }
+
+        let payload = match Format::decode(self, slice)? {
             Format::Ext(Ext::BranchCount) => {
                 Payload::Extension(Extension::BranchCount(BranchCount::decode(self, slice)?))
             }
