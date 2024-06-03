@@ -200,7 +200,7 @@ pub struct JumpTargetIndex {
 
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        let index = decoder.read(decoder.proto_conf.cache_size_p, slice)? as usize;
+        let index = usize::try_from(decoder.read(decoder.proto_conf.cache_size_p, slice)?).unwrap();
         let branches = read_branches(decoder, slice)?;
         let branch_map = if branches == 0 {
             None
@@ -583,13 +583,13 @@ mod tests {
         decoder.reset();
         let addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(addr.address, 4);
-        assert_eq!(addr.notify, true);
-        assert_eq!(addr.updiscon, true);
+        assert!(addr.notify);
+        assert!(addr.updiscon);
         // differential address
         let diff_addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
         assert_eq!(diff_addr.address, 4);
-        assert_eq!(diff_addr.notify, false);
-        assert_eq!(diff_addr.updiscon, true);
+        assert!(!diff_addr.notify);
+        assert!(diff_addr.updiscon);
     }
 
     #[test_case]
@@ -605,7 +605,7 @@ mod tests {
         );
         decoder.reset();
         let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
-        assert_eq!(sync_start.branch, true);
+        assert!(sync_start.branch);
         assert_eq!(sync_start.privilege, Privilege::M);
         assert_eq!(sync_start.address, u64::MAX);
     }

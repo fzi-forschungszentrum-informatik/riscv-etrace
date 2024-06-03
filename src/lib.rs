@@ -171,7 +171,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 
 #[cfg(test)]
 pub trait Testable {
-    fn run(&self) -> ();
+    fn run(&self);
 }
 
 #[cfg(test)]

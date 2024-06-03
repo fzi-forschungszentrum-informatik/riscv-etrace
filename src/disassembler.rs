@@ -16,7 +16,7 @@ pub struct Segment<'a> {
 impl<'a> Segment<'a> {
     pub fn new(vaddr_start: u64, vaddr_end: u64, mem: &'a [u8]) -> Self {
         assert_eq!(
-            (vaddr_end - vaddr_start) as usize,
+            usize::try_from(vaddr_end - vaddr_start).unwrap(),
             mem.len(),
             "vaddr length does not equal memory slice length"
         );
@@ -41,8 +41,8 @@ pub enum BinaryInstruction {
 
 impl BinaryInstruction {
     pub fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
-        let pointer = address - segment.vaddr_start;
-        let bytes = &segment.mem[pointer as usize..pointer as usize + 4];
+        let pointer = usize::try_from(address - segment.vaddr_start).unwrap();
+        let bytes = &segment.mem[pointer..pointer + 4];
         if (bytes[0] & 0x3) != 0x3 {
             Ok(BinaryInstruction::Bit16(u16::from_le_bytes(
                 bytes[0..2].try_into().unwrap(),

@@ -290,14 +290,14 @@ mod tests {
         let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::default();
         decoder.reset();
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), true);
-        assert_eq!(decoder.read_bit(&buffer).unwrap(), false);
+        assert!(decoder.read_bit(&buffer).unwrap());
+        assert!(!decoder.read_bit(&buffer).unwrap());
+        assert!(decoder.read_bit(&buffer).unwrap());
+        assert!(!decoder.read_bit(&buffer).unwrap());
+        assert!(decoder.read_bit(&buffer).unwrap());
+        assert!(!decoder.read_bit(&buffer).unwrap());
+        assert!(decoder.read_bit(&buffer).unwrap());
+        assert!(!decoder.read_bit(&buffer).unwrap());
     }
 
     #[test_case]
