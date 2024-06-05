@@ -56,7 +56,7 @@
 //! let report_epc = |epc| println!("epc: 0x{:x}", epc);
 //! let report_trap = |trap| println!("trap: {:?}", trap);
 //! let report_instr = |instr: Instruction| { println!("instr: {:?}", instr) };
-//! let report_branch = |branches: usize, branch_map: u32, local_taken: bool|
+//! let report_branch = |branches: u8, branch_map: u32, local_taken: bool|
 //!     { println!("branch: {:?} {:032b} {}", branches, branch_map, local_taken) };
 //!
 //! // Create the packet decoder.
