@@ -1,5 +1,5 @@
-use crate::decoder::format::Ext::{BranchCount, JumpTargetIndex};
 use crate::decoder::{Decode, DecodeError, Decoder};
+use crate::decoder::payload::{AddressInfo, Branch, Context, Extension, Payload, Start, Support, Synchronization, Trap};
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Format {
@@ -7,6 +7,51 @@ pub enum Format {
     Branch,
     Addr,
     Sync(Sync),
+}
+
+impl Format {
+    pub fn decode_payload(&self, decoder: &mut Decoder, slice: &[u8]) -> Result<Payload, DecodeError> {
+        Ok(match self {
+            Format::Ext(Ext::BranchCount) => {
+                Payload::Extension(Extension::BranchCount(crate::decoder::payload::BranchCount::decode(decoder, slice)?))
+            }
+            Format::Ext(Ext::JumpTargetIndex) => {
+                Payload::Extension(Extension::JumpTargetIndex(crate::decoder::payload::JumpTargetIndex::decode(decoder, slice)?))
+            }
+            Format::Branch => Payload::Branch(Branch::decode(decoder, slice)?),
+            Format::Addr => Payload::Address(AddressInfo::decode(decoder, slice)?),
+            Format::Sync(Sync::Start) => {
+                Payload::Synchronization(Synchronization::Start(Start::decode(decoder, slice)?))
+            }
+            Format::Sync(Sync::Trap) => {
+                Payload::Synchronization(Synchronization::Trap(Trap::decode(decoder, slice)?))
+            }
+            Format::Sync(Sync::Context) => {
+                Payload::Synchronization(Synchronization::Context(Context::decode(decoder, slice)?))
+            }
+            Format::Sync(Sync::Support) => {
+                Payload::Synchronization(Synchronization::Support(Support::decode(decoder, slice)?))
+            }
+        })
+    }
+}
+
+impl Decode for Format {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        Ok(match decoder.read(2, slice)? {
+            0b00 => {
+                let ext = Ext::decode(decoder, slice)?;
+                Format::Ext(ext)
+            }
+            0b01 => Format::Branch,
+            0b10 => Format::Addr,
+            0b11 => {
+                let sync = Sync::decode(decoder, slice)?;
+                Format::Sync(sync)
+            }
+            _ => unreachable!(),
+        })
+    }
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -18,9 +63,9 @@ pub enum Ext {
 impl Decode for Ext {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         Ok(if decoder.read_bit(slice)? {
-            JumpTargetIndex
+            Ext::JumpTargetIndex
         } else {
-            BranchCount
+            Ext::BranchCount
         })
     }
 }
@@ -40,24 +85,6 @@ impl Decode for Sync {
             0b01 => Sync::Trap,
             0b10 => Sync::Context,
             0b11 => Sync::Support,
-            _ => unreachable!(),
-        })
-    }
-}
-
-impl Decode for Format {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        Ok(match decoder.read(2, slice)? {
-            0b00 => {
-                let ext = Ext::decode(decoder, slice)?;
-                Format::Ext(ext)
-            }
-            0b01 => Format::Branch,
-            0b10 => Format::Addr,
-            0b11 => {
-                let sync = Sync::decode(decoder, slice)?;
-                Format::Sync(sync)
-            }
             _ => unreachable!(),
         })
     }

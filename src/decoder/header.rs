@@ -1,9 +1,10 @@
+use crate::decoder::DecodeError::WrongTraceType;
 use crate::decoder::{Decode, DecodeError, Decoder};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Header {
     /// [Payload](crate::decoder::Payload) length in bytes.
-    pub payload_len: u8,
+    pub payload_len: usize,
     pub trace_type: TraceType,
     pub has_timestamp: bool,
     pub hart_index: usize,
@@ -15,6 +16,11 @@ impl Decode for Header {
         let trace_type = TraceType::decode(decoder, slice)?;
         let has_timestamp = decoder.read_bit(slice)?;
         let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width, slice)?;
+
+        if trace_type != TraceType::Instruction {
+            return Err(WrongTraceType(trace_type));
+        }
+
         Ok(Header {
             payload_len: payload_length.try_into().unwrap(),
             trace_type,

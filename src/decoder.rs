@@ -1,5 +1,5 @@
 //! Implements the packet decoder.
-use crate::decoder::format::{Ext, Format, Sync};
+use crate::decoder::format::{Format};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
 use crate::decoder::DecodeError::{ReadTooLong, WrongTraceType};
@@ -43,6 +43,10 @@ pub enum DecodeError {
     },
     DataNotSet
 }
+
+/// The maximum length a payload can have decompressed. Found by changing this value
+/// and rounding to the next highest value that is `x mod 8 == 0`
+pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 24;
 
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different CPUs/Cores/... may be sequentially parsed by a single decoder
@@ -136,44 +140,30 @@ impl Decoder {
     /// Returns immediately after parsing one packet. Further bytes are ignored.
     pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
         self.reset();
-
-        if self.decoder_conf.decompress {
-            // TODO decompression
-            todo!("decompression");
-        }
-
         let header = Header::decode(self, slice)?;
-        if header.trace_type != TraceType::Instruction {
-            return Err(WrongTraceType(header.trace_type))
-        }
         // Set the bit position to the beginning of the start of the next byte for payload decoding
         // if not at the first bit of the first payload byte.
         if self.bit_pos % 8 != 0 {
             self.bit_pos += 8 - (self.bit_pos % 8);
         }
 
-        let payload = match Format::decode(self, slice)? {
-            Format::Ext(Ext::BranchCount) => {
-                Payload::Extension(Extension::BranchCount(BranchCount::decode(self, slice)?))
-            }
-            Format::Ext(Ext::JumpTargetIndex) => {
-                Payload::Extension(Extension::JumpTargetIndex(JumpTargetIndex::decode(self, slice)?))
-            }
-            Format::Branch => Payload::Branch(Branch::decode(self, slice)?),
-            Format::Addr => Payload::Address(AddressInfo::decode(self, slice)?),
-            Format::Sync(Sync::Start) => {
-                Payload::Synchronization(Synchronization::Start(Start::decode(self, slice)?))
-            }
-            Format::Sync(Sync::Trap) => {
-                Payload::Synchronization(Synchronization::Trap(Trap::decode(self, slice)?))
-            }
-            Format::Sync(Sync::Context) => {
-                Payload::Synchronization(Synchronization::Context(Context::decode(self, slice)?))
-            }
-            Format::Sync(Sync::Support) => {
-                Payload::Synchronization(Synchronization::Support(Support::decode(self, slice)?))
-            }
+        let payload = if self.decoder_conf.decompress {
+            // Make sure we can decompress
+            let byte_pos = self.bit_pos / 8;
+            debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
+
+            let mut mem = if slice[byte_pos + header.payload_len - 1] & 0x80 == 0 {
+                [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
+            } else {
+                [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
+            };
+            mem[0..header.payload_len].copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
+            self.reset();
+            Format::decode(self, &mem)?.decode_payload(self, &mem)?
+        } else {
+            Format::decode(self, slice)?.decode_payload(self, slice)?
         };
+
         Ok(Packet { header, payload })
     }
 
