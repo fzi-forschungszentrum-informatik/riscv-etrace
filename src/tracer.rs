@@ -21,7 +21,7 @@ pub enum TraceErrorType {
     StartOfTrace,
     /// Some branches which should have been processed are still unprocessed. The number of
     /// unprocessed branches is given.
-    UnprocessedBranches(usize),
+    UnprocessedBranches(u8),
     /// The immediate of the disassembled instruction is zero but shouldn't be.
     ImmediateIsNone(Instruction),
     /// An unexpected uninferable discontinuity was encountered.
@@ -101,7 +101,7 @@ pub struct TraceState {
     pc: u64,
     last_pc: u64,
     address: u64,
-    branches: usize,
+    branches: u8,
     /// u32 because there can be a maximum of 31 branches.
     branch_map: u32,
     stop_at_last_branch: bool,
@@ -152,7 +152,7 @@ pub struct Tracer<'a> {
     report_epc: fn(u64),
     report_trap: fn(Trap),
     report_instr: fn(Instruction),
-    report_branch: fn(usize, u32, bool),
+    report_branch: fn(u8, u32, bool),
 }
 
 impl<'a> Tracer<'a> {
@@ -163,7 +163,7 @@ impl<'a> Tracer<'a> {
         report_epc: fn(u64),
         report_trap: fn(Trap),
         report_instr: fn(Instruction),
-        report_branch: fn(usize, u32, bool),
+        report_branch: fn(u8, u32, bool),
     ) -> Self {
         Tracer {
             state: TraceState {
@@ -285,7 +285,7 @@ impl<'a> Tracer<'a> {
                 self.state.branches += 1;
             }
             if matches!(sync, Synchronization::Start(_)) && !self.state.start_of_trace {
-                return self.follow_execution_path(payload);
+                self.follow_execution_path(payload)?
             } else {
                 self.state.pc = self.state.address;
                 (self.report_pc)(ReportReason::CopyStateAddr, self.state.pc);
@@ -343,8 +343,8 @@ impl<'a> Tracer<'a> {
         Ok(())
     }
 
-    fn branch_limit(&mut self) -> Result<usize, TraceErrorType> {
-        Ok(self.get_instr(self.state.pc)?.is_branch() as usize)
+    fn branch_limit(&mut self) -> Result<u8, TraceErrorType> {
+        Ok(self.get_instr(self.state.pc)?.is_branch() as u8)
     }
 
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
@@ -394,8 +394,8 @@ impl<'a> Tracer<'a> {
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && self.state.branches == self.branch_limit()?
-                    && (payload.get_privilege()? == self.state.privilege
-                        || self.get_instr(self.state.last_pc)?.is_return_from_trap())
+                    // && (payload.get_privilege()? == self.state.privilege
+                        // || self.get_instr(self.state.last_pc)?.is_return_from_trap())
                 {
                     return Ok(());
                 }

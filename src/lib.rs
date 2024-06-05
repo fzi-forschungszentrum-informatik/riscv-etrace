@@ -32,7 +32,7 @@
 //!
 //! // Create the protocol level configuration which will define the bit lengths of packet fields.
 //! let proto_conf = ProtocolConfiguration {
-//!     // In this example we assume a maximum of 2^10   of CPU cores...
+//!     // In this example we assume a maximum of 2^10 of HARTs...
 //!     cpu_index_width: 10,
 //!     // ...but everything else will be default.
 //!     ..DEFAULT_PROTOCOL_CONFIG
@@ -62,7 +62,7 @@
 //! // Create the packet decoder.
 //! let mut decoder = Decoder::new(proto_conf, decoder_conf);
 //!
-//! // Create each tracer, one for each hart.
+//! // Create each tracer, one for each HART.
 //! let mut tracers: Vec<Tracer> = Vec::new();
 //! for i in 0..1024 {
 //!     tracers.push(Tracer::new(
@@ -83,8 +83,8 @@
 //! let packet = decoder.decode(packet_slice).unwrap();
 //! println!("{:?}", packet);
 //!
-//! // Get the correct tracer based on the CPU index...
-//! let mut tracer = &tracers[packet.header.cpu_index];
+//! // Get the correct tracer based on the HART index...
+//! let mut tracer = &tracers[packet.header.hart_index];
 //! // ...and trace it.
 //! tracer.process_te_inst(&packet.payload).unwrap();
 //! ```

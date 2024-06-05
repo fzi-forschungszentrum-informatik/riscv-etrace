@@ -6,7 +6,7 @@ pub struct Header {
     pub payload_len: u8,
     pub trace_type: TraceType,
     pub has_timestamp: bool,
-    pub cpu_index: usize,
+    pub hart_index: usize,
 }
 
 impl Decode for Header {
@@ -19,7 +19,7 @@ impl Decode for Header {
             payload_len: payload_length.try_into().unwrap(),
             trace_type,
             has_timestamp,
-            cpu_index: cpu_index.try_into().unwrap(),
+            hart_index: cpu_index.try_into().unwrap(),
         })
     }
 }

@@ -9,9 +9,9 @@ fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, DecodeError>
     )
 }
 
-fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<usize, DecodeError> {
-    let value = decoder.read(5, slice)?;
-    Ok(match value {
+fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), DecodeError> {
+    let branches = decoder.read(5, slice)?.try_into().unwrap();
+    let len = match branches {
         0 => 0,
         1 => 1,
         2..=3 => 3,
@@ -19,7 +19,8 @@ fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<usize, DecodeErr
         8..=15 => 15,
         16..=31 => 31,
         _ => unreachable!(),
-    })
+    };
+    Ok((branches, len))
 }
 
 pub struct ContextPart {
@@ -109,7 +110,7 @@ impl Payload {
         }
     }
 
-    pub fn get_branches(&self) -> Option<usize> {
+    pub fn get_branches(&self) -> Option<u8> {
         match self {
             Payload::Branch(branch) => Some(branch.branches),
             _ => None,
@@ -201,18 +202,19 @@ pub struct JumpTargetIndex {
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         let index = usize::try_from(decoder.read(decoder.proto_conf.cache_size_p, slice)?).unwrap();
-        let branches = read_branches(decoder, slice)?;
-        let branch_map = if branches == 0 {
+        let (branches, branch_map_len) = read_branches(decoder, slice)?;
+        let branch_map = if branch_map_len == 0 {
             None
         } else {
-            Some(decoder.read(branches, slice)?.try_into().unwrap())
+            let branch_map: u32 = decoder.read(branch_map_len, slice)?.try_into().unwrap();
+            Some(branch_map & ((1 << branches) - 1))
         };
 
         #[cfg(feature = "IR")]
         let ir_payload = IRPayload::decode(decoder, slice)?;
         Ok(JumpTargetIndex {
             index,
-            branches,
+            branches: branch_map_len,
             branch_map,
             #[cfg(feature = "IR")]
             irreport: ir_payload.irreport,
@@ -265,20 +267,22 @@ impl fmt::Debug for AddressInfo {
 /// Format 1
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Branch {
-    pub branches: usize,
+    pub branches: u8,
     pub branch_map: u32,
     pub address: Option<AddressInfo>,
 }
 
 impl Decode for Branch {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        let branches = read_branches(decoder, slice)?;
-        let branch_map = decoder
-            .read(if branches == 0 { 31 } else { branches }, slice)?
-            .try_into()
-            .unwrap();
+        let (branches, branch_map_len) = read_branches(decoder, slice)?;
+        let branch_map = if branch_map_len == 0 {
+            decoder.read(31, slice)? as u32
+        } else {
+            let too_long = decoder.read(branch_map_len, slice)? as u32;
+            too_long & (1 << branches) - 1
+        };
 
-        let address = if branches != 0 {
+        let address = if branch_map_len != 0 {
             Some(AddressInfo::decode(decoder, slice)?)
         } else {
             None
@@ -532,7 +536,7 @@ mod tests {
     #[test_case]
     fn branch() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
-        buffer[0] = 0b010_00101;
+        buffer[0] = 0b010_00111;
         buffer[1] = 0b0000_1011;
         let mut decoder = Decoder::default();
         decoder.reset();
