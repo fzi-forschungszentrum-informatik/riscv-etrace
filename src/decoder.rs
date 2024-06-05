@@ -2,7 +2,7 @@
 use crate::decoder::format::{Format};
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
-use crate::decoder::DecodeError::{ReadTooLong, WrongTraceType};
+use crate::decoder::DecodeError::{ReadTooLong};
 use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
@@ -148,18 +148,16 @@ impl Decoder {
         }
 
         let payload = if self.decoder_conf.decompress {
-            // Make sure we can decompress
             let byte_pos = self.bit_pos / 8;
             debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
-
-            let mut mem = if slice[byte_pos + header.payload_len - 1] & 0x80 == 0 {
+            let mut sign_expanded = if slice[byte_pos + header.payload_len - 1] & 0x80 == 0 {
                 [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
             } else {
                 [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
             };
-            mem[0..header.payload_len].copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
+            sign_expanded[0..header.payload_len].copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
             self.reset();
-            Format::decode(self, &mem)?.decode_payload(self, &mem)?
+            Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?
         } else {
             Format::decode(self, slice)?.decode_payload(self, slice)?
         };
