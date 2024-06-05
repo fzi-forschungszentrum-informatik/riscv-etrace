@@ -1,3 +1,5 @@
+use core::fmt;
+use core::fmt::Formatter;
 use crate::disassembler::Name::*;
 use crate::disassembler::OpCode::*;
 use core::ops::Range;
@@ -6,11 +8,17 @@ use core::ops::Range;
 /// `vaddr_start` is the same address the encoder uses for instructions in this segment.
 /// No instruction in this segment has a larger address than `vaddr_end`.
 /// `mem` is a slice of `[u8; vaddr_end - vaddr_start]` bytes containing the instructions.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Segment<'a> {
     pub vaddr_start: u64,
     pub vaddr_end: u64,
-    mem: &'a [u8],
+    pub mem: &'a [u8],
+}
+
+impl fmt::Debug for Segment<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("Segment {{ vaddr_start {:#0x}, vaddr_end: {:#0x} }}", self.vaddr_start, self.vaddr_end))
+    }
 }
 
 impl<'a> Segment<'a> {
@@ -866,7 +874,7 @@ mod tests {
             Instruction {
                 size: InstructionLength::Normal,
                 insn_type: InstructionType::Parsed {
-                    name: lui,
+                    name: Name::lui,
                     is_branch: false,
                     imm: Some(-241),
                     is_rs1_zero: false,
@@ -883,7 +891,7 @@ mod tests {
             Instruction {
                 size: InstructionLength::Compressed,
                 insn_type: InstructionType::Parsed {
-                    name: c_lui,
+                    name: Name::c_lui,
                     is_branch: false,
                     imm: Some(-11),
                     is_rs1_zero: false,

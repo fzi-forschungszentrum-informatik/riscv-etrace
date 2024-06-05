@@ -230,9 +230,9 @@ impl<'a> Tracer<'a> {
 
     fn incr_pc(&mut self, incr: i32) {
         self.state.pc = if incr.is_negative() {
-            self.state.pc - incr.wrapping_abs() as u64
+            self.state.pc.overflowing_sub(incr.wrapping_abs() as u64).0
         } else {
-            self.state.pc + incr as u64
+            self.state.pc.overflowing_add(incr as u64).0
         }
     }
 
@@ -304,11 +304,14 @@ impl<'a> Tracer<'a> {
                     self.state.address = payload.get_address();
                 } else {
                     let addr = payload.get_address() as i64;
-                    if addr.is_negative() {
-                        self.state.address -= addr.wrapping_abs() as u64;
+                    self.state.address = if addr.is_negative() {
+                        self.state
+                            .address
+                            .overflowing_sub(addr.wrapping_abs() as u64)
+                            .0
                     } else {
-                        self.state.address += addr as u64;
-                    }
+                        self.state.address.overflowing_add(addr as u64).0
+                    };
                 }
             }
             if let Payload::Branch(branch) = payload {
@@ -394,8 +397,8 @@ impl<'a> Tracer<'a> {
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && self.state.branches == self.branch_limit()?
-                    // && (payload.get_privilege()? == self.state.privilege
-                        // || self.get_instr(self.state.last_pc)?.is_return_from_trap())
+                // && (payload.get_privilege()? == self.state.privilege
+                // || self.get_instr(self.state.last_pc)?.is_return_from_trap())
                 {
                     return Ok(());
                 }

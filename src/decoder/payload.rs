@@ -279,7 +279,7 @@ impl Decode for Branch {
             decoder.read(31, slice)? as u32
         } else {
             let too_long = decoder.read(branch_map_len, slice)? as u32;
-            too_long & (1 << branches) - 1
+            too_long & ((1 << branches) - 1)
         };
 
         let address = if branch_map_len != 0 {
