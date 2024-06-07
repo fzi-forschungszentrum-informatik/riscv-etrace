@@ -5,8 +5,8 @@ use crate::disassembler::{BinaryInstruction, Instruction, Segment};
 use crate::ProtocolConfiguration;
 use core::fmt;
 
-/// [TraceError] captures the tracing algorithm error and adds the current [TraceState]
-/// in which the underlying error occurred.
+/// Captures the tracing algorithm error and also reports the current tracing context
+/// in which the error occurred.
 #[derive(Debug)]
 pub struct TraceError {
     pub state: TraceState,
@@ -81,7 +81,7 @@ impl fmt::Debug for TraceErrorType {
     }
 }
 
-/// Necessary configuration used only by the [tracer](Tracer::new).
+/// Configuration used only by the tracer.
 #[derive(Copy, Clone)]
 pub struct TraceConfiguration<'a> {
     /// The memory segments which will be traced. It is assumed the segments **do not overlap**
@@ -90,8 +90,7 @@ pub struct TraceConfiguration<'a> {
     pub full_address: bool,
 }
 
-/// `TracerState` captures all necessary information for the tracing algorithm to trace the
-/// instruction execution.
+/// Includes the necessary information for the tracing algorithm to trace the instruction execution.
 ///
 /// For specifics see the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
@@ -111,6 +110,25 @@ pub struct TraceState {
     updiscon: bool,
     privilege: Privilege,
     segment_idx: usize,
+}
+
+impl TraceState {
+    fn new() -> Self {
+        TraceState {
+            pc: 0,
+            last_pc: 0,
+            branches: 0,
+            branch_map: 0,
+            stop_at_last_branch: false,
+            inferred_address: false,
+            start_of_trace: true,
+            address: 0,
+            notify: false,
+            updiscon: false,
+            privilege: Privilege::U,
+            segment_idx: 0,
+        }
+    }
 }
 
 impl fmt::Debug for TraceState {
@@ -144,14 +162,20 @@ pub enum ReportReason {
     NextPcAddr,
 }
 
+/// Provides the state to execute the tracing algorithm and executes the user-defined callbacks.
 pub struct Tracer<'a> {
     pub state: TraceState,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
+    /// Called when a new program counter was traced.
     report_pc: fn(ReportReason, u64),
+    /// Called after a trap instruction was traced.
     report_epc: fn(u64),
-    report_trap: fn(Trap),
+    /// Called when an instruction was disassembled. May be called multiple times for the same
+    /// address.
     report_instr: fn(Instruction),
+    /// Called when a branch will be traced. Reports the number of branches before the branch,
+    /// the branch map and if the branch will be taken.
     report_branch: fn(u8, u32, bool),
 }
 
@@ -161,30 +185,15 @@ impl<'a> Tracer<'a> {
         trace_conf: TraceConfiguration<'a>,
         report_pc: fn(ReportReason, u64),
         report_epc: fn(u64),
-        report_trap: fn(Trap),
         report_instr: fn(Instruction),
         report_branch: fn(u8, u32, bool),
     ) -> Self {
         Tracer {
-            state: TraceState {
-                pc: 0,
-                last_pc: 0,
-                branches: 0,
-                branch_map: 0,
-                stop_at_last_branch: false,
-                inferred_address: false,
-                start_of_trace: true,
-                address: 0,
-                notify: false,
-                updiscon: false,
-                privilege: Privilege::U,
-                segment_idx: 0,
-            },
+            state: TraceState::new(),
             trace_conf,
             proto_conf,
             report_pc,
             report_epc,
-            report_trap,
             report_instr,
             report_branch,
         }
@@ -261,7 +270,6 @@ impl<'a> Tracer<'a> {
                 self.state.privilege = ctx.privilege;
                 return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
-                (self.report_trap)(*trap);
                 if !trap.interrupt {
                     let addr = self.exception_address(trap)?;
                     (self.report_epc)(addr);
@@ -397,8 +405,6 @@ impl<'a> Tracer<'a> {
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && self.state.branches == self.branch_limit()?
-                // && (payload.get_privilege()? == self.state.privilege
-                // || self.get_instr(self.state.last_pc)?.is_return_from_trap())
                 {
                     return Ok(());
                 }

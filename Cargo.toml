@@ -9,9 +9,9 @@ time = []
 IR = []
 
 [dependencies]
-riscv = "0.10.0"
+riscv = "0.11.1"
 
 
 [dev-dependencies]
-riscv-rt = "0.11.0"
+riscv-rt = "0.12.2"
 uart_16550 = "0.3.0"

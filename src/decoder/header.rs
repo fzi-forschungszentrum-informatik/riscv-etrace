@@ -30,6 +30,7 @@ impl Decode for Header {
     }
 }
 
+/// Defines which trace type a packet has. Currently only instruction tracing is supported.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TraceType {
     Instruction,

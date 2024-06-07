@@ -139,7 +139,7 @@ pub enum Name {
     jalr,
 }
 
-/// An [Instruction] can be ignored or partially parsed by the disassembler.
+/// A RISC-V instruction can be ignored or partially parsed by the disassembler.
 /// Only information necessary for the tracing algorithm is retained.
 /// An instruction is only parsed if it is defined in [Name].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -147,22 +147,22 @@ pub enum InstructionType {
     /// The instruction is not listed in [Name] and was not parsed.
     Ignored,
     Parsed {
-        /// The name is always available.
+        /// If the instruction was parsed, the name is always available.
         name: Name,
-        /// Defaults to `false`. Only parsed for [Name::jalr]. For other instructions a value of
+        /// Defaults to `false`. Only parsed for `jalr`. For other instructions a value of
         /// `false` has no relation to RS1 and whether it is zero.
         is_rs1_zero: bool,
         /// Only true for branching and compressed branching instructions. If the instruction is not
         /// branching (not a B or compressed B type instruction, this even excludes control flow
         /// changing instructions such as `jalr`) `is_branch` is `false`.
         is_branch: bool,
-        /// Defaults to [None]. Only parsed if the immediate is necessary for the tracing algorithm.
+        /// Only parsed if the immediate is necessary for the tracing algorithm, else `None`.
         imm: Option<i32>,
     },
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
-/// It is either [4 bytes](InstructionLength::Normal) or [2 bytes](InstructionLength::Compressed).
+/// It is either 4 or 2 bytes.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum InstructionLength {
     Compressed = 2,
@@ -171,8 +171,7 @@ pub enum InstructionLength {
 
 /// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
 /// instructions which are parsed) additional fields and information about the instruction such as
-/// the [immediate](InstructionType::Parsed) may be available. For an exhaustive list of parameters
-/// see [InstructionType::Parsed].
+/// the immediate may be available.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Instruction {
     pub size: InstructionLength,

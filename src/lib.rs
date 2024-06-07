@@ -1,22 +1,22 @@
-//! # Rust implementation of Efficient Trace for RISC-V's instruction decoder and tracing algorithm (Version 2.0.1)
+//! # Rust implementation of Efficient Trace for RISC-V's instruction decoder and tracing algorithm
 //!
 //! This project implements the instruction packet decoder and instruction tracing algorithm for
-//! [Efficient Trace for RISC-V (Version 2.0.1)](https://github.com/riscv-non-isa/riscv-trace-spec/).
-//! It assumes each packet is written in a given specific memory location. This crate is not
-//! concerned how the encoder signals a new packet or how the packet is transported to the decoder.
+//! [Efficient Trace for RISC-V (Version 1.1.3)](https://github.com/riscv-non-isa/riscv-trace-spec/).
+//! This crate is not concerned how the encoder signals a new packet or how the packet is
+//! transported to the decoder.
 //!
 //! See [decoder] for the implementation of the packet decoder and [tracer] for the tracing
 //! algorithm.
 //!
-//! # `ETrace` features
-//! - instruction tracing
+//! # ETrace features
 //! - delta/full address mode
 //! - configurable bit width of packet fields
-//! - (partially implemented) optional context for instructions
-//! - (partially implemented) optional timestamp in header
-//! - (partially implemented) optional implicit return mode
-//! - disassembler support for instructions for sequentially inferable jumps
+//! - sign based decompression
+//! - (only decoding) optional context for instructions
+//! - (only decoding) optional timestamp in header
+//! - (only decoding) optional implicit return mode
 //!
+//! Each feature is configurable independently of each other.
 //! # Example
 //! ```
 //! extern crate riscv_etrace;
@@ -32,7 +32,7 @@
 //!
 //! // Create the protocol level configuration which will define the bit lengths of packet fields.
 //! let proto_conf = ProtocolConfiguration {
-//!     // In this example we assume a maximum of 2^10 of HARTs...
+//!     // In this example we assume a maximum of 2^10 of harts...
 //!     cpu_index_width: 10,
 //!     // ...but everything else will be default.
 //!     ..DEFAULT_PROTOCOL_CONFIG
@@ -40,14 +40,15 @@
 //!
 //! // Create the decoder configuration.
 //! let decoder_conf = DecoderConfiguration {
-//!     decompress: false,
+//!     // We assume that the packets are sign based compressed.
+//!     decompress: true,
 //! };
 //!
 //! // A single tracing configuration will be used for all tracers.
 //! let trace_conf = TraceConfiguration {
 //!     // Pass your parsed ELF segments.
 //!     segments: &segments,
-//!     // We will use compressed addresses for better efficiency.
+//!     // We will use differential addresses for better efficiency.
 //!     full_address: false,
 //! };
 //!
@@ -62,7 +63,7 @@
 //! // Create the packet decoder.
 //! let mut decoder = Decoder::new(proto_conf, decoder_conf);
 //!
-//! // Create each tracer, one for each HART.
+//! // Create each tracer, one for each hart.
 //! let mut tracers: Vec<Tracer> = Vec::new();
 //! for i in 0..1024 {
 //!     tracers.push(Tracer::new(
@@ -76,16 +77,17 @@
 //!         ));
 //! }
 //!
-//! // Assuming we have a slice given with a packet already written in binary in it:
 //! # let packet_vec: Vec<u8> = Vec::new();
-//! #
 //! # let packet_slice = packet_vec.as_slice();
+//! // Assuming we have a slice given with a packet already written in binary in it,
+//! // the decoder will decompress and parse it.
+//! // Note that a single decoder can be used for different harts.
 //! let packet = decoder.decode(packet_slice).unwrap();
 //! println!("{:?}", packet);
 //!
-//! // Get the correct tracer based on the HART index...
+//! // Get the correct tracer based on the hart index...
 //! let mut tracer = &tracers[packet.header.hart_index];
-//! // ...and trace it.
+//! // ...and trace it. This will call the previously defined `report...` callbacks.
 //! tracer.process_te_inst(&packet.payload).unwrap();
 //! ```
 #![no_std]
@@ -134,7 +136,7 @@ pub const DEFAULT_PROTOCOL_CONFIG: ProtocolConfiguration = ProtocolConfiguration
     iaddress_width_p: 64,
     cache_size_p: 0,
     privilege_width_p: 2,
-    cpu_index_width: 0,
+    cpu_index_width: 2,
     encoder_mode_n: 1,
     ioptions_n: 5,
 };

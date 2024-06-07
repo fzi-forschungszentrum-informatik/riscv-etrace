@@ -24,7 +24,7 @@ pub struct DecoderConfiguration {
     pub decompress: bool,
 }
 
-pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: false };
+pub const DEFAULT_DECODER_CONFIG: DecoderConfiguration = DecoderConfiguration { decompress: true };
 
 /// A list of possible errors during decoding of a single packet.
 #[derive(Debug)]
@@ -41,16 +41,16 @@ pub enum DecodeError {
         bit_count: usize,
         buffer_size: usize,
     },
-    DataNotSet
 }
 
-/// The maximum length a payload can have decompressed. Found by changing this value
-/// and rounding to the next highest value that is `x mod 8 == 0`
+/// The maximum length a payload can have decompressed. Found by changing this value until the
+/// decoder no longer crashed on a real trace and rounding to the next highest value that is
+/// `x mod 8 == 0`.
 pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 24;
 
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
-/// Multiple packets from different CPUs/Cores/... may be sequentially parsed by a single decoder
-/// instance.
+/// Multiple packets from different harts may be sequentially parsed by a single decoder
+/// instance as the decoder is stateless between [decode()](Decoder::decode()) calls.
 pub struct Decoder {
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
