@@ -1,7 +1,9 @@
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
+#[cfg(feature = "cache")]
+use crate::disassembler::InstructionCache;
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
-use crate::disassembler::{BinaryInstruction, Instruction, Segment};
+use crate::disassembler::{InstructionBits, Instruction, Segment};
 use crate::ProtocolConfiguration;
 use core::fmt;
 
@@ -110,6 +112,8 @@ pub struct TraceState {
     updiscon: bool,
     privilege: Privilege,
     segment_idx: usize,
+    #[cfg(feature = "cache")]
+    instr_cache: InstructionCache,
 }
 
 impl TraceState {
@@ -127,6 +131,8 @@ impl TraceState {
             updiscon: false,
             privilege: Privilege::U,
             segment_idx: 0,
+            #[cfg(feature = "cache")]
+            instr_cache: InstructionCache::new(),
         }
     }
 }
@@ -168,25 +174,25 @@ pub struct Tracer<'a> {
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     /// Called when a new program counter was traced.
-    report_pc: fn(ReportReason, u64),
+    report_pc: &'a mut dyn FnMut(ReportReason, u64) -> (),
     /// Called after a trap instruction was traced.
-    report_epc: fn(u64),
+    report_epc: &'a mut dyn FnMut(u64),
     /// Called when an instruction was disassembled. May be called multiple times for the same
     /// address.
-    report_instr: fn(Instruction),
+    report_instr: &'a mut dyn FnMut(u64, Instruction),
     /// Called when a branch will be traced. Reports the number of branches before the branch,
     /// the branch map and if the branch will be taken.
-    report_branch: fn(u8, u32, bool),
+    report_branch: &'a mut dyn FnMut(u8, u32, bool),
 }
 
 impl<'a> Tracer<'a> {
     pub fn new(
         proto_conf: ProtocolConfiguration,
         trace_conf: TraceConfiguration<'a>,
-        report_pc: fn(ReportReason, u64),
-        report_epc: fn(u64),
-        report_instr: fn(Instruction),
-        report_branch: fn(u8, u32, bool),
+        report_pc: &'a mut dyn FnMut(ReportReason, u64),
+        report_epc: &'a mut dyn FnMut(u64),
+        report_instr: &'a mut dyn FnMut(u64, Instruction),
+        report_branch: &'a mut dyn FnMut(u8, u32, bool),
     ) -> Self {
         Tracer {
             state: TraceState::new(),
@@ -200,6 +206,10 @@ impl<'a> Tracer<'a> {
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, TraceErrorType> {
+        #[cfg(feature = "cache")]
+        if let Some(instr) = self.state.instr_cache.get(pc) {
+            return Ok(*instr);
+        }
         if !self.trace_conf.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
             for i in 0..self.trace_conf.segments.len() {
@@ -214,7 +224,7 @@ impl<'a> Tracer<'a> {
             }
         }
         let binary = match {
-            BinaryInstruction::read_binary(pc, &self.trace_conf.segments[self.state.segment_idx])
+            InstructionBits::read_binary(pc, &self.trace_conf.segments[self.state.segment_idx])
         } {
             Ok(binary) => binary,
             Err(bytes) => {
@@ -229,11 +239,13 @@ impl<'a> Tracer<'a> {
         };
 
         match binary {
-            BinaryInstruction::Bit32(_) => assert_eq!(pc % 4, 0, "32 bit instruction not aligned"),
-            BinaryInstruction::Bit16(_) => assert_eq!(pc % 2, 0, "16 bit instruction not aligned"),
+            InstructionBits::Bit32(_) => assert_eq!(pc % 4, 0, "32 bit instruction not aligned"),
+            InstructionBits::Bit16(_) => assert_eq!(pc % 2, 0, "16 bit instruction not aligned"),
         }
         let instr = Instruction::from_binary(&binary);
-        (self.report_instr)(instr);
+        (self.report_instr)(pc, instr);
+        #[cfg(feature = "cache")]
+        self.state.instr_cache.write(pc, instr);
         Ok(instr)
     }
 

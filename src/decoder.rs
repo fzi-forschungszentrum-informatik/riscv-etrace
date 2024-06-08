@@ -161,7 +161,6 @@ impl Decoder {
         } else {
             Format::decode(self, slice)?.decode_payload(self, slice)?
         };
-
         Ok(Packet { header, payload })
     }
 
@@ -253,25 +252,6 @@ mod tests {
         assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
         assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
     }
-
-    /*#[test_case]
-    fn read_u32() {
-        let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
-        buffer[0] = 0b1100_0101;
-        buffer[1] = 0b1111_1111;
-        let mut decoder = Decoder::default(DEFAULT_CONFIGURATION);
-        decoder.set_buffer(buffer);
-        assert_eq!(decoder.read_fast(2, &buffer).unwrap(), 0b01);
-        assert_eq!(decoder.bit_pos, 2);
-        assert_eq!(decoder.read_fast(2, &buffer).unwrap(), 0b01);
-        assert_eq!(decoder.bit_pos, 4);
-        assert_eq!(decoder.read_fast(2, &buffer).unwrap(), 0b00);
-        assert_eq!(decoder.bit_pos, 6);
-        assert_eq!(decoder.read_fast(1, &buffer).unwrap(), 0b1);
-        assert_eq!(decoder.bit_pos, 7);
-        assert_eq!(decoder.read_fast(8, &buffer).unwrap(), 255);
-        assert_eq!(decoder.bit_pos, 15)
-    }*/
 
     #[test_case]
     fn read_bool_bits() {

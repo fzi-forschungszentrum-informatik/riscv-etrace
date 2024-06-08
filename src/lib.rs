@@ -53,42 +53,39 @@
 //! };
 //!
 //! // Define your report callbacks such as report_pc:
-//! let report_pc = |reason, pc| println!("pc: 0x{:x} ({:?})", pc, reason);
-//! let report_epc = |epc| println!("epc: 0x{:x}", epc);
-//! let report_trap = |trap| println!("trap: {:?}", trap);
-//! let report_instr = |instr: Instruction| { println!("instr: {:?}", instr) };
-//! let report_branch = |branches: u8, branch_map: u32, local_taken: bool|
+//! let mut report_pc = |reason, pc| println!("pc: 0x{:x} ({:?})", pc, reason);
+//! let mut report_epc = |epc| println!("epc: 0x{:x}", epc);
+//! let mut report_instr = |instr: Instruction| { println!("instr: {:?}", instr) };
+//! let mut report_branch = |branches: u8, branch_map: u32, local_taken: bool|
 //!     { println!("branch: {:?} {:032b} {}", branches, branch_map, local_taken) };
 //!
 //! // Create the packet decoder.
 //! let mut decoder = Decoder::new(proto_conf, decoder_conf);
 //!
-//! // Create each tracer, one for each hart.
-//! let mut tracers: Vec<Tracer> = Vec::new();
-//! for i in 0..1024 {
-//!     tracers.push(Tracer::new(
-//!             proto_conf,
-//!             trace_conf,
-//!             report_pc,
-//!             report_epc,
-//!             report_trap,
-//!             report_instr,
-//!             report_branch,
-//!         ));
-//! }
+//! // Create each tracer for the hart we want to trace.
+//! let mut tracer = Tracer::new(
+//!     proto_conf,
+//!     trace_conf,
+//!     &mut report_pc,
+//!     &mut report_epc,
+//!     &mut report_instr,
+//!     &mut report_branch
+//! );
+//!
 //!
 //! # let packet_vec: Vec<u8> = Vec::new();
 //! # let packet_slice = packet_vec.as_slice();
+//! # const HART_WE_WANT_TO_TRACE: usize = 0;
 //! // Assuming we have a slice given with a packet already written in binary in it,
 //! // the decoder will decompress and parse it.
 //! // Note that a single decoder can be used for different harts.
 //! let packet = decoder.decode(packet_slice).unwrap();
 //! println!("{:?}", packet);
-//!
-//! // Get the correct tracer based on the hart index...
-//! let mut tracer = &tracers[packet.header.hart_index];
-//! // ...and trace it. This will call the previously defined `report...` callbacks.
-//! tracer.process_te_inst(&packet.payload).unwrap();
+//! // Select the packet based on the hart index...
+//! if packet.header.hart_index == HART_WE_WANT_TO_TRACE {
+//!     // ...and trace it. This will call the previously defined `report...` callbacks.
+//!     tracer.process_te_inst(&packet.payload).unwrap();
+//! }
 //! ```
 #![no_std]
 #![no_main]
@@ -102,6 +99,7 @@
 use core::panic::PanicInfo;
 #[cfg(test)]
 use riscv_rt::entry;
+
 pub mod decoder;
 
 mod disassembler;

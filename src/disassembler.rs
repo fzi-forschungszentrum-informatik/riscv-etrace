@@ -1,7 +1,7 @@
-use core::fmt;
-use core::fmt::Formatter;
 use crate::disassembler::Name::*;
 use crate::disassembler::OpCode::*;
+use core::fmt;
+use core::fmt::Formatter;
 use core::ops::Range;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
@@ -17,7 +17,10 @@ pub struct Segment<'a> {
 
 impl fmt::Debug for Segment<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("Segment {{ vaddr_start {:#0x}, vaddr_end: {:#0x} }}", self.vaddr_start, self.vaddr_end))
+        f.write_fmt(format_args!(
+            "Segment {{ vaddr_start {:#0x}, vaddr_end: {:#0x} }}",
+            self.vaddr_start, self.vaddr_end
+        ))
     }
 }
 
@@ -42,21 +45,21 @@ impl<'a> Segment<'a> {
 }
 
 #[derive(Copy, Clone)]
-pub enum BinaryInstruction {
+pub enum InstructionBits {
     Bit32(u32),
     Bit16(u16),
 }
 
-impl BinaryInstruction {
+impl InstructionBits {
     pub fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
         let pointer = usize::try_from(address - segment.vaddr_start).unwrap();
         let bytes = &segment.mem[pointer..pointer + 4];
         if (bytes[0] & 0x3) != 0x3 {
-            Ok(BinaryInstruction::Bit16(u16::from_le_bytes(
+            Ok(InstructionBits::Bit16(u16::from_le_bytes(
                 bytes[0..2].try_into().unwrap(),
             )))
         } else if (bytes[0] & 0x1F) >= 0x3 && (bytes[0] & 0x1F) < 0x1F {
-            Ok(BinaryInstruction::Bit32(u32::from_le_bytes(
+            Ok(InstructionBits::Bit32(u32::from_le_bytes(
                 bytes.try_into().unwrap(),
             )))
         } else {
@@ -175,12 +178,12 @@ pub enum InstructionLength {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Instruction {
     pub size: InstructionLength,
-    pub insn_type: InstructionType,
+    pub instr_type: InstructionType,
 }
 
 impl Instruction {
     pub fn name(&self) -> Option<Name> {
-        if let InstructionType::Parsed { name, .. } = self.insn_type {
+        if let InstructionType::Parsed { name, .. } = self.instr_type {
             Some(name)
         } else {
             None
@@ -188,7 +191,7 @@ impl Instruction {
     }
 
     pub fn imm(&self) -> Option<i32> {
-        if let InstructionType::Parsed { imm, .. } = self.insn_type {
+        if let InstructionType::Parsed { imm, .. } = self.instr_type {
             imm
         } else {
             None
@@ -196,7 +199,7 @@ impl Instruction {
     }
 
     pub fn is_branch(&self) -> bool {
-        if let InstructionType::Parsed { is_branch, .. } = self.insn_type {
+        if let InstructionType::Parsed { is_branch, .. } = self.instr_type {
             is_branch
         } else {
             false
@@ -206,7 +209,7 @@ impl Instruction {
     pub fn is_inferable_jump(&self) -> bool {
         if let InstructionType::Parsed {
             name, is_rs1_zero, ..
-        } = self.insn_type
+        } = self.instr_type
         {
             name == jal || name == c_jal || name == c_j || (name == jalr && is_rs1_zero)
         } else {
@@ -217,7 +220,7 @@ impl Instruction {
     pub fn is_uninferable_jump(&self) -> bool {
         if let InstructionType::Parsed {
             name, is_rs1_zero, ..
-        } = self.insn_type
+        } = self.instr_type
         {
             name == c_jalr || name == c_jr || (name == jalr && !is_rs1_zero)
         } else {
@@ -226,7 +229,7 @@ impl Instruction {
     }
 
     pub fn is_return_from_trap(&self) -> bool {
-        if let InstructionType::Parsed { name, .. } = self.insn_type {
+        if let InstructionType::Parsed { name, .. } = self.instr_type {
             name == sret || name == mret || name == dret
         } else {
             false
@@ -234,7 +237,7 @@ impl Instruction {
     }
 
     pub fn is_uninferable_discon(&self) -> bool {
-        if let InstructionType::Parsed { name, .. } = self.insn_type {
+        if let InstructionType::Parsed { name, .. } = self.instr_type {
             self.is_uninferable_jump()
                 || self.is_return_from_trap()
                 || name == ecall
@@ -245,10 +248,10 @@ impl Instruction {
         }
     }
 
-    pub fn from_binary(bin_instr: &BinaryInstruction) -> Self {
+    pub fn from_binary(bin_instr: &InstructionBits) -> Self {
         match bin_instr {
-            BinaryInstruction::Bit32(num) => Self::parse_bin_instr(*num),
-            BinaryInstruction::Bit16(num) => Self::parse_compressed_instr(*num),
+            InstructionBits::Bit32(num) => Self::parse_bin_instr(*num),
+            InstructionBits::Bit16(num) => Self::parse_compressed_instr(*num),
         }
     }
 
@@ -276,7 +279,7 @@ impl Instruction {
         let size = InstructionLength::Normal;
         let ignored = Instruction {
             size,
-            insn_type: InstructionType::Ignored,
+            instr_type: InstructionType::Ignored,
         };
 
         let mut is_rs1_zero = false;
@@ -335,7 +338,7 @@ impl Instruction {
         };
         Instruction {
             size,
-            insn_type: InstructionType::Parsed {
+            instr_type: InstructionType::Parsed {
                 name,
                 is_rs1_zero,
                 is_branch: opcode == Branch,
@@ -368,7 +371,7 @@ impl Instruction {
         let size = InstructionLength::Compressed;
         let ignored = Instruction {
             size,
-            insn_type: InstructionType::Ignored,
+            instr_type: InstructionType::Ignored,
         };
 
         let op = Self::c_op(num);
@@ -411,7 +414,7 @@ impl Instruction {
         let is_branch = name == c_beqz || name == c_bnez;
         Instruction {
             size,
-            insn_type: InstructionType::Parsed {
+            instr_type: InstructionType::Parsed {
                 is_branch,
                 is_rs1_zero: false,
                 name,
@@ -571,9 +574,49 @@ impl Instruction {
     }
 }
 
+#[cfg(feature = "cache")]
+const INSTRUCTION_CACHE_LEN: usize = 6;
+
+#[cfg(feature = "cache")]
+#[derive(Copy, Clone)]
+pub struct InstructionCache {
+    addresses: [Option<u64>; INSTRUCTION_CACHE_LEN],
+    instructions: [Option<Instruction>; INSTRUCTION_CACHE_LEN],
+}
+
+#[cfg(feature = "cache")]
+impl<'a> InstructionCache {
+    pub fn new() -> Self {
+        InstructionCache {
+            addresses: [None; INSTRUCTION_CACHE_LEN],
+            instructions: [None; INSTRUCTION_CACHE_LEN],
+        }
+    }
+
+    pub fn write(&mut self, addr: u64, instr: Instruction) {
+        for i in 0..self.addresses.len() - 1 {
+            self.addresses[i] = self.addresses[i + 1];
+            self.instructions[i] = self.instructions[i + 1];
+        }
+        self.addresses[INSTRUCTION_CACHE_LEN - 1] = Some(addr);
+        self.instructions[INSTRUCTION_CACHE_LEN - 1] = Some(instr);
+    }
+
+    pub fn get(&self, k: u64) -> Option<&Instruction> {
+        for (i, opt) in self.addresses.iter().enumerate() {
+            if let Some(addr) = opt {
+                if *addr == k {
+                    return self.instructions[i].as_ref();
+                }
+            }
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::disassembler::BinaryInstruction::{Bit16, Bit32};
+    use crate::disassembler::InstructionBits::{Bit16, Bit32};
     use crate::disassembler::*;
 
     #[test_case]
@@ -583,7 +626,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::mret,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -600,7 +643,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::sret,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -617,7 +660,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::fence,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -634,7 +677,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::sfence_vma,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -651,7 +694,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::wfi,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -668,7 +711,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::ecall,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -685,7 +728,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::ebreak,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -702,7 +745,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::fence_i,
                     is_rs1_zero: false,
                     is_branch: false,
@@ -719,7 +762,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::beq,
                     is_branch: true,
                     imm: Some(-3402),
@@ -736,7 +779,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::bne,
                     is_branch: true,
                     imm: Some(-2222),
@@ -753,7 +796,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::blt,
                     is_branch: true,
                     imm: Some(12),
@@ -770,7 +813,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::bge,
                     is_branch: true,
                     imm: Some(-1954),
@@ -787,7 +830,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::bltu,
                     is_branch: true,
                     imm: Some(4094),
@@ -804,7 +847,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::bgeu,
                     is_branch: true,
                     imm: Some(0),
@@ -821,7 +864,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_beqz,
                     is_branch: true,
                     imm: Some(178),
@@ -838,7 +881,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: c_bnez,
                     is_branch: true,
                     imm: Some(170),
@@ -855,7 +898,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: aupic,
                     is_branch: false,
                     imm: Some(-54605),
@@ -872,7 +915,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::lui,
                     is_branch: false,
                     imm: Some(-241),
@@ -889,7 +932,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_lui,
                     is_branch: false,
                     imm: Some(-11),
@@ -906,7 +949,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::jal,
                     is_branch: false,
                     imm: Some(55554),
@@ -923,7 +966,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_j,
                     is_branch: false,
                     imm: Some(1364),
@@ -940,7 +983,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_jal,
                     is_branch: false,
                     imm: Some(-772),
@@ -957,7 +1000,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_jr,
                     is_branch: false,
                     imm: None,
@@ -974,7 +1017,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_jalr,
                     is_branch: false,
                     imm: None,
@@ -991,7 +1034,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Compressed,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::c_ebreak,
                     is_branch: false,
                     imm: None,
@@ -1008,7 +1051,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::jalr,
                     imm: None,
                     is_rs1_zero: false,
@@ -1025,7 +1068,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionLength::Normal,
-                insn_type: InstructionType::Parsed {
+                instr_type: InstructionType::Parsed {
                     name: Name::jalr,
                     imm: Some(1633),
                     is_rs1_zero: true,

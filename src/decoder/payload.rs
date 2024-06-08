@@ -61,6 +61,46 @@ impl Decode for Privilege {
     }
 }
 
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum BranchFmt {
+    NoAddr,
+    // does not exist
+    Addr,
+    AddrFail,
+}
+
+impl Decode for BranchFmt {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        match decoder.read(2, slice)? {
+            0b00 => Ok(BranchFmt::NoAddr),
+            0b01 => Err(DecodeError::BadBranchFmt),
+            0b10 => Ok(BranchFmt::Addr),
+            0b11 => Ok(BranchFmt::AddrFail),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum QualStatus {
+    NoChange,
+    EndedRep,
+    TraceLost,
+    EndedNtr,
+}
+
+impl Decode for QualStatus {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        Ok(match decoder.read(2, slice)? {
+            0b00 => QualStatus::NoChange,
+            0b01 => QualStatus::EndedRep,
+            0b10 => QualStatus::TraceLost,
+            0b11 => QualStatus::EndedNtr,
+            _ => unreachable!(),
+        })
+    }
+}
+
 #[cfg(feature = "IR")]
 pub struct IRPayload {
     pub irreport: usize,
@@ -164,26 +204,6 @@ impl Decode for BranchCount {
             address,
             branch_fmt,
         })
-    }
-}
-
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum BranchFmt {
-    NoAddr,
-    // does not exist
-    Addr,
-    AddrFail,
-}
-
-impl Decode for BranchFmt {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        match decoder.read(2, slice)? {
-            0b00 => Ok(BranchFmt::NoAddr),
-            0b01 => Err(DecodeError::BadBranchFmt),
-            0b10 => Ok(BranchFmt::Addr),
-            0b11 => Ok(BranchFmt::AddrFail),
-            _ => unreachable!(),
-        }
     }
 }
 
@@ -476,26 +496,6 @@ impl Decode for Support {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum QualStatus {
-    NoChange,
-    EndedRep,
-    TraceLost,
-    EndedNtr,
-}
-
-impl Decode for QualStatus {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        Ok(match decoder.read(2, slice)? {
-            0b00 => QualStatus::NoChange,
-            0b01 => QualStatus::EndedRep,
-            0b10 => QualStatus::TraceLost,
-            0b11 => QualStatus::EndedNtr,
-            _ => unreachable!(),
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Privilege, Start};
@@ -554,7 +554,7 @@ mod tests {
     }
 
     #[test_case]
-    fn branch_with_zero_branches_has_no_addr() {
+    fn branch_with_zero_branches() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b000_00000;
         buffer[1] = 0b100;
