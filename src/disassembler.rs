@@ -619,7 +619,7 @@ mod tests {
     use crate::disassembler::InstructionBits::{Bit16, Bit32};
     use crate::disassembler::*;
 
-    #[test_case]
+    #[test]
     fn mret() {
         let bin = Bit32(0x30200073);
         assert_eq!(
@@ -636,7 +636,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn sret() {
         let bin = Bit32(0x10200073);
         assert_eq!(
@@ -653,7 +653,7 @@ mod tests {
         );
     }
 
-    #[test_case]
+    #[test]
     fn fence() {
         let bin = Bit32(0x0ff0000f);
         assert_eq!(
@@ -670,7 +670,7 @@ mod tests {
         );
     }
 
-    #[test_case]
+    #[test]
     fn sfence_vma() {
         let bin = Bit32(0x12010073);
         assert_eq!(
@@ -687,7 +687,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn wfi() {
         let bin = Bit32(0x10500073);
         assert_eq!(
@@ -704,7 +704,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn ecall() {
         let bin = Bit32(0x00000073);
         assert_eq!(
@@ -721,7 +721,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn ebreak() {
         let bin = Bit32(0x00100073);
         assert_eq!(
@@ -738,7 +738,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn fence_i() {
         let bin = Bit32(0x0000100f);
         assert_eq!(
@@ -755,7 +755,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn beq() {
         let bin = Bit32(0xaa360b63);
         assert_eq!(
@@ -772,7 +772,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn bne() {
         let bin = Bit32(0xf4361963);
         assert_eq!(
@@ -789,7 +789,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn blt() {
         let bin = Bit32(0x00004663);
         assert_eq!(
@@ -806,7 +806,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn bge() {
         let bin = Bit32(0x845f5fe3);
         assert_eq!(
@@ -823,7 +823,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn bltu() {
         let bin = Bit32(0x7f406fe3);
         assert_eq!(
@@ -840,7 +840,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn bgeu() {
         let bin = Bit32(0x01467063);
         assert_eq!(
@@ -857,7 +857,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_beqz() {
         let bin = Bit16(0xca4d);
         assert_eq!(
@@ -874,7 +874,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_benz() {
         let bin = Bit16(0xe6cd);
         assert_eq!(
@@ -891,7 +891,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn auipc() {
         let bin = Bit32(0xf2ab3697);
         assert_eq!(
@@ -908,7 +908,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn lui() {
         let bin = Bit32(0xfff0f8b7);
         assert_eq!(
@@ -925,7 +925,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_lui() {
         let bin = Bit16(0x7255);
         assert_eq!(
@@ -942,7 +942,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn jal() {
         let bin = Bit32(0x1030d66f);
         assert_eq!(
@@ -959,7 +959,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_j() {
         let bin = Bit16(0xab91);
         assert_eq!(
@@ -976,7 +976,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_jal() {
         let bin = Bit16(0x39f5);
         assert_eq!(
@@ -993,7 +993,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_jr() {
         let bin = Bit16(0x8602);
         assert_eq!(
@@ -1010,7 +1010,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_jalr() {
         let bin = Bit16(0x9f82);
         assert_eq!(
@@ -1027,7 +1027,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn c_ebreak() {
         let bin = Bit16(0x9002);
         assert_eq!(
@@ -1044,7 +1044,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn jalr() {
         let bin = Bit32(0x66168867);
         assert_eq!(
@@ -1061,7 +1061,7 @@ mod tests {
         )
     }
 
-    #[test_case]
+    #[test]
     fn jalr_rs1_zero() {
         let bin = Bit32(0x66100fe7);
         assert_eq!(

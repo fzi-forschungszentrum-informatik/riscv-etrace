@@ -189,7 +189,7 @@ mod tests {
 
     const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-    #[test_case]
+    #[test]
     fn read_u64() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b01_011111;
@@ -224,7 +224,7 @@ mod tests {
         assert_eq!(decoder.bit_pos, 150);
     }
 
-    #[test_case]
+    #[test]
     fn read_i64() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b1101000_0;
@@ -242,7 +242,7 @@ mod tests {
         assert_eq!(decoder.read(64, &buffer).unwrap() as i64, -24);
     }
 
-    #[test_case]
+    #[test]
     fn read_entire_buffer() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::default();
@@ -253,7 +253,7 @@ mod tests {
         assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
     }
 
-    #[test_case]
+    #[test]
     fn read_bool_bits() {
         let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::default();
@@ -268,7 +268,7 @@ mod tests {
         assert!(!decoder.read_bit(&buffer).unwrap());
     }
 
-    #[test_case]
+    #[test]
     fn missing_msb_shift_is_correct() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b00_000000;

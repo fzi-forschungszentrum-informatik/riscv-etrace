@@ -504,7 +504,7 @@ mod tests {
 
     const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
-    #[test_case]
+    #[test]
     fn extension_jti() {
         let cache_size_p_override = 10;
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
@@ -533,7 +533,7 @@ mod tests {
         assert_eq!(jti_short.branch_map, None);
     }
 
-    #[test_case]
+    #[test]
     fn branch() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b010_00111;
@@ -553,7 +553,7 @@ mod tests {
         );
     }
 
-    #[test_case]
+    #[test]
     fn branch_with_zero_branches() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b000_00000;
@@ -566,7 +566,7 @@ mod tests {
         assert_eq!(branch_no_addr.address, None);
     }
 
-    #[test_case]
+    #[test]
     fn address() {
         let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
         buffer[0] = 0b0000_0001;
@@ -596,7 +596,7 @@ mod tests {
         assert!(diff_addr.updiscon);
     }
 
-    #[test_case]
+    #[test]
     fn synchronization_start() {
         let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
         let mut decoder = Decoder::new(
