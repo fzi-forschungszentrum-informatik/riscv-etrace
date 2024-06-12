@@ -17,6 +17,11 @@
 //! - (only decoding) optional implicit return mode
 //!
 //! Each feature is configurable independently of each other.
+//!
+//! # no_std
+//! This crate is not dependent on the standard library and only uses libcore. It can therefor even
+//! be used in bare metal environments.
+//!
 //! # Example
 //! ```
 //! extern crate riscv_etrace;
