@@ -44,7 +44,8 @@
 //!     decompress: true,
 //! };
 //!
-//! // A single tracing configuration will be used for all tracers.
+//! // A single tracing configuration will be used for the tracer. This may be shared between
+//! // multiple tracers for different harts.
 //! let trace_conf = TraceConfiguration {
 //!     // Pass your parsed ELF segments.
 //!     segments: &segments,
