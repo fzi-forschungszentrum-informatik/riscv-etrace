@@ -44,7 +44,7 @@ impl<'a> Segment<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum InstructionBits {
     Bit32(u32),
     Bit16(u16),
@@ -99,7 +99,7 @@ impl From<u32> for OpCode {
 
 /// A list of the name of all control flow changing instructions the tracing algorithm needs to know.  
 #[allow(non_camel_case_types)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Name {
     // SYS (R)
     mret,
@@ -578,7 +578,7 @@ impl Instruction {
 const INSTRUCTION_CACHE_LEN: usize = 6;
 
 #[cfg(feature = "cache")]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct InstructionCache {
     addresses: [Option<u64>; INSTRUCTION_CACHE_LEN],
     instructions: [Option<Instruction>; INSTRUCTION_CACHE_LEN],

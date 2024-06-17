@@ -3,7 +3,7 @@ use crate::decoder::payload::{
 };
 use crate::decoder::{Decode, DecodeError, Decoder};
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Format {
     Ext(Ext),
     Branch,
@@ -60,7 +60,7 @@ impl Decode for Format {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Ext {
     BranchCount,
     JumpTargetIndex,
@@ -76,7 +76,7 @@ impl Decode for Ext {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Sync {
     Start,
     Trap,

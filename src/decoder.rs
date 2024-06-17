@@ -19,7 +19,7 @@ const CONTEXT: u64 = todo!();
 const IR: u64 = todo!();
 
 /// Defines the decoder specific configuration. Used only be the [decoder](self).
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct DecoderConfiguration {
     pub decompress: bool,
 }
@@ -122,8 +122,8 @@ impl Decoder {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
             // Take 9th byte and mask MSBs that will not be read
             let missing_msbs = slice[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
-            let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
             // Shift MSBs into correct position in u64 and add with previously read value
+            let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
             Ok(value + msbs_u64)
         } else {
             Ok(value)

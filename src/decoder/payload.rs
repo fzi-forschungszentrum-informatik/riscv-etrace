@@ -43,7 +43,7 @@ impl Decode for ContextPart {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Privilege {
     U = 0b00,
     S = 0b01,
@@ -64,7 +64,7 @@ impl Decode for Privilege {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchFmt {
     NoAddr,
     // does not exist
@@ -84,7 +84,7 @@ impl Decode for BranchFmt {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QualStatus {
     NoChange,
     EndedRep,
@@ -117,7 +117,7 @@ impl Decode for IRPayload {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload {
     Extension(Extension),
     Branch(Branch),
@@ -170,14 +170,14 @@ impl Payload {
 }
 
 /// Format 3
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Extension {
     BranchCount(BranchCount),
     JumpTargetIndex(JumpTargetIndex),
 }
 
 /// Format 3, sub format 0
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct BranchCount {
     pub branch_count: u32,
     pub branch_fmt: BranchFmt,
@@ -211,7 +211,7 @@ impl Decode for BranchCount {
 }
 
 /// Format 3, sub format 1
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTargetIndex {
     pub index: usize,
     pub branches: usize,
@@ -248,7 +248,7 @@ impl Decode for JumpTargetIndex {
 }
 
 /// Format 2
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct AddressInfo {
     pub address: u64,
     pub notify: bool,
@@ -288,7 +288,7 @@ impl fmt::Debug for AddressInfo {
 }
 
 /// Format 1
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Branch {
     pub branches: u8,
     pub branch_map: u32,
@@ -328,7 +328,7 @@ impl fmt::Debug for Branch {
 }
 
 /// Format 0
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Synchronization {
     Start(Start),
     Trap(Trap),
@@ -357,7 +357,7 @@ impl Synchronization {
 }
 
 /// Format 0, sub format 0
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Start {
     pub branch: bool,
     pub privilege: Privilege,
@@ -395,7 +395,7 @@ impl fmt::Debug for Start {
 }
 
 /// Format 0, sub format 1
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Trap {
     pub branch: bool,
     pub privilege: Privilege,
@@ -444,7 +444,7 @@ impl Decode for Trap {
 }
 
 /// Format 0, sub format 2
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Context {
     pub privilege: Privilege,
     #[cfg(feature = "time")]
@@ -467,7 +467,7 @@ impl Decode for Context {
 }
 
 /// Format 0, sub format 3
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Support {
     pub ienable: bool,
     pub encoder_mode: u64,

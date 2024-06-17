@@ -84,7 +84,7 @@ impl fmt::Debug for TraceErrorType {
 }
 
 /// Configuration used only by the tracer.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct TraceConfiguration<'a> {
     /// The memory segments which will be traced. It is assumed the segments **do not overlap**
     /// with each other.
