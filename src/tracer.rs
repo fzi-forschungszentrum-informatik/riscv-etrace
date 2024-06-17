@@ -3,7 +3,7 @@ use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchroni
 #[cfg(feature = "cache")]
 use crate::disassembler::InstructionCache;
 use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
-use crate::disassembler::{InstructionBits, Instruction, Segment};
+use crate::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 use core::fmt;
 
@@ -116,8 +116,8 @@ pub struct TraceState {
     instr_cache: InstructionCache,
 }
 
-impl TraceState {
-    fn new() -> Self {
+impl Default for TraceState {
+    fn default() -> Self {
         TraceState {
             pc: 0,
             last_pc: 0,
@@ -195,7 +195,7 @@ impl<'a> Tracer<'a> {
         report_branch: &'a mut dyn FnMut(u8, u32, bool),
     ) -> Self {
         Tracer {
-            state: TraceState::new(),
+            state: TraceState::default(),
             trace_conf,
             proto_conf,
             report_pc,
