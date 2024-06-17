@@ -143,19 +143,19 @@ impl Decoder {
         }
 
         if self.decoder_conf.decompress {
-            let byte_pos = self.bit_pos / 8;
+            let header_byte_pos = self.bit_pos / 8;
             debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
-            let mut sign_expanded = if slice[byte_pos + header.payload_len - 1] & 0x80 == 0 {
+            let mut sign_expanded = if slice[header_byte_pos + header.payload_len - 1] & 0x80 == 0 {
                 [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
             } else {
                 [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
             };
             sign_expanded[0..header.payload_len]
-                .copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
+                .copy_from_slice(&slice[header_byte_pos..header.payload_len + header_byte_pos]);
             self.reset();
             let payload =
                 Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
-            let consumed_bit_count = self.bit_pos + header.payload_len;
+            let consumed_bit_count = self.bit_pos + header_byte_pos;
             Ok((Packet { header, payload }, consumed_bit_count))
         } else {
             let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
