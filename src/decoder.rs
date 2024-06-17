@@ -1,8 +1,8 @@
 //! Implements the packet decoder.
-use crate::decoder::format::{Format};
+use crate::decoder::format::Format;
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
-use crate::decoder::DecodeError::{ReadTooLong};
+use crate::decoder::DecodeError::ReadTooLong;
 use crate::{ProtocolConfiguration, DEFAULT_PROTOCOL_CONFIG};
 #[cfg(feature = "IR")]
 use payload::IRPayload;
@@ -100,7 +100,7 @@ impl Decoder {
                 buffer_size: slice.len() * 8,
                 bit_count,
                 bit_pos: self.bit_pos,
-            })
+            });
         }
         if bit_count + self.bit_pos > slice.len() * 8 {
             return Err(ReadTooLong {
@@ -110,11 +110,7 @@ impl Decoder {
             });
         }
         let byte_pos = self.bit_pos / 8;
-        let mut value = u64::from_le_bytes(
-            slice[byte_pos..byte_pos + 8]
-                .try_into()
-                .unwrap(),
-        );
+        let mut value = u64::from_le_bytes(slice[byte_pos..byte_pos + 8].try_into().unwrap());
         // Ignore first 'self.bit_pos' LSBs in first byte as they are already consumed.
         value >>= self.bit_pos % 8;
         // Zero out everything except 'bit_count' LSBs if bit_count != 64.
@@ -126,8 +122,7 @@ impl Decoder {
         if self.bit_pos > ((byte_pos + 8) * 8) {
             let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
             // Take 9th byte and mask MSBs that will not be read
-            let missing_msbs =
-                slice[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
+            let missing_msbs = slice[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
             let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
             // Shift MSBs into correct position in u64 and add with previously read value
             Ok(value + msbs_u64)
@@ -156,14 +151,16 @@ impl Decoder {
             } else {
                 [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
             };
-            sign_expanded[0..header.payload_len].copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
+            sign_expanded[0..header.payload_len]
+                .copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
             self.reset();
-            let payload = Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
+            let payload =
+                Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
             let consumed_bit_count = self.bit_pos + header.payload_len;
-            Ok((Packet { header, payload}, consumed_bit_count))
+            Ok((Packet { header, payload }, consumed_bit_count))
         } else {
             let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
-            Ok((Packet { header, payload}, self.bit_pos))
+            Ok((Packet { header, payload }, self.bit_pos))
         }
     }
 }

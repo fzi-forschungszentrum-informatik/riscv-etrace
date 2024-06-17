@@ -160,21 +160,13 @@ impl fmt::Debug for TraceState {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum ReportReason {
-    CopyStateAddr,
-    NextPcLocalPrevAddr,
-    NextPcPrevAddr,
-    NextPcAddr,
-}
-
 /// Provides the state to execute the tracing algorithm and executes the user-defined callbacks.
 pub struct Tracer<'a> {
     pub state: TraceState,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     /// Called when a new program counter was traced.
-    report_pc: &'a mut dyn FnMut(ReportReason, u64),
+    report_pc: &'a mut dyn FnMut(u64),
     /// Called after a trap instruction was traced.
     report_epc: &'a mut dyn FnMut(u64),
     /// Called when an instruction was disassembled. May be called multiple times for the same
@@ -189,7 +181,7 @@ impl<'a> Tracer<'a> {
     pub fn new(
         proto_conf: ProtocolConfiguration,
         trace_conf: TraceConfiguration<'a>,
-        report_pc: &'a mut dyn FnMut(ReportReason, u64),
+        report_pc: &'a mut dyn FnMut(u64),
         report_epc: &'a mut dyn FnMut(u64),
         report_instr: &'a mut dyn FnMut(u64, Instruction),
         report_branch: &'a mut dyn FnMut(u8, u32, bool),
@@ -304,7 +296,7 @@ impl<'a> Tracer<'a> {
                 self.follow_execution_path(payload)?
             } else {
                 self.state.pc = self.state.address;
-                (self.report_pc)(ReportReason::CopyStateAddr, self.state.pc);
+                (self.report_pc)(self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
             self.state.privilege = sync.get_privilege()?;
@@ -352,7 +344,7 @@ impl<'a> Tracer<'a> {
                 self.state.inferred_address = false;
                 loop {
                     let local_stop_here = self.next_pc(local_previous_address)?;
-                    (self.report_pc)(ReportReason::NextPcLocalPrevAddr, self.state.pc);
+                    (self.report_pc)(self.state.pc);
                     if local_stop_here {
                         return Ok(());
                     }
@@ -372,13 +364,13 @@ impl<'a> Tracer<'a> {
         loop {
             if self.state.inferred_address {
                 local_stop_here = self.next_pc(previous_address)?;
-                (self.report_pc)(ReportReason::NextPcPrevAddr, previous_address);
+                (self.report_pc)(previous_address);
                 if local_stop_here {
                     self.state.inferred_address = false;
                 }
             } else {
                 local_stop_here = self.next_pc(self.state.address)?;
-                (self.report_pc)(ReportReason::NextPcAddr, self.state.pc);
+                (self.report_pc)(self.state.pc);
                 if self.state.branches == 1
                     && self.get_instr(self.state.pc)?.is_branch()
                     && self.state.stop_at_last_branch

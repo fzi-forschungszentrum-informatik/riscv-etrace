@@ -1,5 +1,7 @@
+use crate::decoder::payload::{
+    AddressInfo, Branch, Context, Extension, Payload, Start, Support, Synchronization, Trap,
+};
 use crate::decoder::{Decode, DecodeError, Decoder};
-use crate::decoder::payload::{AddressInfo, Branch, Context, Extension, Payload, Start, Support, Synchronization, Trap};
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Format {
@@ -10,14 +12,18 @@ pub enum Format {
 }
 
 impl Format {
-    pub fn decode_payload(&self, decoder: &mut Decoder, slice: &[u8]) -> Result<Payload, DecodeError> {
+    pub fn decode_payload(
+        &self,
+        decoder: &mut Decoder,
+        slice: &[u8],
+    ) -> Result<Payload, DecodeError> {
         Ok(match self {
-            Format::Ext(Ext::BranchCount) => {
-                Payload::Extension(Extension::BranchCount(crate::decoder::payload::BranchCount::decode(decoder, slice)?))
-            }
-            Format::Ext(Ext::JumpTargetIndex) => {
-                Payload::Extension(Extension::JumpTargetIndex(crate::decoder::payload::JumpTargetIndex::decode(decoder, slice)?))
-            }
+            Format::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
+                crate::decoder::payload::BranchCount::decode(decoder, slice)?,
+            )),
+            Format::Ext(Ext::JumpTargetIndex) => Payload::Extension(Extension::JumpTargetIndex(
+                crate::decoder::payload::JumpTargetIndex::decode(decoder, slice)?,
+            )),
             Format::Branch => Payload::Branch(Branch::decode(decoder, slice)?),
             Format::Addr => Payload::Address(AddressInfo::decode(decoder, slice)?),
             Format::Sync(Sync::Start) => {

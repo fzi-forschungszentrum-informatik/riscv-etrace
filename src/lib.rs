@@ -59,7 +59,7 @@
 //! };
 //!
 //! // Define your report callbacks such as report_pc:
-//! let mut report_pc = |reason, pc| println!("pc: 0x{:x} ({:?})", pc, reason);
+//! let mut report_pc = |pc| println!("pc: 0x{:x}", pc);
 //! let mut report_epc = |epc| println!("epc: 0x{:x}", epc);
 //! let mut report_instr = |pc: u64, instr: Instruction| { println!("instr: {} {:?}", pc, instr) };
 //! let mut report_branch = |branches: u8, branch_map: u32, local_taken: bool|

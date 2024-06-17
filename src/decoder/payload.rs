@@ -3,10 +3,10 @@ use crate::tracer::TraceErrorType;
 use core::fmt;
 
 fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, DecodeError> {
-    Ok(
-        decoder.read(decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p, slice)?
-            << decoder.proto_conf.iaddress_lsb_p,
-    )
+    Ok(decoder.read(
+        decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p,
+        slice,
+    )? << decoder.proto_conf.iaddress_lsb_p)
 }
 
 fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), DecodeError> {
@@ -51,12 +51,15 @@ pub enum Privilege {
 }
 
 impl Decode for Privilege {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> where Self: Sized {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
         Ok(match decoder.read(2, slice)? {
             0b00 => Privilege::U,
             0b01 => Privilege::S,
             0b11 => Privilege::M,
-            _ => unreachable!()
+            _ => unreachable!(),
         })
     }
 }
@@ -262,7 +265,7 @@ impl Decode for AddressInfo {
         let notify = decoder.read_bit(slice)?;
         let updiscon = decoder.read_bit(slice)?;
         #[cfg(feature = "IR")]
-            let ir_payload = IRPayload::decode(decoder, slice)?;
+        let ir_payload = IRPayload::decode(decoder, slice)?;
         Ok(AddressInfo {
             address,
             notify,
