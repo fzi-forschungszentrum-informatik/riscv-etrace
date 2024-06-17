@@ -174,7 +174,7 @@ pub struct Tracer<'a> {
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     /// Called when a new program counter was traced.
-    report_pc: &'a mut dyn FnMut(ReportReason, u64) -> (),
+    report_pc: &'a mut dyn FnMut(ReportReason, u64),
     /// Called after a trap instruction was traced.
     report_epc: &'a mut dyn FnMut(u64),
     /// Called when an instruction was disassembled. May be called multiple times for the same

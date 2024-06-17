@@ -94,7 +94,6 @@
 //! }
 //! ```
 #![no_std]
-#![warn(clippy::cast_possible_truncation)]
 
 pub mod decoder;
 
