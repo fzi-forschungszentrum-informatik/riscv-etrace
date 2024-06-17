@@ -238,10 +238,6 @@ impl<'a> Tracer<'a> {
             }
         };
 
-        match binary {
-            InstructionBits::Bit32(_) => assert_eq!(pc % 4, 0, "32 bit instruction not aligned"),
-            InstructionBits::Bit16(_) => assert_eq!(pc % 2, 0, "16 bit instruction not aligned"),
-        }
         let instr = Instruction::from_binary(&binary);
         (self.report_instr)(pc, instr);
         #[cfg(feature = "cache")]

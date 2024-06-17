@@ -137,8 +137,9 @@ impl Decoder {
     }
 
     /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
-    /// Returns immediately after parsing one packet. Further bytes are ignored.
-    pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
+    /// Returns immediately after parsing one packet and returns how many bits were read.
+    /// Further bytes are ignored.
+    pub fn decode(&mut self, slice: &[u8]) -> Result<(Packet, usize), DecodeError> {
         self.reset();
         let header = Header::decode(self, slice)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
@@ -147,7 +148,7 @@ impl Decoder {
             self.bit_pos += 8 - (self.bit_pos % 8);
         }
 
-        let payload = if self.decoder_conf.decompress {
+        if self.decoder_conf.decompress {
             let byte_pos = self.bit_pos / 8;
             debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
             let mut sign_expanded = if slice[byte_pos + header.payload_len - 1] & 0x80 == 0 {
@@ -157,15 +158,13 @@ impl Decoder {
             };
             sign_expanded[0..header.payload_len].copy_from_slice(&slice[byte_pos..header.payload_len + byte_pos]);
             self.reset();
-            Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?
+            let payload = Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
+            let consumed_bit_count = self.bit_pos + header.payload_len;
+            Ok((Packet { header, payload}, consumed_bit_count))
         } else {
-            Format::decode(self, slice)?.decode_payload(self, slice)?
-        };
-        Ok(Packet { header, payload })
-    }
-
-    pub fn bit_pos(&self) -> usize {
-        self.bit_pos
+            let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
+            Ok((Packet { header, payload}, self.bit_pos))
+        }
     }
 }
 
