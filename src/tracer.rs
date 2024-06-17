@@ -287,7 +287,7 @@ impl<'a> Tracer<'a> {
                 self.state.branches = 0;
                 self.state.branch_map = 0;
             }
-            if self.get_instr(self.state.address)?.is_branch() {
+            if self.get_instr(self.state.address)?.is_branch {
                 let branch = sync.get_branch()?;
                 self.state.branch_map |= branch << self.state.branches;
                 self.state.branches += 1;
@@ -355,7 +355,7 @@ impl<'a> Tracer<'a> {
     }
 
     fn branch_limit(&mut self) -> Result<u8, TraceErrorType> {
-        Ok(self.get_instr(self.state.pc)?.is_branch() as u8)
+        Ok(self.get_instr(self.state.pc)?.is_branch as u8)
     }
 
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
@@ -372,7 +372,7 @@ impl<'a> Tracer<'a> {
                 local_stop_here = self.next_pc(self.state.address)?;
                 (self.report_pc)(self.state.pc);
                 if self.state.branches == 1
-                    && self.get_instr(self.state.pc)?.is_branch()
+                    && self.get_instr(self.state.pc)?.is_branch
                     && self.state.stop_at_last_branch
                 {
                     self.state.stop_at_last_branch = true;
@@ -419,7 +419,7 @@ impl<'a> Tracer<'a> {
 
         if local_instr.is_inferable_jump() {
             let imm = local_instr
-                .imm()
+                .imm
                 .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
             self.incr_pc(imm);
             if imm == 0 {
@@ -433,7 +433,7 @@ impl<'a> Tracer<'a> {
             local_stop_here = true;
         } else if self.is_taken_branch(&local_instr)? {
             let imm = local_instr
-                .imm()
+                .imm
                 .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
             self.incr_pc(imm);
             if imm == 0 {
@@ -450,7 +450,7 @@ impl<'a> Tracer<'a> {
 
     #[allow(clippy::wrong_self_convention)]
     fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceErrorType> {
-        if !instr.is_branch() {
+        if !instr.is_branch {
             return Ok(false);
         }
         if self.state.branches == 0 {
@@ -469,7 +469,7 @@ impl<'a> Tracer<'a> {
         if local_instr.is_uninferable_discon() && trap.thaddr {
             Ok(trap.address)
         } else if local_instr
-            .name()
+            .name
             .filter(|name| *name == ecall || *name == ebreak || *name == c_ebreak)
             .is_some()
         {
