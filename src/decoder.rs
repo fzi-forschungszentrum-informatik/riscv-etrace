@@ -178,6 +178,12 @@ pub struct Packet {
     pub payload: Payload,
 }
 
+impl Packet {
+    pub fn len() -> usize {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::decoder::*;
