@@ -85,7 +85,7 @@
 //! // Assuming we have a slice given with a packet already written in binary in it,
 //! // the decoder will decompress and parse it.
 //! // Note that a single decoder can be used for different harts.
-//! let (packet, _consumed_bit_count) = decoder.decode(packet_slice).unwrap();
+//! let packet = decoder.decode(packet_slice).unwrap();
 //! println!("{:?}", packet);
 //! // Select the packet based on the hart index...
 //! if packet.header.hart_index == HART_WE_WANT_TO_TRACE {

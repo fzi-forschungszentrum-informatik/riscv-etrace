@@ -104,8 +104,8 @@ pub enum Name {
     // SYS (R)
     mret,
     sret,
-    uret, // TODO uret is legacy
-    dret, // TODO dret is only in rc
+    uret, // TODO not parsed, uret is legacy
+    dret, // TODO not parsed, dret is only in rc
     fence,
     sfence_vma,
     wfi,

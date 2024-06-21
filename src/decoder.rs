@@ -141,31 +141,32 @@ impl Decoder {
         if self.bit_pos % 8 != 0 {
             self.bit_pos += 8 - (self.bit_pos % 8);
         }
+        let payload_start = self.bit_pos / 8;
+        let len = payload_start + header.payload_len;
 
         if self.decoder_conf.decompress {
-            let header_byte_pos = self.bit_pos / 8;
             debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
-            let mut sign_expanded = if slice[header_byte_pos + header.payload_len - 1] & 0x80 == 0 {
+            let mut sign_expanded = if slice[payload_start + header.payload_len - 1] & 0x80 == 0 {
                 [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
             } else {
                 [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
             };
             sign_expanded[0..header.payload_len]
-                .copy_from_slice(&slice[header_byte_pos..header.payload_len + header_byte_pos]);
+                .copy_from_slice(&slice[payload_start..header.payload_len + payload_start]);
             self.reset();
             let payload =
                 Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
             Ok(Packet {
                 header,
                 payload,
-                len: self.bit_pos + header_byte_pos,
+                len,
             })
         } else {
             let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
             Ok(Packet {
                 header,
                 payload,
-                len: self.bit_pos,
+                len,
             })
         }
     }
@@ -183,6 +184,7 @@ trait Decode {
 pub struct Packet {
     pub header: Header,
     pub payload: Payload,
+    /// Length of the packet in bytes.
     pub len: usize,
 }
 
