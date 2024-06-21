@@ -1,7 +1,7 @@
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 #[cfg(feature = "cache")]
-use crate::disassembler::InstructionCache;
+use crate::tracer::disassembler::InstructionCache;
 use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
