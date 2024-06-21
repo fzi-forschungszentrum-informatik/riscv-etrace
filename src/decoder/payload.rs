@@ -1,5 +1,8 @@
+// Copyright (C) 2024 FZI Forschungszentrum Informatik
+// SPDX-License-Identifier: Apache-2.0
 use crate::decoder::{Decode, DecodeError, Decoder};
 use crate::tracer::TraceErrorType;
+
 use core::fmt;
 
 fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, DecodeError> {

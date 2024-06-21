@@ -1,3 +1,5 @@
+// Copyright (C) 2024 FZI Forschungszentrum Informatik
+// SPDX-License-Identifier: Apache-2.0
 //! # Rust implementation of Efficient Trace for RISC-V's instruction decoder and tracing algorithm
 //!
 //! This project implements the instruction packet decoder and instruction tracing algorithm for

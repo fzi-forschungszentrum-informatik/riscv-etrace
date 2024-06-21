@@ -1,5 +1,8 @@
+// Copyright (C) 2024 FZI Forschungszentrum Informatik
+// SPDX-License-Identifier: Apache-2.0
 use crate::tracer::disassembler::Name::*;
 use crate::tracer::disassembler::OpCode::*;
+
 use core::fmt;
 use core::fmt::Formatter;
 use core::ops::Range;

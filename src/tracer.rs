@@ -1,3 +1,5 @@
+// Copyright (C) 2024 FZI Forschungszentrum Informatik
+// SPDX-License-Identifier: Apache-2.0
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 #[cfg(feature = "cache")]
@@ -5,6 +7,7 @@ use crate::tracer::disassembler::InstructionCache;
 use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
+
 use core::fmt;
 
 pub mod disassembler;
