@@ -27,7 +27,7 @@ fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), Dec
     Ok((branches, len))
 }
 
-pub struct ContextPart {
+pub(crate) struct ContextPart {
     pub privilege: Privilege,
     #[cfg(feature = "time")]
     pub time: u64,
