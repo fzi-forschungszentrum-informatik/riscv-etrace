@@ -37,10 +37,10 @@ pub enum TraceErrorType {
     /// The tracer cannot resolve the branch because all branches have been processed.
     UnresolvableBranch,
     /// The current synchronization packet has no branching information.
-    WrongGetBranchType(Synchronization),
+    WrongGetBranchType,
     /// The current packet has no privilege information.
     WrongGetPrivilegeType,
-    /// The instruction at the `address` cannot be parsed.
+    /// The instruction at `address` cannot be parsed.
     UnknownInstruction {
         address: u64,
         bytes: [u8; 4],
@@ -67,9 +67,7 @@ impl fmt::Debug for TraceErrorType {
                 f.write_str("UnexpectedUninferableDiscon")
             }
             TraceErrorType::UnresolvableBranch => f.write_str("UnresolvableBranch"),
-            TraceErrorType::WrongGetBranchType(sync) => {
-                f.write_fmt(format_args!("WrongGetBranchType({sync:?})"))
-            }
+            TraceErrorType::WrongGetBranchType => f.write_str("WrongGetBranchType"),
             TraceErrorType::WrongGetPrivilegeType => f.write_str("WrongGetPrivilegeType"),
             TraceErrorType::UnknownInstruction {
                 address,

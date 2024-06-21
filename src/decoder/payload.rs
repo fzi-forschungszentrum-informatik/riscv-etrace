@@ -345,7 +345,7 @@ impl Synchronization {
         match self {
             Synchronization::Start(start) => Ok(start.branch),
             Synchronization::Trap(trap) => Ok(trap.branch),
-            _ => Err(TraceErrorType::WrongGetBranchType(*self)),
+            _ => Err(TraceErrorType::WrongGetBranchType),
         }
         .map(|b| b as u32)
     }
