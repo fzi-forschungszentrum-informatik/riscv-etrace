@@ -133,7 +133,7 @@ impl Decoder {
     /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
     /// Returns immediately after parsing one packet and returns how many bits were read.
     /// Further bytes are ignored.
-    pub fn decode(&mut self, slice: &[u8]) -> Result<(Packet, usize), DecodeError> {
+    pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
         self.reset();
         let header = Header::decode(self, slice)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
@@ -155,11 +155,18 @@ impl Decoder {
             self.reset();
             let payload =
                 Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
-            let consumed_bit_count = self.bit_pos + header_byte_pos;
-            Ok((Packet { header, payload }, consumed_bit_count))
+            Ok(Packet {
+                header,
+                payload,
+                len: self.bit_pos + header_byte_pos,
+            })
         } else {
             let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
-            Ok((Packet { header, payload }, self.bit_pos))
+            Ok(Packet {
+                header,
+                payload,
+                len: self.bit_pos,
+            })
         }
     }
 }
@@ -176,12 +183,7 @@ trait Decode {
 pub struct Packet {
     pub header: Header,
     pub payload: Payload,
-}
-
-impl Packet {
-    pub fn len() -> usize {
-        todo!()
-    }
+    pub len: usize,
 }
 
 #[cfg(test)]
