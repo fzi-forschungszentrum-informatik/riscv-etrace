@@ -168,7 +168,7 @@ impl fmt::Debug for TraceState {
 
 /// Provides the state to execute the tracing algorithm and executes the user-defined callbacks.
 pub struct Tracer<'a> {
-    pub state: TraceState,
+    state: TraceState,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     /// Called when a new program counter was traced.
