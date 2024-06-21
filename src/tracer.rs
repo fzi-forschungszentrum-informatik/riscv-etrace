@@ -122,7 +122,7 @@ pub struct TraceState {
     pub instr_cache: InstructionCache,
 }
 
-impl Default for TraceState {
+impl TraceState {
     fn default() -> Self {
         TraceState {
             pc: 0,
