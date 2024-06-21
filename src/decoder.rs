@@ -22,7 +22,7 @@ const CONTEXT: u64 = todo!();
 const IR: u64 = todo!();
 
 /// Defines the decoder specific configuration. Used only be the [decoder](self).
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct DecoderConfiguration {
     pub decompress: bool,
 }

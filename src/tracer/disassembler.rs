@@ -49,7 +49,7 @@ impl<'a> Segment<'a> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum InstructionBits {
     Bit32(u32),
     Bit16(u16),
@@ -149,7 +149,7 @@ pub enum Name {
 
 /// Represents the possible byte length of single RISC-V [Instruction].
 /// It is either 4 or 2 bytes.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum InstructionSize {
     Compressed = 2,
     Normal = 4,
@@ -158,7 +158,7 @@ pub enum InstructionSize {
 /// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
 /// instructions which are parsed) additional fields and information about the instruction such as
 /// the immediate may be available.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Instruction {
     pub size: InstructionSize,
     /// If the instruction was parsed, the name is always available.
@@ -541,7 +541,7 @@ impl Instruction {
 const INSTRUCTION_CACHE_LEN: usize = 6;
 
 #[cfg(feature = "cache")]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct InstructionCache {
     pub addresses: [Option<u64>; INSTRUCTION_CACHE_LEN],
     pub instructions: [Option<Instruction>; INSTRUCTION_CACHE_LEN],
