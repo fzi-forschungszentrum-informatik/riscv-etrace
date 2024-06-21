@@ -9,43 +9,43 @@ use core::fmt::Formatter;
 use core::ops::Range;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
-/// `vaddr_start` is the same address the encoder uses for instructions in this segment.
-/// No instruction in this segment has a larger address than `vaddr_end`.
-/// `mem` is a slice of `[u8; vaddr_end - vaddr_start]` bytes containing the instructions.
+/// `first_addr` is the same address the encoder uses for instructions in this segment.
+/// No instruction in this segment has a larger address than `last_addr`.
+/// `mem` is a slice of `[u8; last_addr - first_addr]` bytes containing the instructions.
 #[derive(Copy, Clone)]
 pub struct Segment<'a> {
-    pub vaddr_start: u64,
-    pub vaddr_end: u64,
+    pub first_addr: u64,
+    pub last_addr: u64,
     pub mem: &'a [u8],
 }
 
 impl fmt::Debug for Segment<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
-            "Segment {{ vaddr_start {:#0x}, vaddr_end: {:#0x} }}",
-            self.vaddr_start, self.vaddr_end
+            "Segment {{ first_addr {:#0x}, last_addr: {:#0x} }}",
+            self.first_addr, self.last_addr
         ))
     }
 }
 
 impl<'a> Segment<'a> {
-    pub fn new(vaddr_start: u64, vaddr_end: u64, mem: &'a [u8]) -> Self {
-        assert!(vaddr_start < vaddr_end);
+    pub fn new(first_addr: u64, last_addr: u64, mem: &'a [u8]) -> Self {
+        assert!(first_addr < last_addr);
         assert_eq!(
-            usize::try_from(vaddr_end - vaddr_start).unwrap(),
+            usize::try_from(last_addr - first_addr).unwrap(),
             mem.len(),
-            "vaddr length does not equal memory slice length"
+            "addr length does not equal memory slice length"
         );
         Segment {
-            vaddr_start,
-            vaddr_end,
+            first_addr,
+            last_addr,
             mem,
         }
     }
 
     /// Returns true if `vaddr_start <= addr <= vaddr_end`.
     pub fn contains(&self, addr: u64) -> bool {
-        self.vaddr_start <= addr && addr <= self.vaddr_end
+        self.first_addr <= addr && addr <= self.last_addr
     }
 }
 
@@ -57,7 +57,7 @@ pub enum InstructionBits {
 
 impl InstructionBits {
     pub(crate) fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
-        let pointer = usize::try_from(address - segment.vaddr_start).unwrap();
+        let pointer = usize::try_from(address - segment.first_addr).unwrap();
         let bytes = &segment.mem[pointer..pointer + 4];
         if (bytes[0] & 0x3) != 0x3 {
             Ok(InstructionBits::Bit16(u16::from_le_bytes(

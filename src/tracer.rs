@@ -230,8 +230,8 @@ impl<'a> Tracer<'a> {
                     address: pc,
                     bytes,
                     segment_idx: self.state.segment_idx,
-                    vaddr_start: self.trace_conf.segments[self.state.segment_idx].vaddr_start,
-                    vaddr_end: self.trace_conf.segments[self.state.segment_idx].vaddr_end,
+                    vaddr_start: self.trace_conf.segments[self.state.segment_idx].first_addr,
+                    vaddr_end: self.trace_conf.segments[self.state.segment_idx].last_addr,
                 })
             }
         };
