@@ -105,21 +105,21 @@ pub struct TraceConfiguration<'a> {
 /// and the specification.
 #[derive(Copy, Clone)]
 pub struct TraceState {
-    pc: u64,
-    last_pc: u64,
-    address: u64,
-    branches: u8,
+    pub pc: u64,
+    pub last_pc: u64,
+    pub address: u64,
+    pub branches: u8,
     /// u32 because there can be a maximum of 31 branches.
-    branch_map: u32,
-    stop_at_last_branch: bool,
-    inferred_address: bool,
-    start_of_trace: bool,
-    notify: bool,
-    updiscon: bool,
-    privilege: Privilege,
-    segment_idx: usize,
+    pub branch_map: u32,
+    pub stop_at_last_branch: bool,
+    pub inferred_address: bool,
+    pub start_of_trace: bool,
+    pub notify: bool,
+    pub updiscon: bool,
+    pub privilege: Privilege,
+    pub segment_idx: usize,
     #[cfg(feature = "cache")]
-    instr_cache: InstructionCache,
+    pub instr_cache: InstructionCache,
 }
 
 impl Default for TraceState {

@@ -543,20 +543,20 @@ const INSTRUCTION_CACHE_LEN: usize = 6;
 #[cfg(feature = "cache")]
 #[derive(Debug, Copy, Clone)]
 pub struct InstructionCache {
-    addresses: [Option<u64>; INSTRUCTION_CACHE_LEN],
-    instructions: [Option<Instruction>; INSTRUCTION_CACHE_LEN],
+    pub addresses: [Option<u64>; INSTRUCTION_CACHE_LEN],
+    pub instructions: [Option<Instruction>; INSTRUCTION_CACHE_LEN],
 }
 
 #[cfg(feature = "cache")]
 impl<'a> InstructionCache {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         InstructionCache {
             addresses: [None; INSTRUCTION_CACHE_LEN],
             instructions: [None; INSTRUCTION_CACHE_LEN],
         }
     }
 
-    pub fn write(&mut self, addr: u64, instr: Instruction) {
+    pub(crate) fn write(&mut self, addr: u64, instr: Instruction) {
         for i in 0..self.addresses.len() - 1 {
             self.addresses[i] = self.addresses[i + 1];
             self.instructions[i] = self.instructions[i + 1];
