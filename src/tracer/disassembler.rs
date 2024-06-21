@@ -56,7 +56,7 @@ pub enum InstructionBits {
 }
 
 impl InstructionBits {
-    pub fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
+    pub(crate) fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
         let pointer = usize::try_from(address - segment.vaddr_start).unwrap();
         let bytes = &segment.mem[pointer..pointer + 4];
         if (bytes[0] & 0x3) != 0x3 {
