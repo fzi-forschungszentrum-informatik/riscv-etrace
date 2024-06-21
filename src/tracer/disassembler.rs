@@ -1,5 +1,6 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+
 use crate::tracer::disassembler::Name::*;
 use crate::tracer::disassembler::OpCode::*;
 
@@ -29,6 +30,7 @@ impl fmt::Debug for Segment<'_> {
 
 impl<'a> Segment<'a> {
     pub fn new(vaddr_start: u64, vaddr_end: u64, mem: &'a [u8]) -> Self {
+        assert!(vaddr_start < vaddr_end);
         assert_eq!(
             usize::try_from(vaddr_end - vaddr_start).unwrap(),
             mem.len(),
@@ -219,7 +221,7 @@ impl Instruction {
         }
     }
 
-    pub fn from_binary(bin_instr: &InstructionBits) -> Self {
+    pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
         match bin_instr {
             InstructionBits::Bit32(num) => Self::parse_bin_instr(*num),
             InstructionBits::Bit16(num) => Self::parse_compressed_instr(*num),
