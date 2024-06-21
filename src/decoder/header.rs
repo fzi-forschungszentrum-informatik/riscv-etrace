@@ -7,6 +7,8 @@ pub struct Header {
     pub payload_len: usize,
     pub trace_type: TraceType,
     pub has_timestamp: bool,
+    #[cfg(feature = "time")]
+    pub timestamp: Option<u16>,
     pub hart_index: usize,
 }
 
@@ -15,8 +17,13 @@ impl Decode for Header {
         let payload_length = decoder.read(5, slice)?;
         let trace_type = TraceType::decode(decoder, slice)?;
         let has_timestamp = decoder.read_bit(slice)?;
+        #[cfg(feature = "time")]
+        let timestamp = if has_timestamp {
+            Some(decoder.read(16, slice)? as u16)
+        } else {
+            None
+        };
         let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width, slice)?;
-
         if trace_type != TraceType::Instruction {
             return Err(WrongTraceType(trace_type));
         }
@@ -25,6 +32,8 @@ impl Decode for Header {
             payload_len: payload_length.try_into().unwrap(),
             trace_type,
             has_timestamp,
+            #[cfg(feature = "time")]
+            timestamp,
             hart_index: cpu_index.try_into().unwrap(),
         })
     }
