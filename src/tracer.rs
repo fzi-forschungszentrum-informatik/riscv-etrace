@@ -2,10 +2,12 @@
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 #[cfg(feature = "cache")]
 use crate::disassembler::InstructionCache;
-use crate::disassembler::Name::{c_ebreak, ebreak, ecall};
-use crate::disassembler::{Instruction, InstructionBits, Segment};
+use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
+use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 use core::fmt;
+
+pub mod disassembler;
 
 /// Captures the tracing algorithm error and also reports the current tracing context
 /// in which the error occurred.

@@ -1,5 +1,5 @@
-use crate::disassembler::Name::*;
-use crate::disassembler::OpCode::*;
+use crate::tracer::disassembler::Name::*;
+use crate::tracer::disassembler::OpCode::*;
 use core::fmt;
 use core::fmt::Formatter;
 use core::ops::Range;
@@ -574,8 +574,8 @@ impl<'a> InstructionCache {
 
 #[cfg(test)]
 mod tests {
-    use crate::disassembler::InstructionBits::{Bit16, Bit32};
-    use crate::disassembler::*;
+    use crate::tracer::disassembler::InstructionBits::{Bit16, Bit32};
+    use crate::tracer::disassembler::*;
 
     #[test]
     fn mret() {
