@@ -97,9 +97,6 @@
 //! ```
 #![no_std]
 
-// TODO open sourcing, apache 2, license header in every file
-// TODO firrtl-ast FZI Forschungszenturm ... mit jahr
-
 pub mod decoder;
 pub mod tracer;
 
