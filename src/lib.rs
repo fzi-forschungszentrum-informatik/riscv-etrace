@@ -22,7 +22,7 @@
 //! Each feature is configurable independently of each other.
 //!
 //! # no_std
-//! This crate is not dependent on the standard library and only uses libcore. It can therefor even
+//! This crate is not dependent on the standard library and only uses the Core Library. It can therefore even
 //! be used in bare metal environments.
 //!
 //! # Example
