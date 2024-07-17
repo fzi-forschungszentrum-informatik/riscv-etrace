@@ -44,6 +44,8 @@ pub enum DecodeError {
         bit_count: usize,
         buffer_size: usize,
     },
+    // The privilege level is not known. You might want to implement it.
+    UnknownPrivilege(u8)
 }
 
 /// The maximum length a payload can have decompressed. Found by changing this value until the

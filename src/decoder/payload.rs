@@ -59,12 +59,12 @@ impl Decode for Privilege {
     where
         Self: Sized,
     {
-        Ok(match decoder.read(2, slice)? {
-            0b00 => Privilege::U,
-            0b01 => Privilege::S,
-            0b11 => Privilege::M,
-            _ => unreachable!(),
-        })
+        match decoder.read(2, slice)? {
+            0b00 => Ok(Privilege::U),
+            0b01 => Ok(Privilege::S),
+            0b11 => Ok(Privilege::M),
+            err => Err(DecodeError::UnknownPrivilege(err as u8)),
+        }
     }
 }
 
@@ -164,7 +164,7 @@ impl Payload {
         }
     }
 
-    pub fn get_privilege(&self) -> Result<Privilege, TraceErrorType> {
+    pub fn get_privilege(&self) -> Result<&Privilege, TraceErrorType> {
         if let Payload::Synchronization(sync) = self {
             Ok(sync.get_privilege()?)
         } else {
@@ -350,11 +350,11 @@ impl Synchronization {
         .map(|b| b as u32)
     }
 
-    pub fn get_privilege(&self) -> Result<Privilege, TraceErrorType> {
+    pub fn get_privilege(&self) -> Result<&Privilege, TraceErrorType> {
         match self {
-            Synchronization::Start(start) => Ok(start.privilege),
-            Synchronization::Trap(trap) => Ok(trap.privilege),
-            Synchronization::Context(ctx) => Ok(ctx.privilege),
+            Synchronization::Start(start) => Ok(&start.privilege),
+            Synchronization::Trap(trap) => Ok(&trap.privilege),
+            Synchronization::Context(ctx) => Ok(&ctx.privilege),
             Synchronization::Support(_) => Err(TraceErrorType::WrongGetPrivilegeType),
         }
     }

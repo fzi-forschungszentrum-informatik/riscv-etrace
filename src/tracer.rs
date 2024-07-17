@@ -107,7 +107,7 @@ pub struct TraceState {
     pub last_pc: u64,
     pub address: u64,
     pub branches: u8,
-    /// u32 because there can be a maximum of 31 branches.
+    // u32 because there can be a maximum of 31 branches.
     pub branch_map: u32,
     pub stop_at_last_branch: bool,
     pub inferred_address: bool,
@@ -303,7 +303,7 @@ impl<'a> Tracer<'a> {
                 (self.report_pc)(self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
-            self.state.privilege = sync.get_privilege()?;
+            self.state.privilege = *sync.get_privilege()?;
             self.state.start_of_trace = false;
             Ok(())
         } else {
