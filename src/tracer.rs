@@ -133,7 +133,7 @@ impl TraceState {
             address: 0,
             notify: false,
             updiscon: false,
-            privilege: Privilege::U,
+            privilege: Privilege::User,
             segment_idx: 0,
             #[cfg(feature = "cache")]
             instr_cache: InstructionCache::new(),

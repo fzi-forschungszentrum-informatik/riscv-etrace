@@ -49,9 +49,9 @@ impl Decode for ContextPart {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Privilege {
-    U = 0b00,
-    S = 0b01,
-    M = 0b11,
+    User = 0b00,
+    Supervisor = 0b01,
+    Machine = 0b11,
 }
 
 impl Decode for Privilege {
@@ -60,9 +60,9 @@ impl Decode for Privilege {
         Self: Sized,
     {
         match decoder.read(2, slice)? {
-            0b00 => Ok(Privilege::U),
-            0b01 => Ok(Privilege::S),
-            0b11 => Ok(Privilege::M),
+            0b00 => Ok(Privilege::User),
+            0b01 => Ok(Privilege::Supervisor),
+            0b11 => Ok(Privilege::Machine),
             err => Err(DecodeError::UnknownPrivilege(err as u8)),
         }
     }
@@ -626,7 +626,7 @@ mod tests {
         decoder.reset();
         let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
         assert!(sync_start.branch);
-        assert_eq!(sync_start.privilege, Privilege::M);
+        assert_eq!(sync_start.privilege, Privilege::Machine);
         assert_eq!(sync_start.address, u64::MAX);
     }
 }
