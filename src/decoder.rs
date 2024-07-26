@@ -48,7 +48,7 @@ pub enum DecodeError {
         bit_count: usize,
         buffer_size: usize,
     },
-    // The privilege level is not known. You might want to implement it.
+    /// The privilege level is not known. You might want to implement it.
     UnknownPrivilege(u8),
 }
 
