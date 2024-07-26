@@ -138,53 +138,10 @@ impl Decoder {
             Ok(value)
         }
     }
-
-    /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
-    /// Returns immediately after parsing one packet and returns how many bits were read.
-    /// Further bytes are ignored.
-    pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
-        self.reset();
-        let header = Header::decode(self, slice)?;
-        // Set the bit position to the beginning of the start of the next byte for payload decoding
-        // if not at the first bit of the first payload byte.
-        if self.bit_pos % 8 != 0 {
-            self.bit_pos += 8 - (self.bit_pos % 8);
-        }
-        let payload_start = self.bit_pos / 8;
-        let len = payload_start + header.payload_len;
-
-        if self.decoder_conf.decompress {
-            debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
-            let mut sign_expanded = if slice[payload_start + header.payload_len - 1] & 0x80 == 0 {
-                [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
-            } else {
-                [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
-            };
-            sign_expanded[0..header.payload_len]
-                .copy_from_slice(&slice[payload_start..header.payload_len + payload_start]);
-            self.reset();
-            let payload =
-                Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
-            Ok(Packet {
-                header,
-                payload,
-                len,
-            })
-        } else {
-            let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
-            Ok(Packet {
-                header,
-                payload,
-                len,
-            })
-        }
-    }
 }
 
-trait Decode {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>
-    where
-        Self: Sized;
+pub trait Decode: Sized {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>;
 }
 
 /// A single protocol packet emitted by the encoder.
@@ -195,6 +152,46 @@ pub struct Packet {
     pub payload: Payload,
     /// Length of the packet in bytes.
     pub len: usize,
+}
+
+impl Decode for Packet {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Packet, DecodeError> {
+        decoder.reset();
+        let header = Header::decode(decoder, slice)?;
+        // Set the bit position to the beginning of the start of the next byte for payload decoding
+        // if not at the first bit of the first payload byte.
+        if decoder.bit_pos % 8 != 0 {
+            decoder.bit_pos += 8 - (decoder.bit_pos % 8);
+        }
+        let payload_start = decoder.bit_pos / 8;
+        let len = payload_start + header.payload_len;
+
+        if decoder.decoder_conf.decompress {
+            debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
+            let mut sign_expanded = if slice[payload_start + header.payload_len - 1] & 0x80 == 0 {
+                [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
+            } else {
+                [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
+            };
+            sign_expanded[0..header.payload_len]
+                .copy_from_slice(&slice[payload_start..header.payload_len + payload_start]);
+            decoder.reset();
+            let payload =
+                Format::decode(decoder, &sign_expanded)?.decode_payload(decoder, &sign_expanded)?;
+            Ok(Packet {
+                header,
+                payload,
+                len,
+            })
+        } else {
+            let payload = Format::decode(decoder, slice)?.decode_payload(decoder, slice)?;
+            Ok(Packet {
+                header,
+                payload,
+                len,
+            })
+        }
+    }
 }
 
 #[cfg(test)]
