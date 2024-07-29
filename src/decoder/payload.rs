@@ -89,13 +89,14 @@ impl Decode for QualStatus {
 }
 
 #[cfg(feature = "IR")]
-pub struct IRPayload {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct ImplicitReturn {
     pub irreport: usize,
     pub irdepth: usize,
 }
 
 #[cfg(feature = "IR")]
-impl Decode for IRPayload {
+impl Decode for ImplicitReturn {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         unimplemented!()
     }
@@ -201,9 +202,7 @@ pub struct JumpTargetIndex {
     pub branches: usize,
     pub branch_map: Option<u32>,
     #[cfg(feature = "IR")]
-    pub irreport: usize,
-    #[cfg(feature = "IR")]
-    pub irdepth: usize,
+    pub ir: ImplicitReturn,
 }
 
 impl Decode for JumpTargetIndex {
@@ -218,15 +217,13 @@ impl Decode for JumpTargetIndex {
         };
 
         #[cfg(feature = "IR")]
-        let ir_payload = IRPayload::decode(decoder, slice)?;
+        let ir = ImplicitReturn::decode(decoder, slice)?;
         Ok(JumpTargetIndex {
             index,
             branches: branch_map_len,
             branch_map,
             #[cfg(feature = "IR")]
-            irreport: ir_payload.irreport,
-            #[cfg(feature = "IR")]
-            irdepth: ir_payload.irdepth,
+            ir,
         })
     }
 }
@@ -278,9 +275,7 @@ pub struct AddressInfo {
     pub notify: bool,
     pub updiscon: bool,
     #[cfg(feature = "IR")]
-    pub irreport: usize,
-    #[cfg(feature = "IR")]
-    pub irdepth: usize,
+    pub ir: ImplicitReturn,
 }
 
 impl Decode for AddressInfo {
@@ -289,15 +284,13 @@ impl Decode for AddressInfo {
         let notify = decoder.read_bit(slice)?;
         let updiscon = decoder.read_bit(slice)?;
         #[cfg(feature = "IR")]
-        let ir_payload = IRPayload::decode(decoder, slice)?;
+        let ir = ImplicitReturn::decode(decoder, slice)?;
         Ok(AddressInfo {
             address,
             notify,
             updiscon,
             #[cfg(feature = "IR")]
-            irreport: ir_payload.irreport,
-            #[cfg(feature = "IR")]
-            irdepth: ir_payload.irdepth,
+            ir,
         })
     }
 }

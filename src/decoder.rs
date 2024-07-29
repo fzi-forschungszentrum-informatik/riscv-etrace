@@ -8,7 +8,7 @@ use crate::decoder::payload::*;
 use crate::decoder::DecodeError::ReadTooLong;
 use crate::{ProtocolConfiguration};
 #[cfg(feature = "IR")]
-use payload::IRPayload;
+use payload::ImplicitReturn;
 
 mod format;
 pub mod header;
