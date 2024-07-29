@@ -426,7 +426,7 @@ impl Instruction {
                 c_lui => {
                     let imm = Self::calc_imm_cu(num);
                     if imm == 0 {
-                        todo!("riscv spec: imm should not be zero for c.lui")
+                        panic!("riscv spec: imm should not be zero for c.lui")
                     } else {
                         Some(imm)
                     }
