@@ -273,7 +273,7 @@ impl<'a> Tracer<'a> {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup);
             } else if let Synchronization::Context(ctx) = sync {
-                if cfg!(not(feature = "old_algo")) {
+                if cfg!(not(feature = "tracing_v1")) {
                     self.state.privilege = ctx.privilege;
                 }
                 return Ok(());
@@ -307,7 +307,7 @@ impl<'a> Tracer<'a> {
                 (self.report_pc)(self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
-            if cfg!(not(feature = "old_algo")) {
+            if cfg!(not(feature = "tracing_v1")) {
                 self.state.privilege = *sync.get_privilege()?;
             }
             self.state.start_of_trace = false;
@@ -412,7 +412,7 @@ impl<'a> Tracer<'a> {
                     self.state.inferred_address = true;
                     return Ok(());
                 }
-                let catch_priv_changes = if cfg!(feature = "old_algo") {
+                let catch_priv_changes = if cfg!(feature = "tracing_v1") {
                     true
                 } else {
                     *payload.get_privilege()? == self.state.privilege
