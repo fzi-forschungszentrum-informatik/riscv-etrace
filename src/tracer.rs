@@ -174,7 +174,7 @@ pub trait ReportTrace {
     fn report_epc(&mut self, _epc: u64) {}
     /// Called when an instruction was disassembled. May be called multiple times for the same
     /// address.
-    fn report_instr(&mut self, _pc: u64, _instr: &Instruction) {}
+    fn report_instr(&mut self, _addr: u64, _instr: &Instruction) {}
     /// Called when a branch will be traced. Reports the number of branches before the branch,
     /// the branch map and if the branch will be taken.
     fn report_branch(&mut self, _branches: u8, _branch_map: u32, _taken: bool) {}
