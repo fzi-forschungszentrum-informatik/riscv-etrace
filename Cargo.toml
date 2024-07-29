@@ -12,6 +12,7 @@ repository = "https://github.com/fzi-forschungszentrum-informatik/riscv-etrace"
 [features]
 context = []
 time = []
+time_tag = []
 IR = []
 cache = []
 tracing_v1 = []
