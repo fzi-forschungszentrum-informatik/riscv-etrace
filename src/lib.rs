@@ -33,7 +33,7 @@
 //! use riscv_etrace::decoder::{Decode, Decoder, DecoderConfiguration, Packet};
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::Segment;
-//! use riscv_etrace::tracer::{TraceConfiguration, Tracer};
+//! use riscv_etrace::tracer::{ReportTrace, TraceConfiguration, Tracer};
 //!
 //! // Create your segments from your ELF files.
 //! let mut segments: Vec<Segment> = Vec::new();
@@ -58,12 +58,30 @@
 //!     full_address: false,
 //! };
 //!
-//! // Define your report callbacks such as report_pc:
-//! let mut report_pc = |pc| println!("pc: 0x{:x}", pc);
-//! let mut report_epc = |epc| println!("epc: 0x{:x}", epc);
-//! let mut report_instr = |pc: u64, instr: Instruction| { println!("instr: {} {:?}", pc, instr) };
-//! let mut report_branch = |branches: u8, branch_map: u32, local_taken: bool|
-//!     { println!("branch: {:?} {:032b} {}", branches, branch_map, local_taken) };
+//! struct ExampleReport {
+//!     // Here you can define counters etc. which depend on the tracing output.
+//! }
+//!
+//! // Define your custom callbacks such as report_pc:
+//! impl ReportTrace for ExampleReport {
+//!     fn report_pc(&mut self, pc: u64) {
+//!         println!("pc: 0x{:x}", pc);
+//!     }
+//!
+//!     fn report_epc(&mut self, epc: u64) {
+//!         println!("epc: 0x{:x}", epc);
+//!     }
+//!
+//!     fn report_instr(&mut self, pc: u64, instr: &Instruction) {
+//!         println!("instr: {} {:?}", pc, instr)
+//!     }
+//!
+//!     fn report_branch(&mut self, branches: u8, branch_map: u32, taken: bool) {
+//!         println!("branch: {:?} {:032b} {}", branches, branch_map, taken)
+//!     }
+//! }
+//!
+//! let mut reporter = ExampleReport {};
 //!
 //! // Create the packet decoder.
 //! let mut decoder = Decoder::new(proto_conf, decoder_conf);
@@ -72,10 +90,7 @@
 //! let mut tracer = Tracer::new(
 //!     proto_conf,
 //!     trace_conf,
-//!     &mut report_pc,
-//!     &mut report_epc,
-//!     &mut report_instr,
-//!     &mut report_branch
+//!     &mut reporter,
 //! );
 //!
 //! # let packet_vec: Vec<u8> = vec![0b0101_0000; 32];

@@ -166,40 +166,40 @@ impl fmt::Debug for TraceState {
     }
 }
 
-/// Provides the state to execute the tracing algorithm and executes the user-defined callbacks.
+/// Collects the different callbacks which report the tracing output.
+pub trait ReportTrace {
+    /// Called after a program counter was traced.
+    fn report_pc(&mut self, _pc: u64) {}
+    /// Called after a trap instruction was traced.
+    fn report_epc(&mut self, _epc: u64) {}
+    /// Called when an instruction was disassembled. May be called multiple times for the same
+    /// address.
+    fn report_instr(&mut self, _pc: u64, _instr: &Instruction) {}
+    /// Called when a branch will be traced. Reports the number of branches before the branch,
+    /// the branch map and if the branch will be taken.
+    fn report_branch(&mut self, _branches: u8, _branch_map: u32, _taken: bool) {}
+}
+
+/// Provides the state to execute the tracing algorithm
+/// and executes the user-defined report callbacks.
 pub struct Tracer<'a> {
     state: TraceState,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
-    /// Called when a new program counter was traced.
-    report_pc: &'a mut dyn FnMut(u64),
-    /// Called after a trap instruction was traced.
-    report_epc: &'a mut dyn FnMut(u64),
-    /// Called when an instruction was disassembled. May be called multiple times for the same
-    /// address.
-    report_instr: &'a mut dyn FnMut(u64, Instruction),
-    /// Called when a branch will be traced. Reports the number of branches before the branch,
-    /// the branch map and if the branch will be taken.
-    report_branch: &'a mut dyn FnMut(u8, u32, bool),
+    report_trace: &'a mut dyn ReportTrace,
 }
 
 impl<'a> Tracer<'a> {
     pub fn new(
         proto_conf: ProtocolConfiguration,
         trace_conf: TraceConfiguration<'a>,
-        report_pc: &'a mut dyn FnMut(u64),
-        report_epc: &'a mut dyn FnMut(u64),
-        report_instr: &'a mut dyn FnMut(u64, Instruction),
-        report_branch: &'a mut dyn FnMut(u8, u32, bool),
+        report_trace: &'a mut dyn ReportTrace,
     ) -> Self {
         Tracer {
             state: TraceState::default(),
             trace_conf,
             proto_conf,
-            report_pc,
-            report_epc,
-            report_instr,
-            report_branch,
+            report_trace,
         }
     }
 
@@ -221,9 +221,10 @@ impl<'a> Tracer<'a> {
                 return Err(TraceErrorType::SegmentationFault(pc));
             }
         }
-        let binary = match {
-            InstructionBits::read_binary(pc, &self.trace_conf.segments[self.state.segment_idx])
-        } {
+        let binary = match InstructionBits::read_binary(
+            pc,
+            &self.trace_conf.segments[self.state.segment_idx],
+        ) {
             Ok(binary) => binary,
             Err(bytes) => {
                 return Err(TraceErrorType::UnknownInstruction {
@@ -237,7 +238,7 @@ impl<'a> Tracer<'a> {
         };
 
         let instr = Instruction::from_binary(&binary);
-        (self.report_instr)(pc, instr);
+        self.report_trace.report_instr(pc, &instr);
         #[cfg(feature = "cache")]
         self.state.instr_cache.write(pc, instr);
         Ok(instr)
@@ -280,7 +281,7 @@ impl<'a> Tracer<'a> {
             } else if let Synchronization::Trap(trap) = sync {
                 if !trap.interrupt {
                     let addr = self.exception_address(trap)?;
-                    (self.report_epc)(addr);
+                    self.report_trace.report_epc(addr);
                 }
                 if !trap.thaddr {
                     return Ok(());
@@ -304,7 +305,7 @@ impl<'a> Tracer<'a> {
                 self.follow_execution_path(payload)?
             } else {
                 self.state.pc = self.state.address;
-                (self.report_pc)(self.state.pc);
+                self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
             if cfg!(not(feature = "tracing_v1")) {
@@ -354,7 +355,7 @@ impl<'a> Tracer<'a> {
                 self.state.inferred_address = false;
                 loop {
                     let local_stop_here = self.next_pc(local_previous_address)?;
-                    (self.report_pc)(self.state.pc);
+                    self.report_trace.report_pc(self.state.pc);
                     if local_stop_here {
                         return Ok(());
                     }
@@ -374,13 +375,13 @@ impl<'a> Tracer<'a> {
         loop {
             if self.state.inferred_address {
                 local_stop_here = self.next_pc(previous_address)?;
-                (self.report_pc)(previous_address);
+                self.report_trace.report_pc(previous_address);
                 if local_stop_here {
                     self.state.inferred_address = false;
                 }
             } else {
                 local_stop_here = self.next_pc(self.state.address)?;
-                (self.report_pc)(self.state.pc);
+                self.report_trace.report_pc(self.state.pc);
                 if self.state.branches == 1
                     && self.get_instr(self.state.pc)?.is_branch
                     && self.state.stop_at_last_branch
@@ -474,7 +475,8 @@ impl<'a> Tracer<'a> {
             return Err(TraceErrorType::UnresolvableBranch);
         }
         let local_taken = self.state.branch_map & 1 == 0;
-        (self.report_branch)(self.state.branches, self.state.branch_map, local_taken);
+        self.report_trace
+            .report_branch(self.state.branches, self.state.branch_map, local_taken);
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
         Ok(local_taken)
