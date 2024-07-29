@@ -117,7 +117,7 @@ pub use crate::tracer::disassembler::{Instruction, InstructionSize, Name, Segmen
 /// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
 #[derive(Copy, Clone)]
 pub struct ProtocolConfiguration {
-    #[cfg(feature = "context")]
+    #[cfg(feature = "instr_context")]
     pub context_width_p: usize,
     #[cfg(feature = "time")]
     pub time_width_p: usize,
@@ -134,7 +134,7 @@ pub struct ProtocolConfiguration {
 impl Default for ProtocolConfiguration {
     fn default() -> Self {
         ProtocolConfiguration {
-            #[cfg(feature = "context")]
+            #[cfg(feature = "instr_context")]
             context_width_p: 0,
             #[cfg(feature = "time")]
             time_width_p: 0,

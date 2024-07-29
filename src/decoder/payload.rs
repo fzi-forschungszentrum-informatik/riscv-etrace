@@ -27,26 +27,6 @@ fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), Dec
     Ok((branches, len))
 }
 
-pub(crate) struct ContextPart {
-    pub privilege: Privilege,
-    #[cfg(feature = "time")]
-    pub time: u64,
-    #[cfg(feature = "context")]
-    pub context: u64,
-}
-
-impl Decode for ContextPart {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        Ok(ContextPart {
-            privilege: Privilege::decode(decoder, slice)?,
-            #[cfg(feature = "time")]
-            time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
-            #[cfg(feature = "context")]
-            context: decoder.read(decoder.proto_conf.context_width_p, slice)?,
-        })
-    }
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Privilege {
     User = 0b00,
@@ -352,8 +332,8 @@ impl Synchronization {
 
     pub fn get_privilege(&self) -> Result<&Privilege, TraceErrorType> {
         match self {
-            Synchronization::Start(start) => Ok(&start.privilege),
-            Synchronization::Trap(trap) => Ok(&trap.privilege),
+            Synchronization::Start(start) => Ok(&start.ctx.privilege),
+            Synchronization::Trap(trap) => Ok(&trap.ctx.privilege),
             Synchronization::Context(ctx) => Ok(&ctx.privilege),
             Synchronization::Support(_) => Err(TraceErrorType::WrongGetPrivilegeType),
         }
@@ -364,26 +344,18 @@ impl Synchronization {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Start {
     pub branch: bool,
-    pub privilege: Privilege,
-    #[cfg(feature = "time")]
-    pub time: u64,
-    #[cfg(feature = "context")]
-    pub context: Context,
+    pub ctx: Context,
     pub address: u64,
 }
 
 impl Decode for Start {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         let branch = decoder.read_bit(slice)?;
-        let ctx_payload = ContextPart::decode(decoder, slice)?;
+        let ctx = Context::decode(decoder, slice)?;
         let address = read_address(decoder, slice)?;
         Ok(Start {
             branch,
-            privilege: ctx_payload.privilege,
-            #[cfg(feature = "time")]
-            time: ctx_payload.time,
-            #[cfg(feature = "context")]
-            context: ctx_payload.context,
+            ctx,
             address,
         })
     }
@@ -393,7 +365,7 @@ impl fmt::Debug for Start {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "Start {{ branch: {:?}, privilege: {:?}, address: {:#0x} }}",
-            self.branch, self.privilege, self.address
+            self.branch, self.ctx.privilege, self.address
         ))
     }
 }
@@ -402,11 +374,7 @@ impl fmt::Debug for Start {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Trap {
     pub branch: bool,
-    pub privilege: Privilege,
-    #[cfg(feature = "time")]
-    pub time: u64,
-    #[cfg(feature = "context")]
-    pub context: u64,
+    pub ctx: Context,
     pub ecause: u64,
     pub interrupt: bool,
     pub thaddr: bool,
@@ -418,14 +386,14 @@ impl fmt::Debug for Trap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(
             format_args!("Trap {{ branch: {:?}, privilege: {:?}, ecause: {:?}, interrupt: {:?}, thaddr: {:?}, address: {:#0x}, tval: {:?} }}",
-            self.branch, self.privilege, self.ecause, self.interrupt, self.thaddr, self.address, self.tval))
+            self.branch, self.ctx.privilege, self.ecause, self.interrupt, self.thaddr, self.address, self.tval))
     }
 }
 
 impl Decode for Trap {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         let branch = decoder.read_bit(slice)?;
-        let ctx_payload = ContextPart::decode(decoder, slice)?;
+        let ctx = Context::decode(decoder, slice)?;
         let ecause = decoder.read(decoder.proto_conf.ecause_width_p, slice)?;
         let interrupt = decoder.read_bit(slice)?;
         let thaddr = decoder.read_bit(slice)?;
@@ -433,11 +401,7 @@ impl Decode for Trap {
         let tval = decoder.read(decoder.proto_conf.iaddress_width_p, slice)?;
         Ok(Trap {
             branch,
-            privilege: ctx_payload.privilege,
-            #[cfg(feature = "time")]
-            time: ctx_payload.time,
-            #[cfg(feature = "context")]
-            context: ctx_payload.context,
+            ctx,
             ecause,
             interrupt,
             thaddr,
@@ -453,19 +417,18 @@ pub struct Context {
     pub privilege: Privilege,
     #[cfg(feature = "time")]
     pub time: u64,
-    #[cfg(feature = "context")]
+    #[cfg(feature = "instr_context")]
     pub context: u64,
 }
 
 impl Decode for Context {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        let ctx = ContextPart::decode(decoder, slice)?;
         Ok(Context {
-            privilege: ctx.privilege,
+            privilege: Privilege::decode(decoder, slice)?,
             #[cfg(feature = "time")]
-            time: ctx.time,
-            #[cfg(feature = "context")]
-            context: ctx.context,
+            time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
+            #[cfg(feature = "instr_context")]
+            context: decoder.read(decoder.proto_conf.context_width_p, slice)?,
         })
     }
 }
@@ -626,7 +589,7 @@ mod tests {
         decoder.reset();
         let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
         assert!(sync_start.branch);
-        assert_eq!(sync_start.privilege, Privilege::Machine);
+        assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
         assert_eq!(sync_start.address, u64::MAX);
     }
 }

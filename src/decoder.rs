@@ -16,8 +16,6 @@ pub mod payload;
 
 #[cfg(feature = "time")]
 const TIME: u64 = todo!();
-#[cfg(feature = "context")]
-const CONTEXT: u64 = todo!();
 #[cfg(feature = "IR")]
 const IR: u64 = todo!();
 
