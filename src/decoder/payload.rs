@@ -173,14 +173,14 @@ impl Payload {
     }
 }
 
-/// Format 3
+/// Format 0
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Extension {
     BranchCount(BranchCount),
     JumpTargetIndex(JumpTargetIndex),
 }
 
-/// Format 3, sub format 0
+/// Format 0, sub format 0
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct BranchCount {
     pub branch_count: u32,
@@ -214,7 +214,7 @@ impl Decode for BranchCount {
     }
 }
 
-/// Format 3, sub format 1
+/// Format 0, sub format 1
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTargetIndex {
     pub index: usize,
@@ -248,46 +248,6 @@ impl Decode for JumpTargetIndex {
             #[cfg(feature = "IR")]
             irdepth: ir_payload.irdepth,
         })
-    }
-}
-
-/// Format 2
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct AddressInfo {
-    pub address: u64,
-    pub notify: bool,
-    pub updiscon: bool,
-    #[cfg(feature = "IR")]
-    pub irreport: usize,
-    #[cfg(feature = "IR")]
-    pub irdepth: usize,
-}
-
-impl Decode for AddressInfo {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        let address = read_address(decoder, slice)?;
-        let notify = decoder.read_bit(slice)?;
-        let updiscon = decoder.read_bit(slice)?;
-        #[cfg(feature = "IR")]
-        let ir_payload = IRPayload::decode(decoder, slice)?;
-        Ok(AddressInfo {
-            address,
-            notify,
-            updiscon,
-            #[cfg(feature = "IR")]
-            irreport: ir_payload.irreport,
-            #[cfg(feature = "IR")]
-            irdepth: ir_payload.irdepth,
-        })
-    }
-}
-
-impl fmt::Debug for AddressInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
-            self.address, self.notify, self.updiscon
-        ))
     }
 }
 
@@ -331,7 +291,47 @@ impl fmt::Debug for Branch {
     }
 }
 
-/// Format 0
+/// Format 2
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct AddressInfo {
+    pub address: u64,
+    pub notify: bool,
+    pub updiscon: bool,
+    #[cfg(feature = "IR")]
+    pub irreport: usize,
+    #[cfg(feature = "IR")]
+    pub irdepth: usize,
+}
+
+impl Decode for AddressInfo {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+        let address = read_address(decoder, slice)?;
+        let notify = decoder.read_bit(slice)?;
+        let updiscon = decoder.read_bit(slice)?;
+        #[cfg(feature = "IR")]
+        let ir_payload = IRPayload::decode(decoder, slice)?;
+        Ok(AddressInfo {
+            address,
+            notify,
+            updiscon,
+            #[cfg(feature = "IR")]
+            irreport: ir_payload.irreport,
+            #[cfg(feature = "IR")]
+            irdepth: ir_payload.irdepth,
+        })
+    }
+}
+
+impl fmt::Debug for AddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
+            self.address, self.notify, self.updiscon
+        ))
+    }
+}
+
+/// Format 3
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Synchronization {
     Start(Start),
@@ -360,7 +360,7 @@ impl Synchronization {
     }
 }
 
-/// Format 0, sub format 0
+/// Format 3, sub format 0
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Start {
     pub branch: bool,
@@ -368,7 +368,7 @@ pub struct Start {
     #[cfg(feature = "time")]
     pub time: u64,
     #[cfg(feature = "context")]
-    pub context: u64,
+    pub context: Context,
     pub address: u64,
 }
 
@@ -398,7 +398,7 @@ impl fmt::Debug for Start {
     }
 }
 
-/// Format 0, sub format 1
+/// Format 3, sub format 1
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Trap {
     pub branch: bool,
@@ -447,7 +447,7 @@ impl Decode for Trap {
     }
 }
 
-/// Format 0, sub format 2
+/// Format 3, sub format 2
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Context {
     pub privilege: Privilege,
@@ -470,7 +470,7 @@ impl Decode for Context {
     }
 }
 
-/// Format 0, sub format 3
+/// Format 3, sub format 3
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Support {
     pub ienable: bool,
