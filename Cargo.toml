@@ -10,9 +10,7 @@ keywords = ["riscv", "tracing"]
 repository = "https://github.com/fzi-forschungszentrum-informatik/riscv-etrace"
 
 [features]
-instr_context = []
-time = []
-time_tag = []
 IR = []
+time_tag = []
 cache = []
 tracing_v1 = []

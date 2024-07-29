@@ -415,9 +415,7 @@ impl Decode for Trap {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Context {
     pub privilege: Privilege,
-    #[cfg(feature = "time")]
     pub time: u64,
-    #[cfg(feature = "instr_context")]
     pub context: u64,
 }
 
@@ -425,9 +423,7 @@ impl Decode for Context {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         Ok(Context {
             privilege: Privilege::decode(decoder, slice)?,
-            #[cfg(feature = "time")]
             time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
-            #[cfg(feature = "instr_context")]
             context: decoder.read(decoder.proto_conf.context_width_p, slice)?,
         })
     }
