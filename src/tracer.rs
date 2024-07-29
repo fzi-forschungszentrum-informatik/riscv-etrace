@@ -114,6 +114,7 @@ pub struct TraceState {
     pub start_of_trace: bool,
     pub notify: bool,
     pub updiscon: bool,
+    #[cfg(not(feature = "tracing_v1"))]
     pub privilege: Privilege,
     pub segment_idx: usize,
     #[cfg(feature = "cache")]
@@ -133,6 +134,7 @@ impl TraceState {
             address: 0,
             notify: false,
             updiscon: false,
+            #[cfg(not(feature = "tracing_v1"))]
             privilege: Privilege::User,
             segment_idx: 0,
             #[cfg(feature = "cache")]
@@ -271,7 +273,9 @@ impl<'a> Tracer<'a> {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup);
             } else if let Synchronization::Context(ctx) = sync {
-                self.state.privilege = ctx.privilege;
+                if cfg!(not(feature = "old_algo")) {
+                    self.state.privilege = ctx.privilege;
+                }
                 return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
                 if !trap.interrupt {
@@ -303,7 +307,9 @@ impl<'a> Tracer<'a> {
                 (self.report_pc)(self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
-            self.state.privilege = *sync.get_privilege()?;
+            if cfg!(not(feature = "old_algo")) {
+                self.state.privilege = *sync.get_privilege()?;
+            }
             self.state.start_of_trace = false;
             Ok(())
         } else {
@@ -406,9 +412,16 @@ impl<'a> Tracer<'a> {
                     self.state.inferred_address = true;
                     return Ok(());
                 }
+                let catch_priv_changes = if cfg!(feature = "old_algo") {
+                    true
+                } else {
+                    *payload.get_privilege()? == self.state.privilege
+                        && self.get_instr(self.state.last_pc)?.is_return_from_trap()
+                };
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && self.state.branches == self.branch_limit()?
+                    && catch_priv_changes
                 {
                     return Ok(());
                 }

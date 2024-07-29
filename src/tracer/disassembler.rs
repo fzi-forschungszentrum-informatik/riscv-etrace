@@ -201,6 +201,7 @@ impl Instruction {
         }
     }
 
+    #[cfg(not(feature = "tracing_v1"))]
     pub fn is_return_from_trap(&self) -> bool {
         if let Some(name) = self.name {
             name == sret || name == mret || name == dret
@@ -209,10 +210,27 @@ impl Instruction {
         }
     }
 
+    #[cfg(not(feature = "tracing_v1"))]
     pub fn is_uninferable_discon(&self) -> bool {
         if let Some(name) = self.name {
             self.is_uninferable_jump()
                 || self.is_return_from_trap()
+                || name == ecall
+                || name == ebreak
+                || name == c_ebreak
+        } else {
+            false
+        }
+    }
+
+    #[cfg(feature = "tracing_v1")]
+    pub fn is_uninferable_discon(&self) -> bool {
+        if let Some(name) = self.name {
+            self.is_uninferable_jump()
+                || name == uret
+                || name == sret
+                || name == mret
+                || name == dret
                 || name == ecall
                 || name == ebreak
                 || name == c_ebreak
