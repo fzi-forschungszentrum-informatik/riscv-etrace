@@ -172,6 +172,12 @@ pub struct Instruction {
     pub is_branch: bool,
     /// Only parsed if the immediate is necessary for the tracing algorithm, else `None`.
     pub imm: Option<i32>,
+    #[cfg(feature = "IR")]
+    /// Only parsed if implicit returns are enabled.
+    pub rs1: u32,
+    #[cfg(feature = "IR")]
+    /// Only parsed if implicit returns are enabled.
+    pub rd: u32,
 }
 
 impl Instruction {
@@ -182,6 +188,10 @@ impl Instruction {
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
+            #[cfg(feature = "IR")]
+            rs1: 0,
+            #[cfg(feature = "IR")]
+            rd: 0
         }
     }
 
@@ -239,6 +249,19 @@ impl Instruction {
         }
     }
 
+    #[cfg(feature = "IR")]
+    pub fn is_call(&self) -> bool {
+        if let Some(name) = self.name {
+            if (name == jalr && self.rd == 1)
+                || name == c_jalr
+                || (name == jal && self.rd == 1)
+                || name == c_jal {
+                return true
+            }
+        }
+        false
+    }
+
     pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
         match bin_instr {
             InstructionBits::Bit32(num) => Self::parse_bin_instr(*num),
@@ -274,6 +297,8 @@ impl Instruction {
         let opcode = OpCode::from(num);
 
         let funct3 = Self::funct3(num);
+        let rd = Self::rd(num);
+        let rs1 = Self::rs1(num);
 
         let name = match opcode {
             MiscMem => match funct3 {
@@ -298,11 +323,9 @@ impl Instruction {
             }
             Jal => jal,
             System => {
-                let rd = Self::rd(num);
                 if rd != 0 || funct3 != 0 {
                     return ignored;
                 } else {
-                    let rs1 = Self::rs1(num);
                     let funct7 = Self::funct7(num);
                     let rs2 = Self::rs2(num);
                     if rs2 == 0 && funct7 == 0 && rs1 == 0 {
@@ -330,6 +353,10 @@ impl Instruction {
             is_rs1_zero,
             is_branch: opcode == Branch,
             imm: Self::calc_imm(name, is_rs1_zero, opcode == Branch, num),
+            #[cfg(feature = "IR")]
+            rs1,
+            #[cfg(feature = "IR")]
+            rd,
         }
     }
 
@@ -359,12 +386,13 @@ impl Instruction {
 
         let op = Self::c_op(num);
         let funct3 = Self::c_funct3(num);
+        let rs1 = Self::c_rs1(num);
+        let rd = Self::c_rs1(num);
 
         let name = match op {
             0b01 => match funct3 {
                 0b001 => c_jal,
                 0b011 => {
-                    let rd = Self::c_rs1(num);
                     if rd != 0 || rd != 2 {
                         c_lui
                     } else {
@@ -378,7 +406,6 @@ impl Instruction {
             },
             0b10 => {
                 let bit12 = Self::bit12(num);
-                let rs1 = Self::c_rs1(num);
                 let rs2 = Self::c_rs2(num);
                 if funct3 != 0b100 {
                     return ignored;
@@ -401,6 +428,10 @@ impl Instruction {
             is_rs1_zero: false,
             name: Some(name),
             imm: Self::calc_compressed_imm(name, is_branch, num),
+            #[cfg(feature = "IR")]
+            rs1: rs1 as u32,
+            #[cfg(feature = "IR")]
+            rd: rd as u32,
         }
     }
 
