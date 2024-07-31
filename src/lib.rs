@@ -127,6 +127,12 @@ pub struct ProtocolConfiguration {
     pub cpu_index_width: usize,
     pub encoder_mode_n: usize,
     pub ioptions_n: usize,
+    #[cfg(feature = "IR")]
+    pub sijump_p: bool,
+    #[cfg(feature = "IR")]
+    pub call_counter_size_p: usize,
+    #[cfg(feature = "IR")]
+    pub return_stack_size_p: usize,
 }
 
 impl Default for ProtocolConfiguration {
@@ -142,6 +148,12 @@ impl Default for ProtocolConfiguration {
             cpu_index_width: 2,
             encoder_mode_n: 1,
             ioptions_n: 5,
+            #[cfg(feature = "IR")]
+            sijump_p: true,
+            #[cfg(feature = "IR")]
+            call_counter_size_p: 2,
+            #[cfg(feature = "IR")]
+            return_stack_size_p: 32,
         }
     }
 }
