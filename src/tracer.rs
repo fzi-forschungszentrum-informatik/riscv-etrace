@@ -590,7 +590,7 @@ impl<'a> Tracer<'a> {
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, TraceErrorType> {
+    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<u64, TraceErrorType> {
         unreachable!()
     }
 
