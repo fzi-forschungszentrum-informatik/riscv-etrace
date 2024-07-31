@@ -517,7 +517,7 @@ impl<'a> Tracer<'a> {
             if imm == 0 {
                 stop_here = true;
             }
-        } else if self.is_sequential_jump(&instr, self.state.last_pc) {
+        } else if self.is_sequential_jump(&instr, self.state.last_pc)? {
             self.state.pc = self.sequential_jump_target(self.state.pc, self.state.last_pc)?;
         } else if self.is_implicit_return(&instr, payload) {
             self.state.pc = self.pop_return_stack();
