@@ -512,9 +512,7 @@ impl<'a> Tracer<'a> {
         let mut stop_here = false;
 
         if instr.is_inferable_jump() {
-            let imm = instr
-                .imm
-                .ok_or(TraceErrorType::ImmediateIsNone(instr))?;
+            let imm = instr.imm.ok_or(TraceErrorType::ImmediateIsNone(instr))?;
             self.incr_pc(imm);
             if imm == 0 {
                 stop_here = true;
@@ -530,9 +528,7 @@ impl<'a> Tracer<'a> {
             self.state.pc = address;
             stop_here = true;
         } else if self.is_taken_branch(&instr)? {
-            let imm = instr
-                .imm
-                .ok_or(TraceErrorType::ImmediateIsNone(instr))?;
+            let imm = instr.imm.ok_or(TraceErrorType::ImmediateIsNone(instr))?;
             self.incr_pc(imm);
             if imm == 0 {
                 stop_here = true;
@@ -566,11 +562,7 @@ impl<'a> Tracer<'a> {
 
     #[cfg(not(feature = "implicit_return"))]
     #[allow(clippy::wrong_self_convention)]
-    pub fn is_sequential_jump(
-        &mut self,
-        _: &Instruction,
-        _: u64,
-    ) -> Result<bool, TraceErrorType> {
+    pub fn is_sequential_jump(&mut self, _: &Instruction, _: u64) -> Result<bool, TraceErrorType> {
         Ok(false)
     }
 
