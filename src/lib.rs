@@ -29,7 +29,7 @@
 //! ```
 //! extern crate riscv_etrace;
 //!
-//! use riscv_etrace::{DEFAULT_PROTOCOL_CONFIG, ProtocolConfiguration};
+//! use riscv_etrace::{ProtocolConfiguration};
 //! use riscv_etrace::decoder::{Decoder, DecoderConfiguration};
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::Segment;
@@ -38,13 +38,10 @@
 //! // Create your segments from your ELF files.
 //! let mut segments: Vec<Segment> = Vec::new();
 //!
-//! // Create the protocol level configuration which will define the bit lengths of packet fields.
-//! let proto_conf = ProtocolConfiguration {
-//!     // In this example we assume a maximum of 2^10 of harts...
-//!     cpu_index_width: 10,
-//!     // ...but everything else will be default.
-//!     ..DEFAULT_PROTOCOL_CONFIG
-//! };
+//! // Use the default protocol level configuration which will define the bit lengths of packet fields.
+//! let mut proto_conf = ProtocolConfiguration::default();
+//! // But we overwrite the hart index width and assume a maximum of 2^10 harts.
+//! proto_conf.cpu_index_width = 10;
 //!
 //! // Create the decoder configuration.
 //! let decoder_conf = DecoderConfiguration {
