@@ -507,43 +507,45 @@ impl<'a> Tracer<'a> {
     }
 
     fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, TraceErrorType> {
-        let local_instr = self.get_instr(self.state.pc)?;
-        let local_this_pc = self.state.pc;
-        let mut local_stop_here = false;
+        let instr = self.get_instr(self.state.pc)?;
+        let this_pc = self.state.pc;
+        let mut stop_here = false;
 
-        if local_instr.is_inferable_jump() {
-            let imm = local_instr
+        if instr.is_inferable_jump() {
+            let imm = instr
                 .imm
-                .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
+                .ok_or(TraceErrorType::ImmediateIsNone(instr))?;
             self.incr_pc(imm);
             if imm == 0 {
-                local_stop_here = true;
+                stop_here = true;
             }
-        } else if self.is_implicit_return(&local_instr, payload) {
+        } else if self.is_sequential_jump(&instr, self.state.last_pc) {
+            self.state.pc = self.sequential_jump_target(self.state.pc, self.state.last_pc)?;
+        } else if self.is_implicit_return(&instr, payload) {
             self.state.pc = self.pop_return_stack();
-        } else if local_instr.is_uninferable_discon() {
+        } else if instr.is_uninferable_discon() {
             if self.state.stop_at_last_branch {
                 return Err(TraceErrorType::UnexpectedUninferableDiscon);
             }
             self.state.pc = address;
-            local_stop_here = true;
-        } else if self.is_taken_branch(&local_instr)? {
-            let imm = local_instr
+            stop_here = true;
+        } else if self.is_taken_branch(&instr)? {
+            let imm = instr
                 .imm
-                .ok_or(TraceErrorType::ImmediateIsNone(local_instr))?;
+                .ok_or(TraceErrorType::ImmediateIsNone(instr))?;
             self.incr_pc(imm);
             if imm == 0 {
-                local_stop_here = true;
+                stop_here = true;
             }
         } else {
-            self.incr_pc(local_instr.size as i32);
+            self.incr_pc(instr.size as i32);
         }
 
-        self.push_return_stack(&local_instr, local_this_pc)?;
+        self.push_return_stack(&instr, this_pc)?;
 
-        self.state.last_pc = local_this_pc;
+        self.state.last_pc = this_pc;
 
-        Ok(local_stop_here)
+        Ok(stop_here)
     }
 
     #[allow(clippy::wrong_self_convention)]
@@ -560,6 +562,16 @@ impl<'a> Tracer<'a> {
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
         Ok(local_taken)
+    }
+
+    #[cfg(not(feature = "implicit_return"))]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_sequential_jump(
+        &mut self,
+        _: &Instruction,
+        _: u64,
+    ) -> Result<bool, TraceErrorType> {
+        Ok(false)
     }
 
     #[cfg(feature = "implicit_return")]
@@ -583,6 +595,11 @@ impl<'a> Tracer<'a> {
             return Ok(instr.rs1 == prev_instr.rd);
         }
         Ok(false)
+    }
+
+    #[cfg(not(feature = "implicit_return"))]
+    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, TraceErrorType> {
+        unreachable!()
     }
 
     #[cfg(feature = "implicit_return")]
@@ -644,7 +661,7 @@ impl<'a> Tracer<'a> {
             return Ok(());
         }
 
-        let instr = self.get_instr(addr)?;
+        let local_instr = self.get_instr(addr)?;
         let mut link = addr;
 
         let irstack_depth_max = if self.proto_conf.return_stack_size_p != 0 {
@@ -667,7 +684,7 @@ impl<'a> Tracer<'a> {
             }
         }
 
-        link += (instr.size as u64) * 8;
+        link += (local_instr.size as u64) * 8;
 
         self.state.return_stack[self.state.irstack_depth] = link;
         self.state.irstack_depth += 1;
