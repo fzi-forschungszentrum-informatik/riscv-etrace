@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
+#[cfg(feature = "implicit_return")]
+use crate::decoder::payload::ImplicitReturn;
 use crate::decoder::payload::{
-    Extension, ImplicitReturn, Payload, Privilege, QualStatus, Support, Synchronization, Trap,
+    Extension, Payload, Privilege, QualStatus, Support, Synchronization, Trap,
 };
 #[cfg(feature = "cache")]
 use crate::tracer::disassembler::InstructionCache;
@@ -108,7 +110,6 @@ pub struct TraceConfiguration<'a> {
     pub full_address: bool,
 }
 
-#[cfg(feature = "implicit_return")]
 /// Supremum of depth of the implicit return stack.
 /// This value should **always** be larger than the maximum ir stack depth.
 pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
@@ -131,13 +132,10 @@ pub struct TraceState {
     pub start_of_trace: bool,
     pub notify: bool,
     pub updiscon: bool,
-    #[cfg(feature = "implicit_return")]
     pub ir: bool,
     #[cfg(not(feature = "tracing_v1"))]
     pub privilege: Privilege,
-    #[cfg(feature = "implicit_return")]
     pub return_stack: [u64; 32],
-    #[cfg(feature = "implicit_return")]
     pub irstack_depth: u64,
     pub segment_idx: usize,
     #[cfg(feature = "cache")]
@@ -157,13 +155,10 @@ impl TraceState {
             address: 0,
             notify: false,
             updiscon: false,
-            #[cfg(feature = "implicit_return")]
             ir: false,
             #[cfg(not(feature = "tracing_v1"))]
             privilege: Privilege::User,
-            #[cfg(feature = "implicit_return")]
-            return_stack: [0; 32],
-            #[cfg(feature = "implicit_return")]
+            return_stack: [0; IRSTACK_DEPTH_SUPREMUM as usize],
             irstack_depth: 0,
             segment_idx: 0,
             #[cfg(feature = "cache")]
@@ -281,6 +276,11 @@ impl<'a> Tracer<'a> {
         }
     }
 
+    #[cfg(not(feature = "implicit_return"))]
+    fn recover_ir_status(&self, payload: &Payload) -> bool {
+        false
+    }
+
     #[cfg(feature = "implicit_return")]
     fn recover_ir_status(&self, payload: &Payload) -> bool {
         return if let Some(addr) = payload.get_address_info() {
@@ -314,7 +314,6 @@ impl<'a> Tracer<'a> {
             let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) == 1;
             self.state.notify = addr.notify != msb;
             self.state.updiscon = addr.updiscon != addr.notify;
-            #[cfg(feature = "implicit_return")]
             self.state.ir = self.recover_ir_status(payload);
         }
     }
@@ -431,6 +430,19 @@ impl<'a> Tracer<'a> {
         Ok(self.get_instr(self.state.pc)?.is_branch as u8)
     }
 
+    #[cfg(feature = "implicit_return")]
+    fn follow_execution_path_ir_state(&self, payload: &Payload) -> bool {
+        self.state.ir
+            || payload
+                .get_implicit_return()
+                .map_or(false, |ir| ir.irdepth == self.state.irstack_depth)
+    }
+
+    #[cfg(not(feature = "implicit_return"))]
+    fn follow_execution_path_ir_state(&self, _: &Payload) -> bool {
+        true
+    }
+
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         let previous_address = self.state.pc;
         let mut local_stop_here;
@@ -465,14 +477,7 @@ impl<'a> Tracer<'a> {
                 {
                     return Ok(());
                 }
-                let ir = if cfg!(feature = "IR") {
-                    self.state.ir
-                        || payload
-                        .get_implicit_return()
-                        .map_or(false, |ir| ir.irdepth == self.state.irstack_depth)
-                } else {
-                    true
-                };
+                let ir = self.follow_execution_path_ir_state(payload);
                 if !matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
