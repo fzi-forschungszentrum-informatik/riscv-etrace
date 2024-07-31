@@ -51,7 +51,7 @@ pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 20;
 
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
-/// instance as the decoder is stateless between [decode()](Decoder::decode()) calls.
+/// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
 pub struct Decoder {
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
@@ -135,7 +135,7 @@ impl Decoder {
     /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
     /// Returns immediately after parsing one packet and returns how many bits were read.
     /// Further bytes are ignored.
-    pub fn decode(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
+    pub fn decode_packet(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
         self.reset();
         let header = Header::decode(self, slice)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
