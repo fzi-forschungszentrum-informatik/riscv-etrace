@@ -175,7 +175,7 @@ impl Decoder {
 }
 
 trait Decode: Sized {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>;
 }
 
 /// A single protocol packet emitted by the encoder.
