@@ -12,7 +12,7 @@ use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 use crate::tracer::TraceErrorType::IrStackExhausted;
-#[cfg(feature = "IR")]
+#[cfg(feature = "implicit_return")]
 use crate::Name::{aupic, c_lui, lui, sret};
 use crate::Name::{c_j, c_jr, jalr};
 use core::fmt;
@@ -108,7 +108,7 @@ pub struct TraceConfiguration<'a> {
     pub full_address: bool,
 }
 
-#[cfg(feature = "IR")]
+#[cfg(feature = "implicit_return")]
 /// Supremum of depth of the implicit return stack.
 /// This value should **always** be larger than the maximum ir stack depth.
 pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
@@ -131,13 +131,13 @@ pub struct TraceState {
     pub start_of_trace: bool,
     pub notify: bool,
     pub updiscon: bool,
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub ir: bool,
     #[cfg(not(feature = "tracing_v1"))]
     pub privilege: Privilege,
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub return_stack: [u64; 32],
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub irstack_depth: u64,
     pub segment_idx: usize,
     #[cfg(feature = "cache")]
@@ -157,13 +157,13 @@ impl TraceState {
             address: 0,
             notify: false,
             updiscon: false,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             ir: false,
             #[cfg(not(feature = "tracing_v1"))]
             privilege: Privilege::User,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             return_stack: [0; 32],
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             irstack_depth: 0,
             segment_idx: 0,
             #[cfg(feature = "cache")]
@@ -281,7 +281,7 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     fn recover_ir_status(&self, payload: &Payload) -> bool {
         return if let Some(addr) = payload.get_address_info() {
             addr.updiscon != addr.ir.irreport
@@ -314,7 +314,7 @@ impl<'a> Tracer<'a> {
             let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) == 1;
             self.state.notify = addr.notify != msb;
             self.state.updiscon = addr.updiscon != addr.notify;
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             self.state.ir = self.recover_ir_status(payload);
         }
     }
@@ -555,7 +555,7 @@ impl<'a> Tracer<'a> {
         Ok(local_taken)
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     #[allow(clippy::wrong_self_convention)]
     pub fn is_sequential_jump(
         &mut self,
@@ -578,7 +578,7 @@ impl<'a> Tracer<'a> {
         Ok(false)
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, TraceErrorType> {
         let instr = self.get_instr(addr)?;
         let prev_instr = self.get_instr(prev_addr)?;
@@ -605,7 +605,7 @@ impl<'a> Tracer<'a> {
         target
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     fn is_implicit_return(&self, instr: &Instruction, ir: &ImplicitReturn) -> bool {
         if let Ok(name) = instr.name {
             if (name == jalr && instr.rs1 == 1 && instr.rd == 0) || (name == c_jr && instr.rs1 == 1)
@@ -619,7 +619,7 @@ impl<'a> Tracer<'a> {
         return false;
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     fn push_return_stack(&mut self, addr: u64) -> Result<(), TraceErrorType> {
         let instr = self.get_instr(addr)?;
         let mut link = addr;
@@ -649,7 +649,7 @@ impl<'a> Tracer<'a> {
         Ok(())
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     fn pop_return_stack(&mut self) -> u64 {
         self.state.irstack_depth -= 1;
         self.state.return_stack[self.state.irstack_depth]

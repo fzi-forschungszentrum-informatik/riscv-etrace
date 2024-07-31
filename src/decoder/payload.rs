@@ -88,14 +88,14 @@ impl Decode for QualStatus {
     }
 }
 
-#[cfg(feature = "IR")]
+#[cfg(feature = "implicit_return")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ImplicitReturn {
     pub irreport: bool,
     pub irdepth: u64,
 }
 
-#[cfg(feature = "IR")]
+#[cfg(feature = "implicit_return")]
 impl Decode for ImplicitReturn {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         let irreport = decoder.read_bit(slice)?;
@@ -132,7 +132,7 @@ impl Payload {
         };
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub fn get_implicit_return(&self) -> Option<&ImplicitReturn> {
         if let Payload::Address(addr) = self {
             return Some(&addr.ir);
@@ -234,7 +234,7 @@ pub struct JumpTargetIndex {
     pub index: usize,
     pub branches: usize,
     pub branch_map: Option<u32>,
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub ir: ImplicitReturn,
 }
 
@@ -249,13 +249,13 @@ impl Decode for JumpTargetIndex {
             Some(branch_map & ((1 << branches) - 1))
         };
 
-        #[cfg(feature = "IR")]
+        #[cfg(feature = "implicit_return")]
         let ir = ImplicitReturn::decode(decoder, slice)?;
         Ok(JumpTargetIndex {
             index,
             branches: branch_map_len,
             branch_map,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             ir,
         })
     }
@@ -307,7 +307,7 @@ pub struct AddressInfo {
     pub address: u64,
     pub notify: bool,
     pub updiscon: bool,
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub ir: ImplicitReturn,
 }
 
@@ -316,13 +316,13 @@ impl Decode for AddressInfo {
         let address = read_address(decoder, slice)?;
         let notify = decoder.read_bit(slice)?;
         let updiscon = decoder.read_bit(slice)?;
-        #[cfg(feature = "IR")]
+        #[cfg(feature = "implicit_return")]
         let ir = ImplicitReturn::decode(decoder, slice)?;
         Ok(AddressInfo {
             address,
             notify,
             updiscon,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             ir,
         })
     }

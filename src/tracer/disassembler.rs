@@ -172,10 +172,10 @@ pub struct Instruction {
     pub is_branch: bool,
     /// Only parsed if the immediate is necessary for the tracing algorithm, else `None`.
     pub imm: Option<i32>,
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     /// Only parsed if implicit returns are enabled.
     pub rs1: u32,
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     /// Only parsed if implicit returns are enabled.
     pub rd: u32,
 }
@@ -188,9 +188,9 @@ impl Instruction {
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             rs1: 0,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             rd: 0
         }
     }
@@ -249,7 +249,7 @@ impl Instruction {
         }
     }
 
-    #[cfg(feature = "IR")]
+    #[cfg(feature = "implicit_return")]
     pub fn is_call(&self) -> bool {
         if let Some(name) = self.name {
             if (name == jalr && self.rd == 1)
@@ -353,9 +353,9 @@ impl Instruction {
             is_rs1_zero,
             is_branch: opcode == Branch,
             imm: Self::calc_imm(name, is_rs1_zero, opcode == Branch, num),
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             rs1,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             rd,
         }
     }
@@ -428,9 +428,9 @@ impl Instruction {
             is_rs1_zero: false,
             name: Some(name),
             imm: Self::calc_compressed_imm(name, is_branch, num),
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             rs1: rs1 as u32,
-            #[cfg(feature = "IR")]
+            #[cfg(feature = "implicit_return")]
             rd: rd as u32,
         }
     }

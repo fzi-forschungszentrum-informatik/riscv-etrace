@@ -7,14 +7,14 @@ use crate::decoder::header::*;
 use crate::decoder::payload::*;
 use crate::decoder::DecodeError::ReadTooLong;
 use crate::{ProtocolConfiguration};
-#[cfg(feature = "IR")]
+#[cfg(feature = "implicit_return")]
 use payload::ImplicitReturn;
 
 mod format;
 pub mod header;
 pub mod payload;
 
-#[cfg(feature = "IR")]
+#[cfg(feature = "implicit_return")]
 const IR: u64 = todo!();
 
 /// Defines the decoder specific configuration. Used only by the [decoder](self).
