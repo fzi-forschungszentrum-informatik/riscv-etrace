@@ -130,9 +130,9 @@ pub struct ProtocolConfiguration {
     #[cfg(feature = "IR")]
     pub sijump_p: bool,
     #[cfg(feature = "IR")]
-    pub call_counter_size_p: usize,
+    pub call_counter_size_p: u32,
     #[cfg(feature = "IR")]
-    pub return_stack_size_p: usize,
+    pub return_stack_size_p: u32,
 }
 
 impl Default for ProtocolConfiguration {

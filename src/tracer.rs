@@ -2,13 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
-use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
+use crate::decoder::payload::{
+    Extension, ImplicitReturn, Payload, Privilege, QualStatus, Support, Synchronization, Trap,
+};
 #[cfg(feature = "cache")]
 use crate::tracer::disassembler::InstructionCache;
 use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
+use crate::tracer::TraceErrorType::IrStackExhausted;
+#[cfg(feature = "IR")]
+use crate::Name::{aupic, c_lui, lui, sret};
+use crate::Name::{c_j, c_jr, jalr};
 use core::fmt;
 
 pub mod disassembler;
@@ -50,6 +56,8 @@ pub enum TraceErrorType {
     },
     /// The address is not inside a [Segment].
     SegmentationFault(u64),
+    /// The ir stack has exceeded its allocated size.
+    IrStackExhausted(u64, u64),
 }
 
 impl fmt::Debug for TraceErrorType {
@@ -83,6 +91,10 @@ impl fmt::Debug for TraceErrorType {
             TraceErrorType::SegmentationFault(addr) => {
                 f.write_fmt(format_args!("SegmentationFault({addr:#0x})"))
             }
+            TraceErrorType::IrStackExhausted(size, supremum) => f.write_fmt(format_args!(
+                "IrStackExhausted {{ size: {:?}, supremum: {:?} }}",
+                size, supremum
+            )),
         }
     }
 }
@@ -95,6 +107,11 @@ pub struct TraceConfiguration<'a> {
     pub segments: &'a [Segment<'a>],
     pub full_address: bool,
 }
+
+#[cfg(feature = "IR")]
+/// Supremum of depth of the implicit return stack.
+/// This value should **always** be larger than the maximum ir stack depth.
+pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
 
 /// Includes the necessary information for the tracing algorithm to trace the instruction execution.
 ///
@@ -114,8 +131,14 @@ pub struct TraceState {
     pub start_of_trace: bool,
     pub notify: bool,
     pub updiscon: bool,
+    #[cfg(feature = "IR")]
+    pub ir: bool,
     #[cfg(not(feature = "tracing_v1"))]
     pub privilege: Privilege,
+    #[cfg(feature = "IR")]
+    pub return_stack: [u64; 32],
+    #[cfg(feature = "IR")]
+    pub irstack_depth: u64,
     pub segment_idx: usize,
     #[cfg(feature = "cache")]
     pub instr_cache: InstructionCache,
@@ -134,8 +157,14 @@ impl TraceState {
             address: 0,
             notify: false,
             updiscon: false,
+            #[cfg(feature = "IR")]
+            ir: false,
             #[cfg(not(feature = "tracing_v1"))]
             privilege: Privilege::User,
+            #[cfg(feature = "IR")]
+            return_stack: [0; 32],
+            #[cfg(feature = "IR")]
+            irstack_depth: 0,
             segment_idx: 0,
             #[cfg(feature = "cache")]
             instr_cache: InstructionCache::new(),
@@ -252,11 +281,41 @@ impl<'a> Tracer<'a> {
         }
     }
 
+    #[cfg(feature = "IR")]
+    fn recover_ir_status(&self, payload: &Payload) -> bool {
+        return if let Some(addr) = payload.get_address_info() {
+            addr.updiscon != addr.ir.irreport
+        } else if let Payload::Extension(ext) = payload {
+            match ext {
+                Extension::BranchCount(bc) => {
+                    if let Some(addr) = bc.address {
+                        addr.updiscon != addr.ir.irreport
+                    } else {
+                        false
+                    }
+                }
+                Extension::JumpTargetIndex(jti) => {
+                    if let Some(branch_map) = jti.branch_map {
+                        let branch_map_msb = (branch_map >> (jti.branches - 1)) == 1;
+                        branch_map_msb != jti.ir.irreport
+                    } else {
+                        let branches_msb = (jti.branches >> 4) == 1;
+                        branches_msb != jti.ir.irreport
+                    }
+                }
+            }
+        } else {
+            false
+        };
+    }
+
     fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address_info() {
             let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) == 1;
             self.state.notify = addr.notify != msb;
             self.state.updiscon = addr.updiscon != addr.notify;
+            #[cfg(feature = "IR")]
+            self.state.ir = self.recover_ir_status(payload);
         }
     }
 
@@ -312,6 +371,9 @@ impl<'a> Tracer<'a> {
                 self.state.privilege = *sync.get_privilege()?;
             }
             self.state.start_of_trace = false;
+            if cfg!(feature = "IR") {
+                self.state.irstack_depth = 0;
+            }
             Ok(())
         } else {
             if self.state.start_of_trace {
@@ -403,12 +465,21 @@ impl<'a> Tracer<'a> {
                 {
                     return Ok(());
                 }
+                let ir = if cfg!(feature = "IR") {
+                    self.state.ir
+                        || payload
+                        .get_implicit_return()
+                        .map_or(false, |ir| ir.irdepth == self.state.irstack_depth)
+                } else {
+                    true
+                };
                 if !matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
                     && !&self.get_instr(self.state.last_pc)?.is_uninferable_discon()
                     && !self.state.updiscon
                     && self.state.branches == self.branch_limit()?
+                    && ir
                 {
                     self.state.inferred_address = true;
                     return Ok(());
@@ -443,6 +514,8 @@ impl<'a> Tracer<'a> {
             if imm == 0 {
                 local_stop_here = true;
             }
+        } else if cfg!(feature = "ir") {
+            // TODO next_pc ir
         } else if local_instr.is_uninferable_discon() {
             if self.state.stop_at_last_branch {
                 return Err(TraceErrorType::UnexpectedUninferableDiscon);
@@ -480,6 +553,106 @@ impl<'a> Tracer<'a> {
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
         Ok(local_taken)
+    }
+
+    #[cfg(feature = "IR")]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_sequential_jump(
+        &mut self,
+        instr: &Instruction,
+        prev_addr: u64,
+    ) -> Result<bool, TraceErrorType> {
+        if !instr.is_uninferable_jump() && self.proto_conf.sijump_p {
+            return Ok(false);
+        }
+
+        let prev_instr = self.get_instr(prev_addr)?;
+
+        if prev_instr
+            .name
+            .filter(|name| *name == aupic || *name == lui || *name == c_lui)
+            .is_some()
+        {
+            return Ok(instr.rs1 == prev_instr.rd);
+        }
+        Ok(false)
+    }
+
+    #[cfg(feature = "IR")]
+    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, TraceErrorType> {
+        let instr = self.get_instr(addr)?;
+        let prev_instr = self.get_instr(prev_addr)?;
+        let mut target = 0;
+
+        if prev_instr.name == Some(aupic) {
+            target = prev_addr;
+        }
+        let imm = prev_instr
+            .imm
+            .ok_or(TraceErrorType::ImmediateIsNone(prev_instr))?;
+        if imm.is_negative() {
+            target = target.overflowing_sub(addr.wrapping_abs() as u64).0
+        } else {
+            target += target.overflowing_add(imm).0;
+        }
+        if instr.name == Ok(jalr) {
+            if imm.is_negative() {
+                target = target.overflowing_sub(addr.wrapping_abs() as u64).0
+            } else {
+                target += target.overflowing_add(imm).0;
+            }
+        }
+        target
+    }
+
+    #[cfg(feature = "IR")]
+    fn is_implicit_return(&self, instr: &Instruction, ir: &ImplicitReturn) -> bool {
+        if let Ok(name) = instr.name {
+            if (name == jalr && instr.rs1 == 1 && instr.rd == 0) || (name == c_jr && instr.rs1 == 1)
+            {
+                if self.state.ir && ir.irdepth == self.state.irstack_depth {
+                    return false;
+                }
+            }
+            return self.state.irstack_depth > 0;
+        }
+        return false;
+    }
+
+    #[cfg(feature = "IR")]
+    fn push_return_stack(&mut self, addr: u64) -> Result<(), TraceErrorType> {
+        let instr = self.get_instr(addr)?;
+        let mut link = addr;
+
+        let irstack_depth_max = if self.proto_conf.return_stack_size_p != 0 {
+            2_u64.pow(self.proto_conf.return_stack_size_p)
+        } else {
+            2_u64.pow(self.proto_conf.call_counter_size_p)
+        };
+
+        if irstack_depth_max > IRSTACK_DEPTH_SUPREMUM {
+            return Err(IrStackExhausted(irstack_depth_max, IRSTACK_DEPTH_SUPREMUM));
+        }
+
+        if self.state.irstack_depth == irstack_depth_max {
+            self.state.irstack_depth -= 1;
+            for i in 0..irstack_depth_max {
+                self.state.return_stack[i] = self.state.return_stack[i + 1];
+            }
+        }
+
+        link += (instr.size as u64) * 8;
+
+        self.state.return_stack[self.state.irstack_depth] = link;
+        self.state.irstack_depth += 1;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "IR")]
+    fn pop_return_stack(&mut self) -> u64 {
+        self.state.irstack_depth -= 1;
+        self.state.return_stack[self.state.irstack_depth]
     }
 
     fn exception_address(&mut self, trap: &Trap) -> Result<u64, TraceErrorType> {
