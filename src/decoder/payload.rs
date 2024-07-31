@@ -106,7 +106,7 @@ impl Decode for ImplicitReturn {
             } else {
                 0
             });
-        let irdepth = decoder.read(irdepth_len, slice)?;
+        let irdepth = decoder.read(irdepth_len as usize, slice)?;
         Ok(ImplicitReturn { irreport, irdepth })
     }
 }
