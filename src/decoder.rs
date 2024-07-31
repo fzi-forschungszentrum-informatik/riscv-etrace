@@ -14,9 +14,6 @@ mod format;
 pub mod header;
 pub mod payload;
 
-#[cfg(feature = "implicit_return")]
-const IR: u64 = todo!();
-
 /// Defines the decoder specific configuration. Used only by the [decoder](self).
 #[derive(Copy, Clone, Debug)]
 pub struct DecoderConfiguration {
