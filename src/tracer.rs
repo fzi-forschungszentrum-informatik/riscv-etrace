@@ -3,7 +3,7 @@
 
 //! Implements the instruction tracing algorithm.
 #[cfg(feature = "implicit_return")]
-use crate::decoder::payload::{Extension, ImplicitReturn};
+use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 #[cfg(feature = "cache")]
 use crate::tracer::disassembler::InstructionCache;
@@ -12,7 +12,7 @@ use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 #[cfg(feature = "implicit_return")]
-use crate::Name::{aupic, c_j, c_jr, c_lui, jalr, lui, sret};
+use crate::Name::{aupic, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
 pub mod disassembler;
@@ -617,18 +617,18 @@ impl<'a> Tracer<'a> {
             .imm
             .ok_or(TraceErrorType::ImmediateIsNone(prev_instr))?;
         if imm.is_negative() {
-            target = target.overflowing_sub(addr.wrapping_abs() as u64).0
+            target = target.overflowing_sub(imm.abs() as u64).0
         } else {
-            target += target.overflowing_add(imm).0;
+            target += target.overflowing_add(imm as u64).0;
         }
-        if instr.name == Ok(jalr) {
+        if instr.name == Some(jalr) {
             if imm.is_negative() {
-                target = target.overflowing_sub(addr.wrapping_abs() as u64).0
+                target = target.overflowing_sub(imm.abs() as u64).0
             } else {
-                target += target.overflowing_add(imm).0;
+                target += target.overflowing_add(imm as u64).0;
             }
         }
-        target
+        Ok(target)
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -638,7 +638,7 @@ impl<'a> Tracer<'a> {
 
     #[cfg(feature = "implicit_return")]
     fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
-        if let Ok(name) = instr.name {
+        if let Some(name) = instr.name {
             if (name == jalr && instr.rs1 == 1 && instr.rd == 0) || (name == c_jr && instr.rs1 == 1)
             {
                 if let Some(ir) = payload.get_implicit_return() {
@@ -682,13 +682,13 @@ impl<'a> Tracer<'a> {
         if self.state.irstack_depth == irstack_depth_max {
             self.state.irstack_depth -= 1;
             for i in 0..irstack_depth_max {
-                self.state.return_stack[i] = self.state.return_stack[i + 1];
+                self.state.return_stack[i as usize] = self.state.return_stack[i as usize + 1];
             }
         }
 
         link += (local_instr.size as u64) * 8;
 
-        self.state.return_stack[self.state.irstack_depth] = link;
+        self.state.return_stack[self.state.irstack_depth as usize] = link;
         self.state.irstack_depth += 1;
 
         Ok(())
@@ -702,7 +702,7 @@ impl<'a> Tracer<'a> {
     #[cfg(feature = "implicit_return")]
     fn pop_return_stack(&mut self) -> u64 {
         self.state.irstack_depth -= 1;
-        self.state.return_stack[self.state.irstack_depth]
+        self.state.return_stack[self.state.irstack_depth as usize]
     }
 
     fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, TraceErrorType> {

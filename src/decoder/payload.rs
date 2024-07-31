@@ -133,27 +133,26 @@ impl Payload {
     }
 
     #[cfg(feature = "implicit_return")]
-    pub fn get_implicit_return(&self) -> Option<&ImplicitReturn> {
+    pub fn get_implicit_return(&self) -> Option<ImplicitReturn> {
         if let Payload::Address(addr) = self {
-            return Some(&addr.ir);
+            return Some(addr.ir);
         } else if let Payload::Branch(branch) = self {
             if let Some(addr) = branch.address {
-                return Some(&addr.ir);
+                return Some(addr.ir);
             }
         } else if let Payload::Extension(ext) = self {
-            match ext {
+            return match ext {
                 Extension::BranchCount(bc) => {
                     if let Some(addr) = bc.address {
-                        Some(&addr.ir)
+                        Some(addr.ir)
                     } else {
-                        return None
+                        None
                     }
                 },
-                Extension::JumpTargetIndex(jti) => Some(&jti.ir)
+                Extension::JumpTargetIndex(jti) => Some(jti.ir)
             }
-        } else {
-            None
         }
+        return None
     }
 
     pub fn get_address(&self) -> u64 {

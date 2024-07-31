@@ -7,8 +7,6 @@ use crate::decoder::header::*;
 use crate::decoder::payload::*;
 use crate::decoder::DecodeError::ReadTooLong;
 use crate::{ProtocolConfiguration};
-#[cfg(feature = "implicit_return")]
-use payload::ImplicitReturn;
 
 mod format;
 pub mod header;
