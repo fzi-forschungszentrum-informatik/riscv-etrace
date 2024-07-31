@@ -3,7 +3,7 @@
 
 //! Implements the instruction tracing algorithm.
 #[cfg(feature = "implicit_return")]
-use crate::decoder::payload::{ImplicitReturn, Extension};
+use crate::decoder::payload::{Extension, ImplicitReturn};
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 #[cfg(feature = "cache")]
 use crate::tracer::disassembler::InstructionCache;
@@ -12,7 +12,7 @@ use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 #[cfg(feature = "implicit_return")]
-use crate::Name::{aupic, c_lui, lui, sret, c_j, c_jr, jalr};
+use crate::Name::{aupic, c_j, c_jr, c_lui, jalr, lui, sret};
 use core::fmt;
 
 pub mod disassembler;
@@ -334,7 +334,7 @@ impl<'a> Tracer<'a> {
                 return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
                 if !trap.interrupt {
-                    let addr = self.exception_address(trap)?;
+                    let addr = self.exception_address(trap, payload)?;
                     self.report_trace.report_epc(addr);
                 }
                 if !trap.thaddr {
@@ -403,7 +403,11 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    fn process_support(&mut self, support: &Support, payload: &Payload) -> Result<(), TraceErrorType> {
+    fn process_support(
+        &mut self,
+        support: &Support,
+        payload: &Payload,
+    ) -> Result<(), TraceErrorType> {
         if support.qual_status != QualStatus::NoChange {
             self.state.start_of_trace = true;
 
@@ -637,7 +641,7 @@ impl<'a> Tracer<'a> {
     #[cfg(feature = "implicit_return")]
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), TraceErrorType> {
         if !instr.is_call() {
-            return Ok(())
+            return Ok(());
         }
 
         let instr = self.get_instr(addr)?;
@@ -650,7 +654,10 @@ impl<'a> Tracer<'a> {
         };
 
         if irstack_depth_max > IRSTACK_DEPTH_SUPREMUM {
-            return Err(TraceErrorType::IrStackExhausted(irstack_depth_max, IRSTACK_DEPTH_SUPREMUM));
+            return Err(TraceErrorType::IrStackExhausted(
+                irstack_depth_max,
+                IRSTACK_DEPTH_SUPREMUM,
+            ));
         }
 
         if self.state.irstack_depth == irstack_depth_max {
@@ -679,7 +686,7 @@ impl<'a> Tracer<'a> {
         self.state.return_stack[self.state.irstack_depth]
     }
 
-    fn exception_address(&mut self, trap: &Trap) -> Result<u64, TraceErrorType> {
+    fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, TraceErrorType> {
         let local_instr = self.get_instr(self.state.pc)?;
 
         if local_instr.is_uninferable_discon() && trap.thaddr {
@@ -691,7 +698,11 @@ impl<'a> Tracer<'a> {
         {
             Ok(self.state.pc)
         } else {
-            todo!("local_address = self.next_pc(self.pc)")
+            Ok(if self.next_pc(self.state.pc, payload)? {
+                self.state.pc + local_instr.size as u64
+            } else {
+                self.state.pc
+            })
         }
     }
 }
