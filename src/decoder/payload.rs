@@ -91,14 +91,23 @@ impl Decode for QualStatus {
 #[cfg(feature = "IR")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ImplicitReturn {
-    pub irreport: usize,
-    pub irdepth: usize,
+    pub irreport: bool,
+    pub irdepth: u64,
 }
 
 #[cfg(feature = "IR")]
 impl Decode for ImplicitReturn {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        unimplemented!()
+        let irreport = decoder.read_bit(slice)?;
+        let irdepth_len = decoder.proto_conf.return_stack_size_p
+            + decoder.proto_conf.call_counter_size_p
+            + (if decoder.proto_conf.return_stack_size_p > 0 {
+                1
+            } else {
+                0
+            });
+        let irdepth = decoder.read(irdepth_len, slice)?;
+        Ok(ImplicitReturn { irreport, irdepth })
     }
 }
 
@@ -121,6 +130,30 @@ impl Payload {
         } else {
             None
         };
+    }
+
+    #[cfg(feature = "IR")]
+    pub fn get_implicit_return(&self) -> Option<&ImplicitReturn> {
+        if let Payload::Address(addr) = self {
+            return Some(&addr.ir);
+        } else if let Payload::Branch(branch) = self {
+            if let Some(addr) = branch.address {
+                return Some(&addr.ir);
+            }
+        } else if let Payload::Extension(ext) = self {
+            match ext {
+                Extension::BranchCount(bc) => {
+                    if let Some(addr) = bc.address {
+                        Some(&addr.ir)
+                    } else {
+                        return None
+                    }
+                },
+                Extension::JumpTargetIndex(jti) => Some(&jti.ir)
+            }
+        } else {
+            None
+        }
     }
 
     pub fn get_address(&self) -> u64 {
@@ -459,7 +492,7 @@ impl Decode for Support {
 mod tests {
     use crate::decoder::payload::{AddressInfo, Branch, JumpTargetIndex, Privilege, Start};
     use crate::decoder::{Decode, Decoder, DecoderConfiguration};
-    use crate::{ProtocolConfiguration};
+    use crate::ProtocolConfiguration;
 
     const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
 
