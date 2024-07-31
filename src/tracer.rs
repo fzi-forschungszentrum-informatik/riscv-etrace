@@ -3,20 +3,16 @@
 
 //! Implements the instruction tracing algorithm.
 #[cfg(feature = "implicit_return")]
-use crate::decoder::payload::ImplicitReturn;
-use crate::decoder::payload::{
-    Extension, Payload, Privilege, QualStatus, Support, Synchronization, Trap,
-};
+use crate::decoder::payload::{ImplicitReturn, Extension};
+use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 #[cfg(feature = "cache")]
 use crate::tracer::disassembler::InstructionCache;
 use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
-use crate::tracer::TraceErrorType::IrStackExhausted;
 #[cfg(feature = "implicit_return")]
-use crate::Name::{aupic, c_lui, lui, sret};
-use crate::Name::{c_j, c_jr, jalr};
+use crate::Name::{aupic, c_lui, lui, sret, c_j, c_jr, jalr};
 use core::fmt;
 
 pub mod disassembler;
@@ -277,7 +273,7 @@ impl<'a> Tracer<'a> {
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    fn recover_ir_status(&self, payload: &Payload) -> bool {
+    fn recover_ir_status(&self, _: &Payload) -> bool {
         false
     }
 
@@ -330,7 +326,7 @@ impl<'a> Tracer<'a> {
     fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
-                return self.process_support(sup);
+                return self.process_support(sup, payload);
             } else if let Synchronization::Context(ctx) = sync {
                 if cfg!(not(feature = "tracing_v1")) {
                     self.state.privilege = ctx.privilege;
@@ -370,7 +366,7 @@ impl<'a> Tracer<'a> {
                 self.state.privilege = *sync.get_privilege()?;
             }
             self.state.start_of_trace = false;
-            if cfg!(feature = "IR") {
+            if cfg!(feature = "implicit_return") {
                 self.state.irstack_depth = 0;
             }
             Ok(())
@@ -407,7 +403,7 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    fn process_support(&mut self, support: &Support) -> Result<(), TraceErrorType> {
+    fn process_support(&mut self, support: &Support, payload: &Payload) -> Result<(), TraceErrorType> {
         if support.qual_status != QualStatus::NoChange {
             self.state.start_of_trace = true;
 
@@ -415,7 +411,7 @@ impl<'a> Tracer<'a> {
                 let local_previous_address = self.state.pc;
                 self.state.inferred_address = false;
                 loop {
-                    let local_stop_here = self.next_pc(local_previous_address)?;
+                    let local_stop_here = self.next_pc(local_previous_address, payload)?;
                     self.report_trace.report_pc(self.state.pc);
                     if local_stop_here {
                         return Ok(());
@@ -448,13 +444,13 @@ impl<'a> Tracer<'a> {
         let mut local_stop_here;
         loop {
             if self.state.inferred_address {
-                local_stop_here = self.next_pc(previous_address)?;
+                local_stop_here = self.next_pc(previous_address, payload)?;
                 self.report_trace.report_pc(previous_address);
                 if local_stop_here {
                     self.state.inferred_address = false;
                 }
             } else {
-                local_stop_here = self.next_pc(self.state.address)?;
+                local_stop_here = self.next_pc(self.state.address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
                 if self.state.branches == 1
                     && self.get_instr(self.state.pc)?.is_branch
@@ -506,7 +502,7 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    fn next_pc(&mut self, address: u64) -> Result<bool, TraceErrorType> {
+    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, TraceErrorType> {
         let local_instr = self.get_instr(self.state.pc)?;
         let local_this_pc = self.state.pc;
         let mut local_stop_here = false;
@@ -519,8 +515,8 @@ impl<'a> Tracer<'a> {
             if imm == 0 {
                 local_stop_here = true;
             }
-        } else if cfg!(feature = "ir") {
-            // TODO next_pc ir
+        } else if self.is_implicit_return(&local_instr, payload) {
+            self.state.pc = self.pop_return_stack();
         } else if local_instr.is_uninferable_discon() {
             if self.state.stop_at_last_branch {
                 return Err(TraceErrorType::UnexpectedUninferableDiscon);
@@ -538,6 +534,8 @@ impl<'a> Tracer<'a> {
         } else {
             self.incr_pc(local_instr.size as i32);
         }
+
+        self.push_return_stack(&local_instr, local_this_pc)?;
 
         self.state.last_pc = local_this_pc;
 
@@ -610,13 +608,20 @@ impl<'a> Tracer<'a> {
         target
     }
 
+    #[cfg(not(feature = "implicit_return"))]
+    fn is_implicit_return(&self, _: &Instruction, _: &Payload) -> bool {
+        false
+    }
+
     #[cfg(feature = "implicit_return")]
-    fn is_implicit_return(&self, instr: &Instruction, ir: &ImplicitReturn) -> bool {
+    fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
         if let Ok(name) = instr.name {
             if (name == jalr && instr.rs1 == 1 && instr.rd == 0) || (name == c_jr && instr.rs1 == 1)
             {
-                if self.state.ir && ir.irdepth == self.state.irstack_depth {
-                    return false;
+                if let Some(ir) = payload.get_implicit_return() {
+                    if self.state.ir && ir.irdepth == self.state.irstack_depth {
+                        return false;
+                    }
                 }
             }
             return self.state.irstack_depth > 0;
@@ -624,8 +629,17 @@ impl<'a> Tracer<'a> {
         return false;
     }
 
+    #[cfg(not(feature = "implicit_return"))]
+    fn push_return_stack(&mut self, _: &Instruction, _: u64) -> Result<(), TraceErrorType> {
+        Ok(())
+    }
+
     #[cfg(feature = "implicit_return")]
-    fn push_return_stack(&mut self, addr: u64) -> Result<(), TraceErrorType> {
+    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), TraceErrorType> {
+        if !instr.is_call() {
+            return Ok(())
+        }
+
         let instr = self.get_instr(addr)?;
         let mut link = addr;
 
@@ -636,7 +650,7 @@ impl<'a> Tracer<'a> {
         };
 
         if irstack_depth_max > IRSTACK_DEPTH_SUPREMUM {
-            return Err(IrStackExhausted(irstack_depth_max, IRSTACK_DEPTH_SUPREMUM));
+            return Err(TraceErrorType::IrStackExhausted(irstack_depth_max, IRSTACK_DEPTH_SUPREMUM));
         }
 
         if self.state.irstack_depth == irstack_depth_max {
@@ -652,6 +666,11 @@ impl<'a> Tracer<'a> {
         self.state.irstack_depth += 1;
 
         Ok(())
+    }
+
+    #[cfg(not(feature = "implicit_return"))]
+    fn pop_return_stack(&mut self) -> u64 {
+        unreachable!()
     }
 
     #[cfg(feature = "implicit_return")]
