@@ -129,7 +129,6 @@ pub struct TraceState {
     pub notify: bool,
     pub updiscon: bool,
     pub ir: bool,
-    #[cfg(not(feature = "tracing_v1"))]
     pub privilege: Privilege,
     pub return_stack: [u64; 32],
     pub irstack_depth: u64,
@@ -152,7 +151,6 @@ impl TraceState {
             notify: false,
             updiscon: false,
             ir: false,
-            #[cfg(not(feature = "tracing_v1"))]
             privilege: Privilege::User,
             return_stack: [0; IRSTACK_DEPTH_SUPREMUM as usize],
             irstack_depth: 0,
@@ -443,6 +441,23 @@ impl<'a> Tracer<'a> {
         true
     }
 
+    #[cfg(not(feature = "tracing_v1"))]
+    fn follow_execution_path_catch_priv_changes(
+        &mut self,
+        payload: &Payload,
+    ) -> Result<bool, TraceErrorType> {
+        Ok(*payload.get_privilege()? == self.state.privilege
+            && self.get_instr(self.state.last_pc)?.is_return_from_trap())
+    }
+
+    #[cfg(feature = "tracing_v1")]
+    fn follow_execution_path_catch_priv_changes(
+        &mut self,
+        _: &Payload,
+    ) -> Result<bool, TraceErrorType> {
+        Ok(true)
+    }
+
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         let previous_address = self.state.pc;
         let mut local_stop_here;
@@ -489,12 +504,7 @@ impl<'a> Tracer<'a> {
                     self.state.inferred_address = true;
                     return Ok(());
                 }
-                let catch_priv_changes = if cfg!(feature = "tracing_v1") {
-                    true
-                } else {
-                    *payload.get_privilege()? == self.state.privilege
-                        && self.get_instr(self.state.last_pc)?.is_return_from_trap()
-                };
+                let catch_priv_changes = self.follow_execution_path_catch_priv_changes(payload)?;
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && self.state.branches == self.branch_limit()?
