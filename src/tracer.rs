@@ -460,16 +460,16 @@ impl<'a> Tracer<'a> {
 
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         let previous_address = self.state.pc;
-        let mut local_stop_here;
+        let mut stop_here;
         loop {
             if self.state.inferred_address {
-                local_stop_here = self.next_pc(previous_address, payload)?;
+                stop_here = self.next_pc(previous_address, payload)?;
                 self.report_trace.report_pc(previous_address);
-                if local_stop_here {
+                if stop_here {
                     self.state.inferred_address = false;
                 }
             } else {
-                local_stop_here = self.next_pc(self.state.address, payload)?;
+                stop_here = self.next_pc(self.state.address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
                 if self.state.branches == 1
                     && self.get_instr(self.state.pc)?.is_branch
@@ -478,7 +478,7 @@ impl<'a> Tracer<'a> {
                     self.state.stop_at_last_branch = true;
                     return Ok(());
                 }
-                if local_stop_here {
+                if stop_here {
                     if self.state.branches > self.branch_limit()? {
                         return Err(TraceErrorType::UnprocessedBranches(self.state.branches));
                     }
@@ -492,23 +492,21 @@ impl<'a> Tracer<'a> {
                 {
                     return Ok(());
                 }
-                let ir = self.follow_execution_path_ir_state(payload);
                 if !matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
                     && !&self.get_instr(self.state.last_pc)?.is_uninferable_discon()
                     && !self.state.updiscon
                     && self.state.branches == self.branch_limit()?
-                    && ir
+                    && self.follow_execution_path_ir_state(payload)
                 {
                     self.state.inferred_address = true;
                     return Ok(());
                 }
-                let catch_priv_changes = self.follow_execution_path_catch_priv_changes(payload)?;
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && self.state.branches == self.branch_limit()?
-                    && catch_priv_changes
+                    && self.follow_execution_path_catch_priv_changes(payload)?
                 {
                     return Ok(());
                 }
@@ -562,12 +560,12 @@ impl<'a> Tracer<'a> {
         if self.state.branches == 0 {
             return Err(TraceErrorType::UnresolvableBranch);
         }
-        let local_taken = self.state.branch_map & 1 == 0;
+        let taken = self.state.branch_map & 1 == 0;
         self.report_trace
-            .report_branch(self.state.branches, self.state.branch_map, local_taken);
+            .report_branch(self.state.branches, self.state.branch_map, taken);
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
-        Ok(local_taken)
+        Ok(taken)
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -706,11 +704,11 @@ impl<'a> Tracer<'a> {
     }
 
     fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, TraceErrorType> {
-        let local_instr = self.get_instr(self.state.pc)?;
+        let instr = self.get_instr(self.state.pc)?;
 
-        if local_instr.is_uninferable_discon() && trap.thaddr {
+        if instr.is_uninferable_discon() && trap.thaddr {
             Ok(trap.address)
-        } else if local_instr
+        } else if instr
             .name
             .filter(|name| *name == ecall || *name == ebreak || *name == c_ebreak)
             .is_some()
@@ -718,7 +716,7 @@ impl<'a> Tracer<'a> {
             Ok(self.state.pc)
         } else {
             Ok(if self.next_pc(self.state.pc, payload)? {
-                self.state.pc + local_instr.size as u64
+                self.state.pc + instr.size as u64
             } else {
                 self.state.pc
             })
