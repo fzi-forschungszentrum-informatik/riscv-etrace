@@ -49,6 +49,7 @@ impl<'a> Segment<'a> {
     }
 }
 
+/// The bits from which instructions can be disassembled.
 #[derive(Copy, Clone, Debug)]
 pub enum InstructionBits {
     Bit32(u32),

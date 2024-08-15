@@ -1,6 +1,7 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements all different payloads and their decoding.
 use crate::decoder::{Decode, DecodeError, Decoder};
 use crate::tracer::TraceErrorType;
 
@@ -27,6 +28,7 @@ fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), Dec
     Ok((branches, len))
 }
 
+/// The possible privilege levels with which the instruction was executed.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Privilege {
     User = 0b00,
@@ -48,12 +50,17 @@ impl Decode for Privilege {
     }
 }
 
+/// Determines the layout of [BranchCount].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchFmt {
-    NoAddr,
-    // does not exist
-    Addr,
-    AddrFail,
+    /// Packet does not contain an address, and the branch following the last correct prediction
+    /// failed.
+    NoAddr = 0,
+    /// Packet contains an address. If this points to a branch instruction, then the
+    /// branch was predicted correctly
+    Addr = 2,
+    /// Packet contains an address that points to a branch which failed the prediction.
+    AddrFail = 3,
 }
 
 impl Decode for BranchFmt {
@@ -68,11 +75,18 @@ impl Decode for BranchFmt {
     }
 }
 
+/// Reports how or if the filter qualification changed.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QualStatus {
+    /// No change to filter qualification.
     NoChange,
+    /// Qualification ended, preceding packet sent explicitly to indicate last qualification
+    /// instruction.
     EndedRep,
+    /// One or more instruction trace packets lost.
     TraceLost,
+    /// Qualification ended, preceding packet    would have been sent anyway due to an updiscon,
+    /// even if it wasn’t the last qualified instruction
     EndedNtr,
 }
 
@@ -91,7 +105,19 @@ impl Decode for QualStatus {
 #[cfg(feature = "implicit_return")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ImplicitReturn {
+    /// If the value of this bit is different from the previous bit in the same packet,
+    /// it indicates that this packet is reporting an instruction that is either:
+    /// <ul>
+    /// <li>following a return because its address differs from the predicted return address at the
+    /// top of the implicit_return return address stack, or</li>
+    /// <li>the last retired before an exception, interrupt, privilege change or resync because it
+    /// is necessary to report the current address stack depth or nested call count.</li>
+    /// </ul>
     pub irreport: bool,
+    /// If the value of irreport is different from previous bit in the same packet,
+    /// this field indicates the number of entries on the return address stack (i.e. the entry
+    /// number of the return that failed) or nested call count. If irreport is the same value as
+    /// updiscon, all bits in this field will also be the same value as updiscon.
     pub irdepth: u64,
 }
 
@@ -111,6 +137,7 @@ impl Decode for ImplicitReturn {
     }
 }
 
+/// Top level enum for all possible payload formats.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload {
     Extension(Extension),
@@ -186,16 +213,18 @@ impl Payload {
     }
 }
 
-/// Format 0
+/// #### Format 0
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Extension {
     BranchCount(BranchCount),
     JumpTargetIndex(JumpTargetIndex),
 }
 
-/// Format 0, sub format 0
+/// #### Format 0, sub format 0
+/// Extension to report the number of correctly predicted branches.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct BranchCount {
+    /// Count of the number of correctly predicted branches, minus 31.
     pub branch_count: u32,
     pub branch_fmt: BranchFmt,
     pub address: Option<AddressInfo>,
@@ -227,11 +256,15 @@ impl Decode for BranchCount {
     }
 }
 
-/// Format 0, sub format 1
+/// #### Format 0, sub format 1
+/// Extension to report the jump target index.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTargetIndex {
+    /// Jump target cache index of entry containing target address.
     pub index: usize,
+    /// Number of valid bits in `branch_map`.
     pub branches: usize,
+    /// An array of bits indicating whether branches are taken (true) or not (false).
     pub branch_map: Option<u32>,
     #[cfg(feature = "implicit_return")]
     pub ir: ImplicitReturn,
@@ -260,10 +293,15 @@ impl Decode for JumpTargetIndex {
     }
 }
 
-/// Format 1
+/// #### Format 1
+/// This packet includes branch information, and is used when either the branch information must be
+/// reported (for example because the branch map is full), or when the address of an instruction must
+/// be reported, and there has been at least one branch since the previous packet
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Branch {
+    /// Number of valid bits branch_map.
     pub branches: u8,
+    /// An array of bits indicating whether branches are taken (false) or not (true).
     pub branch_map: u32,
     pub address: Option<AddressInfo>,
 }
@@ -300,11 +338,22 @@ impl fmt::Debug for Branch {
     }
 }
 
-/// Format 2
+/// #### Format 2
+/// This packet contains only an instruction address, and is used when the address of an instruction
+/// must be reported, and there is no unreported branch information. The address is in differential
+/// format unless full address mode is enabled.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct AddressInfo {
+    /// Differential instruction address.
     pub address: u64,
+    /// If the value of this bit is different from the MSB of address, it indicates that this packet
+    /// is reporting an instruction that is not the target of an uninferable
+    /// discontinuity because a notification was requested via a trigger.
     pub notify: bool,
+    /// If the value of this bit is different from notify, it indicates that this packet is
+    /// reporting the instruction following an uninferable discontinuity and is also the
+    /// instruction before an exception, privilege change or resync (i.e. it will be followed
+    /// immediately by a format 3 packet).
     pub updiscon: bool,
     #[cfg(feature = "implicit_return")]
     pub ir: ImplicitReturn,
@@ -336,7 +385,7 @@ impl fmt::Debug for AddressInfo {
     }
 }
 
-/// Format 3
+/// #### Format 3
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Synchronization {
     Start(Start),
@@ -365,11 +414,15 @@ impl Synchronization {
     }
 }
 
-/// Format 3, sub format 0
+/// #### Format 3, sub format 0
+/// Sent for the first traced instruction or when resynchronization is necessary.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Start {
+    /// False, if the address is a taken branch instruction. True, if the branch was not taken
+    /// or the instruction is not a branch.
     pub branch: bool,
     pub ctx: Context,
+    /// Full address of the instruction.
     pub address: u64,
 }
 
@@ -395,15 +448,22 @@ impl fmt::Debug for Start {
     }
 }
 
-/// Format 3, sub format 1
+/// #### Format 3, sub format 1
+/// Sent following an exception or interrupt.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Trap {
+    /// False, if the address is a taken branch instruction. True, if the branch was not taken
+    /// or the instruction is not a branch.
     pub branch: bool,
     pub ctx: Context,
     pub ecause: u64,
     pub interrupt: bool,
+    /// True, if the address points to the trap handler. False, if address points to the EPC for
+    /// an exception at the target of an updiscon, and is undefined for other exceptions and interrupts.
     pub thaddr: bool,
+    /// Full address of the instruction.
     pub address: u64,
+    /// Value from appropriate *tval CSR.
     pub tval: u64,
 }
 
@@ -436,9 +496,11 @@ impl Decode for Trap {
     }
 }
 
-/// Format 3, sub format 2
+/// #### Format 3, sub format 2
+/// Informs that the context changed or used as part of other payloads.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Context {
+    /// The privilege level of the reported instruction.
     pub privilege: Privilege,
     pub time: u64,
     pub context: u64,
@@ -454,7 +516,8 @@ impl Decode for Context {
     }
 }
 
-/// Format 3, sub format 3
+/// #### Format 3, sub format 3
+/// Supporting information for the decoder.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Support {
     pub ienable: bool,

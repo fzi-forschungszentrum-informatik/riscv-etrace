@@ -1,9 +1,12 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the header and its decoding.
 use crate::decoder::DecodeError::WrongTraceType;
 use crate::decoder::{Decode, DecodeError, Decoder};
 
+/// Each packet has a header specifying at least the payload length, trace type,
+/// whether a timestamp exists and the hart which produced the packet.
 #[derive(Debug, Eq, PartialEq)]
 pub struct Header {
     /// [Payload](crate::decoder::Payload) length in bytes.
