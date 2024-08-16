@@ -222,7 +222,6 @@ impl<'a> Tracer<'a> {
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, TraceErrorType> {
-        #[cfg(feature = "cache")]
         if !self.trace_conf.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
             for i in 0..self.trace_conf.segments.len() {
@@ -236,6 +235,7 @@ impl<'a> Tracer<'a> {
                 return Err(TraceErrorType::SegmentationFault(pc));
             }
         }
+        #[cfg(feature = "cache")]
         if let Some(instr) = self.state.instr_cache.get(pc) {
             return Ok(*instr);
         }
