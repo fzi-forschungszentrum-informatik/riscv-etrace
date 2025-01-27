@@ -148,15 +148,14 @@ pub enum Payload {
 
 impl Payload {
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
-        return if let Payload::Address(addr) = self {
-            Some(addr)
-        } else if let Payload::Branch(branch) = self {
-            branch.address.as_ref()
-        } else if let Payload::Extension(Extension::BranchCount(branch_count)) = self {
-            branch_count.address.as_ref()
-        } else {
-            None
-        };
+        match self {
+            Payload::Address(addr) => Some(addr),
+            Payload::Branch(branch) => branch.address.as_ref(),
+            Payload::Extension(Extension::BranchCount(branch_count)) => {
+                branch_count.address.as_ref()
+            }
+            _ => None,
+        }
     }
 
     #[cfg(feature = "implicit_return")]
