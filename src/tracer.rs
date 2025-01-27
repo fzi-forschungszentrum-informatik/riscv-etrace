@@ -18,6 +18,7 @@ use core::fmt;
 pub mod disassembler;
 
 /// Possible errors which can occur during the tracing algorithm.
+#[derive(Debug)]
 pub enum Error {
     /// The PC cannot be set to the address, as the address is 0.
     AddressIsZero,
@@ -48,41 +49,6 @@ pub enum Error {
     SegmentationFault(u64),
     /// The ir stack has exceeded its allocated size.
     IrStackExhausted(u64, u64),
-}
-
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::AddressIsZero => f.write_str("AddressIsZero"),
-            Self::StartOfTrace => f.write_str("StartOfTrace"),
-            Self::UnprocessedBranches(count) => {
-                f.write_fmt(format_args!("UnprocessedBranches({count})"))
-            }
-            Self::ImmediateIsNone(instr) => f.write_fmt(format_args!("ImmediateIsNone({instr:?})")),
-            Self::UnexpectedUninferableDiscon => f.write_str("UnexpectedUninferableDiscon"),
-            Self::UnresolvableBranch => f.write_str("UnresolvableBranch"),
-            Self::WrongGetBranchType => f.write_str("WrongGetBranchType"),
-            Self::WrongGetPrivilegeType => f.write_str("WrongGetPrivilegeType"),
-            Self::UnknownInstruction {
-                address,
-                bytes,
-                segment_idx,
-                vaddr_start,
-                vaddr_end,
-            } => f.write_fmt(format_args!(
-                "UnknownInstruction {{ address: {:#0x}, num: {:x?}, \
-                segment: {:?}, vaddr_start {:#0x}, vaddr_end: {:#0x}  }}",
-                address, bytes, segment_idx, vaddr_start, vaddr_end
-            )),
-            Self::SegmentationFault(addr) => {
-                f.write_fmt(format_args!("SegmentationFault({addr:#0x})"))
-            }
-            Self::IrStackExhausted(size, supremum) => f.write_fmt(format_args!(
-                "IrStackExhausted {{ size: {:?}, supremum: {:?} }}",
-                size, supremum
-            )),
-        }
-    }
 }
 
 /// Configuration used only by the tracer.
