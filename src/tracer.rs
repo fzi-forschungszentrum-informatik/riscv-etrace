@@ -51,6 +51,44 @@ pub enum Error {
     IrStackExhausted(u64, u64),
 }
 
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AddressIsZero => write!(f, "address is zero"),
+            Self::StartOfTrace => write!(f, "expected sync packet"),
+            Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
+            Self::ImmediateIsNone(_) => write!(f, "expected non-zero immediate of instruction"),
+            Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
+            Self::UnresolvableBranch => write!(f, "unresolvable branch"),
+            Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
+            Self::WrongGetPrivilegeType => write!(f, "expected privilege info in packet"),
+            Self::UnknownInstruction {
+                address,
+                bytes,
+                segment_idx,
+                vaddr_start,
+                vaddr_end,
+            } => {
+                let bytes = u32::from_be_bytes(*bytes);
+                write!(f, "unknown instruction {bytes:x} at {address:#0x}")?;
+                write!(
+                    f,
+                    ", segment: {segment_idx} ({vaddr_start:#0x}, {vaddr_end:#0x})"
+                )
+            }
+            Self::SegmentationFault(addr) => {
+                write!(f, "address {addr:#0x} not in any known segment")
+            }
+            Self::IrStackExhausted(size, supremum) => {
+                write!(
+                    f,
+                    "IR stack has grown to {size}, which is greater than the allocated {supremum}",
+                )
+            }
+        }
+    }
+}
+
 /// Configuration used only by the tracer.
 #[derive(Copy, Clone, Debug)]
 pub struct TraceConfiguration<'a> {
