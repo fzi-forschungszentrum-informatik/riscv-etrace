@@ -312,13 +312,9 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceError> {
+    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
         self.recover_status_fields(payload);
         self._process_te_inst(payload)
-            .map_err(|error_type| TraceError {
-                state: self.state,
-                error_type,
-            })
     }
 
     fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
