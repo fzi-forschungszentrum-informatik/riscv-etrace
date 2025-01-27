@@ -17,14 +17,6 @@ use core::fmt;
 
 pub mod disassembler;
 
-/// Captures the tracing algorithm error and also reports the current tracing context
-/// in which the error occurred.
-#[derive(Debug)]
-pub struct TraceError {
-    pub state: TraceState,
-    pub error_type: TraceErrorType,
-}
-
 /// Possible errors which can occur during the tracing algorithm.
 pub enum TraceErrorType {
     /// The PC cannot be set to the address, as the address is 0.
