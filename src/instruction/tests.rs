@@ -441,6 +441,23 @@ fn type_r() {
             rs2: 0x1f,
         },
     );
+
+    assert_eq!(
+        TypeR::from(0x0f80u16),
+        TypeR {
+            rd: 0x1f,
+            rs1: 0x1f,
+            rs2: 0x00,
+        },
+    );
+    assert_eq!(
+        TypeR::from(0x007cu16),
+        TypeR {
+            rd: 0x00,
+            rs1: 0x00,
+            rs2: 0x1f,
+        },
+    );
 }
 
 #[test]
@@ -563,6 +580,55 @@ fn type_b() {
             imm: -0x1000,
         },
     );
+
+    assert_eq!(
+        TypeB::from(0x0380u16),
+        TypeB {
+            rs1: 0x0f,
+            rs2: 0x00,
+            imm: 0x0000,
+        },
+    );
+    assert_eq!(
+        TypeB::from(0x0018u16),
+        TypeB {
+            rs1: 0x08,
+            rs2: 0x00,
+            imm: 0x0006,
+        },
+    );
+    assert_eq!(
+        TypeB::from(0x0c00u16),
+        TypeB {
+            rs1: 0x08,
+            rs2: 0x00,
+            imm: 0x0018,
+        },
+    );
+    assert_eq!(
+        TypeB::from(0x0004u16),
+        TypeB {
+            rs1: 0x08,
+            rs2: 0x00,
+            imm: 0x0020,
+        },
+    );
+    assert_eq!(
+        TypeB::from(0x0060u16),
+        TypeB {
+            rs1: 0x08,
+            rs2: 0x00,
+            imm: 0x00c0,
+        },
+    );
+    assert_eq!(
+        TypeB::from(0x1000u16),
+        TypeB {
+            rs1: 0x08,
+            rs2: 0x00,
+            imm: -0x100,
+        },
+    );
 }
 
 #[test]
@@ -581,6 +647,28 @@ fn type_u() {
         TypeU {
             rd: 0x00,
             imm: -0x00001000,
+        },
+    );
+
+    assert_eq!(
+        TypeU::from(0x0f80u16),
+        TypeU {
+            rd: 0x1f,
+            imm: 0x0000000,
+        },
+    );
+    assert_eq!(
+        TypeU::from(0x003cu16),
+        TypeU {
+            rd: 0x00,
+            imm: 0x000f000,
+        },
+    );
+    assert_eq!(
+        TypeU::from(0x1000u16),
+        TypeU {
+            rd: 0x00,
+            imm: -0x0010000,
         },
     );
 }
@@ -622,6 +710,63 @@ fn type_j() {
         TypeJ {
             rd: 0x00,
             imm: -0x100000,
+        },
+    );
+
+    assert_eq!(
+        TypeJ::from(0x0038u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x00e,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x0800u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x010,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x0004u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x020,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x0080u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x040,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x0040u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x080,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x0600u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x300,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x0100u16),
+        TypeJ {
+            rd: 0x00,
+            imm: 0x400,
+        },
+    );
+    assert_eq!(
+        TypeJ::from(0x1000u16),
+        TypeJ {
+            rd: 0x00,
+            imm: -0x800,
         },
     );
 }

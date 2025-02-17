@@ -11,12 +11,17 @@
 //!
 //! This module defines a data type for each of those variants with a [From]
 //! impl that extracts those fields from an instruction represented as an [u32].
+//! In addition, some types also impl `From<u16>`, extracting the information
+//! from compressed instructions as defined in section 26.2 Compressed
+//! Instruction Formats of the aforementioned The RISCV-V Instruction Set Manual
+//! Volume I.
+//!
 //! The extracted values reflect the fields' semantics: for immediates, we
 //! extract the immediate value rather than the bit-patters as present in the
 //! encoded instruction. We thus differentiate between S- and B-type
 //! instrucitons as well as between U- and J-type instructions.
 
-/// Variable fields in R-type instructions
+/// Variable fields in R-type and CR-type instructions
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TypeR {
     /// Destination register
@@ -33,6 +38,17 @@ impl From<u32> for TypeR {
             rd: rd_from(insn),
             rs1: rs1_from(insn),
             rs2: rs2_from(insn),
+        }
+    }
+}
+
+impl From<u16> for TypeR {
+    fn from(insn: u16) -> Self {
+        let rd = rd_from(insn.into());
+        Self {
+            rd,
+            rs1: rd,
+            rs2: rs2_from_compressed(insn),
         }
     }
 }
@@ -90,7 +106,7 @@ impl From<u32> for TypeS {
     }
 }
 
-/// Variable fields in B-type instructions
+/// Variable fields in B-type and CB-type instructions
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TypeB {
     /// Source register 1
@@ -103,6 +119,8 @@ pub struct TypeB {
     /// instruction, which are 12bit in total, and then sign-extended. Since the
     /// lowest bit is not encoded in the instruction but defined as `0`, the
     /// value is a multiple of two in the range `-4096..=4094`.
+    ///
+    /// For 16bit instrucitons, the range is `-256..=254`.
     pub imm: i16,
 }
 
@@ -120,7 +138,25 @@ impl From<u32> for TypeB {
     }
 }
 
+impl From<u16> for TypeB {
+    fn from(insn: u16) -> Self {
+        let imm = ((insn >> (3 - 1)) & 0x006)
+            | ((insn >> (10 - 3)) & 0x018)
+            | ((insn << (5 - 2)) & 0x020)
+            | ((insn << (7 - 6)) & 0x0c0)
+            | ((insn >> (12 - 8)) & 0x100);
+        Self {
+            rs1: rs1c_from(insn),
+            rs2: 0,
+            imm: sign_extend_u16(imm, 8),
+        }
+    }
+}
+
 /// Variable fields in U-type instructions
+///
+/// This type also allows extracting the destination register and immediate from
+/// `c.lui` instructions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TypeU {
     /// Destination register
@@ -130,6 +166,10 @@ pub struct TypeU {
     /// The immediate is extracted from the upper 20 bits of 32bit instructions,
     /// as the upper 20 bits of the immediate. Thus, the lower 12 bits are
     /// always zero.
+    ///
+    /// For 16bit instructions, the lower bits are also zero, but the overall
+    /// value is sign-extended from the 5 bits of the immediate. The range is
+    /// thus `-65536..=61440`.
     pub imm: i32,
 }
 
@@ -138,6 +178,17 @@ impl From<u32> for TypeU {
         Self {
             rd: rd_from(insn),
             imm: (insn & 0xfffff000) as i32,
+        }
+    }
+}
+
+impl From<u16> for TypeU {
+    fn from(insn: u16) -> Self {
+        let insn: u32 = insn.into();
+        let imm = ((insn << (12 - 2)) & 0x0000f000) | ((insn << (16 - 12)) & 0x00010000);
+        Self {
+            rd: rd_from(insn),
+            imm: sign_extend_u32(imm, 16),
         }
     }
 }
@@ -153,6 +204,8 @@ pub struct TypeJ {
     /// instructions, which are 20bit in total, and then sign-extended. Since
     /// the lowest bit is not encoded in the instruction but defined as `0`, the
     /// value is a multiple of two in the range `-1048576..=1048574`.
+    ///
+    /// For 16bit instructions, the range is `-2048..=2046`.
     pub imm: i32,
 }
 
@@ -165,6 +218,23 @@ impl From<u32> for TypeJ {
         Self {
             rd: rd_from(insn),
             imm: sign_extend_u32(imm, 20),
+        }
+    }
+}
+
+impl From<u16> for TypeJ {
+    fn from(insn: u16) -> Self {
+        let imm = ((insn >> (3 - 1)) & 0x00e)
+            | ((insn >> (11 - 4)) & 0x010)
+            | ((insn << (5 - 2)) & 0x020)
+            | ((insn >> (7 - 6)) & 0x040)
+            | ((insn << (7 - 6)) & 0x080)
+            | ((insn >> (9 - 8)) & 0x300)
+            | ((insn << (10 - 8)) & 0x400)
+            | ((insn >> (12 - 11)) & 0x800);
+        Self {
+            rd: 0,
+            imm: sign_extend_u32(imm as u32, 11),
         }
     }
 }
@@ -185,6 +255,16 @@ const fn rs1_from(insn: u32) -> u8 {
 /// Extract source register 2 form a 32bit instruction
 const fn rs2_from(insn: u32) -> u8 {
     (insn >> 20) as u8 & REG_MASK
+}
+
+/// Extract (regular) source register 2 form a 16bit instruction
+const fn rs2_from_compressed(insn: u16) -> u8 {
+    (insn >> 2) as u8 & REG_MASK
+}
+
+/// Extract a compressed source register 1 form a 16bit instruction
+const fn rs1c_from(insn: u16) -> u8 {
+    ((insn >> 7) as u8 & 0x07) | 0x08
 }
 
 /// Convert an [u16] to an [i16], sign extending it from a given bit
