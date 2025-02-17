@@ -153,6 +153,28 @@ pub enum Kind {
     jalr(format::TypeI),
 }
 
+impl Kind {
+    /// Determine the branch target
+    ///
+    /// If [Self] refers to a branch instruction, this fn returns the immediate,
+    /// which is the branch target relative to this instruction. Returns `None`
+    /// if [Self] does not refer to a (known) branch instruction. Jump
+    /// instructions are not considered branch instructions.
+    pub fn branch_target(self) -> Option<i16> {
+        match self {
+            Self::c_beqz(d) => Some(d.imm),
+            Self::c_bnez(d) => Some(d.imm),
+            Self::beq(d) => Some(d.imm),
+            Self::bne(d) => Some(d.imm),
+            Self::blt(d) => Some(d.imm),
+            Self::bge(d) => Some(d.imm),
+            Self::bltu(d) => Some(d.imm),
+            Self::bgeu(d) => Some(d.imm),
+            _ => None,
+        }
+    }
+}
+
 /// Represents the possible byte length of single RISC-V [Instruction].
 /// It is either 4 or 2 bytes.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
