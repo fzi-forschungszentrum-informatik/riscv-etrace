@@ -1,12 +1,12 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::tracer::disassembler::Name::*;
-use crate::tracer::disassembler::OpCode::*;
-
 use core::fmt;
 use core::fmt::Formatter;
 use core::ops::Range;
+
+use Name::*;
+use OpCode::*;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
 /// `first_addr` is the same address the encoder uses for instructions in this segment.
@@ -601,8 +601,9 @@ impl Default for Instruction {
 
 #[cfg(test)]
 mod tests {
-    use crate::tracer::disassembler::InstructionBits::{Bit16, Bit32};
-    use crate::tracer::disassembler::*;
+    use super::*;
+
+    use InstructionBits::{Bit16, Bit32};
 
     #[test]
     fn mret() {

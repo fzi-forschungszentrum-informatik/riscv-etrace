@@ -5,8 +5,8 @@
 #[cfg(feature = "implicit_return")]
 use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
-use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
-use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
+use crate::instruction::Name::{c_ebreak, ebreak, ecall};
+use crate::instruction::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 #[cfg(feature = "implicit_return")]
@@ -14,7 +14,6 @@ use crate::Name::{aupic, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
 pub mod cache;
-pub mod disassembler;
 
 use cache::InstructionCache;
 
