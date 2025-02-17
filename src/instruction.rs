@@ -173,6 +173,54 @@ impl Kind {
             _ => None,
         }
     }
+
+    /// Determine the inferable jump target
+    ///
+    /// If [Self] refers to a jump instruction that in itself determines the
+    /// jump target, this fn returns that target relative to this instruction.
+    /// Returns `None` if [Self] does not refer to a (known) jump instruction or
+    /// if the branch target cannot be inferred based on the instruction alone.
+    ///
+    /// For example, a `jalr` instruciton's target will never be considered
+    /// inferable unless the source register is the `zero` register, even if it
+    /// is preceeded directly by `auipc` and `addi` instructions defining a
+    /// constant jump target.
+    ///
+    /// Branch instructions are not considered jump instructions.
+    pub fn inferable_jump_target(self) -> Option<i32> {
+        match self {
+            Self::jal(d) => Some(d.imm),
+            Self::c_jal(d) => Some(d.imm),
+            Self::c_j(d) => Some(d.imm),
+            Self::jalr(format::TypeI { rs1: 0, imm, .. }) => Some(imm.into()),
+            _ => None,
+        }
+    }
+
+    /// Determine whether this instruction refers to an uninferable jump
+    ///
+    /// If [Self] refers to a jump instruction that in itself does not determine
+    /// the (relative) jump target, this fn returns the information neccessary
+    /// to determine the target in the form of a register number (first tuple
+    /// element) and an offset (decond tuple element). The jump target is
+    /// computed by adding the offset to the contents of the denoted register.
+    ///
+    /// Note that a `jalr` instruciton's target will always be considered
+    /// uninferable unless the source register is the `zero` register, even if
+    /// it is preceeded directly by `auipc` and `addi` instructions defining a
+    /// constant jump target. However, callers may be able to infer the jump
+    /// target in such situations using statically determined register values.
+    ///
+    /// Branch instructions are not considered jump instructions.
+    pub fn uninferable_jump(self) -> Option<(format::Register, i16)> {
+        match self {
+            Self::c_jalr(d) => Some((d.rs1, 0)),
+            Self::c_jr(d) => Some((d.rs1, 0)),
+            Self::jalr(d) => Some((d.rs1, d.imm)),
+            _ => None,
+        }
+        .filter(|(r, _)| *r != 0)
+    }
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
