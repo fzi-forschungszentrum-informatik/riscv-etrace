@@ -5,6 +5,8 @@ use core::fmt;
 use core::fmt::Formatter;
 use core::ops::Range;
 
+pub mod format;
+
 #[cfg(test)]
 mod tests;
 
