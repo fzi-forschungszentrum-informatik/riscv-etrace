@@ -126,31 +126,31 @@ pub enum Name {
     // Zifencei
     fence_i,
     // B
-    beq,
-    bne,
-    blt,
-    bge,
-    bltu,
-    bgeu,
+    beq(format::TypeB),
+    bne(format::TypeB),
+    blt(format::TypeB),
+    bge(format::TypeB),
+    bltu(format::TypeB),
+    bgeu(format::TypeB),
     // U
-    auipc,
-    lui,
+    auipc(format::TypeU),
+    lui(format::TypeU),
     // CB
-    c_beqz,
-    c_bnez,
+    c_beqz(format::TypeB),
+    c_bnez(format::TypeB),
     // J
-    jal,
+    jal(format::TypeJ),
     // CJ
-    c_j,
-    c_jal,
+    c_j(format::TypeJ),
+    c_jal(format::TypeJ),
     // CU
-    c_lui,
+    c_lui(format::TypeU),
     // CR
-    c_jr,
-    c_jalr,
+    c_jr(format::TypeR),
+    c_jalr(format::TypeR),
     c_ebreak,
     // I
-    jalr,
+    jalr(format::TypeI),
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
@@ -209,7 +209,8 @@ impl Instruction {
 
     pub fn is_inferable_jump(&self) -> bool {
         if let Some(name) = self.name {
-            name == jal || name == c_jal || name == c_j || (name == jalr && self.is_rs1_zero)
+            matches!(name, jal(_) | c_jal(_) | c_j(_))
+                || (matches!(name, jalr(_)) && self.is_rs1_zero)
         } else {
             false
         }
@@ -217,7 +218,7 @@ impl Instruction {
 
     pub fn is_uninferable_jump(&self) -> bool {
         if let Some(name) = self.name {
-            name == c_jalr || name == c_jr || (name == jalr && !self.is_rs1_zero)
+            matches!(name, c_jalr(_) | c_jr(_)) || (matches!(name, jalr(_)) && !self.is_rs1_zero)
         } else {
             false
         }
@@ -264,14 +265,16 @@ impl Instruction {
     #[cfg(feature = "implicit_return")]
     pub fn is_call(&self) -> bool {
         if let Some(name) = self.name {
-            if (name == jalr && self.rd == 1)
-                || name == c_jalr
-                || (name == jal && self.rd == 1)
-                || name == c_jal {
-                return true
-            }
+            matches!(
+                name,
+                jalr(format::TypeI { rd: 1, .. })
+                    | c_jalr(_)
+                    | jal(format::TypeJ { rd: 1, .. })
+                    | c_jal(_)
+            )
+        } else {
+            false
         }
-        false
     }
 
     pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
@@ -318,22 +321,22 @@ impl Instruction {
                 0b001 => fence_i,
                 _ => return ignored,
             },
-            Lui => lui,
-            Auipc => auipc,
+            Lui => lui(num.into()),
+            Auipc => auipc(num.into()),
             Branch => match funct3 {
-                0b000 => beq,
-                0b001 => bne,
-                0b100 => blt,
-                0b101 => bge,
-                0b110 => bltu,
-                0b111 => bgeu,
+                0b000 => beq(num.into()),
+                0b001 => bne(num.into()),
+                0b100 => blt(num.into()),
+                0b101 => bge(num.into()),
+                0b110 => bltu(num.into()),
+                0b111 => bgeu(num.into()),
                 _ => return ignored,
             },
             Jalr => {
                 is_rs1_zero = 0 == Self::rs1(num);
-                jalr
+                jalr(num.into())
             }
-            Jal => jal,
+            Jal => jal(num.into()),
             System => {
                 if rd != 0 || funct3 != 0 {
                     return ignored;
@@ -403,17 +406,17 @@ impl Instruction {
 
         let name = match op {
             0b01 => match funct3 {
-                0b001 => c_jal,
+                0b001 => c_jal(num.into()),
                 0b011 => {
                     if rd != 0 || rd != 2 {
-                        c_lui
+                        c_lui(num.into())
                     } else {
                         return ignored;
                     }
                 }
-                0b101 => c_j,
-                0b110 => c_beqz,
-                0b111 => c_bnez,
+                0b101 => c_j(num.into()),
+                0b110 => c_beqz(num.into()),
+                0b111 => c_bnez(num.into()),
                 _ => return ignored,
             },
             0b10 => {
@@ -422,18 +425,18 @@ impl Instruction {
                 if funct3 != 0b100 {
                     return ignored;
                 } else if !bit12 && rs1 != 0 && rs2 == 0 {
-                    c_jr
+                    c_jr(num.into())
                 } else if bit12 && rs1 == 0 && rs2 == 0 {
                     c_ebreak
                 } else if bit12 && rs1 != 0 && rs2 == 0 {
-                    c_jalr
+                    c_jalr(num.into())
                 } else {
                     return ignored;
                 }
             }
             _ => return ignored,
         };
-        let is_branch = name == c_beqz || name == c_bnez;
+        let is_branch = matches!(name, c_beqz(_) | c_bnez(_));
         Instruction {
             size,
             is_branch,
@@ -452,10 +455,10 @@ impl Instruction {
             Some(Self::calc_imm_b(num))
         } else {
             match name {
-                lui => Some(Self::calc_imm_u(num)),
-                auipc => Some(Self::calc_imm_u(num)),
-                jal => Some(Self::calc_imm_j(num)),
-                jalr if is_rs1_zero => Some(Self::calc_imm_i(num)),
+                lui(_) => Some(Self::calc_imm_u(num)),
+                auipc(_) => Some(Self::calc_imm_u(num)),
+                jal(_) => Some(Self::calc_imm_j(num)),
+                jalr(_) if is_rs1_zero => Some(Self::calc_imm_i(num)),
                 _ => None,
             }
         }
@@ -466,7 +469,7 @@ impl Instruction {
             Some(Self::calc_imm_cb(num))
         } else {
             match name {
-                c_lui => {
+                c_lui(_) => {
                     let imm = Self::calc_imm_cu(num);
                     if imm == 0 {
                         panic!("riscv spec: imm should not be zero for c.lui")
@@ -474,7 +477,7 @@ impl Instruction {
                         Some(imm)
                     }
                 }
-                c_j | c_jal => Some(Self::calc_imm_cj(num)),
+                c_j(_) | c_jal(_) => Some(Self::calc_imm_cj(num)),
                 _ => None,
             }
         }
