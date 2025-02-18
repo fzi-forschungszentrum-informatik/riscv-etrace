@@ -3,466 +3,343 @@
 
 use super::*;
 
-use InstructionBits::{Bit16, Bit32};
-
 #[test]
 fn mret() {
-    let bin = Bit32(0x30200073);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::mret),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x30200073).expect("Could not decode");
+    assert_eq!(insn, Kind::mret);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn sret() {
-    let bin = Bit32(0x10200073);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::sret),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    );
+    let insn = Kind::decode_32(0x10200073).expect("Could not decode");
+    assert_eq!(insn, Kind::sret);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn fence() {
-    let bin = Bit32(0x0ff0000f);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::fence),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x0ff0000f).expect("Could not decode");
+    assert_eq!(insn, Kind::fence);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn sfence_vma() {
-    let bin = Bit32(0x12010073);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::sfence_vma),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x12010073).expect("Could not decode");
+    assert_eq!(insn, Kind::sfence_vma);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn wfi() {
-    let bin = Bit32(0x10500073);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::wfi),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x10500073).expect("Could not decode");
+    assert_eq!(insn, Kind::wfi);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn ecall() {
-    let bin = Bit32(0x00000073);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::ecall),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x00000073).expect("Could not decode");
+    assert_eq!(insn, Kind::ecall);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn ebreak() {
-    let bin = Bit32(0x00100073);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::ebreak),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x00100073).expect("Could not decode");
+    assert_eq!(insn, Kind::ebreak);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn fence_i() {
-    let bin = Bit32(0x0000100f);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-
-            kind: Some(Kind::fence_i),
-            is_rs1_zero: false,
-            is_branch: false,
-            imm: None,
-        }
-    )
+    let insn = Kind::decode_32(0x0000100f).expect("Could not decode");
+    assert_eq!(insn, Kind::fence_i);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn beq() {
-    let bin = Bit32(0xaa360b63);
+    let insn = Kind::decode_32(0xaa360b63).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::beq(format::TypeB {
-                rs1: 12,
-                rs2: 3,
-                imm: -3402,
-            })),
-            is_branch: true,
-            imm: Some(-3402),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::beq(format::TypeB {
+            rs1: 12,
+            rs2: 3,
+            imm: -3402,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(-3402));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn bne() {
-    let bin = Bit32(0xf4361963);
+    let insn = Kind::decode_32(0xf4361963).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::bne(format::TypeB {
-                rs1: 12,
-                rs2: 3,
-                imm: -2222,
-            })),
-            is_branch: true,
-            imm: Some(-2222),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::bne(format::TypeB {
+            rs1: 12,
+            rs2: 3,
+            imm: -2222,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(-2222));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn blt() {
-    let bin = Bit32(0x00004663);
+    let insn = Kind::decode_32(0x00004663).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::blt(format::TypeB {
-                rs1: 0,
-                rs2: 0,
-                imm: 12,
-            })),
-            is_branch: true,
-            imm: Some(12),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::blt(format::TypeB {
+            rs1: 0,
+            rs2: 0,
+            imm: 12,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(12));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn bge() {
-    let bin = Bit32(0x845f5fe3);
+    let insn = Kind::decode_32(0x845f5fe3).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::bge(format::TypeB {
-                rs1: 30,
-                rs2: 5,
-                imm: -1954,
-            })),
-            is_branch: true,
-            imm: Some(-1954),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::bge(format::TypeB {
+            rs1: 30,
+            rs2: 5,
+            imm: -1954,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(-1954));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn bltu() {
-    let bin = Bit32(0x7f406fe3);
+    let insn = Kind::decode_32(0x7f406fe3).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::bltu(format::TypeB {
-                rs1: 0,
-                rs2: 20,
-                imm: 4094,
-            })),
-            is_branch: true,
-            imm: Some(4094),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::bltu(format::TypeB {
+            rs1: 0,
+            rs2: 20,
+            imm: 4094,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(4094));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn bgeu() {
-    let bin = Bit32(0x01467063);
+    let insn = Kind::decode_32(0x01467063).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::bgeu(format::TypeB {
-                rs1: 12,
-                rs2: 20,
-                imm: 0,
-            })),
-            is_branch: true,
-            imm: Some(0),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::bgeu(format::TypeB {
+            rs1: 12,
+            rs2: 20,
+            imm: 0,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(0));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn c_beqz() {
-    let bin = Bit16(0xca4d);
+    let insn = Kind::decode_16(0xca4d).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_beqz(format::TypeB {
-                rs1: 12,
-                rs2: 0,
-                imm: 178,
-            })),
-            is_branch: true,
-            imm: Some(178),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::c_beqz(format::TypeB {
+            rs1: 12,
+            rs2: 0,
+            imm: 178,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(178));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn c_benz() {
-    let bin = Bit16(0xe6cd);
+    let insn = Kind::decode_16(0xe6cd).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(c_bnez(format::TypeB {
-                rs1: 13,
-                rs2: 0,
-                imm: 170,
-            })),
-            is_branch: true,
-            imm: Some(170),
-            is_rs1_zero: false
-        }
-    )
+        insn,
+        Kind::c_bnez(format::TypeB {
+            rs1: 13,
+            rs2: 0,
+            imm: 170,
+        }),
+    );
+    assert_eq!(insn.branch_target(), Some(170));
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn auipc() {
-    let bin = Bit32(0xf2ab3697);
+    let insn = Kind::decode_32(0xf2ab3697).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::auipc(format::TypeU {
-                rd: 13,
-                imm: -223662080,
-            })),
-            is_branch: false,
-            imm: Some(-54605),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::auipc(format::TypeU {
+            rd: 13,
+            imm: -223662080,
+        }),
+    );
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn lui() {
-    let bin = Bit32(0xfff0f8b7);
+    let insn = Kind::decode_32(0xfff0f8b7).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::lui(format::TypeU {
-                rd: 17,
-                imm: -987136,
-            })),
-            is_branch: false,
-            imm: Some(-241),
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::lui(format::TypeU {
+            rd: 17,
+            imm: -987136,
+        }),
+    );
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn c_lui() {
-    let bin = Bit16(0x7255);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_lui(format::TypeU { rd: 4, imm: -45056 })),
-            is_branch: false,
-            imm: Some(-11),
-            is_rs1_zero: false,
-        }
-    )
+    let insn = Kind::decode_16(0x7255).expect("Could not decode");
+    assert_eq!(insn, Kind::c_lui(format::TypeU { rd: 4, imm: -45056 }));
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn jal() {
-    let bin = Bit32(0x1030d66f);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::jal(format::TypeJ { rd: 12, imm: 55554 })),
-            is_branch: false,
-            imm: Some(55554),
-            is_rs1_zero: false,
-        }
-    )
+    let insn = Kind::decode_32(0x1030d66f).expect("Could not decode");
+    assert_eq!(insn, Kind::jal(format::TypeJ { rd: 12, imm: 55554 }));
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), Some(55554));
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn c_j() {
-    let bin = Bit16(0xab91);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_j(format::TypeJ { rd: 0, imm: 1364 })),
-            is_branch: false,
-            imm: Some(1364),
-            is_rs1_zero: false,
-        }
-    )
+    let insn = Kind::decode_16(0xab91).expect("Could not decode");
+    assert_eq!(insn, Kind::c_j(format::TypeJ { rd: 0, imm: 1364 }));
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), Some(1364));
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn c_jal() {
-    let bin = Bit16(0x39f5);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_jal(format::TypeJ { rd: 0, imm: -772 })),
-            is_branch: false,
-            imm: Some(-772),
-            is_rs1_zero: false,
-        }
-    )
+    let insn = Kind::decode_16(0x39f5).expect("Could not decode");
+    assert_eq!(insn, Kind::c_jal(format::TypeJ { rd: 0, imm: -772 }));
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), Some(-772));
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn c_jr() {
-    let bin = Bit16(0x8602);
+    let insn = Kind::decode_16(0x8602).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_jr(format::TypeR {
-                rd: 12,
-                rs1: 12,
-                rs2: 0,
-            })),
-            is_branch: false,
-            imm: None,
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::c_jr(format::TypeR {
+            rd: 12,
+            rs1: 12,
+            rs2: 0,
+        }),
+    );
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), Some((12, 0)));
 }
 
 #[test]
 fn c_jalr() {
-    let bin = Bit16(0x9f82);
+    let insn = Kind::decode_16(0x9f82).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_jalr(format::TypeR {
-                rd: 31,
-                rs1: 31,
-                rs2: 0,
-            })),
-            is_branch: false,
-            imm: None,
-            is_rs1_zero: false,
-        }
-    )
+        insn,
+        Kind::c_jalr(format::TypeR {
+            rd: 31,
+            rs1: 31,
+            rs2: 0,
+        }),
+    );
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), Some((31, 0)));
 }
 
 #[test]
 fn c_ebreak() {
-    let bin = Bit16(0x9002);
-    assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Compressed,
-            kind: Some(Kind::c_ebreak),
-            is_branch: false,
-            imm: None,
-            is_rs1_zero: false,
-        }
-    )
+    let insn = Kind::decode_16(0x9002).expect("Could not decode");
+    assert_eq!(insn, Kind::c_ebreak);
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 #[test]
 fn jalr() {
-    let bin = Bit32(0x66168867);
+    let insn = Kind::decode_32(0x66168867).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::jalr(format::TypeI {
-                rd: 16,
-                rs1: 13,
-                imm: 0x661,
-            })),
-            imm: None,
-            is_rs1_zero: false,
-            is_branch: false,
-        }
-    )
+        insn,
+        Kind::jalr(format::TypeI {
+            rd: 16,
+            rs1: 13,
+            imm: 0x661,
+        }),
+    );
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), None);
+    assert_eq!(insn.uninferable_jump(), Some((13, 0x661)));
 }
 
 #[test]
 fn jalr_rs1_zero() {
-    let bin = Bit32(0x66100fe7);
+    let insn = Kind::decode_32(0x66100fe7).expect("Could not decode");
     assert_eq!(
-        Instruction::from_binary(&bin),
-        Instruction {
-            size: InstructionSize::Normal,
-            kind: Some(Kind::jalr(format::TypeI {
-                rd: 31,
-                rs1: 0,
-                imm: 1633,
-            })),
-            imm: Some(1633),
-            is_rs1_zero: true,
-            is_branch: false,
-        }
-    )
+        insn,
+        Kind::jalr(format::TypeI {
+            rd: 31,
+            rs1: 0,
+            imm: 1633,
+        }),
+    );
+    assert_eq!(insn.branch_target(), None);
+    assert_eq!(insn.inferable_jump_target(), Some(1633));
+    assert_eq!(insn.uninferable_jump(), None);
 }
 
 // Instruction type related tests
