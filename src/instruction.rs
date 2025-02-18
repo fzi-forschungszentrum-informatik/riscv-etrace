@@ -243,6 +243,21 @@ impl Kind {
             || self.is_return_from_trap()
             || matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
     }
+
+    /// Determine whether this instruction can be considered a function call
+    ///
+    /// Returns true if [Self] refers to an instruction that we consider a
+    /// function call, that is a jump-and-link instruction with `ra` (the return
+    /// address register) as `rd`.
+    pub fn is_call(self) -> bool {
+        matches!(
+            self,
+            Self::jalr(format::TypeI { rd: 1, .. })
+                | Self::c_jalr(_)
+                | Self::jal(format::TypeJ { rd: 1, .. })
+                | Self::c_jal(_)
+        )
+    }
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
