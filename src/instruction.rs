@@ -229,6 +229,20 @@ impl Kind {
     pub fn is_return_from_trap(self) -> bool {
         matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
     }
+
+    /// Determine whether this instruction causes an uninferable discontinuity
+    ///
+    /// Returns true if [Self] refers to an instruction that causes a (PC)
+    /// discontinuity with a target that can not be inferred from the
+    /// instruction alone. This is the case if the instruction is either
+    /// * an [uninferable jump][Self::uninferable_jump],
+    /// * a [return from trap][Self::is_return_from_trap] or
+    /// * an `ecall` or `ebreak` (compressed or uncompressed).
+    pub fn is_uninferable_discon(self) -> bool {
+        self.uninferable_jump().is_some()
+            || self.is_return_from_trap()
+            || matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
+    }
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
