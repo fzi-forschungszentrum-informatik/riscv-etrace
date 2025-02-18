@@ -258,6 +258,82 @@ impl Kind {
                 | Self::c_jal(_)
         )
     }
+
+    /// Decode a 32bit ("normal") instruction
+    ///
+    /// Returns an instruction if it can be decoded, that is if that instruction
+    /// is known. As only a small part of all RISC-V instruction is relevant, we
+    /// don't consider unknown instructions an error.
+    #[allow(clippy::unusual_byte_groupings)]
+    pub fn decode_32(insn: u32) -> Option<Self> {
+        let funct3 = (insn >> 12) & 0x7;
+
+        match OpCode::from(insn) {
+            OpCode::MiscMem => match funct3 {
+                0b000 => Some(Self::fence),
+                0b001 => Some(Self::fence_i),
+                _ => None,
+            },
+            OpCode::Lui => Some(Self::lui(insn.into())),
+            OpCode::Auipc => Some(Self::auipc(insn.into())),
+            OpCode::Branch => match funct3 {
+                0b000 => Some(Self::beq(insn.into())),
+                0b001 => Some(Self::bne(insn.into())),
+                0b100 => Some(Self::blt(insn.into())),
+                0b101 => Some(Self::bge(insn.into())),
+                0b110 => Some(Self::bltu(insn.into())),
+                0b111 => Some(Self::bgeu(insn.into())),
+                _ => None,
+            },
+            OpCode::Jalr => Some(Self::jalr(insn.into())),
+            OpCode::Jal => Some(Self::jal(insn.into())),
+            OpCode::System => match insn >> 7 {
+                0b000000000000_00000_000_00000 => Some(Self::ecall),
+                0b000000000001_00000_000_00000 => Some(Self::ebreak),
+                0b000100000010_00000_000_00000 => Some(Self::sret),
+                0b001100000010_00000_000_00000 => Some(Self::mret),
+                0b000100000101_00000_000_00000 => Some(Self::wfi),
+                _ if (insn >> 25) == 0b0001001 => Some(Self::sfence_vma),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Decode a 16bit ("compressed") instruction
+    ///
+    /// Returns an instruction if it can be decoded, that is if that instruction
+    /// is known. As only a small part of all RISC-V instruction is relevant, we
+    /// don't consider unknown instructions an error.
+    pub fn decode_16(insn: u16) -> Option<Self> {
+        let op = insn & 0x3;
+        let func3 = insn >> 13;
+        match (op, func3) {
+            (0b01, 0b001) => Some(Self::c_jal(insn.into())),
+            (0b01, 0b011) => {
+                let data = format::TypeU::from(insn);
+                if data.rd != 0 || data.rd != 2 {
+                    Some(Self::c_lui(data))
+                } else {
+                    None
+                }
+            }
+            (0x01, 0b101) => Some(Self::c_j(insn.into())),
+            (0x01, 0b110) => Some(Self::c_beqz(insn.into())),
+            (0x01, 0b111) => Some(Self::c_bnez(insn.into())),
+            (0b10, 0b100) => {
+                let data = format::TypeR::from(insn);
+                let bit12 = (insn >> 12) & 0x1;
+                match (bit12, data.rs1, data.rs2) {
+                    (0, r, 0) if r != 0 => Some(Self::c_jr(data)),
+                    (1, r, 0) if r != 0 => Some(Self::c_jalr(data)),
+                    (1, 0, 0) => Some(Self::c_ebreak),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
