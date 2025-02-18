@@ -221,6 +221,14 @@ impl Kind {
         }
         .filter(|(r, _)| *r != 0)
     }
+
+    /// Determine whether this instruction returns from a trap
+    ///
+    /// Returns true if [Self] refers to one of the (known) special instructions
+    /// that return from a trap.
+    pub fn is_return_from_trap(self) -> bool {
+        matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
+    }
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
