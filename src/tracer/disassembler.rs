@@ -593,6 +593,12 @@ impl Instruction {
     }
 }
 
+impl Default for Instruction {
+    fn default() -> Self {
+        Self::ignored(Default::default())
+    }
+}
+
 #[cfg(feature = "cache")]
 const INSTRUCTION_CACHE_LEN: usize = 6;
 
