@@ -156,6 +156,12 @@ pub enum InstructionSize {
     Normal = 4,
 }
 
+impl Default for InstructionSize {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
 /// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
 /// instructions which are parsed) additional fields and information about the instruction such as
 /// the immediate may be available.
