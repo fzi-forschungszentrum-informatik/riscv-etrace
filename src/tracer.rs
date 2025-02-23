@@ -109,7 +109,7 @@ pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
 /// For specifics see the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct TraceState {
     pub pc: u64,
     pub last_pc: u64,
