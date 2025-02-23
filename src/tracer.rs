@@ -15,6 +15,7 @@ use crate::ProtocolConfiguration;
 use crate::Name::{aupic, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
+pub mod cache;
 pub mod disassembler;
 
 /// Possible errors which can occur during the tracing algorithm.
