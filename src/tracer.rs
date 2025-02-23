@@ -5,8 +5,6 @@
 #[cfg(feature = "implicit_return")]
 use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
-#[cfg(feature = "cache")]
-use crate::tracer::disassembler::InstructionCache;
 use crate::tracer::disassembler::Name::{c_ebreak, ebreak, ecall};
 use crate::tracer::disassembler::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
@@ -17,6 +15,8 @@ use core::fmt;
 
 pub mod cache;
 pub mod disassembler;
+
+use cache::InstructionCache;
 
 /// Possible errors which can occur during the tracing algorithm.
 #[derive(Debug)]
@@ -111,7 +111,7 @@ pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
 #[derive(Clone)]
-pub struct TraceState {
+pub struct TraceState<C: InstructionCache> {
     pub pc: u64,
     pub last_pc: u64,
     pub address: u64,
@@ -128,11 +128,10 @@ pub struct TraceState {
     pub return_stack: [u64; 32],
     pub irstack_depth: u64,
     pub segment_idx: usize,
-    #[cfg(feature = "cache")]
-    pub instr_cache: InstructionCache,
+    pub instr_cache: C,
 }
 
-impl TraceState {
+impl<C: InstructionCache + Default> TraceState<C> {
     fn default() -> Self {
         TraceState {
             pc: 0,
@@ -150,13 +149,12 @@ impl TraceState {
             return_stack: [0; IRSTACK_DEPTH_SUPREMUM as usize],
             irstack_depth: 0,
             segment_idx: 0,
-            #[cfg(feature = "cache")]
-            instr_cache: InstructionCache::new(),
+            instr_cache: Default::default(),
         }
     }
 }
 
-impl fmt::Debug for TraceState {
+impl<C: InstructionCache + fmt::Debug> fmt::Debug for TraceState<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_fmt(format_args!(
             "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
@@ -195,14 +193,14 @@ pub trait ReportTrace {
 
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
-pub struct Tracer<'a> {
-    state: TraceState,
+pub struct Tracer<'a, C: InstructionCache = cache::NoCache> {
+    state: TraceState<C>,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     report_trace: &'a mut dyn ReportTrace,
 }
 
-impl<'a> Tracer<'a> {
+impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     pub fn new(
         proto_conf: ProtocolConfiguration,
         trace_conf: TraceConfiguration<'a>,
@@ -230,9 +228,8 @@ impl<'a> Tracer<'a> {
                 return Err(Error::SegmentationFault(pc));
             }
         }
-        #[cfg(feature = "cache")]
         if let Some(instr) = self.state.instr_cache.get(pc) {
-            return Ok(*instr);
+            return Ok(instr);
         }
         let binary = match InstructionBits::read_binary(
             pc,
@@ -252,8 +249,7 @@ impl<'a> Tracer<'a> {
 
         let instr = Instruction::from_binary(&binary);
         self.report_trace.report_instr(pc, &instr);
-        #[cfg(feature = "cache")]
-        self.state.instr_cache.write(pc, instr);
+        self.state.instr_cache.store(pc, instr);
         Ok(instr)
     }
 

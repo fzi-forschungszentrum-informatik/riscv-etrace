@@ -87,7 +87,7 @@
 //! let mut decoder = Decoder::new(proto_conf, decoder_conf);
 //!
 //! // Create each tracer for the hart we want to trace.
-//! let mut tracer = Tracer::new(
+//! let mut tracer: Tracer = Tracer::new(
 //!     proto_conf,
 //!     trace_conf,
 //!     &mut reporter,
