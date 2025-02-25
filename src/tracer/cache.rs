@@ -54,3 +54,15 @@ impl<const N: usize> InstructionCache for FixedSizedCache<N> {
             .map(|(_, i)| i)
     }
 }
+
+/// [InstructionCache] that doesn't actually cache anything
+#[derive(Clone, Default, Debug)]
+pub struct NoCache;
+
+impl InstructionCache for NoCache {
+    fn store(&mut self, _addr: u64, _insn: Instruction) {}
+
+    fn get(&self, _addr: u64) -> Option<Instruction> {
+        None
+    }
+}
