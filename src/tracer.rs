@@ -5,12 +5,9 @@
 #[cfg(feature = "implicit_return")]
 use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
-use crate::instruction::Kind::{c_ebreak, ebreak, ecall};
 use crate::instruction::{self, Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
-#[cfg(feature = "implicit_return")]
-use crate::instruction::Kind::{auipc, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
 pub mod cache;
@@ -551,6 +548,8 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         instr: &Instruction,
         prev_addr: u64,
     ) -> Result<bool, Error> {
+        use instruction::Kind;
+
         if !(instr.is_uninferable_jump() && self.proto_conf.sijump_p) {
             return Ok(false);
         }
@@ -559,7 +558,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
         if prev_instr
             .kind
-            .filter(|name| matches!(*name, auipc(_) | lui(_) | c_lui(_)))
+            .filter(|name| matches!(*name, Kind::auipc(_) | Kind::lui(_) | Kind::c_lui(_)))
             .is_some()
         {
             return Ok(instr.rs1 == prev_instr.rd);
@@ -574,11 +573,13 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, Error> {
+        use instruction::Kind;
+
         let instr = self.get_instr(addr)?;
         let prev_instr = self.get_instr(prev_addr)?;
         let mut target = 0;
 
-        if matches!(prev_instr.kind, Some(auipc(_))) {
+        if matches!(prev_instr.kind, Some(Kind::auipc(_))) {
             target = prev_addr;
         }
         let imm = prev_instr.imm.ok_or(Error::ImmediateIsNone(prev_instr))?;
@@ -587,7 +588,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         } else {
             target = target.overflowing_add(imm as u64).0;
         }
-        if matches!(instr.kind, Some(jalr(_))) {
+        if matches!(instr.kind, Some(Kind::jalr(_))) {
             if imm.is_negative() {
                 target = target.overflowing_sub(imm.abs() as u64).0
             } else {
@@ -605,10 +606,13 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     #[cfg(feature = "implicit_return")]
     fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
         use instruction::format::{TypeI, TypeR};
+        use instruction::Kind;
 
         if let Some(name) = instr.kind {
-            if matches!(name, jalr(TypeI { rd: 0, rs1: 1, .. }) | c_jr(TypeR { rs1: 1, .. }))
-            {
+            if matches!(
+                name,
+                Kind::jalr(TypeI { rd: 0, rs1: 1, .. }) | Kind::c_jr(TypeR { rs1: 1, .. })
+            ) {
                 if let Some(ir) = payload.get_implicit_return() {
                     if self.state.ir && ir.irdepth == self.state.irstack_depth {
                         return false;
@@ -674,13 +678,15 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     }
 
     fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, Error> {
+        use instruction::Kind;
+
         let instr = self.get_instr(self.state.pc)?;
 
         if instr.is_uninferable_discon() && trap.thaddr {
             Ok(trap.address)
         } else if instr
             .kind
-            .filter(|name| *name == ecall || *name == ebreak || *name == c_ebreak)
+            .filter(|name| matches!(*name, Kind::ecall | Kind::ebreak | Kind::c_ebreak))
             .is_some()
         {
             Ok(self.state.pc)
