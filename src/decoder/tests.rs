@@ -100,4 +100,60 @@ fn missing_msb_shift_is_correct() {
     assert_eq!((decoder.read(63, &buffer).unwrap() << 1), -248i64 as u64);
 }
 
+// `format` related tests
+
+#[test]
+fn sync() {
+    use format::Sync;
+
+    let buffer = [0b10_01_00_11_u8; 32];
+    let mut decoder = Decoder::default();
+    decoder.reset();
+    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Support);
+    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Start);
+    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Trap);
+    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Context);
+}
+
+#[test]
+fn extension() {
+    use format::Ext;
+
+    let buffer = [0b0010u8; 32];
+    let mut decoder = Decoder::default();
+    decoder.reset();
+    assert_eq!(
+        Ext::decode(&mut decoder, &buffer).unwrap(),
+        Ext::BranchCount
+    );
+    assert_eq!(
+        Ext::decode(&mut decoder, &buffer).unwrap(),
+        Ext::JumpTargetIndex
+    );
+}
+
+#[test]
+fn format() {
+    use format::{Ext, Format, Sync};
+
+    let mut buffer = [0u8; 32];
+    buffer[0] = 0b1_10_01_100;
+    buffer[1] = 0b00000_011;
+    let mut decoder = Decoder::default();
+    decoder.reset();
+    assert_eq!(
+        Format::decode(&mut decoder, &buffer).unwrap(),
+        Format::Ext(Ext::JumpTargetIndex),
+    );
+    assert_eq!(
+        Format::decode(&mut decoder, &buffer).unwrap(),
+        Format::Branch
+    );
+    assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Addr);
+    assert_eq!(
+        Format::decode(&mut decoder, &buffer).unwrap(),
+        Format::Sync(Sync::Trap)
+    );
+}
+
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
