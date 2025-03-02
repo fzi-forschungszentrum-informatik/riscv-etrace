@@ -156,4 +156,125 @@ fn format() {
     );
 }
 
+// `payload` related tests
+
+#[test]
+fn extension_jti() {
+    let protocol_config = ProtocolConfiguration::default();
+    let decoder_config = DecoderConfiguration::default();
+
+    let cache_size_p_override = 10;
+    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+    buffer[0] = 0b00000000;
+    buffer[1] = 0b0_11111_11;
+    buffer[2] = 0b00000_101;
+    // ...
+    buffer[5] = 0b11_000000;
+    buffer[6] = 0b11111111;
+    let mut decoder = Decoder::new(
+        ProtocolConfiguration {
+            cache_size_p: cache_size_p_override,
+            ..protocol_config
+        },
+        decoder_config,
+    );
+
+    decoder.reset();
+    let jti_long = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
+    assert_eq!(jti_long.index, 768);
+    assert_eq!(jti_long.branches, 31);
+    assert_eq!(jti_long.branch_map, Some(10));
+    let jti_short = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
+    assert_eq!(jti_short.index, 1023);
+    assert_eq!(jti_short.branches, 0);
+    assert_eq!(jti_short.branch_map, None);
+}
+
+#[test]
+fn branch() {
+    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+    buffer[0] = 0b010_00111;
+    buffer[1] = 0b0000_1011;
+    let mut decoder = Decoder::default();
+    decoder.reset();
+    let branch = Branch::decode(&mut decoder, &buffer).unwrap();
+    assert_eq!(branch.branches, 7);
+    assert_eq!(branch.branch_map, 0b1011_010);
+    assert_eq!(
+        branch.address,
+        Some(AddressInfo {
+            address: 0,
+            notify: false,
+            updiscon: false,
+        })
+    );
+}
+
+#[test]
+fn branch_with_zero_branches() {
+    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+    buffer[0] = 0b000_00000;
+    buffer[1] = 0b100;
+    let mut decoder = Decoder::default();
+    decoder.reset();
+    let branch_no_addr = Branch::decode(&mut decoder, &buffer).unwrap();
+    assert_eq!(branch_no_addr.branches, 0);
+    assert_eq!(branch_no_addr.branch_map, 32);
+    assert_eq!(branch_no_addr.address, None);
+}
+
+#[test]
+fn address() {
+    let protocol_config = ProtocolConfiguration::default();
+    let decoder_config = DecoderConfiguration::default();
+
+    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+    buffer[0] = 0b0000_0001;
+    buffer[7] = 0b11_000000;
+    // test differential addr with second address
+    buffer[8] = 0b0000_0001;
+    buffer[15] = 0b10_000000;
+    let mut decoder = Decoder::new(
+        ProtocolConfiguration {
+            // Changed address width and lsb, so that the entire
+            // packet aligns with 64 bit
+            iaddress_width_p: 64,
+            iaddress_lsb_p: 2,
+            ..protocol_config
+        },
+        decoder_config,
+    );
+    decoder.reset();
+    let addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
+    assert_eq!(addr.address, 4);
+    assert!(addr.notify);
+    assert!(addr.updiscon);
+    // differential address
+    let diff_addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
+    assert_eq!(diff_addr.address, 4);
+    assert!(!diff_addr.notify);
+    assert!(diff_addr.updiscon);
+}
+
+#[test]
+fn synchronization_start() {
+    let protocol_config = ProtocolConfiguration::default();
+    let decoder_config = DecoderConfiguration::default();
+
+    let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
+    let mut decoder = Decoder::new(
+        ProtocolConfiguration {
+            iaddress_width_p: 64,
+            iaddress_lsb_p: 0,
+            ..protocol_config
+        },
+        decoder_config,
+    );
+    decoder.reset();
+    let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
+    assert!(sync_start.branch);
+    assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
+    assert_eq!(sync_start.address, u64::MAX);
+}
+
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
