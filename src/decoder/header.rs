@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the header and its decoding.
+use core::fmt;
+
 use super::{Decode, Decoder, Error};
 
 /// Each packet has a header specifying at least the payload length, trace type,
@@ -44,6 +46,14 @@ impl Decode for Header {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TraceType {
     Instruction,
+}
+
+impl fmt::Display for TraceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Instruction => write!(f, "Instruction"),
+        }
+    }
 }
 
 impl Decode for TraceType {
