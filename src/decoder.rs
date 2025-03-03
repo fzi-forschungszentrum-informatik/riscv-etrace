@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the packet decoder.
+use core::fmt;
+
 use crate::decoder::format::Format;
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
@@ -45,6 +47,25 @@ pub enum Error {
     },
     /// The privilege level is not known. You might want to implement it.
     UnknownPrivilege(u8),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownTraceType(t) => write!(f, "Unknown trace type {t}"),
+            Self::WrongTraceType(t) => write!(f, "Unexpected trace type {t}"),
+            Self::BadBranchFmt => write!(f, "Malformed branch format"),
+            Self::ReadTooLong {
+                bit_pos,
+                bit_count,
+                buffer_size,
+            } => write!(
+                f,
+                "Read if {bit_count} bits from {bit_pos} exceds buffer of size {buffer_size}",
+            ),
+            Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
+        }
+    }
 }
 
 /// The maximum length a payload can have decompressed. Found by changing this value until the
