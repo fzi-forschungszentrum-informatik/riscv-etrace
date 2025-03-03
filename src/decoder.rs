@@ -5,7 +5,6 @@
 use crate::decoder::format::Format;
 use crate::decoder::header::*;
 use crate::decoder::payload::*;
-use crate::decoder::DecodeError::ReadTooLong;
 use crate::{ProtocolConfiguration};
 
 mod format;
@@ -14,6 +13,8 @@ pub mod payload;
 
 #[cfg(test)]
 mod tests;
+
+use Error::ReadTooLong;
 
 /// Defines the decoder specific configuration. Used only by the [decoder](self).
 #[derive(Copy, Clone, Debug)]
@@ -29,7 +30,7 @@ impl Default for DecoderConfiguration {
 
 /// A list of possible errors during decoding of a single packet.
 #[derive(Debug)]
-pub enum DecodeError {
+pub enum Error {
     /// [TraceType] does not indicate an instruction trace. The unknown trace type is returned.
     UnknownTraceType(u64),
     WrongTraceType(TraceType),
@@ -78,7 +79,7 @@ impl Decoder {
         self.bit_pos = 0;
     }
 
-    fn read_bit(&mut self, slice: &[u8]) -> Result<bool, DecodeError> {
+    fn read_bit(&mut self, slice: &[u8]) -> Result<bool, Error> {
         if self.bit_pos >= slice.len() * 8 {
             return Err(ReadTooLong {
                 buffer_size: slice.len() * 8,
@@ -93,7 +94,7 @@ impl Decoder {
         Ok((value & 1_u8) == 0x01)
     }
 
-    fn read(&mut self, bit_count: usize, slice: &[u8]) -> Result<u64, DecodeError> {
+    fn read(&mut self, bit_count: usize, slice: &[u8]) -> Result<u64, Error> {
         if bit_count == 0 {
             return Ok(0);
         }
@@ -136,7 +137,7 @@ impl Decoder {
     /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
     /// Returns immediately after parsing one packet and returns how many bits were read.
     /// Further bytes are ignored.
-    pub fn decode_packet(&mut self, slice: &[u8]) -> Result<Packet, DecodeError> {
+    pub fn decode_packet(&mut self, slice: &[u8]) -> Result<Packet, Error> {
         self.reset();
         let header = Header::decode(self, slice)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
@@ -176,7 +177,7 @@ impl Decoder {
 }
 
 trait Decode: Sized {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>;
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error>;
 }
 
 /// A single protocol packet emitted by the encoder.

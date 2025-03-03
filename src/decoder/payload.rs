@@ -2,19 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use crate::decoder::{Decode, DecodeError, Decoder};
+use super::{Decode, Decoder, Error};
 use crate::tracer;
 
 use core::fmt;
 
-fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, DecodeError> {
+fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, Error> {
     Ok(decoder.read(
         decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p,
         slice,
     )? << decoder.proto_conf.iaddress_lsb_p)
 }
 
-fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), DecodeError> {
+fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), Error> {
     let branches = decoder.read(5, slice)?.try_into().unwrap();
     let len = match branches {
         0 => 0,
@@ -37,7 +37,7 @@ pub enum Privilege {
 }
 
 impl Decode for Privilege {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError>
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -45,7 +45,7 @@ impl Decode for Privilege {
             0b00 => Ok(Privilege::User),
             0b01 => Ok(Privilege::Supervisor),
             0b11 => Ok(Privilege::Machine),
-            err => Err(DecodeError::UnknownPrivilege(err as u8)),
+            err => Err(Error::UnknownPrivilege(err as u8)),
         }
     }
 }
@@ -64,10 +64,10 @@ pub enum BranchFmt {
 }
 
 impl Decode for BranchFmt {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         match decoder.read(2, slice)? {
             0b00 => Ok(BranchFmt::NoAddr),
-            0b01 => Err(DecodeError::BadBranchFmt),
+            0b01 => Err(Error::BadBranchFmt),
             0b10 => Ok(BranchFmt::Addr),
             0b11 => Ok(BranchFmt::AddrFail),
             _ => unreachable!(),
@@ -91,7 +91,7 @@ pub enum QualStatus {
 }
 
 impl Decode for QualStatus {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         Ok(match decoder.read(2, slice)? {
             0b00 => QualStatus::NoChange,
             0b01 => QualStatus::EndedRep,
@@ -123,7 +123,7 @@ pub struct ImplicitReturn {
 
 #[cfg(feature = "implicit_return")]
 impl Decode for ImplicitReturn {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let irreport = decoder.read_bit(slice)?;
         let irdepth_len = decoder.proto_conf.return_stack_size_p
             + decoder.proto_conf.call_counter_size_p
@@ -239,7 +239,7 @@ impl fmt::Debug for BranchCount {
 }
 
 impl Decode for BranchCount {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let branch_count = decoder.read(32, slice)? - 31;
         let branch_fmt = BranchFmt::decode(decoder, slice)?;
         let address = if branch_fmt == BranchFmt::NoAddr {
@@ -270,7 +270,7 @@ pub struct JumpTargetIndex {
 }
 
 impl Decode for JumpTargetIndex {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let index = usize::try_from(decoder.read(decoder.proto_conf.cache_size_p, slice)?).unwrap();
         let (branches, branch_map_len) = read_branches(decoder, slice)?;
         let branch_map = if branch_map_len == 0 {
@@ -306,7 +306,7 @@ pub struct Branch {
 }
 
 impl Decode for Branch {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let (branches, branch_map_len) = read_branches(decoder, slice)?;
         let branch_map = if branch_map_len == 0 {
             decoder.read(31, slice)? as u32
@@ -359,7 +359,7 @@ pub struct AddressInfo {
 }
 
 impl Decode for AddressInfo {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let address = read_address(decoder, slice)?;
         let notify = decoder.read_bit(slice)?;
         let updiscon = decoder.read_bit(slice)?;
@@ -426,7 +426,7 @@ pub struct Start {
 }
 
 impl Decode for Start {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let branch = decoder.read_bit(slice)?;
         let ctx = Context::decode(decoder, slice)?;
         let address = read_address(decoder, slice)?;
@@ -475,7 +475,7 @@ impl fmt::Debug for Trap {
 }
 
 impl Decode for Trap {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let branch = decoder.read_bit(slice)?;
         let ctx = Context::decode(decoder, slice)?;
         let ecause = decoder.read(decoder.proto_conf.ecause_width_p, slice)?;
@@ -506,7 +506,7 @@ pub struct Context {
 }
 
 impl Decode for Context {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         Ok(Context {
             privilege: Privilege::decode(decoder, slice)?,
             time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
@@ -529,7 +529,7 @@ pub struct Support {
 }
 
 impl Decode for Support {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let ienable = decoder.read_bit(slice)?;
         let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n, slice)?;
         let qual_status = QualStatus::decode(decoder, slice)?;
