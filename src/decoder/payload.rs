@@ -41,11 +41,11 @@ impl Decode for Privilege {
     where
         Self: Sized,
     {
-        match decoder.read(2, slice)? {
+        match decoder.read_bits::<u8>(2)? {
             0b00 => Ok(Privilege::User),
             0b01 => Ok(Privilege::Supervisor),
             0b11 => Ok(Privilege::Machine),
-            err => Err(Error::UnknownPrivilege(err as u8)),
+            err => Err(Error::UnknownPrivilege(err)),
         }
     }
 }
@@ -65,7 +65,7 @@ pub enum BranchFmt {
 
 impl Decode for BranchFmt {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        match decoder.read(2, slice)? {
+        match decoder.read_bits::<u8>(2)? {
             0b00 => Ok(BranchFmt::NoAddr),
             0b01 => Err(Error::BadBranchFmt),
             0b10 => Ok(BranchFmt::Addr),
@@ -92,7 +92,7 @@ pub enum QualStatus {
 
 impl Decode for QualStatus {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        Ok(match decoder.read(2, slice)? {
+        Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => QualStatus::NoChange,
             0b01 => QualStatus::EndedRep,
             0b10 => QualStatus::TraceLost,
@@ -132,7 +132,7 @@ impl Decode for ImplicitReturn {
             } else {
                 0
             });
-        let irdepth = decoder.read(irdepth_len as usize, slice)?;
+        let irdepth = decoder.read_bits(irdepth_len)?;
         Ok(ImplicitReturn { irreport, irdepth })
     }
 }
@@ -240,7 +240,7 @@ impl fmt::Debug for BranchCount {
 
 impl Decode for BranchCount {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let branch_count = decoder.read(32, slice)? - 31;
+        let branch_count = decoder.read_bits::<u32>(32)? - 31;
         let branch_fmt = BranchFmt::decode(decoder, slice)?;
         let address = if branch_fmt == BranchFmt::NoAddr {
             None
@@ -248,7 +248,7 @@ impl Decode for BranchCount {
             Some(AddressInfo::decode(decoder, slice)?)
         };
         Ok(BranchCount {
-            branch_count: branch_count.try_into().unwrap(),
+            branch_count,
             address,
             branch_fmt,
         })
@@ -271,16 +271,12 @@ pub struct JumpTargetIndex {
 
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let index =
-            usize::try_from(decoder.read(decoder.proto_conf.cache_size_p.into(), slice)?).unwrap();
+        let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
         let (branches, branch_map_len) = read_branches(decoder)?;
         let branch_map = if branch_map_len == 0 {
             None
         } else {
-            let branch_map: u32 = decoder
-                .read(branch_map_len as usize, slice)?
-                .try_into()
-                .unwrap();
+            let branch_map: u32 = decoder.read_bits(branch_map_len)?;
             Some(branch_map & ((1 << branches) - 1))
         };
 
@@ -313,9 +309,9 @@ impl Decode for Branch {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let (branches, branch_map_len) = read_branches(decoder)?;
         let branch_map = if branch_map_len == 0 {
-            decoder.read(31, slice)? as u32
+            decoder.read_bits(31)?
         } else {
-            let too_long = decoder.read(branch_map_len as usize, slice)? as u32;
+            let too_long: u32 = decoder.read_bits(branch_map_len)?;
             too_long & ((1 << branches) - 1)
         };
 
@@ -482,11 +478,11 @@ impl Decode for Trap {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder, slice)?;
-        let ecause = decoder.read(decoder.proto_conf.ecause_width_p.into(), slice)?;
+        let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
         let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
         let address = read_address(decoder)?;
-        let tval = decoder.read(decoder.proto_conf.iaddress_width_p.into(), slice)?;
+        let tval = decoder.read_bits(decoder.proto_conf.iaddress_width_p)?;
         Ok(Trap {
             branch,
             ctx,
@@ -513,8 +509,8 @@ impl Decode for Context {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         Ok(Context {
             privilege: Privilege::decode(decoder, slice)?,
-            time: decoder.read(decoder.proto_conf.time_width_p.into(), slice)?,
-            context: decoder.read(decoder.proto_conf.context_width_p.into(), slice)?,
+            time: decoder.read_bits(decoder.proto_conf.time_width_p)?,
+            context: decoder.read_bits(decoder.proto_conf.context_width_p)?,
         })
     }
 }
@@ -535,12 +531,12 @@ pub struct Support {
 impl Decode for Support {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
-        let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n.into(), slice)?;
+        let encoder_mode = decoder.read_bits(decoder.proto_conf.encoder_mode_n)?;
         let qual_status = QualStatus::decode(decoder, slice)?;
-        let ioptions = decoder.read(decoder.proto_conf.ioptions_n.into(), slice)?;
+        let ioptions = decoder.read_bits(decoder.proto_conf.ioptions_n)?;
         let denable = decoder.read_bit()?;
         let dloss = decoder.read_bit()?;
-        let doptions = decoder.read(4, slice)?;
+        let doptions = decoder.read_bits(4)?;
         Ok(Support {
             ienable,
             encoder_mode,
