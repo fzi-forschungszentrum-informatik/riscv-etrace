@@ -77,6 +77,7 @@ pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 20;
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
 /// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
+#[derive(Clone)]
 pub struct Decoder {
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
