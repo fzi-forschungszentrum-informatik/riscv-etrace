@@ -3,7 +3,7 @@
 
 //! Implements all different payloads and their decoding.
 use crate::decoder::{Decode, DecodeError, Decoder};
-use crate::tracer::TraceErrorType;
+use crate::tracer;
 
 use core::fmt;
 
@@ -203,11 +203,11 @@ impl Payload {
         }
     }
 
-    pub fn get_privilege(&self) -> Result<&Privilege, TraceErrorType> {
+    pub fn get_privilege(&self) -> Result<&Privilege, tracer::Error> {
         if let Payload::Synchronization(sync) = self {
             Ok(sync.get_privilege()?)
         } else {
-            Err(TraceErrorType::WrongGetPrivilegeType)
+            Err(tracer::Error::WrongGetPrivilegeType)
         }
     }
 }
@@ -394,21 +394,21 @@ pub enum Synchronization {
 }
 
 impl Synchronization {
-    pub fn get_branch(&self) -> Result<u32, TraceErrorType> {
+    pub fn get_branch(&self) -> Result<u32, tracer::Error> {
         match self {
             Synchronization::Start(start) => Ok(start.branch),
             Synchronization::Trap(trap) => Ok(trap.branch),
-            _ => Err(TraceErrorType::WrongGetBranchType),
+            _ => Err(tracer::Error::WrongGetBranchType),
         }
         .map(|b| b as u32)
     }
 
-    pub fn get_privilege(&self) -> Result<&Privilege, TraceErrorType> {
+    pub fn get_privilege(&self) -> Result<&Privilege, tracer::Error> {
         match self {
             Synchronization::Start(start) => Ok(&start.ctx.privilege),
             Synchronization::Trap(trap) => Ok(&trap.ctx.privilege),
             Synchronization::Context(ctx) => Ok(&ctx.privilege),
-            Synchronization::Support(_) => Err(TraceErrorType::WrongGetPrivilegeType),
+            Synchronization::Support(_) => Err(tracer::Error::WrongGetPrivilegeType),
         }
     }
 }

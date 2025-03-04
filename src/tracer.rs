@@ -17,16 +17,9 @@ use core::fmt;
 
 pub mod disassembler;
 
-/// Captures the tracing algorithm error and also reports the current tracing context
-/// in which the error occurred.
-#[derive(Debug)]
-pub struct TraceError {
-    pub state: TraceState,
-    pub error_type: TraceErrorType,
-}
-
 /// Possible errors which can occur during the tracing algorithm.
-pub enum TraceErrorType {
+#[derive(Debug)]
+pub enum Error {
     /// The PC cannot be set to the address, as the address is 0.
     AddressIsZero,
     /// No starting synchronization packet was read and the tracer is still at the start of the trace.
@@ -58,41 +51,42 @@ pub enum TraceErrorType {
     IrStackExhausted(u64, u64),
 }
 
-impl fmt::Debug for TraceErrorType {
+impl core::error::Error for Error {}
+
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TraceErrorType::AddressIsZero => f.write_str("AddressIsZero"),
-            TraceErrorType::StartOfTrace => f.write_str("StartOfTrace"),
-            TraceErrorType::UnprocessedBranches(count) => {
-                f.write_fmt(format_args!("UnprocessedBranches({count})"))
-            }
-            TraceErrorType::ImmediateIsNone(instr) => {
-                f.write_fmt(format_args!("ImmediateIsNone({instr:?})"))
-            }
-            TraceErrorType::UnexpectedUninferableDiscon => {
-                f.write_str("UnexpectedUninferableDiscon")
-            }
-            TraceErrorType::UnresolvableBranch => f.write_str("UnresolvableBranch"),
-            TraceErrorType::WrongGetBranchType => f.write_str("WrongGetBranchType"),
-            TraceErrorType::WrongGetPrivilegeType => f.write_str("WrongGetPrivilegeType"),
-            TraceErrorType::UnknownInstruction {
+            Self::AddressIsZero => write!(f, "address is zero"),
+            Self::StartOfTrace => write!(f, "expected sync packet"),
+            Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
+            Self::ImmediateIsNone(_) => write!(f, "expected non-zero immediate of instruction"),
+            Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
+            Self::UnresolvableBranch => write!(f, "unresolvable branch"),
+            Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
+            Self::WrongGetPrivilegeType => write!(f, "expected privilege info in packet"),
+            Self::UnknownInstruction {
                 address,
                 bytes,
                 segment_idx,
                 vaddr_start,
                 vaddr_end,
-            } => f.write_fmt(format_args!(
-                "UnknownInstruction {{ address: {:#0x}, num: {:x?}, \
-                segment: {:?}, vaddr_start {:#0x}, vaddr_end: {:#0x}  }}",
-                address, bytes, segment_idx, vaddr_start, vaddr_end
-            )),
-            TraceErrorType::SegmentationFault(addr) => {
-                f.write_fmt(format_args!("SegmentationFault({addr:#0x})"))
+            } => {
+                let bytes = u32::from_be_bytes(*bytes);
+                write!(f, "unknown instruction {bytes:x} at {address:#0x}")?;
+                write!(
+                    f,
+                    ", segment: {segment_idx} ({vaddr_start:#0x}, {vaddr_end:#0x})"
+                )
             }
-            TraceErrorType::IrStackExhausted(size, supremum) => f.write_fmt(format_args!(
-                "IrStackExhausted {{ size: {:?}, supremum: {:?} }}",
-                size, supremum
-            )),
+            Self::SegmentationFault(addr) => {
+                write!(f, "address {addr:#0x} not in any known segment")
+            }
+            Self::IrStackExhausted(size, supremum) => {
+                write!(
+                    f,
+                    "IR stack has grown to {size}, which is greater than the allocated {supremum}",
+                )
+            }
         }
     }
 }
@@ -115,7 +109,7 @@ pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
 /// For specifics see the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct TraceState {
     pub pc: u64,
     pub last_pc: u64,
@@ -221,7 +215,7 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    fn get_instr(&mut self, pc: u64) -> Result<Instruction, TraceErrorType> {
+    fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
         if !self.trace_conf.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
             for i in 0..self.trace_conf.segments.len() {
@@ -232,7 +226,7 @@ impl<'a> Tracer<'a> {
             }
             // The segment index should now point to the segment which contains the pc.
             if old == self.state.segment_idx {
-                return Err(TraceErrorType::SegmentationFault(pc));
+                return Err(Error::SegmentationFault(pc));
             }
         }
         #[cfg(feature = "cache")]
@@ -245,7 +239,7 @@ impl<'a> Tracer<'a> {
         ) {
             Ok(binary) => binary,
             Err(bytes) => {
-                return Err(TraceErrorType::UnknownInstruction {
+                return Err(Error::UnknownInstruction {
                     address: pc,
                     bytes,
                     segment_idx: self.state.segment_idx,
@@ -312,16 +306,12 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceError> {
+    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error> {
         self.recover_status_fields(payload);
         self._process_te_inst(payload)
-            .map_err(|error_type| TraceError {
-                state: self.state,
-                error_type,
-            })
     }
 
-    fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
+    fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), Error> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
@@ -342,7 +332,7 @@ impl<'a> Tracer<'a> {
             self.state.inferred_address = false;
             self.state.address = payload.get_address();
             if self.state.address == 0 {
-                return Err(TraceErrorType::AddressIsZero);
+                return Err(Error::AddressIsZero);
             }
             if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
                 self.state.branches = 0;
@@ -370,7 +360,7 @@ impl<'a> Tracer<'a> {
             Ok(())
         } else {
             if self.state.start_of_trace {
-                return Err(TraceErrorType::StartOfTrace);
+                return Err(Error::StartOfTrace);
             }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
                 self.state.stop_at_last_branch = false;
@@ -401,11 +391,7 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    fn process_support(
-        &mut self,
-        support: &Support,
-        payload: &Payload,
-    ) -> Result<(), TraceErrorType> {
+    fn process_support(&mut self, support: &Support, payload: &Payload) -> Result<(), Error> {
         if support.qual_status != QualStatus::NoChange {
             self.state.start_of_trace = true;
 
@@ -424,7 +410,7 @@ impl<'a> Tracer<'a> {
         Ok(())
     }
 
-    fn branch_limit(&mut self) -> Result<u8, TraceErrorType> {
+    fn branch_limit(&mut self) -> Result<u8, Error> {
         Ok(self.get_instr(self.state.pc)?.is_branch as u8)
     }
 
@@ -445,20 +431,17 @@ impl<'a> Tracer<'a> {
     fn follow_execution_path_catch_priv_changes(
         &mut self,
         payload: &Payload,
-    ) -> Result<bool, TraceErrorType> {
+    ) -> Result<bool, Error> {
         Ok(*payload.get_privilege()? == self.state.privilege
             && self.get_instr(self.state.last_pc)?.is_return_from_trap())
     }
 
     #[cfg(feature = "tracing_v1")]
-    fn follow_execution_path_catch_priv_changes(
-        &mut self,
-        _: &Payload,
-    ) -> Result<bool, TraceErrorType> {
+    fn follow_execution_path_catch_priv_changes(&mut self, _: &Payload) -> Result<bool, Error> {
         Ok(true)
     }
 
-    fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), TraceErrorType> {
+    fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error> {
         let previous_address = self.state.pc;
         let mut stop_here;
         loop {
@@ -480,7 +463,7 @@ impl<'a> Tracer<'a> {
                 }
                 if stop_here {
                     if self.state.branches > self.branch_limit()? {
-                        return Err(TraceErrorType::UnprocessedBranches(self.state.branches));
+                        return Err(Error::UnprocessedBranches(self.state.branches));
                     }
                     return Ok(());
                 }
@@ -514,13 +497,13 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, TraceErrorType> {
+    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error> {
         let instr = self.get_instr(self.state.pc)?;
         let this_pc = self.state.pc;
         let mut stop_here = false;
 
         if instr.is_inferable_jump() {
-            let imm = instr.imm.ok_or(TraceErrorType::ImmediateIsNone(instr))?;
+            let imm = instr.imm.ok_or(Error::ImmediateIsNone(instr))?;
             self.incr_pc(imm);
             if imm == 0 {
                 stop_here = true;
@@ -531,12 +514,12 @@ impl<'a> Tracer<'a> {
             self.state.pc = self.pop_return_stack();
         } else if instr.is_uninferable_discon() {
             if self.state.stop_at_last_branch {
-                return Err(TraceErrorType::UnexpectedUninferableDiscon);
+                return Err(Error::UnexpectedUninferableDiscon);
             }
             self.state.pc = address;
             stop_here = true;
         } else if self.is_taken_branch(&instr)? {
-            let imm = instr.imm.ok_or(TraceErrorType::ImmediateIsNone(instr))?;
+            let imm = instr.imm.ok_or(Error::ImmediateIsNone(instr))?;
             self.incr_pc(imm);
             if imm == 0 {
                 stop_here = true;
@@ -553,12 +536,12 @@ impl<'a> Tracer<'a> {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, TraceErrorType> {
+    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, Error> {
         if !instr.is_branch {
             return Ok(false);
         }
         if self.state.branches == 0 {
-            return Err(TraceErrorType::UnresolvableBranch);
+            return Err(Error::UnresolvableBranch);
         }
         let taken = self.state.branch_map & 1 == 0;
         self.report_trace
@@ -570,7 +553,7 @@ impl<'a> Tracer<'a> {
 
     #[cfg(not(feature = "implicit_return"))]
     #[allow(clippy::wrong_self_convention)]
-    pub fn is_sequential_jump(&mut self, _: &Instruction, _: u64) -> Result<bool, TraceErrorType> {
+    pub fn is_sequential_jump(&mut self, _: &Instruction, _: u64) -> Result<bool, Error> {
         Ok(false)
     }
 
@@ -580,7 +563,7 @@ impl<'a> Tracer<'a> {
         &mut self,
         instr: &Instruction,
         prev_addr: u64,
-    ) -> Result<bool, TraceErrorType> {
+    ) -> Result<bool, Error> {
         if !instr.is_uninferable_jump() && self.proto_conf.sijump_p {
             return Ok(false);
         }
@@ -598,12 +581,12 @@ impl<'a> Tracer<'a> {
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<u64, TraceErrorType> {
+    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<u64, Error> {
         unreachable!()
     }
 
     #[cfg(feature = "implicit_return")]
-    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, TraceErrorType> {
+    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, Error> {
         let instr = self.get_instr(addr)?;
         let prev_instr = self.get_instr(prev_addr)?;
         let mut target = 0;
@@ -611,9 +594,7 @@ impl<'a> Tracer<'a> {
         if prev_instr.name == Some(aupic) {
             target = prev_addr;
         }
-        let imm = prev_instr
-            .imm
-            .ok_or(TraceErrorType::ImmediateIsNone(prev_instr))?;
+        let imm = prev_instr.imm.ok_or(Error::ImmediateIsNone(prev_instr))?;
         if imm.is_negative() {
             target = target.overflowing_sub(imm.abs() as u64).0
         } else {
@@ -651,12 +632,12 @@ impl<'a> Tracer<'a> {
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    fn push_return_stack(&mut self, _: &Instruction, _: u64) -> Result<(), TraceErrorType> {
+    fn push_return_stack(&mut self, _: &Instruction, _: u64) -> Result<(), Error> {
         Ok(())
     }
 
     #[cfg(feature = "implicit_return")]
-    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), TraceErrorType> {
+    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error> {
         if !instr.is_call() {
             return Ok(());
         }
@@ -671,7 +652,7 @@ impl<'a> Tracer<'a> {
         };
 
         if irstack_depth_max > IRSTACK_DEPTH_SUPREMUM {
-            return Err(TraceErrorType::IrStackExhausted(
+            return Err(Error::IrStackExhausted(
                 irstack_depth_max,
                 IRSTACK_DEPTH_SUPREMUM,
             ));
@@ -703,7 +684,7 @@ impl<'a> Tracer<'a> {
         self.state.return_stack[self.state.irstack_depth as usize]
     }
 
-    fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, TraceErrorType> {
+    fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, Error> {
         let instr = self.get_instr(self.state.pc)?;
 
         if instr.is_uninferable_discon() && trap.thaddr {
