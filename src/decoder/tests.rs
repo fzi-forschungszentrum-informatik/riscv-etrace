@@ -67,14 +67,14 @@ fn read_entire_buffer() {
 fn read_bool_bits() {
     let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
     let mut decoder = Decoder::default().with_data(&buffer);
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
 }
 
 #[test]

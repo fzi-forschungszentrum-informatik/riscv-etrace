@@ -115,21 +115,6 @@ impl<'d> Decoder<'d> {
         }
     }
 
-    fn read_bit(&mut self, slice: &[u8]) -> Result<bool, Error> {
-        if self.bit_pos >= slice.len() * 8 {
-            return Err(ReadTooLong {
-                buffer_size: slice.len() * 8,
-                bit_count: 1,
-                bit_pos: self.bit_pos,
-            });
-        }
-        let byte_pos = self.bit_pos / 8;
-        let mut value = slice[byte_pos];
-        value >>= self.bit_pos % 8;
-        self.bit_pos += 1;
-        Ok((value & 1_u8) == 0x01)
-    }
-
     fn read(&mut self, bit_count: usize, slice: &[u8]) -> Result<u64, Error> {
         if bit_count == 0 {
             return Ok(0);
@@ -209,6 +194,13 @@ impl<'d> Decoder<'d> {
                 len,
             })
         }
+    }
+
+    /// Read a single bit
+    fn read_bit(&mut self) -> Result<bool, Error> {
+        let res = (self.get_byte(self.bit_pos >> 3)? >> (self.bit_pos & 0x07)) & 0x1;
+        self.bit_pos += 1;
+        Ok(res != 0)
     }
 
     /// Get the byte at the given byte position

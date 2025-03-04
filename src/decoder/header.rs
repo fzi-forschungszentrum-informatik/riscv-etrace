@@ -23,7 +23,7 @@ impl Decode for Header {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let payload_length = decoder.read(5, slice)?;
         let trace_type = TraceType::decode(decoder, slice)?;
-        let has_timestamp = decoder.read_bit(slice)?;
+        let has_timestamp = decoder.read_bit()?;
         #[cfg(feature = "time_tag")]
         let time_tag = Some(decoder.read(16, slice)? as u16);
         let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width.into(), slice)?;

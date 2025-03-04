@@ -124,7 +124,7 @@ pub struct ImplicitReturn {
 #[cfg(feature = "implicit_return")]
 impl Decode for ImplicitReturn {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let irreport = decoder.read_bit(slice)?;
+        let irreport = decoder.read_bit()?;
         let irdepth_len = decoder.proto_conf.return_stack_size_p
             + decoder.proto_conf.call_counter_size_p
             + (if decoder.proto_conf.return_stack_size_p > 0 {
@@ -362,8 +362,8 @@ pub struct AddressInfo {
 impl Decode for AddressInfo {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let address = read_address(decoder, slice)?;
-        let notify = decoder.read_bit(slice)?;
-        let updiscon = decoder.read_bit(slice)?;
+        let notify = decoder.read_bit()?;
+        let updiscon = decoder.read_bit()?;
         #[cfg(feature = "implicit_return")]
         let ir = ImplicitReturn::decode(decoder, slice)?;
         Ok(AddressInfo {
@@ -428,7 +428,7 @@ pub struct Start {
 
 impl Decode for Start {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let branch = decoder.read_bit(slice)?;
+        let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder, slice)?;
         let address = read_address(decoder, slice)?;
         Ok(Start {
@@ -477,11 +477,11 @@ impl fmt::Debug for Trap {
 
 impl Decode for Trap {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let branch = decoder.read_bit(slice)?;
+        let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder, slice)?;
         let ecause = decoder.read(decoder.proto_conf.ecause_width_p.into(), slice)?;
-        let interrupt = decoder.read_bit(slice)?;
-        let thaddr = decoder.read_bit(slice)?;
+        let interrupt = decoder.read_bit()?;
+        let thaddr = decoder.read_bit()?;
         let address = read_address(decoder, slice)?;
         let tval = decoder.read(decoder.proto_conf.iaddress_width_p.into(), slice)?;
         Ok(Trap {
@@ -531,12 +531,12 @@ pub struct Support {
 
 impl Decode for Support {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let ienable = decoder.read_bit(slice)?;
+        let ienable = decoder.read_bit()?;
         let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n.into(), slice)?;
         let qual_status = QualStatus::decode(decoder, slice)?;
         let ioptions = decoder.read(decoder.proto_conf.ioptions_n.into(), slice)?;
-        let denable = decoder.read_bit(slice)?;
-        let dloss = decoder.read_bit(slice)?;
+        let denable = decoder.read_bit()?;
+        let dloss = decoder.read_bit()?;
         let doptions = decoder.read(4, slice)?;
         Ok(Support {
             ienable,
