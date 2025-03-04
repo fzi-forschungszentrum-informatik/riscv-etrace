@@ -127,31 +127,23 @@ impl<'d> Decoder<'d> {
         let payload_start = self.bit_pos / 8;
         let len = payload_start + header.payload_len;
 
-        if self.decoder_conf.decompress {
-            debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
-            let mut sign_expanded = if self.data[payload_start + header.payload_len - 1] & 0x80 == 0
-            {
-                [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
-            } else {
-                [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
-            };
-            sign_expanded[0..header.payload_len]
-                .copy_from_slice(&self.data[payload_start..header.payload_len + payload_start]);
-            let mut decoder = self.clone().with_data(&sign_expanded);
-            let payload = Format::decode(&mut decoder)?.decode_payload(self)?;
-            Ok(Packet {
-                header,
-                payload,
-                len,
-            })
-        } else {
-            let payload = Format::decode(self)?.decode_payload(self)?;
-            Ok(Packet {
-                header,
-                payload,
-                len,
-            })
-        }
+        self.data = self
+            .data
+            .split_at_checked(len)
+            .ok_or_else(|| {
+                let need = len
+                    .checked_sub(self.data.len())
+                    .and_then(NonZeroUsize::new)
+                    .unwrap_or(NonZeroUsize::MIN);
+                Error::InsufficientData(need)
+            })?
+            .0;
+        let payload = Format::decode(self)?.decode_payload(self)?;
+        Ok(Packet {
+            header,
+            payload,
+            len,
+        })
     }
 
     /// Read a single bit
