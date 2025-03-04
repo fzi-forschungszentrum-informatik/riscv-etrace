@@ -643,9 +643,9 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         let mut link = addr;
 
         let irstack_depth_max = if self.proto_conf.return_stack_size_p != 0 {
-            2_u64.pow(self.proto_conf.return_stack_size_p)
+            2_u64.pow(self.proto_conf.return_stack_size_p.into())
         } else {
-            2_u64.pow(self.proto_conf.call_counter_size_p)
+            2_u64.pow(self.proto_conf.call_counter_size_p.into())
         };
 
         if irstack_depth_max > IRSTACK_DEPTH_SUPREMUM {

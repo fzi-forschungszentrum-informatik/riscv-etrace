@@ -117,22 +117,22 @@ pub use crate::tracer::disassembler::{Instruction, InstructionSize, Name, Segmen
 /// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
 #[derive(Copy, Clone)]
 pub struct ProtocolConfiguration {
-    pub context_width_p: usize,
-    pub time_width_p: usize,
-    pub ecause_width_p: usize,
-    pub iaddress_lsb_p: usize,
-    pub iaddress_width_p: usize,
-    pub cache_size_p: usize,
-    pub privilege_width_p: usize,
-    pub cpu_index_width: usize,
-    pub encoder_mode_n: usize,
-    pub ioptions_n: usize,
+    pub context_width_p: u8,
+    pub time_width_p: u8,
+    pub ecause_width_p: u8,
+    pub iaddress_lsb_p: u8,
+    pub iaddress_width_p: u8,
+    pub cache_size_p: u8,
+    pub privilege_width_p: u8,
+    pub cpu_index_width: u8,
+    pub encoder_mode_n: u8,
+    pub ioptions_n: u8,
     #[cfg(feature = "implicit_return")]
     pub sijump_p: bool,
     #[cfg(feature = "implicit_return")]
-    pub call_counter_size_p: u32,
+    pub call_counter_size_p: u8,
     #[cfg(feature = "implicit_return")]
-    pub return_stack_size_p: u32,
+    pub return_stack_size_p: u8,
 }
 
 impl Default for ProtocolConfiguration {

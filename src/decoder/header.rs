@@ -25,7 +25,7 @@ impl Decode for Header {
         let has_timestamp = decoder.read_bit(slice)?;
         #[cfg(feature = "time_tag")]
         let time_tag = Some(decoder.read(16, slice)? as u16);
-        let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width, slice)?;
+        let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width.into(), slice)?;
         if trace_type != TraceType::Instruction {
             return Err(WrongTraceType(trace_type));
         }

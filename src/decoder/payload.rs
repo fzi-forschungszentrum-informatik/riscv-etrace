@@ -9,7 +9,7 @@ use core::fmt;
 
 fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, DecodeError> {
     Ok(decoder.read(
-        decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p,
+        (decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p).into(),
         slice,
     )? << decoder.proto_conf.iaddress_lsb_p)
 }
@@ -271,7 +271,8 @@ pub struct JumpTargetIndex {
 
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
-        let index = usize::try_from(decoder.read(decoder.proto_conf.cache_size_p, slice)?).unwrap();
+        let index =
+            usize::try_from(decoder.read(decoder.proto_conf.cache_size_p.into(), slice)?).unwrap();
         let (branches, branch_map_len) = read_branches(decoder, slice)?;
         let branch_map = if branch_map_len == 0 {
             None
@@ -478,11 +479,11 @@ impl Decode for Trap {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         let branch = decoder.read_bit(slice)?;
         let ctx = Context::decode(decoder, slice)?;
-        let ecause = decoder.read(decoder.proto_conf.ecause_width_p, slice)?;
+        let ecause = decoder.read(decoder.proto_conf.ecause_width_p.into(), slice)?;
         let interrupt = decoder.read_bit(slice)?;
         let thaddr = decoder.read_bit(slice)?;
         let address = read_address(decoder, slice)?;
-        let tval = decoder.read(decoder.proto_conf.iaddress_width_p, slice)?;
+        let tval = decoder.read(decoder.proto_conf.iaddress_width_p.into(), slice)?;
         Ok(Trap {
             branch,
             ctx,
@@ -509,8 +510,8 @@ impl Decode for Context {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         Ok(Context {
             privilege: Privilege::decode(decoder, slice)?,
-            time: decoder.read(decoder.proto_conf.time_width_p, slice)?,
-            context: decoder.read(decoder.proto_conf.context_width_p, slice)?,
+            time: decoder.read(decoder.proto_conf.time_width_p.into(), slice)?,
+            context: decoder.read(decoder.proto_conf.context_width_p.into(), slice)?,
         })
     }
 }
@@ -531,9 +532,9 @@ pub struct Support {
 impl Decode for Support {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
         let ienable = decoder.read_bit(slice)?;
-        let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n, slice)?;
+        let encoder_mode = decoder.read(decoder.proto_conf.encoder_mode_n.into(), slice)?;
         let qual_status = QualStatus::decode(decoder, slice)?;
-        let ioptions = decoder.read(decoder.proto_conf.ioptions_n, slice)?;
+        let ioptions = decoder.read(decoder.proto_conf.ioptions_n.into(), slice)?;
         let denable = decoder.read_bit(slice)?;
         let dloss = decoder.read_bit(slice)?;
         let doptions = decoder.read(4, slice)?;
