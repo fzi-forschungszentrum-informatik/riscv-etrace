@@ -141,14 +141,14 @@ impl<'d> Decoder<'d> {
             sign_expanded[0..header.payload_len]
                 .copy_from_slice(&slice[payload_start..header.payload_len + payload_start]);
             let mut decoder = self.clone().with_data(&sign_expanded);
-            let payload = Format::decode(&mut decoder)?.decode_payload(self, &sign_expanded)?;
+            let payload = Format::decode(&mut decoder)?.decode_payload(self)?;
             Ok(Packet {
                 header,
                 payload,
                 len,
             })
         } else {
-            let payload = Format::decode(self)?.decode_payload(self, slice)?;
+            let payload = Format::decode(self)?.decode_payload(self)?;
             Ok(Packet {
                 header,
                 payload,

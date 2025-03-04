@@ -15,7 +15,7 @@ pub enum Format {
 }
 
 impl Format {
-    pub fn decode_payload(&self, decoder: &mut Decoder, slice: &[u8]) -> Result<Payload, Error> {
+    pub fn decode_payload(&self, decoder: &mut Decoder) -> Result<Payload, Error> {
         Ok(match self {
             Format::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
                 crate::decoder::payload::BranchCount::decode(decoder)?,
