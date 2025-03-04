@@ -4,6 +4,7 @@
 //! Implements the packet decoder.
 use core::fmt;
 use core::num::NonZeroUsize;
+use core::ops;
 
 use crate::decoder::format::Format;
 use crate::decoder::header::*;
@@ -18,6 +19,7 @@ pub mod truncate;
 #[cfg(test)]
 mod tests;
 
+use truncate::TruncateNum;
 use Error::ReadTooLong;
 
 /// Defines the decoder specific configuration. Used only by the [decoder](self).
@@ -201,6 +203,38 @@ impl<'d> Decoder<'d> {
         let res = (self.get_byte(self.bit_pos >> 3)? >> (self.bit_pos & 0x07)) & 0x1;
         self.bit_pos += 1;
         Ok(res != 0)
+    }
+
+    /// Read a number of bits as an integer
+    ///
+    /// Unsigned integers will be left-padded with zeroes, signed integers will
+    /// be sign-extended.
+    ///
+    /// # Safety
+    ///
+    /// May panic if `bit_count` is higher then the bit width of the target
+    /// integer.
+    fn read_bits<T>(&mut self, bit_count: u8) -> Result<T, Error>
+    where
+        T: From<u8>
+            + ops::Shl<usize, Output = T>
+            + ops::Shr<usize, Output = T>
+            + ops::BitOrAssign<T>
+            + TruncateNum,
+    {
+        let lowest_bits = self.bit_pos & 0x07;
+        let mut byte_pos = self.bit_pos >> 3;
+        let mut res = T::from(self.get_byte(byte_pos)?) >> lowest_bits;
+        let mut bits_extracted = 8 - lowest_bits;
+
+        while bits_extracted < bit_count.into() {
+            byte_pos += 1;
+            res |= T::from(self.get_byte(byte_pos)?) << bits_extracted;
+            bits_extracted += 8;
+        }
+
+        self.bit_pos += usize::from(bit_count);
+        Ok(res.truncated(bit_count))
     }
 
     /// Get the byte at the given byte position
