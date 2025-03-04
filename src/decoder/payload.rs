@@ -7,11 +7,11 @@ use crate::tracer;
 
 use core::fmt;
 
-fn read_address(decoder: &mut Decoder, slice: &[u8]) -> Result<u64, Error> {
-    Ok(decoder.read(
-        (decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p).into(),
-        slice,
-    )? << decoder.proto_conf.iaddress_lsb_p)
+fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
+    let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
+    decoder
+        .read_bits::<u64>(width)
+        .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
 }
 
 fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), Error> {
@@ -361,7 +361,7 @@ pub struct AddressInfo {
 
 impl Decode for AddressInfo {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let address = read_address(decoder, slice)?;
+        let address = read_address(decoder)?;
         let notify = decoder.read_bit()?;
         let updiscon = decoder.read_bit()?;
         #[cfg(feature = "implicit_return")]
@@ -430,7 +430,7 @@ impl Decode for Start {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder, slice)?;
-        let address = read_address(decoder, slice)?;
+        let address = read_address(decoder)?;
         Ok(Start {
             branch,
             ctx,
@@ -482,7 +482,7 @@ impl Decode for Trap {
         let ecause = decoder.read(decoder.proto_conf.ecause_width_p.into(), slice)?;
         let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
-        let address = read_address(decoder, slice)?;
+        let address = read_address(decoder)?;
         let tval = decoder.read(decoder.proto_conf.iaddress_width_p.into(), slice)?;
         Ok(Trap {
             branch,
