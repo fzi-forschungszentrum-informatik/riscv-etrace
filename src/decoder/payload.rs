@@ -14,8 +14,8 @@ fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
         .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
 }
 
-fn read_branches(decoder: &mut Decoder, slice: &[u8]) -> Result<(u8, usize), Error> {
-    let branches = decoder.read(5, slice)?.try_into().unwrap();
+fn read_branches(decoder: &mut Decoder) -> Result<(u8, u8), Error> {
+    let branches: u8 = decoder.read_bits(5)?;
     let len = match branches {
         0 => 0,
         1 => 1,
@@ -273,11 +273,14 @@ impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let index =
             usize::try_from(decoder.read(decoder.proto_conf.cache_size_p.into(), slice)?).unwrap();
-        let (branches, branch_map_len) = read_branches(decoder, slice)?;
+        let (branches, branch_map_len) = read_branches(decoder)?;
         let branch_map = if branch_map_len == 0 {
             None
         } else {
-            let branch_map: u32 = decoder.read(branch_map_len, slice)?.try_into().unwrap();
+            let branch_map: u32 = decoder
+                .read(branch_map_len as usize, slice)?
+                .try_into()
+                .unwrap();
             Some(branch_map & ((1 << branches) - 1))
         };
 
@@ -285,7 +288,7 @@ impl Decode for JumpTargetIndex {
         let ir = ImplicitReturn::decode(decoder, slice)?;
         Ok(JumpTargetIndex {
             index,
-            branches: branch_map_len,
+            branches: branch_map_len as usize,
             branch_map,
             #[cfg(feature = "implicit_return")]
             ir,
@@ -308,11 +311,11 @@ pub struct Branch {
 
 impl Decode for Branch {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let (branches, branch_map_len) = read_branches(decoder, slice)?;
+        let (branches, branch_map_len) = read_branches(decoder)?;
         let branch_map = if branch_map_len == 0 {
             decoder.read(31, slice)? as u32
         } else {
-            let too_long = decoder.read(branch_map_len, slice)? as u32;
+            let too_long = decoder.read(branch_map_len as usize, slice)? as u32;
             too_long & ((1 << branches) - 1)
         };
 
