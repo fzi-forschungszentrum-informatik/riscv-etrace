@@ -78,21 +78,23 @@ pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 20;
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
 /// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
 #[derive(Clone)]
-pub struct Decoder {
+pub struct Decoder<'d> {
+    data: &'d [u8],
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
     decoder_conf: DecoderConfiguration,
 }
 
-impl Default for Decoder {
+impl Default for Decoder<'static> {
     fn default() -> Self {
         Decoder::new(ProtocolConfiguration::default(), DecoderConfiguration::default())
     }
 }
 
-impl Decoder {
+impl<'d> Decoder<'d> {
     pub fn new(proto_conf: ProtocolConfiguration, decoder_conf: DecoderConfiguration) -> Self {
         Decoder {
+            data: &[],
             bit_pos: 0,
             proto_conf,
             decoder_conf,
