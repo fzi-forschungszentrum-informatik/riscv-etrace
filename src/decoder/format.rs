@@ -43,7 +43,7 @@ impl Format {
 
 impl Decode for Format {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        Ok(match decoder.read(2, slice)? {
+        Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => {
                 let ext = Ext::decode(decoder, slice)?;
                 Format::Ext(ext)
@@ -85,7 +85,7 @@ pub enum Sync {
 
 impl Decode for Sync {
     fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        Ok(match decoder.read(2, slice)? {
+        Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => Sync::Start,
             0b01 => Sync::Trap,
             0b10 => Sync::Context,
