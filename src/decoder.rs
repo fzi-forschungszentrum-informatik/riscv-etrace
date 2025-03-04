@@ -21,18 +21,6 @@ mod tests;
 
 use truncate::TruncateNum;
 
-/// Defines the decoder specific configuration. Used only by the [decoder](self).
-#[derive(Copy, Clone, Debug)]
-pub struct DecoderConfiguration {
-    pub decompress: bool,
-}
-
-impl Default for DecoderConfiguration {
-    fn default() -> Self {
-        DecoderConfiguration { decompress: true }
-    }
-}
-
 /// A list of possible errors during decoding of a single packet.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
