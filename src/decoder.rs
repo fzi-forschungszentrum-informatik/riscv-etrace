@@ -3,6 +3,7 @@
 
 //! Implements the packet decoder.
 use core::fmt;
+use core::num::NonZeroUsize;
 
 use crate::decoder::format::Format;
 use crate::decoder::header::*;
@@ -45,6 +46,8 @@ pub enum Error {
         bit_count: usize,
         buffer_size: usize,
     },
+    /// Some more bytes of data are required for the operation to succeed
+    InsufficientData(NonZeroUsize),
     /// The privilege level is not known. You might want to implement it.
     UnknownPrivilege(u8),
 }
@@ -65,6 +68,7 @@ impl fmt::Display for Error {
                 f,
                 "Read if {bit_count} bits from {bit_pos} exceds buffer of size {buffer_size}",
             ),
+            Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
         }
     }
