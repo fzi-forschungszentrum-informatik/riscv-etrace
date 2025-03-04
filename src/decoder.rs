@@ -13,6 +13,7 @@ use crate::{ProtocolConfiguration};
 mod format;
 pub mod header;
 pub mod payload;
+pub mod truncate;
 
 #[cfg(test)]
 mod tests;
