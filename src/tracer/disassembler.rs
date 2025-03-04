@@ -156,6 +156,12 @@ pub enum InstructionSize {
     Normal = 4,
 }
 
+impl Default for InstructionSize {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
 /// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
 /// instructions which are parsed) additional fields and information about the instruction such as
 /// the immediate may be available.
@@ -587,43 +593,9 @@ impl Instruction {
     }
 }
 
-#[cfg(feature = "cache")]
-const INSTRUCTION_CACHE_LEN: usize = 6;
-
-#[cfg(feature = "cache")]
-#[derive(Copy, Clone, Debug)]
-pub struct InstructionCache {
-    pub addresses: [Option<u64>; INSTRUCTION_CACHE_LEN],
-    pub instructions: [Option<Instruction>; INSTRUCTION_CACHE_LEN],
-}
-
-#[cfg(feature = "cache")]
-impl<'a> InstructionCache {
-    pub(crate) fn new() -> Self {
-        InstructionCache {
-            addresses: [None; INSTRUCTION_CACHE_LEN],
-            instructions: [None; INSTRUCTION_CACHE_LEN],
-        }
-    }
-
-    pub(crate) fn write(&mut self, addr: u64, instr: Instruction) {
-        for i in 0..self.addresses.len() - 1 {
-            self.addresses[i] = self.addresses[i + 1];
-            self.instructions[i] = self.instructions[i + 1];
-        }
-        self.addresses[INSTRUCTION_CACHE_LEN - 1] = Some(addr);
-        self.instructions[INSTRUCTION_CACHE_LEN - 1] = Some(instr);
-    }
-
-    pub fn get(&self, k: u64) -> Option<&Instruction> {
-        for (i, opt) in self.addresses.iter().enumerate() {
-            if let Some(addr) = opt {
-                if *addr == k {
-                    return self.instructions[i].as_ref();
-                }
-            }
-        }
-        None
+impl Default for Instruction {
+    fn default() -> Self {
+        Self::ignored(Default::default())
     }
 }
 
