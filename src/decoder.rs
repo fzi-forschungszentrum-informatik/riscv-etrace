@@ -172,8 +172,8 @@ impl<'d> Decoder<'d> {
     /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
     /// Returns immediately after parsing one packet and returns how many bits were read.
     /// Further bytes are ignored.
-    pub fn decode_packet(&mut self, slice: &[u8]) -> Result<Packet, Error> {
-        self.reset();
+    pub fn decode_packet(&mut self, slice: &'d [u8]) -> Result<Packet, Error> {
+        *self = self.clone().with_data(slice);
         let header = Header::decode(self, slice)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
         // if not at the first bit of the first payload byte.
@@ -192,9 +192,9 @@ impl<'d> Decoder<'d> {
             };
             sign_expanded[0..header.payload_len]
                 .copy_from_slice(&slice[payload_start..header.payload_len + payload_start]);
-            self.reset();
-            let payload =
-                Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
+            let mut decoder = self.clone().with_data(&sign_expanded);
+            let payload = Format::decode(&mut decoder, &sign_expanded)?
+                .decode_payload(self, &sign_expanded)?;
             Ok(Packet {
                 header,
                 payload,
