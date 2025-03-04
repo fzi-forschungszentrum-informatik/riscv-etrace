@@ -20,7 +20,6 @@ pub mod truncate;
 mod tests;
 
 use truncate::TruncateNum;
-use Error::ReadTooLong;
 
 /// Defines the decoder specific configuration. Used only by the [decoder](self).
 #[derive(Copy, Clone, Debug)]
