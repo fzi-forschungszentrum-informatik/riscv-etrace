@@ -29,7 +29,7 @@ impl Default for DecoderConfiguration {
 }
 
 /// A list of possible errors during decoding of a single packet.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// [TraceType] does not indicate an instruction trace. The unknown trace type is returned.
     UnknownTraceType(u64),
