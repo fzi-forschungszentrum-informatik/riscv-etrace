@@ -209,6 +209,21 @@ impl<'d> Decoder<'d> {
             })
         }
     }
+
+    /// Get the byte at the given byte position
+    ///
+    /// If the byte position is past the end of the current data source, the
+    /// result of a decompression if returned.
+    fn get_byte(&self, pos: usize) -> Result<u8, Error> {
+        if let Some(byte) = self.data.get(pos) {
+            Ok(*byte)
+        } else {
+            self.data
+                .last()
+                .map(|b| if b & 0x80 != 0 { 0xFF } else { 0x00 })
+                .ok_or(Error::InsufficientData(NonZeroUsize::MIN))
+        }
+    }
 }
 
 trait Decode: Sized {
