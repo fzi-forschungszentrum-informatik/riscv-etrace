@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the header and its decoding.
-use crate::decoder::DecodeError::WrongTraceType;
-use crate::decoder::{Decode, DecodeError, Decoder};
+use core::fmt;
+
+use super::{Decode, Decoder, Error};
 
 /// Each packet has a header specifying at least the payload length, trace type,
 /// whether a timestamp exists and the hart which produced the packet.
@@ -19,7 +20,7 @@ pub struct Header {
 }
 
 impl Decode for Header {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         let payload_length = decoder.read(5, slice)?;
         let trace_type = TraceType::decode(decoder, slice)?;
         let has_timestamp = decoder.read_bit(slice)?;
@@ -27,7 +28,7 @@ impl Decode for Header {
         let time_tag = Some(decoder.read(16, slice)? as u16);
         let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width.into(), slice)?;
         if trace_type != TraceType::Instruction {
-            return Err(WrongTraceType(trace_type));
+            return Err(Error::WrongTraceType(trace_type));
         }
 
         Ok(Header {
@@ -47,11 +48,19 @@ pub enum TraceType {
     Instruction,
 }
 
+impl fmt::Display for TraceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Instruction => write!(f, "Instruction"),
+        }
+    }
+}
+
 impl Decode for TraceType {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         match decoder.read(2, slice)? {
             0b10 => Ok(TraceType::Instruction),
-            unknown => Err(DecodeError::UnknownTraceType(unknown)),
+            unknown => Err(Error::UnknownTraceType(unknown)),
         }
     }
 }

@@ -1,10 +1,10 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::decoder::payload::{
+use super::payload::{
     AddressInfo, Branch, Context, Extension, Payload, Start, Support, Synchronization, Trap,
 };
-use crate::decoder::{Decode, DecodeError, Decoder};
+use super::{Decode, Decoder, Error};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Format {
@@ -15,11 +15,7 @@ pub enum Format {
 }
 
 impl Format {
-    pub fn decode_payload(
-        &self,
-        decoder: &mut Decoder,
-        slice: &[u8],
-    ) -> Result<Payload, DecodeError> {
+    pub fn decode_payload(&self, decoder: &mut Decoder, slice: &[u8]) -> Result<Payload, Error> {
         Ok(match self {
             Format::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
                 crate::decoder::payload::BranchCount::decode(decoder, slice)?,
@@ -46,7 +42,7 @@ impl Format {
 }
 
 impl Decode for Format {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         Ok(match decoder.read(2, slice)? {
             0b00 => {
                 let ext = Ext::decode(decoder, slice)?;
@@ -70,7 +66,7 @@ pub enum Ext {
 }
 
 impl Decode for Ext {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         Ok(if decoder.read_bit(slice)? {
             Ext::JumpTargetIndex
         } else {
@@ -88,7 +84,7 @@ pub enum Sync {
 }
 
 impl Decode for Sync {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, DecodeError> {
+    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
         Ok(match decoder.read(2, slice)? {
             0b00 => Sync::Start,
             0b01 => Sync::Trap,
