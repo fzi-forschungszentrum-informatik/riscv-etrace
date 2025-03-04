@@ -141,7 +141,6 @@ fn format() {
 #[test]
 fn extension_jti() {
     let protocol_config = ProtocolConfiguration::default();
-    let decoder_config = DecoderConfiguration::default();
 
     let cache_size_p_override = 10;
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
@@ -151,13 +150,10 @@ fn extension_jti() {
     // ...
     buffer[5] = 0b11_000000;
     buffer[6] = 0b11111111;
-    let mut decoder = Decoder::new(
-        ProtocolConfiguration {
-            cache_size_p: cache_size_p_override,
-            ..protocol_config
-        },
-        decoder_config,
-    )
+    let mut decoder = Decoder::new(ProtocolConfiguration {
+        cache_size_p: cache_size_p_override,
+        ..protocol_config
+    })
     .with_data(&buffer);
 
     let jti_long = JumpTargetIndex::decode(&mut decoder).unwrap();
@@ -204,7 +200,6 @@ fn branch_with_zero_branches() {
 #[test]
 fn address() {
     let protocol_config = ProtocolConfiguration::default();
-    let decoder_config = DecoderConfiguration::default();
 
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b0000_0001;
@@ -212,16 +207,13 @@ fn address() {
     // test differential addr with second address
     buffer[8] = 0b0000_0001;
     buffer[15] = 0b10_000000;
-    let mut decoder = Decoder::new(
-        ProtocolConfiguration {
-            // Changed address width and lsb, so that the entire
-            // packet aligns with 64 bit
-            iaddress_width_p: 64,
-            iaddress_lsb_p: 2,
-            ..protocol_config
-        },
-        decoder_config,
-    )
+    let mut decoder = Decoder::new(ProtocolConfiguration {
+        // Changed address width and lsb, so that the entire
+        // packet aligns with 64 bit
+        iaddress_width_p: 64,
+        iaddress_lsb_p: 2,
+        ..protocol_config
+    })
     .with_data(&buffer);
     let addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(addr.address, 4);
@@ -238,17 +230,13 @@ fn address() {
 #[test]
 fn synchronization_start() {
     let protocol_config = ProtocolConfiguration::default();
-    let decoder_config = DecoderConfiguration::default();
 
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::new(
-        ProtocolConfiguration {
-            iaddress_width_p: 64,
-            iaddress_lsb_p: 0,
-            ..protocol_config
-        },
-        decoder_config,
-    )
+    let mut decoder = Decoder::new(ProtocolConfiguration {
+        iaddress_width_p: 64,
+        iaddress_lsb_p: 0,
+        ..protocol_config
+    })
     .with_data(&buffer);
     let sync_start = Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);

@@ -30,7 +30,7 @@
 //! extern crate riscv_etrace;
 //!
 //! use riscv_etrace::{ProtocolConfiguration};
-//! use riscv_etrace::decoder::{Decoder, DecoderConfiguration};
+//! use riscv_etrace::decoder::Decoder;
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::Segment;
 //! use riscv_etrace::tracer::{ReportTrace, TraceConfiguration, Tracer};
@@ -42,12 +42,6 @@
 //! let mut proto_conf = ProtocolConfiguration::default();
 //! // But we overwrite the hart index width and assume a maximum of 2^10 harts.
 //! proto_conf.cpu_index_width = 10;
-//!
-//! // Create the decoder configuration.
-//! let decoder_conf = DecoderConfiguration {
-//!     // We assume that the packets are sign based compressed.
-//!     decompress: true,
-//! };
 //!
 //! // A single tracing configuration will be used for the tracer. This may be shared between
 //! // multiple tracers for different harts.
@@ -84,7 +78,7 @@
 //! let mut reporter = ExampleReport {};
 //!
 //! // Create the packet decoder.
-//! let mut decoder = Decoder::new(proto_conf, decoder_conf);
+//! let mut decoder = Decoder::new(proto_conf);
 //!
 //! // Create each tracer for the hart we want to trace.
 //! let mut tracer: Tracer = Tracer::new(

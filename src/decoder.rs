@@ -88,22 +88,20 @@ pub struct Decoder<'d> {
     data: &'d [u8],
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
-    decoder_conf: DecoderConfiguration,
 }
 
 impl Default for Decoder<'static> {
     fn default() -> Self {
-        Decoder::new(ProtocolConfiguration::default(), DecoderConfiguration::default())
+        Decoder::new(ProtocolConfiguration::default())
     }
 }
 
 impl<'d> Decoder<'d> {
-    pub fn new(proto_conf: ProtocolConfiguration, decoder_conf: DecoderConfiguration) -> Self {
+    pub fn new(proto_conf: ProtocolConfiguration) -> Self {
         Decoder {
             data: &[],
             bit_pos: 0,
             proto_conf,
-            decoder_conf,
         }
     }
 
