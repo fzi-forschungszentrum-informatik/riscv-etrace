@@ -103,10 +103,10 @@ fn sync() {
 
     let buffer = [0b10_01_00_11_u8; 32];
     let mut decoder = Decoder::default().with_data(&buffer);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Support);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Start);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Trap);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Context);
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Support));
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Start));
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Trap));
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Context));
 }
 
 #[test]
@@ -115,14 +115,8 @@ fn extension() {
 
     let buffer = [0b0010u8; 32];
     let mut decoder = Decoder::default().with_data(&buffer);
-    assert_eq!(
-        Ext::decode(&mut decoder, &buffer).unwrap(),
-        Ext::BranchCount
-    );
-    assert_eq!(
-        Ext::decode(&mut decoder, &buffer).unwrap(),
-        Ext::JumpTargetIndex
-    );
+    assert_eq!(Ext::decode(&mut decoder), Ok(Ext::BranchCount));
+    assert_eq!(Ext::decode(&mut decoder), Ok(Ext::JumpTargetIndex));
 }
 
 #[test]
@@ -134,18 +128,12 @@ fn format() {
     buffer[1] = 0b00000_011;
     let mut decoder = Decoder::default().with_data(&buffer);
     assert_eq!(
-        Format::decode(&mut decoder, &buffer).unwrap(),
-        Format::Ext(Ext::JumpTargetIndex),
+        Format::decode(&mut decoder),
+        Ok(Format::Ext(Ext::JumpTargetIndex)),
     );
-    assert_eq!(
-        Format::decode(&mut decoder, &buffer).unwrap(),
-        Format::Branch
-    );
-    assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Addr);
-    assert_eq!(
-        Format::decode(&mut decoder, &buffer).unwrap(),
-        Format::Sync(Sync::Trap)
-    );
+    assert_eq!(Format::decode(&mut decoder), Ok(Format::Branch));
+    assert_eq!(Format::decode(&mut decoder), Ok(Format::Addr));
+    assert_eq!(Format::decode(&mut decoder), Ok(Format::Sync(Sync::Trap)));
 }
 
 // `payload` related tests
@@ -172,11 +160,11 @@ fn extension_jti() {
     )
     .with_data(&buffer);
 
-    let jti_long = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
+    let jti_long = JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_long.index, 768);
     assert_eq!(jti_long.branches, 31);
     assert_eq!(jti_long.branch_map, Some(10));
-    let jti_short = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
+    let jti_short = JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
     assert_eq!(jti_short.branches, 0);
     assert_eq!(jti_short.branch_map, None);
@@ -188,7 +176,7 @@ fn branch() {
     buffer[0] = 0b010_00111;
     buffer[1] = 0b0000_1011;
     let mut decoder = Decoder::default().with_data(&buffer);
-    let branch = Branch::decode(&mut decoder, &buffer).unwrap();
+    let branch = Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch.branches, 7);
     assert_eq!(branch.branch_map, 0b1011_010);
     assert_eq!(
@@ -207,7 +195,7 @@ fn branch_with_zero_branches() {
     buffer[0] = 0b000_00000;
     buffer[1] = 0b100;
     let mut decoder = Decoder::default().with_data(&buffer);
-    let branch_no_addr = Branch::decode(&mut decoder, &buffer).unwrap();
+    let branch_no_addr = Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch_no_addr.branches, 0);
     assert_eq!(branch_no_addr.branch_map, 32);
     assert_eq!(branch_no_addr.address, None);
@@ -235,13 +223,13 @@ fn address() {
         decoder_config,
     )
     .with_data(&buffer);
-    let addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
+    let addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(addr.address, 4);
     assert!(addr.notify);
     assert!(addr.updiscon);
 
     // differential address
-    let diff_addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
+    let diff_addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(diff_addr.address, 4);
     assert!(!diff_addr.notify);
     assert!(diff_addr.updiscon);
@@ -262,7 +250,7 @@ fn synchronization_start() {
         decoder_config,
     )
     .with_data(&buffer);
-    let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
+    let sync_start = Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
     assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
     assert_eq!(sync_start.address, u64::MAX);
