@@ -110,10 +110,6 @@ impl<'d> Decoder<'d> {
         }
     }
 
-    fn reset(&mut self) {
-        self.bit_pos = 0;
-    }
-
     fn read_bit(&mut self, slice: &[u8]) -> Result<bool, Error> {
         if self.bit_pos >= slice.len() * 8 {
             return Err(ReadTooLong {
