@@ -21,18 +21,18 @@ fn read_u64() {
     buffer[18] = 0b11_110000;
     let mut decoder = Decoder::default().with_data(&buffer);
     // testing for bit position
-    assert_eq!(decoder.read(6, &buffer).unwrap(), 0b011111);
+    assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
     assert_eq!(decoder.bit_pos, 6);
-    assert_eq!(decoder.read(2, &buffer).unwrap(), 0b01);
+    assert_eq!(decoder.read_bits(2), Ok(0b01u64));
     assert_eq!(decoder.bit_pos, 8);
-    assert_eq!(decoder.read(6, &buffer).unwrap(), 0b011111);
+    assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
     assert_eq!(decoder.bit_pos, 14);
     // read over byte boundary
-    assert_eq!(decoder.read(10, &buffer).unwrap(), 0b1001001001);
+    assert_eq!(decoder.read_bits(10), Ok(0b1001001001u64));
     assert_eq!(decoder.bit_pos, 24);
-    assert_eq!(decoder.read(62, &buffer).unwrap(), 0x3FFF_F0F0_F0F0_F0F1);
+    assert_eq!(decoder.read_bits(62), Ok(0x3FFF_F0F0_F0F0_F0F1u64));
     assert_eq!(decoder.bit_pos, 86);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), 0xC000_0000_0000_0005);
+    assert_eq!(decoder.read_bits(64), Ok(0xC000_0000_0000_0005u64));
     assert_eq!(decoder.bit_pos, 150);
 }
 
@@ -49,18 +49,18 @@ fn read_i64() {
     buffer[7] = 0xFF;
     buffer[8] = 0b1;
     let mut decoder = Decoder::default().with_data(&buffer);
-    assert_eq!(decoder.read(1, &buffer).unwrap(), 0);
-    assert_eq!(decoder.read(64, &buffer).unwrap() as i64, -24);
+    assert_eq!(decoder.read_bits(1), Ok(0i64));
+    assert_eq!(decoder.read_bits(64), Ok(-24i64));
 }
 
 #[test]
 fn read_entire_buffer() {
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
     let mut decoder = Decoder::default().with_data(&buffer);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
 }
 
 #[test]
@@ -90,9 +90,9 @@ fn missing_msb_shift_is_correct() {
     buffer[7] = 0xFF;
     buffer[8] = 0b00_111111;
     let mut decoder = Decoder::default().with_data(&buffer);
-    assert_eq!(decoder.read(6, &buffer).unwrap(), 0);
+    assert_eq!(decoder.read_bits(6), Ok(0i64));
     // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
-    assert_eq!((decoder.read(63, &buffer).unwrap() << 1), -248i64 as u64);
+    assert_eq!(decoder.read_bits(63), Ok(-124i64));
 }
 
 // `format` related tests
