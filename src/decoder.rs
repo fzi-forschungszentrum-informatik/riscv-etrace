@@ -101,6 +101,15 @@ impl<'d> Decoder<'d> {
         }
     }
 
+    /// Set the data being decoded
+    pub fn with_data(self, data: &[u8]) -> Decoder<'_> {
+        Decoder {
+            data,
+            bit_pos: 0,
+            ..self
+        }
+    }
+
     fn reset(&mut self) {
         self.bit_pos = 0;
     }
