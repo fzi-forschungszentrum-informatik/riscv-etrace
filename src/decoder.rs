@@ -97,12 +97,8 @@ impl Decoder<'_> {
     /// a call to [Self::with_data].
     pub fn decode_packet(&mut self) -> Result<Packet, Error> {
         let header = Header::decode(self)?;
-        // Set the bit position to the beginning of the start of the next byte for payload decoding
-        // if not at the first bit of the first payload byte.
-        if self.bit_pos % 8 != 0 {
-            self.bit_pos += 8 - (self.bit_pos % 8);
-        }
-        let payload_start = self.bit_pos / 8;
+        self.advance_to_byte();
+        let payload_start = self.bit_pos >> 3;
         let len = payload_start + header.payload_len;
 
         let (payload, remaining) = self.data.split_at_checked(len).ok_or_else(|| {
@@ -123,6 +119,13 @@ impl Decoder<'_> {
             payload,
             len,
         })
+    }
+
+    /// Advance the position to the next byte boundary
+    fn advance_to_byte(&mut self) {
+        if self.bit_pos & 0x7 != 0 {
+            self.bit_pos = (self.bit_pos & !0x7usize) + 8;
+        }
     }
 
     /// Read a single bit
