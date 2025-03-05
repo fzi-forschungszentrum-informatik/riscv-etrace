@@ -105,26 +105,29 @@ impl Decode for QualStatus {
 #[cfg(feature = "implicit_return")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ImplicitReturn {
-    /// If the value of this bit is different from the previous bit in the same packet,
-    /// it indicates that this packet is reporting an instruction that is either:
-    /// <ul>
-    /// <li>following a return because its address differs from the predicted return address at the
-    /// top of the implicit_return return address stack, or</li>
-    /// <li>the last retired before an exception, interrupt, privilege change or resync because it
-    /// is necessary to report the current address stack depth or nested call count.</li>
-    /// </ul>
+    /// Implicit return report
+    ///
+    /// If `true`, packet is reporting an instruction that is either:
+    /// * following a return because its address differs from the predicted
+    ///   return address at the top of the implicit_return return address stack,
+    ///   or
+    /// * the last retired before an exception, interrupt, privilege change or
+    ///   resync because it is necessary to report the current address stack
+    ///   depth or nested call count.
     pub irreport: bool,
-    /// If the value of irreport is different from previous bit in the same packet,
-    /// this field indicates the number of entries on the return address stack (i.e. the entry
-    /// number of the return that failed) or nested call count. If irreport is the same value as
-    /// updiscon, all bits in this field will also be the same value as updiscon.
+
+    /// If [Self::irreport] is `true`, this field indicates the number of
+    /// entries on the return address stack (i.e. the entry number of the return
+    /// that failed) or nested call count. If irreport is the same value as
+    /// updiscon, all bits in this field will also be the same value as
+    /// updiscon.
     pub irdepth: u64,
 }
 
 #[cfg(feature = "implicit_return")]
 impl Decode for ImplicitReturn {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let irreport = decoder.read_bit()?;
+        let irreport = decoder.read_differential_bit()?;
         let irdepth_len = decoder.proto_conf.return_stack_size_p
             + decoder.proto_conf.call_counter_size_p
             + (if decoder.proto_conf.return_stack_size_p > 0 {

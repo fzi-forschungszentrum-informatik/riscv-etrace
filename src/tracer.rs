@@ -268,25 +268,17 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     #[cfg(feature = "implicit_return")]
     fn recover_ir_status(&self, payload: &Payload) -> bool {
         return if let Some(addr) = payload.get_address_info() {
-            addr.updiscon != addr.ir.irreport
+            addr.ir.irreport
         } else if let Payload::Extension(ext) = payload {
             match ext {
                 Extension::BranchCount(bc) => {
                     if let Some(addr) = bc.address {
-                        addr.updiscon != addr.ir.irreport
+                        addr.ir.irreport
                     } else {
                         false
                     }
                 }
-                Extension::JumpTargetIndex(jti) => {
-                    if let Some(branch_map) = jti.branch_map {
-                        let branch_map_msb = (branch_map >> (jti.branches - 1)) == 1;
-                        branch_map_msb != jti.ir.irreport
-                    } else {
-                        let branches_msb = (jti.branches >> 4) == 1;
-                        branches_msb != jti.ir.irreport
-                    }
-                }
+                Extension::JumpTargetIndex(jti) => jti.ir.irreport,
             }
         } else {
             false
