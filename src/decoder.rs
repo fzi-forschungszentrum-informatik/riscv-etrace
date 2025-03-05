@@ -103,6 +103,13 @@ impl<'d> Decoder<'d> {
     }
 
     /// Decode a single [Packet] consisting of header and payload
+    ///
+    /// Decodes a single [Packet], consuming the associated data from the input.
+    /// The returned packet's [Packet::len] will contain the number of bytes
+    /// consumed. After successful operation, the decoder is left at the byte
+    /// boundary following the packet, ready to decode the next one. A failure
+    /// may leave the decoder in an unspecified state, requireing a reset via
+    /// a call to [Self::with_data].
     pub fn decode_packet(&mut self) -> Result<Packet, Error> {
         let header = Header::decode(self)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
@@ -113,18 +120,19 @@ impl<'d> Decoder<'d> {
         let payload_start = self.bit_pos / 8;
         let len = payload_start + header.payload_len;
 
-        self.data = self
-            .data
-            .split_at_checked(len)
-            .ok_or_else(|| {
-                let need = len
-                    .checked_sub(self.data.len())
-                    .and_then(NonZeroUsize::new)
-                    .unwrap_or(NonZeroUsize::MIN);
-                Error::InsufficientData(need)
-            })?
-            .0;
+        let (payload, remaining) = self.data.split_at_checked(len).ok_or_else(|| {
+            let need = len
+                .checked_sub(self.data.len())
+                .and_then(NonZeroUsize::new)
+                .unwrap_or(NonZeroUsize::MIN);
+            Error::InsufficientData(need)
+        })?;
+        self.data = payload;
         let payload = Format::decode(self)?.decode_payload(self)?;
+
+        self.bit_pos = 0;
+        self.data = remaining;
+
         Ok(Packet {
             header,
             payload,
