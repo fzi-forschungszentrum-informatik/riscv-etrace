@@ -295,9 +295,8 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address_info() {
-            let msb = (addr.address & (1 << (self.proto_conf.iaddress_width_p - 1))) == 1;
-            self.state.notify = addr.notify != msb;
-            self.state.updiscon = addr.updiscon != addr.notify;
+            self.state.notify = addr.notify;
+            self.state.updiscon = addr.updiscon;
             self.state.ir = self.recover_ir_status(payload);
         }
     }

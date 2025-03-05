@@ -226,7 +226,7 @@ fn address() {
     let addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(addr.address, 4);
     assert!(addr.notify);
-    assert!(addr.updiscon);
+    assert!(!addr.updiscon);
 
     // differential address
     let diff_addr = AddressInfo::decode(&mut decoder).unwrap();

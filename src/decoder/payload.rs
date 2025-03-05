@@ -345,15 +345,22 @@ impl fmt::Debug for Branch {
 pub struct AddressInfo {
     /// Differential instruction address.
     pub address: u64,
-    /// If the value of this bit is different from the MSB of address, it indicates that this packet
-    /// is reporting an instruction that is not the target of an uninferable
-    /// discontinuity because a notification was requested via a trigger.
+
+    /// A notification was requested by a trigger
+    ///
+    /// If `true`, this packet is reporting an instruction that is not the
+    /// target of an uninferable discontinuity because a notification was
+    /// requested via a trigger.
     pub notify: bool,
-    /// If the value of this bit is different from notify, it indicates that this packet is
-    /// reporting the instruction following an uninferable discontinuity and is also the
-    /// instruction before an exception, privilege change or resync (i.e. it will be followed
+
+    /// An uninferable discontinuity occured before a sync event
+    ///
+    /// If `true`, this packet is reporting the instruction following an
+    /// uninferable discontinuity and is also the instruction before an
+    /// exception, privilege change or resync (i.e. it will be followed
     /// immediately by a format 3 packet).
     pub updiscon: bool,
+
     #[cfg(feature = "implicit_return")]
     pub ir: ImplicitReturn,
 }
@@ -361,8 +368,8 @@ pub struct AddressInfo {
 impl Decode for AddressInfo {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let address = read_address(decoder)?;
-        let notify = decoder.read_bit()?;
-        let updiscon = decoder.read_bit()?;
+        let notify = decoder.read_differential_bit()?;
+        let updiscon = decoder.read_differential_bit()?;
         #[cfg(feature = "implicit_return")]
         let ir = ImplicitReturn::decode(decoder)?;
         Ok(AddressInfo {
