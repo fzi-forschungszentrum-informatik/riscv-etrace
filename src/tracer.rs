@@ -10,7 +10,7 @@ use crate::instruction::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 #[cfg(feature = "implicit_return")]
-use crate::Name::{auipc, c_jr, c_lui, jalr, lui};
+use crate::instruction::Name::{auipc, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
 pub mod cache;
