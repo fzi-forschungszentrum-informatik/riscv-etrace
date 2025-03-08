@@ -622,8 +622,8 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                         return false;
                     }
                 }
+                return self.state.irstack_depth > 0;
             }
-            return self.state.irstack_depth > 0;
         }
         return false;
     }
