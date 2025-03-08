@@ -480,7 +480,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
             self.state.pc = target;
         } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
             self.state.pc = addr;
-        } else if instr.is_uninferable_discon() {
+        } else if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
             if self.state.stop_at_last_branch {
                 return Err(Error::UnexpectedUninferableDiscon);
             }
