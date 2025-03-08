@@ -10,7 +10,7 @@ pub mod format;
 #[cfg(test)]
 mod tests;
 
-use Name::*;
+use Kind::*;
 use OpCode::*;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
@@ -111,7 +111,7 @@ impl From<u32> for OpCode {
 /// A list of the name of all control flow changing instructions the tracing algorithm needs to know.  
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Name {
+pub enum Kind {
     // SYS (R)
     mret,
     sret,
@@ -167,14 +167,12 @@ impl Default for InstructionSize {
     }
 }
 
-/// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
-/// instructions which are parsed) additional fields and information about the instruction such as
-/// the immediate may be available.
+/// Defines a single RISC-V instruction
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Instruction {
     pub size: InstructionSize,
     /// If the instruction was parsed, the name is always available.
-    pub name: Option<Name>,
+    pub kind: Option<Kind>,
     /// Defaults to `false`. Only parsed for `jalr`. For other instructions a value of
     /// `false` has no relation to RS1 and whether it is zero.
     pub is_rs1_zero: bool,
@@ -196,7 +194,7 @@ impl Instruction {
     fn ignored(size: InstructionSize) -> Self {
         Instruction {
             size,
-            name: None,
+            kind: None,
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -208,7 +206,7 @@ impl Instruction {
     }
 
     pub fn is_inferable_jump(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             matches!(name, jal(_) | c_jal(_) | c_j(_))
                 || (matches!(name, jalr(_)) && self.is_rs1_zero)
         } else {
@@ -217,7 +215,7 @@ impl Instruction {
     }
 
     pub fn is_uninferable_jump(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             matches!(name, c_jalr(_) | c_jr(_)) || (matches!(name, jalr(_)) && !self.is_rs1_zero)
         } else {
             false
@@ -226,7 +224,7 @@ impl Instruction {
 
     #[cfg(not(feature = "tracing_v1"))]
     pub fn is_return_from_trap(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             name == sret || name == mret || name == dret
         } else {
             false
@@ -235,7 +233,7 @@ impl Instruction {
 
     #[cfg(not(feature = "tracing_v1"))]
     pub fn is_uninferable_discon(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             self.is_uninferable_jump()
                 || self.is_return_from_trap()
                 || name == ecall
@@ -248,7 +246,7 @@ impl Instruction {
 
     #[cfg(feature = "tracing_v1")]
     pub fn is_uninferable_discon(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             self.is_uninferable_jump()
                 || name == uret
                 || name == sret
@@ -264,7 +262,7 @@ impl Instruction {
 
     #[cfg(feature = "implicit_return")]
     pub fn is_call(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             matches!(
                 name,
                 jalr(format::TypeI { rd: 1, .. })
@@ -364,7 +362,7 @@ impl Instruction {
         };
         Instruction {
             size,
-            name: Some(name),
+            kind: Some(name),
             is_rs1_zero,
             is_branch: opcode == Branch,
             imm: Self::calc_imm(name, is_rs1_zero, opcode == Branch, num),
@@ -441,7 +439,7 @@ impl Instruction {
             size,
             is_branch,
             is_rs1_zero: false,
-            name: Some(name),
+            kind: Some(name),
             imm: Self::calc_compressed_imm(name, is_branch, num),
             #[cfg(feature = "implicit_return")]
             rs1: rs1 as u32,
@@ -450,7 +448,7 @@ impl Instruction {
         }
     }
 
-    fn calc_imm(name: Name, is_rs1_zero: bool, is_branch: bool, num: u32) -> Option<i32> {
+    fn calc_imm(name: Kind, is_rs1_zero: bool, is_branch: bool, num: u32) -> Option<i32> {
         if is_branch {
             Some(Self::calc_imm_b(num))
         } else {
@@ -464,7 +462,7 @@ impl Instruction {
         }
     }
 
-    fn calc_compressed_imm(name: Name, is_branch: bool, num: u16) -> Option<i32> {
+    fn calc_compressed_imm(name: Kind, is_branch: bool, num: u16) -> Option<i32> {
         if is_branch {
             Some(Self::calc_imm_cb(num))
         } else {

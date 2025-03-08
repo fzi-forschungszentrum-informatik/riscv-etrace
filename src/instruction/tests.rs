@@ -12,7 +12,7 @@ fn mret() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::mret),
+            kind: Some(Kind::mret),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -27,7 +27,7 @@ fn sret() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::sret),
+            kind: Some(Kind::sret),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -42,7 +42,7 @@ fn fence() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::fence),
+            kind: Some(Kind::fence),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -57,7 +57,7 @@ fn sfence_vma() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::sfence_vma),
+            kind: Some(Kind::sfence_vma),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -72,7 +72,7 @@ fn wfi() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::wfi),
+            kind: Some(Kind::wfi),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -87,7 +87,7 @@ fn ecall() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::ecall),
+            kind: Some(Kind::ecall),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -102,7 +102,7 @@ fn ebreak() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::ebreak),
+            kind: Some(Kind::ebreak),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -118,7 +118,7 @@ fn fence_i() {
         Instruction {
             size: InstructionSize::Normal,
 
-            name: Some(Name::fence_i),
+            kind: Some(Kind::fence_i),
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -133,7 +133,7 @@ fn beq() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::beq(format::TypeB {
+            kind: Some(Kind::beq(format::TypeB {
                 rs1: 12,
                 rs2: 3,
                 imm: -3402,
@@ -152,7 +152,7 @@ fn bne() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::bne(format::TypeB {
+            kind: Some(Kind::bne(format::TypeB {
                 rs1: 12,
                 rs2: 3,
                 imm: -2222,
@@ -171,7 +171,7 @@ fn blt() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::blt(format::TypeB {
+            kind: Some(Kind::blt(format::TypeB {
                 rs1: 0,
                 rs2: 0,
                 imm: 12,
@@ -190,7 +190,7 @@ fn bge() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::bge(format::TypeB {
+            kind: Some(Kind::bge(format::TypeB {
                 rs1: 30,
                 rs2: 5,
                 imm: -1954,
@@ -209,7 +209,7 @@ fn bltu() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::bltu(format::TypeB {
+            kind: Some(Kind::bltu(format::TypeB {
                 rs1: 0,
                 rs2: 20,
                 imm: 4094,
@@ -228,7 +228,7 @@ fn bgeu() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::bgeu(format::TypeB {
+            kind: Some(Kind::bgeu(format::TypeB {
                 rs1: 12,
                 rs2: 20,
                 imm: 0,
@@ -247,7 +247,7 @@ fn c_beqz() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_beqz(format::TypeB {
+            kind: Some(Kind::c_beqz(format::TypeB {
                 rs1: 12,
                 rs2: 0,
                 imm: 178,
@@ -266,7 +266,7 @@ fn c_benz() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(c_bnez(format::TypeB {
+            kind: Some(c_bnez(format::TypeB {
                 rs1: 13,
                 rs2: 0,
                 imm: 170,
@@ -285,7 +285,7 @@ fn auipc() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::auipc(format::TypeU {
+            kind: Some(Kind::auipc(format::TypeU {
                 rd: 13,
                 imm: -223662080,
             })),
@@ -303,7 +303,7 @@ fn lui() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::lui(format::TypeU {
+            kind: Some(Kind::lui(format::TypeU {
                 rd: 17,
                 imm: -987136,
             })),
@@ -321,7 +321,7 @@ fn c_lui() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_lui(format::TypeU { rd: 4, imm: -45056 })),
+            kind: Some(Kind::c_lui(format::TypeU { rd: 4, imm: -45056 })),
             is_branch: false,
             imm: Some(-11),
             is_rs1_zero: false,
@@ -336,7 +336,7 @@ fn jal() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::jal(format::TypeJ { rd: 12, imm: 55554 })),
+            kind: Some(Kind::jal(format::TypeJ { rd: 12, imm: 55554 })),
             is_branch: false,
             imm: Some(55554),
             is_rs1_zero: false,
@@ -351,7 +351,7 @@ fn c_j() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_j(format::TypeJ { rd: 0, imm: 1364 })),
+            kind: Some(Kind::c_j(format::TypeJ { rd: 0, imm: 1364 })),
             is_branch: false,
             imm: Some(1364),
             is_rs1_zero: false,
@@ -366,7 +366,7 @@ fn c_jal() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_jal(format::TypeJ { rd: 0, imm: -772 })),
+            kind: Some(Kind::c_jal(format::TypeJ { rd: 0, imm: -772 })),
             is_branch: false,
             imm: Some(-772),
             is_rs1_zero: false,
@@ -381,7 +381,7 @@ fn c_jr() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_jr(format::TypeR {
+            kind: Some(Kind::c_jr(format::TypeR {
                 rd: 12,
                 rs1: 12,
                 rs2: 0,
@@ -400,7 +400,7 @@ fn c_jalr() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_jalr(format::TypeR {
+            kind: Some(Kind::c_jalr(format::TypeR {
                 rd: 31,
                 rs1: 31,
                 rs2: 0,
@@ -419,7 +419,7 @@ fn c_ebreak() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Compressed,
-            name: Some(Name::c_ebreak),
+            kind: Some(Kind::c_ebreak),
             is_branch: false,
             imm: None,
             is_rs1_zero: false,
@@ -434,7 +434,7 @@ fn jalr() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::jalr(format::TypeI {
+            kind: Some(Kind::jalr(format::TypeI {
                 rd: 16,
                 rs1: 13,
                 imm: 0x661,
@@ -453,7 +453,7 @@ fn jalr_rs1_zero() {
         Instruction::from_binary(&bin),
         Instruction {
             size: InstructionSize::Normal,
-            name: Some(Name::jalr(format::TypeI {
+            kind: Some(Kind::jalr(format::TypeI {
                 rd: 31,
                 rs1: 0,
                 imm: 1633,
