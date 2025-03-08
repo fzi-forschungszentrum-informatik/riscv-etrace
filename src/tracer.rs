@@ -10,7 +10,7 @@ use crate::instruction::{Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 #[cfg(feature = "implicit_return")]
-use crate::Name::{aupic, c_jr, c_lui, jalr, lui};
+use crate::Name::{auipc, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
 pub mod cache;
@@ -568,7 +568,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
         if prev_instr
             .name
-            .filter(|name| *name == aupic || *name == lui || *name == c_lui)
+            .filter(|name| *name == auipc || *name == lui || *name == c_lui)
             .is_some()
         {
             return Ok(instr.rs1 == prev_instr.rd);
@@ -587,7 +587,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         let prev_instr = self.get_instr(prev_addr)?;
         let mut target = 0;
 
-        if prev_instr.name == Some(aupic) {
+        if prev_instr.name == Some(auipc) {
             target = prev_addr;
         }
         let imm = prev_instr.imm.ok_or(Error::ImmediateIsNone(prev_instr))?;
