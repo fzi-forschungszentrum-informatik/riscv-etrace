@@ -561,7 +561,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         instr: &Instruction,
         prev_addr: u64,
     ) -> Result<bool, Error> {
-        if !instr.is_uninferable_jump() && self.proto_conf.sijump_p {
+        if !(instr.is_uninferable_jump() && self.proto_conf.sijump_p) {
             return Ok(false);
         }
 
