@@ -478,8 +478,8 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
             }
         } else if let Some(target) = self.sequential_jump_target(this_pc, self.state.last_pc)? {
             self.state.pc = target;
-        } else if self.is_implicit_return(&instr, payload) {
-            self.state.pc = self.pop_return_stack();
+        } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
+            self.state.pc = addr;
         } else if instr.is_uninferable_discon() {
             if self.state.stop_at_last_branch {
                 return Err(Error::UnexpectedUninferableDiscon);
@@ -554,23 +554,34 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    fn is_implicit_return(&self, _: &Instruction, _: &Payload) -> bool {
-        false
+    fn implicit_return_address(&self, _: &Instruction, _: &Payload) -> Option<u64> {
+        None
     }
 
+    /// If the given instruction is a function return, try to find the return address
+    ///
+    /// This roughly corresponds to a combination of `is_implicit_return` and
+    /// `pop_return_stack` of the reference implementation.
     #[cfg(feature = "implicit_return")]
-    fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
+    fn implicit_return_address(&mut self, instr: &Instruction, payload: &Payload) -> Option<u64> {
         use instruction::Kind;
 
         if instr.kind.map(Kind::is_return).unwrap_or(false) {
             if self.state.ir
                 && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
             {
-                return false;
+                return None;
             }
-            return self.state.irstack_depth > 0;
+
+            self.state.irstack_depth = self.state.irstack_depth.checked_sub(1)?;
+            return self
+                .state
+                .return_stack
+                .get(self.state.irstack_depth as usize)
+                .copied();
         }
-        return false;
+
+        None
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -613,17 +624,6 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         self.state.irstack_depth += 1;
 
         Ok(())
-    }
-
-    #[cfg(not(feature = "implicit_return"))]
-    fn pop_return_stack(&mut self) -> u64 {
-        unreachable!()
-    }
-
-    #[cfg(feature = "implicit_return")]
-    fn pop_return_stack(&mut self) -> u64 {
-        self.state.irstack_depth -= 1;
-        self.state.return_stack[self.state.irstack_depth as usize]
     }
 
     fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, Error> {
