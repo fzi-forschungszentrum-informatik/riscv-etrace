@@ -3,14 +3,12 @@
 
 use core::fmt;
 use core::fmt::Formatter;
-use core::ops::Range;
 
 pub mod format;
 
 #[cfg(test)]
 mod tests;
 
-use Kind::*;
 use OpCode::*;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
