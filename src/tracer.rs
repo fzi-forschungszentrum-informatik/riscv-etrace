@@ -644,7 +644,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
         let instr = self.get_instr(self.state.pc)?;
 
-        if instr.is_uninferable_discon() && trap.thaddr {
+        if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) && trap.thaddr {
             Ok(trap.address)
         } else if instr
             .kind
