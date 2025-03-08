@@ -378,7 +378,16 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     }
 
     fn branch_limit(&mut self) -> Result<u8, Error> {
-        Ok(self.get_instr(self.state.pc)?.is_branch as u8)
+        if self
+            .get_instr(self.state.pc)?
+            .kind
+            .and_then(instruction::Kind::branch_target)
+            .is_some()
+        {
+            Ok(1)
+        } else {
+            Ok(0)
+        }
     }
 
     #[cfg(feature = "implicit_return")]
