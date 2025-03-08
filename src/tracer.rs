@@ -595,13 +595,13 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         if imm.is_negative() {
             target = target.overflowing_sub(imm.abs() as u64).0
         } else {
-            target += target.overflowing_add(imm as u64).0;
+            target = target.overflowing_add(imm as u64).0;
         }
         if instr.name == Some(jalr) {
             if imm.is_negative() {
                 target = target.overflowing_sub(imm.abs() as u64).0
             } else {
-                target += target.overflowing_add(imm as u64).0;
+                target = target.overflowing_add(imm as u64).0;
             }
         }
         Ok(target)
