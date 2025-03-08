@@ -409,7 +409,11 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
             .get_privilege()
             .ok_or(Error::WrongGetPrivilegeType)?;
         Ok(priviledge == self.state.privilege
-            && self.get_instr(self.state.last_pc)?.is_return_from_trap())
+            && self
+                .get_instr(self.state.last_pc)?
+                .kind
+                .map(instruction::Kind::is_return_from_trap)
+                .unwrap_or(false))
     }
 
     #[cfg(feature = "tracing_v1")]
