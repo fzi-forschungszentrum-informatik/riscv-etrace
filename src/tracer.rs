@@ -465,14 +465,15 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     }
 
     fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error> {
+        use instruction::Kind;
+
         let instr = self.get_instr(self.state.pc)?;
         let this_pc = self.state.pc;
         let mut stop_here = false;
 
-        if instr.is_inferable_jump() {
-            let imm = instr.imm.ok_or(Error::ImmediateIsNone(instr))?;
-            self.incr_pc(imm);
-            if imm == 0 {
+        if let Some(target) = instr.kind.and_then(Kind::inferable_jump_target) {
+            self.incr_pc(target);
+            if target == 0 {
                 stop_here = true;
             }
         } else if self.is_sequential_jump(&instr, self.state.last_pc)? {
