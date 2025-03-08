@@ -486,10 +486,9 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
             }
             self.state.pc = address;
             stop_here = true;
-        } else if self.is_taken_branch(&instr)? {
-            let imm = instr.imm.ok_or(Error::ImmediateIsNone(instr))?;
-            self.incr_pc(imm);
-            if imm == 0 {
+        } else if let Some(target) = self.taken_branch_target(&instr)? {
+            self.incr_pc(target.into());
+            if target == 0 {
                 stop_here = true;
             }
         } else {
@@ -503,11 +502,16 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         Ok(stop_here)
     }
 
+    /// If the given instruction is a branch and it was taken, return its target
+    ///
+    /// This roughly corresponds to a combination of `is_taken_branch` of the
+    /// reference implementation.
     #[allow(clippy::wrong_self_convention)]
-    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, Error> {
-        if !instr.is_branch {
-            return Ok(false);
-        }
+    fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error> {
+        let Some(target) = instr.kind.and_then(instruction::Kind::branch_target) else {
+            // Not a branch instruction
+            return Ok(None);
+        };
         if self.state.branches == 0 {
             return Err(Error::UnresolvableBranch);
         }
@@ -516,7 +520,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
             .report_branch(self.state.branches, self.state.branch_map, taken);
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
-        Ok(taken)
+        Ok(taken.then_some(target))
     }
 
     #[cfg(not(feature = "implicit_return"))]
