@@ -193,7 +193,6 @@ impl Payload {
     ///   depth or nested call count.
     ///
     /// Returns `None` otherwise.
-    #[cfg(feature = "implicit_return")]
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
             Payload::Address(a) => a.irdepth,
