@@ -9,6 +9,7 @@ use crate::ProtocolConfiguration;
 use core::fmt;
 
 pub mod cache;
+pub mod stack;
 
 use cache::InstructionCache;
 
