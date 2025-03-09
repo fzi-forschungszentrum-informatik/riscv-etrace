@@ -180,13 +180,36 @@ impl Payload {
         }
     }
 
+    /// Retrieve the implicit return depth
+    ///
+    /// Returns the number of entries on the return address stack (i.e. the
+    /// entry number of the return that failed) or nested call count if the
+    /// instruction reported by the packet is either:
+    /// * following a return because its address differs from the predicted
+    ///   return address at the top of the implicit_return return address stack,
+    ///   or
+    /// * the last retired before an exception, interrupt, privilege change or
+    ///   resync because it is necessary to report the current address stack
+    ///   depth or nested call count.
+    ///
+    /// Returns `None` otherwise.
     #[cfg(feature = "implicit_return")]
-    pub fn get_implicit_return(&self) -> Option<ImplicitReturn> {
+    pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
-            Payload::Address(a) => Some(a.ir),
-            Payload::Branch(b) => b.address.map(|a| a.ir),
-            Payload::Extension(Extension::BranchCount(b)) => b.address.map(|a| a.ir),
-            Payload::Extension(Extension::JumpTargetIndex(j)) => Some(j.ir),
+            Payload::Address(a) => a.ir.irreport.then_some(a.ir.irdepth as usize),
+            Payload::Branch(b) => b
+                .address
+                .map(|a| a.ir)
+                .filter(|i| i.irreport)
+                .map(|i| i.irdepth as usize),
+            Payload::Extension(Extension::BranchCount(b)) => b
+                .address
+                .map(|a| a.ir)
+                .filter(|i| i.irreport)
+                .map(|i| i.irdepth as usize),
+            Payload::Extension(Extension::JumpTargetIndex(j)) => {
+                j.ir.irreport.then_some(j.ir.irdepth as usize)
+            }
             _ => None,
         }
     }

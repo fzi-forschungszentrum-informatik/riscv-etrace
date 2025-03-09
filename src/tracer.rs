@@ -400,10 +400,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn follow_execution_path_ir_state(&self, payload: &Payload) -> bool {
-        self.state.ir
-            || payload
-                .get_implicit_return()
-                .map_or(false, |ir| ir.irdepth == self.state.irstack_depth)
+        self.state.ir || payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -613,10 +610,10 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 name,
                 Kind::jalr(TypeI { rd: 0, rs1: 1, .. }) | Kind::c_jr(TypeR { rs1: 1, .. })
             ) {
-                if let Some(ir) = payload.get_implicit_return() {
-                    if self.state.ir && ir.irdepth == self.state.irstack_depth {
-                        return false;
-                    }
+                if self.state.ir
+                    && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
+                {
+                    return false;
                 }
                 return self.state.irstack_depth > 0;
             }
