@@ -5,8 +5,6 @@
 use super::{Decode, Decoder, Error};
 use crate::tracer;
 
-use core::fmt;
-
 fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
     let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
     decoder
@@ -224,21 +222,12 @@ pub enum Extension {
 
 /// #### Format 0, sub format 0
 /// Extension to report the number of correctly predicted branches.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct BranchCount {
     /// Count of the number of correctly predicted branches, minus 31.
     pub branch_count: u32,
     pub branch_fmt: BranchFmt,
     pub address: Option<AddressInfo>,
-}
-
-impl fmt::Debug for BranchCount {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "BranchCount {{ branch_count: {:x}, branch_fmt: {:?}, address: {:#0?} }}",
-            self.branch_count, self.branch_fmt, self.address
-        ))
-    }
 }
 
 impl Decode for BranchCount {
@@ -299,7 +288,7 @@ impl Decode for JumpTargetIndex {
 /// This packet includes branch information, and is used when either the branch information must be
 /// reported (for example because the branch map is full), or when the address of an instruction must
 /// be reported, and there has been at least one branch since the previous packet
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Branch {
     /// Number of valid bits branch_map.
     pub branches: u8,
@@ -331,20 +320,11 @@ impl Decode for Branch {
     }
 }
 
-impl fmt::Debug for Branch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "Branch {{ branches: {}, branch_map: 0b{:b}, adress: {:?} }}",
-            self.branches, self.branch_map, self.address
-        ))
-    }
-}
-
 /// #### Format 2
 /// This packet contains only an instruction address, and is used when the address of an instruction
 /// must be reported, and there is no unreported branch information. The address is in differential
 /// format unless full address mode is enabled.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AddressInfo {
     /// Differential instruction address.
     pub address: u64,
@@ -385,15 +365,6 @@ impl Decode for AddressInfo {
     }
 }
 
-impl fmt::Debug for AddressInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
-            self.address, self.notify, self.updiscon
-        ))
-    }
-}
-
 /// #### Format 3
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Synchronization {
@@ -425,7 +396,7 @@ impl Synchronization {
 
 /// #### Format 3, sub format 0
 /// Sent for the first traced instruction or when resynchronization is necessary.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Start {
     /// False, if the address is a taken branch instruction. True, if the branch was not taken
     /// or the instruction is not a branch.
@@ -448,18 +419,9 @@ impl Decode for Start {
     }
 }
 
-impl fmt::Debug for Start {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "Start {{ branch: {:?}, privilege: {:?}, address: {:#0x} }}",
-            self.branch, self.ctx.privilege, self.address
-        ))
-    }
-}
-
 /// #### Format 3, sub format 1
 /// Sent following an exception or interrupt.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Trap {
     /// False, if the address is a taken branch instruction. True, if the branch was not taken
     /// or the instruction is not a branch.
@@ -474,14 +436,6 @@ pub struct Trap {
     pub address: u64,
     /// Value from appropriate *tval CSR.
     pub tval: u64,
-}
-
-impl fmt::Debug for Trap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(
-            format_args!("Trap {{ branch: {:?}, privilege: {:?}, ecause: {:?}, interrupt: {:?}, thaddr: {:?}, address: {:#0x}, tval: {:?} }}",
-            self.branch, self.ctx.privilege, self.ecause, self.interrupt, self.thaddr, self.address, self.tval))
-    }
 }
 
 impl Decode for Trap {

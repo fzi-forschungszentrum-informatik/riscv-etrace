@@ -29,13 +29,6 @@ pub enum Error {
     WrongTraceType(TraceType),
     /// The branch format in [BranchCount] is `0b01`.
     BadBranchFmt,
-    /// The packet cannot be parsed because the next read of bits would be outside the packet buffer
-    /// or too many bits (> 64) were requested.
-    ReadTooLong {
-        bit_pos: usize,
-        bit_count: usize,
-        buffer_size: usize,
-    },
     /// Some more bytes of data are required for the operation to succeed
     InsufficientData(NonZeroUsize),
     /// The privilege level is not known. You might want to implement it.
@@ -50,14 +43,6 @@ impl fmt::Display for Error {
             Self::UnknownTraceType(t) => write!(f, "Unknown trace type {t}"),
             Self::WrongTraceType(t) => write!(f, "Unexpected trace type {t}"),
             Self::BadBranchFmt => write!(f, "Malformed branch format"),
-            Self::ReadTooLong {
-                bit_pos,
-                bit_count,
-                buffer_size,
-            } => write!(
-                f,
-                "Read if {bit_count} bits from {bit_pos} exceds buffer of size {buffer_size}",
-            ),
             Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
         }
@@ -84,7 +69,7 @@ impl Default for Decoder<'static> {
     }
 }
 
-impl<'d> Decoder<'d> {
+impl Decoder<'_> {
     pub fn new(proto_conf: ProtocolConfiguration) -> Self {
         Decoder {
             data: &[],
