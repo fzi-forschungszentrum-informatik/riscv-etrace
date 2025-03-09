@@ -287,7 +287,7 @@ impl Decode for JumpTargetIndex {
 /// This packet includes branch information, and is used when either the branch information must be
 /// reported (for example because the branch map is full), or when the address of an instruction must
 /// be reported, and there has been at least one branch since the previous packet
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Branch {
     /// Number of valid bits branch_map.
     pub branches: u8,
@@ -316,15 +316,6 @@ impl Decode for Branch {
             branch_map,
             address,
         })
-    }
-}
-
-impl fmt::Debug for Branch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "Branch {{ branches: {}, branch_map: 0b{:b}, adress: {:?} }}",
-            self.branches, self.branch_map, self.address
-        ))
     }
 }
 
