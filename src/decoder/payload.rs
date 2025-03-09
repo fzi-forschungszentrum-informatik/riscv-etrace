@@ -199,9 +199,7 @@ impl Payload {
             Payload::Address(a) => a.irdepth,
             Payload::Branch(b) => b.address.and_then(|a| a.irdepth),
             Payload::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
-            Payload::Extension(Extension::JumpTargetIndex(j)) => {
-                j.ir.irreport.then_some(j.ir.irdepth as usize)
-            }
+            Payload::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
             _ => None,
         }
     }
@@ -281,8 +279,9 @@ pub struct JumpTargetIndex {
     pub branches: usize,
     /// An array of bits indicating whether branches are taken (true) or not (false).
     pub branch_map: Option<u32>,
-    #[cfg(feature = "implicit_return")]
-    pub ir: ImplicitReturn,
+
+    /// Implicit return depth
+    pub irdepth: Option<usize>,
 }
 
 impl Decode for JumpTargetIndex {
@@ -296,14 +295,12 @@ impl Decode for JumpTargetIndex {
             Some(branch_map & ((1 << branches) - 1))
         };
 
-        #[cfg(feature = "implicit_return")]
-        let ir = ImplicitReturn::decode(decoder)?;
+        let irdepth = read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
             index,
             branches: branch_map_len as usize,
             branch_map,
-            #[cfg(feature = "implicit_return")]
-            ir,
+            irdepth,
         })
     }
 }
