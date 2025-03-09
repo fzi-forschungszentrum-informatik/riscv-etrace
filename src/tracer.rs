@@ -561,7 +561,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         instr: &Instruction,
         prev_addr: u64,
     ) -> Result<bool, Error> {
-        if !instr.is_uninferable_jump() && self.proto_conf.sijump_p {
+        if !(instr.is_uninferable_jump() && self.proto_conf.sijump_p) {
             return Ok(false);
         }
 
@@ -595,13 +595,13 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         if imm.is_negative() {
             target = target.overflowing_sub(imm.abs() as u64).0
         } else {
-            target += target.overflowing_add(imm as u64).0;
+            target = target.overflowing_add(imm as u64).0;
         }
         if instr.name == Some(jalr) {
             if imm.is_negative() {
                 target = target.overflowing_sub(imm.abs() as u64).0
             } else {
-                target += target.overflowing_add(imm as u64).0;
+                target = target.overflowing_add(imm as u64).0;
             }
         }
         Ok(target)
@@ -622,8 +622,8 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                         return false;
                     }
                 }
+                return self.state.irstack_depth > 0;
             }
-            return self.state.irstack_depth > 0;
         }
         return false;
     }
