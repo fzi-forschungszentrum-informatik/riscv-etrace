@@ -121,44 +121,6 @@ impl Decode for QualStatus {
     }
 }
 
-#[cfg(feature = "implicit_return")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct ImplicitReturn {
-    /// Implicit return report
-    ///
-    /// If `true`, packet is reporting an instruction that is either:
-    /// * following a return because its address differs from the predicted
-    ///   return address at the top of the implicit_return return address stack,
-    ///   or
-    /// * the last retired before an exception, interrupt, privilege change or
-    ///   resync because it is necessary to report the current address stack
-    ///   depth or nested call count.
-    pub irreport: bool,
-
-    /// If [Self::irreport] is `true`, this field indicates the number of
-    /// entries on the return address stack (i.e. the entry number of the return
-    /// that failed) or nested call count. If irreport is the same value as
-    /// updiscon, all bits in this field will also be the same value as
-    /// updiscon.
-    pub irdepth: u64,
-}
-
-#[cfg(feature = "implicit_return")]
-impl Decode for ImplicitReturn {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let irreport = decoder.read_differential_bit()?;
-        let irdepth_len = decoder.proto_conf.return_stack_size_p
-            + decoder.proto_conf.call_counter_size_p
-            + (if decoder.proto_conf.return_stack_size_p > 0 {
-                1
-            } else {
-                0
-            });
-        let irdepth = decoder.read_bits(irdepth_len)?;
-        Ok(ImplicitReturn { irreport, irdepth })
-    }
-}
-
 /// Top level enum for all possible payload formats.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload {
