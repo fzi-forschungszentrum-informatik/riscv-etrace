@@ -196,17 +196,9 @@ impl Payload {
     #[cfg(feature = "implicit_return")]
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
-            Payload::Address(a) => a.ir.irreport.then_some(a.ir.irdepth as usize),
-            Payload::Branch(b) => b
-                .address
-                .map(|a| a.ir)
-                .filter(|i| i.irreport)
-                .map(|i| i.irdepth as usize),
-            Payload::Extension(Extension::BranchCount(b)) => b
-                .address
-                .map(|a| a.ir)
-                .filter(|i| i.irreport)
-                .map(|i| i.irdepth as usize),
+            Payload::Address(a) => a.irdepth,
+            Payload::Branch(b) => b.address.and_then(|a| a.irdepth),
+            Payload::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
             Payload::Extension(Extension::JumpTargetIndex(j)) => {
                 j.ir.irreport.then_some(j.ir.irdepth as usize)
             }
@@ -376,8 +368,8 @@ pub struct AddressInfo {
     /// immediately by a format 3 packet).
     pub updiscon: bool,
 
-    #[cfg(feature = "implicit_return")]
-    pub ir: ImplicitReturn,
+    /// Implicit return depth
+    pub irdepth: Option<usize>,
 }
 
 impl Decode for AddressInfo {
@@ -385,14 +377,12 @@ impl Decode for AddressInfo {
         let address = read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;
-        #[cfg(feature = "implicit_return")]
-        let ir = ImplicitReturn::decode(decoder)?;
+        let irdepth = read_implicit_return(decoder)?;
         Ok(AddressInfo {
             address,
             notify,
             updiscon,
-            #[cfg(feature = "implicit_return")]
-            ir,
+            irdepth,
         })
     }
 }

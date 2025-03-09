@@ -193,6 +193,7 @@ fn branch() {
             address: 0,
             notify: false,
             updiscon: false,
+            irdepth: None,
         })
     );
 }
