@@ -20,24 +20,24 @@ pub struct Header {
 }
 
 impl Decode for Header {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        let payload_length = decoder.read(5, slice)?;
-        let trace_type = TraceType::decode(decoder, slice)?;
-        let has_timestamp = decoder.read_bit(slice)?;
+    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+        let payload_len = decoder.read_bits(5)?;
+        let trace_type = TraceType::decode(decoder)?;
+        let has_timestamp = decoder.read_bit()?;
         #[cfg(feature = "time_tag")]
-        let time_tag = Some(decoder.read(16, slice)? as u16);
-        let cpu_index = decoder.read(decoder.proto_conf.cpu_index_width.into(), slice)?;
+        let time_tag = Some(decoder.read_bits(16)?);
+        let hart_index = decoder.read_bits(decoder.proto_conf.cpu_index_width)?;
         if trace_type != TraceType::Instruction {
             return Err(Error::WrongTraceType(trace_type));
         }
 
         Ok(Header {
-            payload_len: payload_length.try_into().unwrap(),
+            payload_len,
             trace_type,
             has_timestamp,
             #[cfg(feature = "time_tag")]
             time_tag,
-            hart_index: cpu_index.try_into().unwrap(),
+            hart_index,
         })
     }
 }
@@ -57,10 +57,10 @@ impl fmt::Display for TraceType {
 }
 
 impl Decode for TraceType {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error> {
-        match decoder.read(2, slice)? {
+    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+        match decoder.read_bits::<u8>(2)? {
             0b10 => Ok(TraceType::Instruction),
-            unknown => Err(Error::UnknownTraceType(unknown)),
+            unknown => Err(Error::UnknownTraceType(unknown.into())),
         }
     }
 }

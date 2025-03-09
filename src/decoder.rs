@@ -3,6 +3,8 @@
 
 //! Implements the packet decoder.
 use core::fmt;
+use core::num::NonZeroUsize;
+use core::ops;
 
 use crate::decoder::format::Format;
 use crate::decoder::header::*;
@@ -12,11 +14,12 @@ use crate::{ProtocolConfiguration};
 mod format;
 pub mod header;
 pub mod payload;
+pub mod truncate;
 
 #[cfg(test)]
 mod tests;
 
-use Error::ReadTooLong;
+use truncate::TruncateNum;
 
 /// Defines the decoder specific configuration. Used only by the [decoder](self).
 #[derive(Copy, Clone, Debug)]
@@ -45,6 +48,8 @@ pub enum Error {
         bit_count: usize,
         buffer_size: usize,
     },
+    /// Some more bytes of data are required for the operation to succeed
+    InsufficientData(NonZeroUsize),
     /// The privilege level is not known. You might want to implement it.
     UnknownPrivilege(u8),
 }
@@ -65,6 +70,7 @@ impl fmt::Display for Error {
                 f,
                 "Read if {bit_count} bits from {bit_pos} exceds buffer of size {buffer_size}",
             ),
+            Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
         }
     }
@@ -77,92 +83,42 @@ pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 20;
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
 /// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
-pub struct Decoder {
+#[derive(Clone)]
+pub struct Decoder<'d> {
+    data: &'d [u8],
     bit_pos: usize,
     proto_conf: ProtocolConfiguration,
     decoder_conf: DecoderConfiguration,
 }
 
-impl Default for Decoder {
+impl Default for Decoder<'static> {
     fn default() -> Self {
         Decoder::new(ProtocolConfiguration::default(), DecoderConfiguration::default())
     }
 }
 
-impl Decoder {
+impl<'d> Decoder<'d> {
     pub fn new(proto_conf: ProtocolConfiguration, decoder_conf: DecoderConfiguration) -> Self {
         Decoder {
+            data: &[],
             bit_pos: 0,
             proto_conf,
             decoder_conf,
         }
     }
 
-    fn reset(&mut self) {
-        self.bit_pos = 0;
-    }
-
-    fn read_bit(&mut self, slice: &[u8]) -> Result<bool, Error> {
-        if self.bit_pos >= slice.len() * 8 {
-            return Err(ReadTooLong {
-                buffer_size: slice.len() * 8,
-                bit_count: 1,
-                bit_pos: self.bit_pos,
-            });
-        }
-        let byte_pos = self.bit_pos / 8;
-        let mut value = slice[byte_pos];
-        value >>= self.bit_pos % 8;
-        self.bit_pos += 1;
-        Ok((value & 1_u8) == 0x01)
-    }
-
-    fn read(&mut self, bit_count: usize, slice: &[u8]) -> Result<u64, Error> {
-        if bit_count == 0 {
-            return Ok(0);
-        }
-        if bit_count > 64 {
-            return Err(ReadTooLong {
-                buffer_size: slice.len() * 8,
-                bit_count,
-                bit_pos: self.bit_pos,
-            });
-        }
-        if bit_count + self.bit_pos > slice.len() * 8 {
-            return Err(ReadTooLong {
-                buffer_size: slice.len() * 8,
-                bit_count,
-                bit_pos: self.bit_pos,
-            });
-        }
-        let byte_pos = self.bit_pos / 8;
-        let mut value = u64::from_le_bytes(slice[byte_pos..byte_pos + 8].try_into().unwrap());
-        // Ignore first 'self.bit_pos' LSBs in first byte as they are already consumed.
-        value >>= self.bit_pos % 8;
-        // Zero out everything except 'bit_count' LSBs if bit_count != 64.
-        if bit_count < 64 {
-            value &= (1_u64 << bit_count) - 1;
-        }
-        self.bit_pos += bit_count;
-        // Check if we need to read into the 9th byte because of an unaligned read
-        if self.bit_pos > ((byte_pos + 8) * 8) {
-            let missing_bit_count = (self.bit_pos - ((byte_pos + 8) * 8)) % 8;
-            // Take 9th byte and mask MSBs that will not be read
-            let missing_msbs = slice[byte_pos + 8] & u8::MAX >> (8 - missing_bit_count);
-            // Shift MSBs into correct position in u64 and add with previously read value
-            let msbs_u64 = (missing_msbs as u64) << (bit_count - missing_bit_count);
-            Ok(value + msbs_u64)
-        } else {
-            Ok(value)
+    /// Set the data being decoded
+    pub fn with_data(self, data: &[u8]) -> Decoder<'_> {
+        Decoder {
+            data,
+            bit_pos: 0,
+            ..self
         }
     }
 
-    /// Decodes a single packet consisting of header and payload from a continuous slice of memory.
-    /// Returns immediately after parsing one packet and returns how many bits were read.
-    /// Further bytes are ignored.
-    pub fn decode_packet(&mut self, slice: &[u8]) -> Result<Packet, Error> {
-        self.reset();
-        let header = Header::decode(self, slice)?;
+    /// Decode a single [Packet] consisting of header and payload
+    pub fn decode_packet(&mut self) -> Result<Packet, Error> {
+        let header = Header::decode(self)?;
         // Set the bit position to the beginning of the start of the next byte for payload decoding
         // if not at the first bit of the first payload byte.
         if self.bit_pos % 8 != 0 {
@@ -173,23 +129,23 @@ impl Decoder {
 
         if self.decoder_conf.decompress {
             debug_assert!(header.payload_len <= PAYLOAD_MAX_DECOMPRESSED_LEN);
-            let mut sign_expanded = if slice[payload_start + header.payload_len - 1] & 0x80 == 0 {
+            let mut sign_expanded = if self.data[payload_start + header.payload_len - 1] & 0x80 == 0
+            {
                 [0; PAYLOAD_MAX_DECOMPRESSED_LEN]
             } else {
                 [0xFF; PAYLOAD_MAX_DECOMPRESSED_LEN]
             };
             sign_expanded[0..header.payload_len]
-                .copy_from_slice(&slice[payload_start..header.payload_len + payload_start]);
-            self.reset();
-            let payload =
-                Format::decode(self, &sign_expanded)?.decode_payload(self, &sign_expanded)?;
+                .copy_from_slice(&self.data[payload_start..header.payload_len + payload_start]);
+            let mut decoder = self.clone().with_data(&sign_expanded);
+            let payload = Format::decode(&mut decoder)?.decode_payload(self)?;
             Ok(Packet {
                 header,
                 payload,
                 len,
             })
         } else {
-            let payload = Format::decode(self, slice)?.decode_payload(self, slice)?;
+            let payload = Format::decode(self)?.decode_payload(self)?;
             Ok(Packet {
                 header,
                 payload,
@@ -197,10 +153,64 @@ impl Decoder {
             })
         }
     }
+
+    /// Read a single bit
+    fn read_bit(&mut self) -> Result<bool, Error> {
+        let res = (self.get_byte(self.bit_pos >> 3)? >> (self.bit_pos & 0x07)) & 0x1;
+        self.bit_pos += 1;
+        Ok(res != 0)
+    }
+
+    /// Read a number of bits as an integer
+    ///
+    /// Unsigned integers will be left-padded with zeroes, signed integers will
+    /// be sign-extended.
+    ///
+    /// # Safety
+    ///
+    /// May panic if `bit_count` is higher then the bit width of the target
+    /// integer.
+    fn read_bits<T>(&mut self, bit_count: u8) -> Result<T, Error>
+    where
+        T: From<u8>
+            + ops::Shl<usize, Output = T>
+            + ops::Shr<usize, Output = T>
+            + ops::BitOrAssign<T>
+            + TruncateNum,
+    {
+        let lowest_bits = self.bit_pos & 0x07;
+        let mut byte_pos = self.bit_pos >> 3;
+        let mut res = T::from(self.get_byte(byte_pos)?) >> lowest_bits;
+        let mut bits_extracted = 8 - lowest_bits;
+
+        while bits_extracted < bit_count.into() {
+            byte_pos += 1;
+            res |= T::from(self.get_byte(byte_pos)?) << bits_extracted;
+            bits_extracted += 8;
+        }
+
+        self.bit_pos += usize::from(bit_count);
+        Ok(res.truncated(bit_count))
+    }
+
+    /// Get the byte at the given byte position
+    ///
+    /// If the byte position is past the end of the current data source, the
+    /// result of a decompression if returned.
+    fn get_byte(&self, pos: usize) -> Result<u8, Error> {
+        if let Some(byte) = self.data.get(pos) {
+            Ok(*byte)
+        } else {
+            self.data
+                .last()
+                .map(|b| if b & 0x80 != 0 { 0xFF } else { 0x00 })
+                .ok_or(Error::InsufficientData(NonZeroUsize::MIN))
+        }
+    }
 }
 
 trait Decode: Sized {
-    fn decode(decoder: &mut Decoder, slice: &[u8]) -> Result<Self, Error>;
+    fn decode(decoder: &mut Decoder) -> Result<Self, Error>;
 }
 
 /// A single protocol packet emitted by the encoder.

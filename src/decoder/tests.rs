@@ -19,21 +19,20 @@ fn read_u64() {
     buffer[11] = 0b1;
     // ...
     buffer[18] = 0b11_110000;
-    let mut decoder = Decoder::default();
-    decoder.reset();
+    let mut decoder = Decoder::default().with_data(&buffer);
     // testing for bit position
-    assert_eq!(decoder.read(6, &buffer).unwrap(), 0b011111);
+    assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
     assert_eq!(decoder.bit_pos, 6);
-    assert_eq!(decoder.read(2, &buffer).unwrap(), 0b01);
+    assert_eq!(decoder.read_bits(2), Ok(0b01u64));
     assert_eq!(decoder.bit_pos, 8);
-    assert_eq!(decoder.read(6, &buffer).unwrap(), 0b011111);
+    assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
     assert_eq!(decoder.bit_pos, 14);
     // read over byte boundary
-    assert_eq!(decoder.read(10, &buffer).unwrap(), 0b1001001001);
+    assert_eq!(decoder.read_bits(10), Ok(0b1001001001u64));
     assert_eq!(decoder.bit_pos, 24);
-    assert_eq!(decoder.read(62, &buffer).unwrap(), 0x3FFF_F0F0_F0F0_F0F1);
+    assert_eq!(decoder.read_bits(62), Ok(0x3FFF_F0F0_F0F0_F0F1u64));
     assert_eq!(decoder.bit_pos, 86);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), 0xC000_0000_0000_0005);
+    assert_eq!(decoder.read_bits(64), Ok(0xC000_0000_0000_0005u64));
     assert_eq!(decoder.bit_pos, 150);
 }
 
@@ -49,36 +48,33 @@ fn read_i64() {
     buffer[6] = 0xFF;
     buffer[7] = 0xFF;
     buffer[8] = 0b1;
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    assert_eq!(decoder.read(1, &buffer).unwrap(), 0);
-    assert_eq!(decoder.read(64, &buffer).unwrap() as i64, -24);
+    let mut decoder = Decoder::default().with_data(&buffer);
+    assert_eq!(decoder.read_bits(1), Ok(0i64));
+    assert_eq!(decoder.read_bits(64), Ok(-24i64));
 }
 
 #[test]
 fn read_entire_buffer() {
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
-    assert_eq!(decoder.read(64, &buffer).unwrap(), u64::MAX);
+    let mut decoder = Decoder::default().with_data(&buffer);
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
+    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
 }
 
 #[test]
 fn read_bool_bits() {
     let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
-    assert!(decoder.read_bit(&buffer).unwrap());
-    assert!(!decoder.read_bit(&buffer).unwrap());
+    let mut decoder = Decoder::default().with_data(&buffer);
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
+    assert_eq!(decoder.read_bit(), Ok(true));
+    assert_eq!(decoder.read_bit(), Ok(false));
 }
 
 #[test]
@@ -93,11 +89,10 @@ fn missing_msb_shift_is_correct() {
     buffer[6] = 0xFF;
     buffer[7] = 0xFF;
     buffer[8] = 0b00_111111;
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    assert_eq!(decoder.read(6, &buffer).unwrap(), 0);
+    let mut decoder = Decoder::default().with_data(&buffer);
+    assert_eq!(decoder.read_bits(6), Ok(0i64));
     // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
-    assert_eq!((decoder.read(63, &buffer).unwrap() << 1), -248i64 as u64);
+    assert_eq!(decoder.read_bits(63), Ok(-124i64));
 }
 
 // `format` related tests
@@ -107,12 +102,11 @@ fn sync() {
     use format::Sync;
 
     let buffer = [0b10_01_00_11_u8; 32];
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Support);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Start);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Trap);
-    assert_eq!(Sync::decode(&mut decoder, &buffer).unwrap(), Sync::Context);
+    let mut decoder = Decoder::default().with_data(&buffer);
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Support));
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Start));
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Trap));
+    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Context));
 }
 
 #[test]
@@ -120,16 +114,9 @@ fn extension() {
     use format::Ext;
 
     let buffer = [0b0010u8; 32];
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    assert_eq!(
-        Ext::decode(&mut decoder, &buffer).unwrap(),
-        Ext::BranchCount
-    );
-    assert_eq!(
-        Ext::decode(&mut decoder, &buffer).unwrap(),
-        Ext::JumpTargetIndex
-    );
+    let mut decoder = Decoder::default().with_data(&buffer);
+    assert_eq!(Ext::decode(&mut decoder), Ok(Ext::BranchCount));
+    assert_eq!(Ext::decode(&mut decoder), Ok(Ext::JumpTargetIndex));
 }
 
 #[test]
@@ -139,21 +126,14 @@ fn format() {
     let mut buffer = [0u8; 32];
     buffer[0] = 0b1_10_01_100;
     buffer[1] = 0b00000_011;
-    let mut decoder = Decoder::default();
-    decoder.reset();
+    let mut decoder = Decoder::default().with_data(&buffer);
     assert_eq!(
-        Format::decode(&mut decoder, &buffer).unwrap(),
-        Format::Ext(Ext::JumpTargetIndex),
+        Format::decode(&mut decoder),
+        Ok(Format::Ext(Ext::JumpTargetIndex)),
     );
-    assert_eq!(
-        Format::decode(&mut decoder, &buffer).unwrap(),
-        Format::Branch
-    );
-    assert_eq!(Format::decode(&mut decoder, &buffer).unwrap(), Format::Addr);
-    assert_eq!(
-        Format::decode(&mut decoder, &buffer).unwrap(),
-        Format::Sync(Sync::Trap)
-    );
+    assert_eq!(Format::decode(&mut decoder), Ok(Format::Branch));
+    assert_eq!(Format::decode(&mut decoder), Ok(Format::Addr));
+    assert_eq!(Format::decode(&mut decoder), Ok(Format::Sync(Sync::Trap)));
 }
 
 // `payload` related tests
@@ -177,14 +157,14 @@ fn extension_jti() {
             ..protocol_config
         },
         decoder_config,
-    );
+    )
+    .with_data(&buffer);
 
-    decoder.reset();
-    let jti_long = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
+    let jti_long = JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_long.index, 768);
     assert_eq!(jti_long.branches, 31);
     assert_eq!(jti_long.branch_map, Some(10));
-    let jti_short = JumpTargetIndex::decode(&mut decoder, &buffer).unwrap();
+    let jti_short = JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
     assert_eq!(jti_short.branches, 0);
     assert_eq!(jti_short.branch_map, None);
@@ -195,9 +175,8 @@ fn branch() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b010_00111;
     buffer[1] = 0b0000_1011;
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    let branch = Branch::decode(&mut decoder, &buffer).unwrap();
+    let mut decoder = Decoder::default().with_data(&buffer);
+    let branch = Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch.branches, 7);
     assert_eq!(branch.branch_map, 0b1011_010);
     assert_eq!(
@@ -215,9 +194,8 @@ fn branch_with_zero_branches() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b000_00000;
     buffer[1] = 0b100;
-    let mut decoder = Decoder::default();
-    decoder.reset();
-    let branch_no_addr = Branch::decode(&mut decoder, &buffer).unwrap();
+    let mut decoder = Decoder::default().with_data(&buffer);
+    let branch_no_addr = Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch_no_addr.branches, 0);
     assert_eq!(branch_no_addr.branch_map, 32);
     assert_eq!(branch_no_addr.address, None);
@@ -243,14 +221,15 @@ fn address() {
             ..protocol_config
         },
         decoder_config,
-    );
-    decoder.reset();
-    let addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
+    )
+    .with_data(&buffer);
+    let addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(addr.address, 4);
     assert!(addr.notify);
     assert!(addr.updiscon);
+
     // differential address
-    let diff_addr = AddressInfo::decode(&mut decoder, &buffer).unwrap();
+    let diff_addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(diff_addr.address, 4);
     assert!(!diff_addr.notify);
     assert!(diff_addr.updiscon);
@@ -269,9 +248,9 @@ fn synchronization_start() {
             ..protocol_config
         },
         decoder_config,
-    );
-    decoder.reset();
-    let sync_start = Start::decode(&mut decoder, &buffer).unwrap();
+    )
+    .with_data(&buffer);
+    let sync_start = Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
     assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
     assert_eq!(sync_start.address, u64::MAX);
