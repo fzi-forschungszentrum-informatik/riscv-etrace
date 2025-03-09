@@ -388,7 +388,7 @@ impl Synchronization {
 
 /// #### Format 3, sub format 0
 /// Sent for the first traced instruction or when resynchronization is necessary.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Start {
     /// False, if the address is a taken branch instruction. True, if the branch was not taken
     /// or the instruction is not a branch.
@@ -408,15 +408,6 @@ impl Decode for Start {
             ctx,
             address,
         })
-    }
-}
-
-impl fmt::Debug for Start {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "Start {{ branch: {:?}, privilege: {:?}, address: {:#0x} }}",
-            self.branch, self.ctx.privilege, self.address
-        ))
     }
 }
 
