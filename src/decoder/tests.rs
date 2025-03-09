@@ -198,15 +198,12 @@ fn branch_with_zero_branches() {
 }
 
 #[test]
-fn address() {
+fn address_absolute() {
     let protocol_config = ProtocolConfiguration::default();
 
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b11_000000;
-    // test differential addr with second address
-    buffer[8] = 0b0000_0001;
-    buffer[15] = 0b10_000000;
     let mut decoder = Decoder::new(ProtocolConfiguration {
         // Changed address width and lsb, so that the entire
         // packet aligns with 64 bit
@@ -215,12 +212,29 @@ fn address() {
         ..protocol_config
     })
     .with_data(&buffer);
+
     let addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(addr.address, 4);
     assert!(addr.notify);
     assert!(!addr.updiscon);
+}
 
-    // differential address
+#[test]
+fn address_differential() {
+    let protocol_config = ProtocolConfiguration::default();
+
+    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+    buffer[0] = 0b0000_0001;
+    buffer[7] = 0b10_000000;
+    let mut decoder = Decoder::new(ProtocolConfiguration {
+        // Changed address width and lsb, so that the entire
+        // packet aligns with 64 bit
+        iaddress_width_p: 64,
+        iaddress_lsb_p: 2,
+        ..protocol_config
+    })
+    .with_data(&buffer);
+
     let diff_addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(diff_addr.address, 4);
     assert!(!diff_addr.notify);
