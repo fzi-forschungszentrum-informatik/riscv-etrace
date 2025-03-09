@@ -127,11 +127,8 @@ pub struct ProtocolConfiguration {
     pub cpu_index_width: u8,
     pub encoder_mode_n: u8,
     pub ioptions_n: u8,
-    #[cfg(feature = "implicit_return")]
     pub sijump_p: bool,
-    #[cfg(feature = "implicit_return")]
     pub call_counter_size_p: u8,
-    #[cfg(feature = "implicit_return")]
     pub return_stack_size_p: u8,
 }
 
@@ -148,12 +145,9 @@ impl Default for ProtocolConfiguration {
             cpu_index_width: 2,
             encoder_mode_n: 1,
             ioptions_n: 5,
-            #[cfg(feature = "implicit_return")]
-            sijump_p: true,
-            #[cfg(feature = "implicit_return")]
-            call_counter_size_p: 2,
-            #[cfg(feature = "implicit_return")]
-            return_stack_size_p: 32,
+            sijump_p: false,
+            call_counter_size_p: 0,
+            return_stack_size_p: 0,
         }
     }
 }
