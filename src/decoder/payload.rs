@@ -221,21 +221,12 @@ pub enum Extension {
 
 /// #### Format 0, sub format 0
 /// Extension to report the number of correctly predicted branches.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct BranchCount {
     /// Count of the number of correctly predicted branches, minus 31.
     pub branch_count: u32,
     pub branch_fmt: BranchFmt,
     pub address: Option<AddressInfo>,
-}
-
-impl fmt::Debug for BranchCount {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "BranchCount {{ branch_count: {:x}, branch_fmt: {:?}, address: {:#0?} }}",
-            self.branch_count, self.branch_fmt, self.address
-        ))
-    }
 }
 
 impl Decode for BranchCount {
