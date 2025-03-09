@@ -139,19 +139,16 @@ fn format() {
 // `payload` related tests
 
 #[test]
-fn extension_jti() {
+fn extension_jti_1() {
     let protocol_config = ProtocolConfiguration::default();
 
-    let cache_size_p_override = 10;
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b00000000;
     buffer[1] = 0b0_11111_11;
     buffer[2] = 0b00000_101;
-    // ...
-    buffer[5] = 0b11_000000;
-    buffer[6] = 0b11111111;
+
     let mut decoder = Decoder::new(ProtocolConfiguration {
-        cache_size_p: cache_size_p_override,
+        cache_size_p: 10,
         ..protocol_config
     })
     .with_data(&buffer);
@@ -160,6 +157,21 @@ fn extension_jti() {
     assert_eq!(jti_long.index, 768);
     assert_eq!(jti_long.branches, 31);
     assert_eq!(jti_long.branch_map, Some(10));
+}
+
+#[test]
+fn extension_jti_2() {
+    let protocol_config = ProtocolConfiguration::default();
+
+    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
+    buffer[0] = 0b11111111;
+    buffer[1] = 0b00000011;
+    let mut decoder = Decoder::new(ProtocolConfiguration {
+        cache_size_p: 10,
+        ..protocol_config
+    })
+    .with_data(&buffer);
+
     let jti_short = JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
     assert_eq!(jti_short.branches, 0);
