@@ -5,7 +5,12 @@ use core::fmt;
 use core::fmt::Formatter;
 use core::ops::Range;
 
-use Name::*;
+pub mod format;
+
+#[cfg(test)]
+mod tests;
+
+use Kind::*;
 use OpCode::*;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
@@ -106,7 +111,7 @@ impl From<u32> for OpCode {
 /// A list of the name of all control flow changing instructions the tracing algorithm needs to know.  
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Name {
+pub enum Kind {
     // SYS (R)
     mret,
     sret,
@@ -121,31 +126,214 @@ pub enum Name {
     // Zifencei
     fence_i,
     // B
-    beq,
-    bne,
-    blt,
-    bge,
-    bltu,
-    bgeu,
+    beq(format::TypeB),
+    bne(format::TypeB),
+    blt(format::TypeB),
+    bge(format::TypeB),
+    bltu(format::TypeB),
+    bgeu(format::TypeB),
     // U
-    auipc,
-    lui,
+    auipc(format::TypeU),
+    lui(format::TypeU),
     // CB
-    c_beqz,
-    c_bnez,
+    c_beqz(format::TypeB),
+    c_bnez(format::TypeB),
     // J
-    jal,
+    jal(format::TypeJ),
     // CJ
-    c_j,
-    c_jal,
+    c_j(format::TypeJ),
+    c_jal(format::TypeJ),
     // CU
-    c_lui,
+    c_lui(format::TypeU),
     // CR
-    c_jr,
-    c_jalr,
+    c_jr(format::TypeR),
+    c_jalr(format::TypeR),
     c_ebreak,
     // I
-    jalr,
+    jalr(format::TypeI),
+}
+
+impl Kind {
+    /// Determine the branch target
+    ///
+    /// If [Self] refers to a branch instruction, this fn returns the immediate,
+    /// which is the branch target relative to this instruction. Returns `None`
+    /// if [Self] does not refer to a (known) branch instruction. Jump
+    /// instructions are not considered branch instructions.
+    pub fn branch_target(self) -> Option<i16> {
+        match self {
+            Self::c_beqz(d) => Some(d.imm),
+            Self::c_bnez(d) => Some(d.imm),
+            Self::beq(d) => Some(d.imm),
+            Self::bne(d) => Some(d.imm),
+            Self::blt(d) => Some(d.imm),
+            Self::bge(d) => Some(d.imm),
+            Self::bltu(d) => Some(d.imm),
+            Self::bgeu(d) => Some(d.imm),
+            _ => None,
+        }
+    }
+
+    /// Determine the inferable jump target
+    ///
+    /// If [Self] refers to a jump instruction that in itself determines the
+    /// jump target, this fn returns that target relative to this instruction.
+    /// Returns `None` if [Self] does not refer to a (known) jump instruction or
+    /// if the branch target cannot be inferred based on the instruction alone.
+    ///
+    /// For example, a `jalr` instruciton's target will never be considered
+    /// inferable unless the source register is the `zero` register, even if it
+    /// is preceeded directly by `auipc` and `addi` instructions defining a
+    /// constant jump target.
+    ///
+    /// Branch instructions are not considered jump instructions.
+    pub fn inferable_jump_target(self) -> Option<i32> {
+        match self {
+            Self::jal(d) => Some(d.imm),
+            Self::c_jal(d) => Some(d.imm),
+            Self::c_j(d) => Some(d.imm),
+            Self::jalr(format::TypeI { rs1: 0, imm, .. }) => Some(imm.into()),
+            _ => None,
+        }
+    }
+
+    /// Determine whether this instruction refers to an uninferable jump
+    ///
+    /// If [Self] refers to a jump instruction that in itself does not determine
+    /// the (relative) jump target, this fn returns the information neccessary
+    /// to determine the target in the form of a register number (first tuple
+    /// element) and an offset (decond tuple element). The jump target is
+    /// computed by adding the offset to the contents of the denoted register.
+    ///
+    /// Note that a `jalr` instruciton's target will always be considered
+    /// uninferable unless the source register is the `zero` register, even if
+    /// it is preceeded directly by `auipc` and `addi` instructions defining a
+    /// constant jump target. However, callers may be able to infer the jump
+    /// target in such situations using statically determined register values.
+    ///
+    /// Branch instructions are not considered jump instructions.
+    pub fn uninferable_jump(self) -> Option<(format::Register, i16)> {
+        match self {
+            Self::c_jalr(d) => Some((d.rs1, 0)),
+            Self::c_jr(d) => Some((d.rs1, 0)),
+            Self::jalr(d) => Some((d.rs1, d.imm)),
+            _ => None,
+        }
+        .filter(|(r, _)| *r != 0)
+    }
+
+    /// Determine whether this instruction returns from a trap
+    ///
+    /// Returns true if [Self] refers to one of the (known) special instructions
+    /// that return from a trap.
+    pub fn is_return_from_trap(self) -> bool {
+        matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
+    }
+
+    /// Determine whether this instruction causes an uninferable discontinuity
+    ///
+    /// Returns true if [Self] refers to an instruction that causes a (PC)
+    /// discontinuity with a target that can not be inferred from the
+    /// instruction alone. This is the case if the instruction is either
+    /// * an [uninferable jump][Self::uninferable_jump],
+    /// * a [return from trap][Self::is_return_from_trap] or
+    /// * an `ecall` or `ebreak` (compressed or uncompressed).
+    pub fn is_uninferable_discon(self) -> bool {
+        self.uninferable_jump().is_some()
+            || self.is_return_from_trap()
+            || matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
+    }
+
+    /// Determine whether this instruction can be considered a function call
+    ///
+    /// Returns true if [Self] refers to an instruction that we consider a
+    /// function call, that is a jump-and-link instruction with `ra` (the return
+    /// address register) as `rd`.
+    pub fn is_call(self) -> bool {
+        matches!(
+            self,
+            Self::jalr(format::TypeI { rd: 1, .. })
+                | Self::c_jalr(_)
+                | Self::jal(format::TypeJ { rd: 1, .. })
+                | Self::c_jal(_)
+        )
+    }
+
+    /// Decode a 32bit ("normal") instruction
+    ///
+    /// Returns an instruction if it can be decoded, that is if that instruction
+    /// is known. As only a small part of all RISC-V instruction is relevant, we
+    /// don't consider unknown instructions an error.
+    #[allow(clippy::unusual_byte_groupings)]
+    pub fn decode_32(insn: u32) -> Option<Self> {
+        let funct3 = (insn >> 12) & 0x7;
+
+        match OpCode::from(insn) {
+            OpCode::MiscMem => match funct3 {
+                0b000 => Some(Self::fence),
+                0b001 => Some(Self::fence_i),
+                _ => None,
+            },
+            OpCode::Lui => Some(Self::lui(insn.into())),
+            OpCode::Auipc => Some(Self::auipc(insn.into())),
+            OpCode::Branch => match funct3 {
+                0b000 => Some(Self::beq(insn.into())),
+                0b001 => Some(Self::bne(insn.into())),
+                0b100 => Some(Self::blt(insn.into())),
+                0b101 => Some(Self::bge(insn.into())),
+                0b110 => Some(Self::bltu(insn.into())),
+                0b111 => Some(Self::bgeu(insn.into())),
+                _ => None,
+            },
+            OpCode::Jalr => Some(Self::jalr(insn.into())),
+            OpCode::Jal => Some(Self::jal(insn.into())),
+            OpCode::System => match insn >> 7 {
+                0b000000000000_00000_000_00000 => Some(Self::ecall),
+                0b000000000001_00000_000_00000 => Some(Self::ebreak),
+                0b000100000010_00000_000_00000 => Some(Self::sret),
+                0b001100000010_00000_000_00000 => Some(Self::mret),
+                0b000100000101_00000_000_00000 => Some(Self::wfi),
+                _ if (insn >> 25) == 0b0001001 => Some(Self::sfence_vma),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Decode a 16bit ("compressed") instruction
+    ///
+    /// Returns an instruction if it can be decoded, that is if that instruction
+    /// is known. As only a small part of all RISC-V instruction is relevant, we
+    /// don't consider unknown instructions an error.
+    pub fn decode_16(insn: u16) -> Option<Self> {
+        let op = insn & 0x3;
+        let func3 = insn >> 13;
+        match (op, func3) {
+            (0b01, 0b001) => Some(Self::c_jal(insn.into())),
+            (0b01, 0b011) => {
+                let data = format::TypeU::from(insn);
+                if data.rd != 0 || data.rd != 2 {
+                    Some(Self::c_lui(data))
+                } else {
+                    None
+                }
+            }
+            (0x01, 0b101) => Some(Self::c_j(insn.into())),
+            (0x01, 0b110) => Some(Self::c_beqz(insn.into())),
+            (0x01, 0b111) => Some(Self::c_bnez(insn.into())),
+            (0b10, 0b100) => {
+                let data = format::TypeR::from(insn);
+                let bit12 = (insn >> 12) & 0x1;
+                match (bit12, data.rs1, data.rs2) {
+                    (0, r, 0) if r != 0 => Some(Self::c_jr(data)),
+                    (1, r, 0) if r != 0 => Some(Self::c_jalr(data)),
+                    (1, 0, 0) => Some(Self::c_ebreak),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Represents the possible byte length of single RISC-V [Instruction].
@@ -162,14 +350,12 @@ impl Default for InstructionSize {
     }
 }
 
-/// Defines a single RISC-V instruction. If the instruction was parsed (see [Name] for a list of
-/// instructions which are parsed) additional fields and information about the instruction such as
-/// the immediate may be available.
+/// Defines a single RISC-V instruction
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Instruction {
     pub size: InstructionSize,
     /// If the instruction was parsed, the name is always available.
-    pub name: Option<Name>,
+    pub kind: Option<Kind>,
     /// Defaults to `false`. Only parsed for `jalr`. For other instructions a value of
     /// `false` has no relation to RS1 and whether it is zero.
     pub is_rs1_zero: bool,
@@ -191,7 +377,7 @@ impl Instruction {
     fn ignored(size: InstructionSize) -> Self {
         Instruction {
             size,
-            name: None,
+            kind: None,
             is_rs1_zero: false,
             is_branch: false,
             imm: None,
@@ -203,16 +389,17 @@ impl Instruction {
     }
 
     pub fn is_inferable_jump(&self) -> bool {
-        if let Some(name) = self.name {
-            name == jal || name == c_jal || name == c_j || (name == jalr && self.is_rs1_zero)
+        if let Some(name) = self.kind {
+            matches!(name, jal(_) | c_jal(_) | c_j(_))
+                || (matches!(name, jalr(_)) && self.is_rs1_zero)
         } else {
             false
         }
     }
 
     pub fn is_uninferable_jump(&self) -> bool {
-        if let Some(name) = self.name {
-            name == c_jalr || name == c_jr || (name == jalr && !self.is_rs1_zero)
+        if let Some(name) = self.kind {
+            matches!(name, c_jalr(_) | c_jr(_)) || (matches!(name, jalr(_)) && !self.is_rs1_zero)
         } else {
             false
         }
@@ -220,7 +407,7 @@ impl Instruction {
 
     #[cfg(not(feature = "tracing_v1"))]
     pub fn is_return_from_trap(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             name == sret || name == mret || name == dret
         } else {
             false
@@ -229,7 +416,7 @@ impl Instruction {
 
     #[cfg(not(feature = "tracing_v1"))]
     pub fn is_uninferable_discon(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             self.is_uninferable_jump()
                 || self.is_return_from_trap()
                 || name == ecall
@@ -242,7 +429,7 @@ impl Instruction {
 
     #[cfg(feature = "tracing_v1")]
     pub fn is_uninferable_discon(&self) -> bool {
-        if let Some(name) = self.name {
+        if let Some(name) = self.kind {
             self.is_uninferable_jump()
                 || name == uret
                 || name == sret
@@ -258,15 +445,17 @@ impl Instruction {
 
     #[cfg(feature = "implicit_return")]
     pub fn is_call(&self) -> bool {
-        if let Some(name) = self.name {
-            if (name == jalr && self.rd == 1)
-                || name == c_jalr
-                || (name == jal && self.rd == 1)
-                || name == c_jal {
-                return true
-            }
+        if let Some(name) = self.kind {
+            matches!(
+                name,
+                jalr(format::TypeI { rd: 1, .. })
+                    | c_jalr(_)
+                    | jal(format::TypeJ { rd: 1, .. })
+                    | c_jal(_)
+            )
+        } else {
+            false
         }
-        false
     }
 
     pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
@@ -313,22 +502,22 @@ impl Instruction {
                 0b001 => fence_i,
                 _ => return ignored,
             },
-            Lui => lui,
-            Auipc => auipc,
+            Lui => lui(num.into()),
+            Auipc => auipc(num.into()),
             Branch => match funct3 {
-                0b000 => beq,
-                0b001 => bne,
-                0b100 => blt,
-                0b101 => bge,
-                0b110 => bltu,
-                0b111 => bgeu,
+                0b000 => beq(num.into()),
+                0b001 => bne(num.into()),
+                0b100 => blt(num.into()),
+                0b101 => bge(num.into()),
+                0b110 => bltu(num.into()),
+                0b111 => bgeu(num.into()),
                 _ => return ignored,
             },
             Jalr => {
                 is_rs1_zero = 0 == Self::rs1(num);
-                jalr
+                jalr(num.into())
             }
-            Jal => jal,
+            Jal => jal(num.into()),
             System => {
                 if rd != 0 || funct3 != 0 {
                     return ignored;
@@ -356,7 +545,7 @@ impl Instruction {
         };
         Instruction {
             size,
-            name: Some(name),
+            kind: Some(name),
             is_rs1_zero,
             is_branch: opcode == Branch,
             imm: Self::calc_imm(name, is_rs1_zero, opcode == Branch, num),
@@ -398,17 +587,17 @@ impl Instruction {
 
         let name = match op {
             0b01 => match funct3 {
-                0b001 => c_jal,
+                0b001 => c_jal(num.into()),
                 0b011 => {
                     if rd != 0 || rd != 2 {
-                        c_lui
+                        c_lui(num.into())
                     } else {
                         return ignored;
                     }
                 }
-                0b101 => c_j,
-                0b110 => c_beqz,
-                0b111 => c_bnez,
+                0b101 => c_j(num.into()),
+                0b110 => c_beqz(num.into()),
+                0b111 => c_bnez(num.into()),
                 _ => return ignored,
             },
             0b10 => {
@@ -417,23 +606,23 @@ impl Instruction {
                 if funct3 != 0b100 {
                     return ignored;
                 } else if !bit12 && rs1 != 0 && rs2 == 0 {
-                    c_jr
+                    c_jr(num.into())
                 } else if bit12 && rs1 == 0 && rs2 == 0 {
                     c_ebreak
                 } else if bit12 && rs1 != 0 && rs2 == 0 {
-                    c_jalr
+                    c_jalr(num.into())
                 } else {
                     return ignored;
                 }
             }
             _ => return ignored,
         };
-        let is_branch = name == c_beqz || name == c_bnez;
+        let is_branch = matches!(name, c_beqz(_) | c_bnez(_));
         Instruction {
             size,
             is_branch,
             is_rs1_zero: false,
-            name: Some(name),
+            kind: Some(name),
             imm: Self::calc_compressed_imm(name, is_branch, num),
             #[cfg(feature = "implicit_return")]
             rs1: rs1 as u32,
@@ -442,26 +631,26 @@ impl Instruction {
         }
     }
 
-    fn calc_imm(name: Name, is_rs1_zero: bool, is_branch: bool, num: u32) -> Option<i32> {
+    fn calc_imm(name: Kind, is_rs1_zero: bool, is_branch: bool, num: u32) -> Option<i32> {
         if is_branch {
             Some(Self::calc_imm_b(num))
         } else {
             match name {
-                lui => Some(Self::calc_imm_u(num)),
-                auipc => Some(Self::calc_imm_u(num)),
-                jal => Some(Self::calc_imm_j(num)),
-                jalr if is_rs1_zero => Some(Self::calc_imm_i(num)),
+                lui(_) => Some(Self::calc_imm_u(num)),
+                auipc(_) => Some(Self::calc_imm_u(num)),
+                jal(_) => Some(Self::calc_imm_j(num)),
+                jalr(_) if is_rs1_zero => Some(Self::calc_imm_i(num)),
                 _ => None,
             }
         }
     }
 
-    fn calc_compressed_imm(name: Name, is_branch: bool, num: u16) -> Option<i32> {
+    fn calc_compressed_imm(name: Kind, is_branch: bool, num: u16) -> Option<i32> {
         if is_branch {
             Some(Self::calc_imm_cb(num))
         } else {
             match name {
-                c_lui => {
+                c_lui(_) => {
                     let imm = Self::calc_imm_cu(num);
                     if imm == 0 {
                         panic!("riscv spec: imm should not be zero for c.lui")
@@ -469,7 +658,7 @@ impl Instruction {
                         Some(imm)
                     }
                 }
-                c_j | c_jal => Some(Self::calc_imm_cj(num)),
+                c_j(_) | c_jal(_) => Some(Self::calc_imm_cj(num)),
                 _ => None,
             }
         }
@@ -596,418 +785,5 @@ impl Instruction {
 impl Default for Instruction {
     fn default() -> Self {
         Self::ignored(Default::default())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use InstructionBits::{Bit16, Bit32};
-
-    #[test]
-    fn mret() {
-        let bin = Bit32(0x30200073);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::mret),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn sret() {
-        let bin = Bit32(0x10200073);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::sret),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        );
-    }
-
-    #[test]
-    fn fence() {
-        let bin = Bit32(0x0ff0000f);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::fence),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn sfence_vma() {
-        let bin = Bit32(0x12010073);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::sfence_vma),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn wfi() {
-        let bin = Bit32(0x10500073);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::wfi),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn ecall() {
-        let bin = Bit32(0x00000073);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::ecall),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn ebreak() {
-        let bin = Bit32(0x00100073);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::ebreak),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn fence_i() {
-        let bin = Bit32(0x0000100f);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-
-                name: Some(Name::fence_i),
-                is_rs1_zero: false,
-                is_branch: false,
-                imm: None,
-            }
-        )
-    }
-
-    #[test]
-    fn beq() {
-        let bin = Bit32(0xaa360b63);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::beq),
-                is_branch: true,
-                imm: Some(-3402),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn bne() {
-        let bin = Bit32(0xf4361963);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::bne),
-                is_branch: true,
-                imm: Some(-2222),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn blt() {
-        let bin = Bit32(0x00004663);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::blt),
-                is_branch: true,
-                imm: Some(12),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn bge() {
-        let bin = Bit32(0x845f5fe3);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::bge),
-                is_branch: true,
-                imm: Some(-1954),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn bltu() {
-        let bin = Bit32(0x7f406fe3);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::bltu),
-                is_branch: true,
-                imm: Some(4094),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn bgeu() {
-        let bin = Bit32(0x01467063);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::bgeu),
-                is_branch: true,
-                imm: Some(0),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_beqz() {
-        let bin = Bit16(0xca4d);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_beqz),
-                is_branch: true,
-                imm: Some(178),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_benz() {
-        let bin = Bit16(0xe6cd);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(c_bnez),
-                is_branch: true,
-                imm: Some(170),
-                is_rs1_zero: false
-            }
-        )
-    }
-
-    #[test]
-    fn auipc() {
-        let bin = Bit32(0xf2ab3697);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::auipc),
-                is_branch: false,
-                imm: Some(-54605),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn lui() {
-        let bin = Bit32(0xfff0f8b7);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::lui),
-                is_branch: false,
-                imm: Some(-241),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_lui() {
-        let bin = Bit16(0x7255);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_lui),
-                is_branch: false,
-                imm: Some(-11),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn jal() {
-        let bin = Bit32(0x1030d66f);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::jal),
-                is_branch: false,
-                imm: Some(55554),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_j() {
-        let bin = Bit16(0xab91);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_j),
-                is_branch: false,
-                imm: Some(1364),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_jal() {
-        let bin = Bit16(0x39f5);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_jal),
-                is_branch: false,
-                imm: Some(-772),
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_jr() {
-        let bin = Bit16(0x8602);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_jr),
-                is_branch: false,
-                imm: None,
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_jalr() {
-        let bin = Bit16(0x9f82);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_jalr),
-                is_branch: false,
-                imm: None,
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn c_ebreak() {
-        let bin = Bit16(0x9002);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Compressed,
-                name: Some(Name::c_ebreak),
-                is_branch: false,
-                imm: None,
-                is_rs1_zero: false,
-            }
-        )
-    }
-
-    #[test]
-    fn jalr() {
-        let bin = Bit32(0x66168867);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::jalr),
-                imm: None,
-                is_rs1_zero: false,
-                is_branch: false,
-            }
-        )
-    }
-
-    #[test]
-    fn jalr_rs1_zero() {
-        let bin = Bit32(0x66100fe7);
-        assert_eq!(
-            Instruction::from_binary(&bin),
-            Instruction {
-                size: InstructionSize::Normal,
-                name: Some(Name::jalr),
-                imm: Some(1633),
-                is_rs1_zero: true,
-                is_branch: false,
-            }
-        )
     }
 }

@@ -5,12 +5,12 @@
 #[cfg(feature = "implicit_return")]
 use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
-use crate::instruction::Name::{c_ebreak, ebreak, ecall};
-use crate::instruction::{Instruction, InstructionBits, Segment};
+use crate::instruction::Kind::{c_ebreak, ebreak, ecall};
+use crate::instruction::{self, Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
 
 #[cfg(feature = "implicit_return")]
-use crate::instruction::Name::{auipc, c_jr, c_lui, jalr, lui};
+use crate::instruction::Kind::{auipc, c_jr, c_lui, jalr, lui};
 use core::fmt;
 
 pub mod cache;
@@ -558,8 +558,8 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         let prev_instr = self.get_instr(prev_addr)?;
 
         if prev_instr
-            .name
-            .filter(|name| *name == auipc || *name == lui || *name == c_lui)
+            .kind
+            .filter(|name| matches!(*name, auipc(_) | lui(_) | c_lui(_)))
             .is_some()
         {
             return Ok(instr.rs1 == prev_instr.rd);
@@ -578,7 +578,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         let prev_instr = self.get_instr(prev_addr)?;
         let mut target = 0;
 
-        if prev_instr.name == Some(auipc) {
+        if matches!(prev_instr.kind, Some(auipc(_))) {
             target = prev_addr;
         }
         let imm = prev_instr.imm.ok_or(Error::ImmediateIsNone(prev_instr))?;
@@ -587,7 +587,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         } else {
             target = target.overflowing_add(imm as u64).0;
         }
-        if instr.name == Some(jalr) {
+        if matches!(instr.kind, Some(jalr(_))) {
             if imm.is_negative() {
                 target = target.overflowing_sub(imm.abs() as u64).0
             } else {
@@ -604,8 +604,10 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
-        if let Some(name) = instr.name {
-            if (name == jalr && instr.rs1 == 1 && instr.rd == 0) || (name == c_jr && instr.rs1 == 1)
+        use instruction::format::{TypeI, TypeR};
+
+        if let Some(name) = instr.kind {
+            if matches!(name, jalr(TypeI { rd: 0, rs1: 1, .. }) | c_jr(TypeR { rs1: 1, .. }))
             {
                 if let Some(ir) = payload.get_implicit_return() {
                     if self.state.ir && ir.irdepth == self.state.irstack_depth {
@@ -677,7 +679,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         if instr.is_uninferable_discon() && trap.thaddr {
             Ok(trap.address)
         } else if instr
-            .name
+            .kind
             .filter(|name| *name == ecall || *name == ebreak || *name == c_ebreak)
             .is_some()
         {
