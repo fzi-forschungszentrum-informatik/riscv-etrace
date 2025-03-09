@@ -323,7 +323,7 @@ impl Decode for Branch {
 /// This packet contains only an instruction address, and is used when the address of an instruction
 /// must be reported, and there is no unreported branch information. The address is in differential
 /// format unless full address mode is enabled.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AddressInfo {
     /// Differential instruction address.
     pub address: u64,
@@ -354,15 +354,6 @@ impl Decode for AddressInfo {
             #[cfg(feature = "implicit_return")]
             ir,
         })
-    }
-}
-
-impl fmt::Debug for AddressInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "AddressInfo {{ address: {:#0x}, notify: {:?}, updiscon: {:?} }}",
-            self.address, self.notify, self.updiscon
-        ))
     }
 }
 
