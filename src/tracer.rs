@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
-#[cfg(feature = "implicit_return")]
-use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 use crate::instruction::{self, Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
@@ -264,22 +262,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn recover_ir_status(&self, payload: &Payload) -> bool {
-        return if let Some(addr) = payload.get_address_info() {
-            addr.ir.irreport
-        } else if let Payload::Extension(ext) = payload {
-            match ext {
-                Extension::BranchCount(bc) => {
-                    if let Some(addr) = bc.address {
-                        addr.ir.irreport
-                    } else {
-                        false
-                    }
-                }
-                Extension::JumpTargetIndex(jti) => jti.ir.irreport,
-            }
-        } else {
-            false
-        };
+        payload.implicit_return_depth().is_some()
     }
 
     fn recover_status_fields(&mut self, payload: &Payload) {
