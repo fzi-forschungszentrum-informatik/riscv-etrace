@@ -97,7 +97,7 @@ impl Default for Decoder<'static> {
     }
 }
 
-impl<'d> Decoder<'d> {
+impl Decoder<'_> {
     pub fn new(proto_conf: ProtocolConfiguration, decoder_conf: DecoderConfiguration) -> Self {
         Decoder {
             data: &[],
