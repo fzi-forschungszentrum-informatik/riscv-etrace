@@ -139,6 +139,21 @@ impl<'d> Decoder<'d> {
         Ok(res != 0)
     }
 
+    /// Read a single differential bit
+    ///
+    /// The bit's value is considered to be `true` if it differs from the
+    /// previous bit and `false` if it doesn't.
+    fn read_differential_bit(&mut self) -> Result<bool, Error> {
+        let reference_pos = self
+            .bit_pos
+            .checked_sub(1)
+            .ok_or(Error::InsufficientData(NonZeroUsize::MIN))?;
+        let reference_bit = (self.get_byte(reference_pos >> 3)? >> (reference_pos & 0x07)) & 0x1;
+        let raw_bit = (self.get_byte(self.bit_pos >> 3)? >> (self.bit_pos & 0x07)) & 0x1;
+        self.bit_pos += 1;
+        Ok(reference_bit ^ raw_bit != 0)
+    }
+
     /// Read a number of bits as an integer
     ///
     /// Unsigned integers will be left-padded with zeroes, signed integers will

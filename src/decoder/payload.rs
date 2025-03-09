@@ -105,26 +105,29 @@ impl Decode for QualStatus {
 #[cfg(feature = "implicit_return")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ImplicitReturn {
-    /// If the value of this bit is different from the previous bit in the same packet,
-    /// it indicates that this packet is reporting an instruction that is either:
-    /// <ul>
-    /// <li>following a return because its address differs from the predicted return address at the
-    /// top of the implicit_return return address stack, or</li>
-    /// <li>the last retired before an exception, interrupt, privilege change or resync because it
-    /// is necessary to report the current address stack depth or nested call count.</li>
-    /// </ul>
+    /// Implicit return report
+    ///
+    /// If `true`, packet is reporting an instruction that is either:
+    /// * following a return because its address differs from the predicted
+    ///   return address at the top of the implicit_return return address stack,
+    ///   or
+    /// * the last retired before an exception, interrupt, privilege change or
+    ///   resync because it is necessary to report the current address stack
+    ///   depth or nested call count.
     pub irreport: bool,
-    /// If the value of irreport is different from previous bit in the same packet,
-    /// this field indicates the number of entries on the return address stack (i.e. the entry
-    /// number of the return that failed) or nested call count. If irreport is the same value as
-    /// updiscon, all bits in this field will also be the same value as updiscon.
+
+    /// If [Self::irreport] is `true`, this field indicates the number of
+    /// entries on the return address stack (i.e. the entry number of the return
+    /// that failed) or nested call count. If irreport is the same value as
+    /// updiscon, all bits in this field will also be the same value as
+    /// updiscon.
     pub irdepth: u64,
 }
 
 #[cfg(feature = "implicit_return")]
 impl Decode for ImplicitReturn {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let irreport = decoder.read_bit()?;
+        let irreport = decoder.read_differential_bit()?;
         let irdepth_len = decoder.proto_conf.return_stack_size_p
             + decoder.proto_conf.call_counter_size_p
             + (if decoder.proto_conf.return_stack_size_p > 0 {
@@ -345,15 +348,22 @@ impl fmt::Debug for Branch {
 pub struct AddressInfo {
     /// Differential instruction address.
     pub address: u64,
-    /// If the value of this bit is different from the MSB of address, it indicates that this packet
-    /// is reporting an instruction that is not the target of an uninferable
-    /// discontinuity because a notification was requested via a trigger.
+
+    /// A notification was requested by a trigger
+    ///
+    /// If `true`, this packet is reporting an instruction that is not the
+    /// target of an uninferable discontinuity because a notification was
+    /// requested via a trigger.
     pub notify: bool,
-    /// If the value of this bit is different from notify, it indicates that this packet is
-    /// reporting the instruction following an uninferable discontinuity and is also the
-    /// instruction before an exception, privilege change or resync (i.e. it will be followed
+
+    /// An uninferable discontinuity occured before a sync event
+    ///
+    /// If `true`, this packet is reporting the instruction following an
+    /// uninferable discontinuity and is also the instruction before an
+    /// exception, privilege change or resync (i.e. it will be followed
     /// immediately by a format 3 packet).
     pub updiscon: bool,
+
     #[cfg(feature = "implicit_return")]
     pub ir: ImplicitReturn,
 }
@@ -361,8 +371,8 @@ pub struct AddressInfo {
 impl Decode for AddressInfo {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let address = read_address(decoder)?;
-        let notify = decoder.read_bit()?;
-        let updiscon = decoder.read_bit()?;
+        let notify = decoder.read_differential_bit()?;
+        let updiscon = decoder.read_differential_bit()?;
         #[cfg(feature = "implicit_return")]
         let ir = ImplicitReturn::decode(decoder)?;
         Ok(AddressInfo {
