@@ -1,12 +1,12 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::tracer::disassembler::Name::*;
-use crate::tracer::disassembler::OpCode::*;
-
 use core::fmt;
 use core::fmt::Formatter;
 use core::ops::Range;
+
+use Name::*;
+use OpCode::*;
 
 /// A segment of executable RISC-V code which is executed on the traced system.
 /// `first_addr` is the same address the encoder uses for instructions in this segment.
@@ -79,7 +79,7 @@ impl InstructionBits {
 enum OpCode {
     MiscMem = 0b0001111,
     Lui = 0b0110111,
-    Aupic = 0b0010111,
+    Auipc = 0b0010111,
     Branch = 0b1100011,
     Jalr = 0b1100111,
     Jal = 0b1101111,
@@ -91,7 +91,7 @@ impl From<u32> for OpCode {
     fn from(value: u32) -> Self {
         const MASK: u32 = 0x7F;
         match value & MASK {
-            x if x == Aupic as u32 => Aupic,
+            x if x == Auipc as u32 => Auipc,
             x if x == Lui as u32 => Lui,
             x if x == MiscMem as u32 => MiscMem,
             x if x == Branch as u32 => Branch,
@@ -128,7 +128,7 @@ pub enum Name {
     bltu,
     bgeu,
     // U
-    aupic,
+    auipc,
     lui,
     // CB
     c_beqz,
@@ -314,7 +314,7 @@ impl Instruction {
                 _ => return ignored,
             },
             Lui => lui,
-            Aupic => aupic,
+            Auipc => auipc,
             Branch => match funct3 {
                 0b000 => beq,
                 0b001 => bne,
@@ -448,7 +448,7 @@ impl Instruction {
         } else {
             match name {
                 lui => Some(Self::calc_imm_u(num)),
-                aupic => Some(Self::calc_imm_u(num)),
+                auipc => Some(Self::calc_imm_u(num)),
                 jal => Some(Self::calc_imm_j(num)),
                 jalr if is_rs1_zero => Some(Self::calc_imm_i(num)),
                 _ => None,
@@ -601,8 +601,9 @@ impl Default for Instruction {
 
 #[cfg(test)]
 mod tests {
-    use crate::tracer::disassembler::InstructionBits::{Bit16, Bit32};
-    use crate::tracer::disassembler::*;
+    use super::*;
+
+    use InstructionBits::{Bit16, Bit32};
 
     #[test]
     fn mret() {
@@ -852,7 +853,7 @@ mod tests {
             Instruction::from_binary(&bin),
             Instruction {
                 size: InstructionSize::Normal,
-                name: Some(aupic),
+                name: Some(Name::auipc),
                 is_branch: false,
                 imm: Some(-54605),
                 is_rs1_zero: false,

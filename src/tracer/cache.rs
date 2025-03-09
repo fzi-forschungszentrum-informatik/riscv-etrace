@@ -1,7 +1,7 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use super::disassembler::Instruction;
+use crate::instruction::Instruction;
 
 /// A cache for [Instruction]s
 pub trait InstructionCache {
