@@ -413,7 +413,7 @@ impl Decode for Start {
 
 /// #### Format 3, sub format 1
 /// Sent following an exception or interrupt.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Trap {
     /// False, if the address is a taken branch instruction. True, if the branch was not taken
     /// or the instruction is not a branch.
@@ -428,14 +428,6 @@ pub struct Trap {
     pub address: u64,
     /// Value from appropriate *tval CSR.
     pub tval: u64,
-}
-
-impl fmt::Debug for Trap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(
-            format_args!("Trap {{ branch: {:?}, privilege: {:?}, ecause: {:?}, interrupt: {:?}, thaddr: {:?}, address: {:#0x}, tval: {:?} }}",
-            self.branch, self.ctx.privilege, self.ecause, self.interrupt, self.thaddr, self.address, self.tval))
-    }
 }
 
 impl Decode for Trap {
