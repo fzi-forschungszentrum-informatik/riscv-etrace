@@ -84,3 +84,29 @@ impl<const N: usize> ReturnStack for StaticStack<N> {
         self.max_depth
     }
 }
+
+/// Dummy [ReturnStack] with zero depth
+///
+/// This [ReturnStack] does not hold any data. It only supports a maximum depth
+/// of zero.
+pub struct NoStack;
+
+impl ReturnStack for NoStack {
+    fn new(max_depth: usize) -> Option<Self> {
+        (max_depth == 0).then_some(Self)
+    }
+
+    fn push(&mut self, _: u64) {}
+
+    fn pop(&mut self) -> Option<u64> {
+        None
+    }
+
+    fn depth(&self) -> usize {
+        0
+    }
+
+    fn max_depth(&self) -> usize {
+        0
+    }
+}
