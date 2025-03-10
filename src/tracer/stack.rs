@@ -27,3 +27,60 @@ pub trait ReturnStack: Sized {
     /// Get the maximum stack depth
     fn max_depth(&self) -> usize;
 }
+
+/// Statically allocated [ReturnStack]
+///
+/// This [ReturnStack] keeps data in an array of size `N`. It supports maximum
+/// depths up to that size.
+#[derive(Clone, Debug)]
+pub struct StaticStack<const N: usize> {
+    data: [u64; N],
+    max_depth: usize,
+    depth: usize,
+    base: usize,
+}
+
+impl<const N: usize> ReturnStack for StaticStack<N> {
+    fn new(max_depth: usize) -> Option<Self> {
+        if max_depth > N {
+            None
+        } else {
+            Some(Self {
+                data: [0; N],
+                max_depth,
+                depth: 0,
+                base: 0,
+            })
+        }
+    }
+
+    fn push(&mut self, addr: u64) {
+        let depth = self.depth;
+        self.data[(self.base + depth) % N] = addr;
+
+        if depth < self.max_depth {
+            self.depth = depth.saturating_add(1);
+        } else {
+            let base = self.base + 1;
+            if base < N {
+                self.base = base;
+            } else {
+                self.base = 0;
+            }
+        }
+    }
+
+    fn pop(&mut self) -> Option<u64> {
+        let depth = self.depth.checked_sub(1)?;
+        self.depth = depth;
+        Some(self.data[(self.base + depth) % N])
+    }
+
+    fn depth(&self) -> usize {
+        self.depth
+    }
+
+    fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+}
