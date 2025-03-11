@@ -44,8 +44,6 @@ pub enum Error {
     },
     /// The address is not inside a [Segment].
     SegmentationFault(u64),
-    /// The ir stack has exceeded its allocated size.
-    IrStackExhausted(u64, u64),
     /// The IR stack cannot be constructed for the given size
     CannotConstructIrStack(usize),
 }
@@ -79,12 +77,6 @@ impl fmt::Display for Error {
             }
             Self::SegmentationFault(addr) => {
                 write!(f, "address {addr:#0x} not in any known segment")
-            }
-            Self::IrStackExhausted(size, supremum) => {
-                write!(
-                    f,
-                    "IR stack has grown to {size}, which is greater than the allocated {supremum}",
-                )
             }
             Self::CannotConstructIrStack(size) => {
                 write!(f, "Cannot construct return stack of size {size}")
