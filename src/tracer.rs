@@ -131,8 +131,8 @@ pub struct TraceState<C: InstructionCache> {
     pub instr_cache: C,
 }
 
-impl<C: InstructionCache + Default> TraceState<C> {
-    fn default() -> Self {
+impl<C: InstructionCache> TraceState<C> {
+    fn new(instr_cache: C) -> Self {
         TraceState {
             pc: 0,
             last_pc: 0,
@@ -149,7 +149,7 @@ impl<C: InstructionCache + Default> TraceState<C> {
             return_stack: [0; IRSTACK_DEPTH_SUPREMUM as usize],
             irstack_depth: 0,
             segment_idx: 0,
-            instr_cache: Default::default(),
+            instr_cache,
         }
     }
 }
@@ -206,8 +206,9 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         trace_conf: TraceConfiguration<'a>,
         report_trace: &'a mut dyn ReportTrace,
     ) -> Self {
+        let state = TraceState::new(Default::default());
         Tracer {
-            state: TraceState::default(),
+            state,
             trace_conf,
             proto_conf,
             report_trace,
