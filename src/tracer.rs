@@ -182,14 +182,14 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         proto_conf: ProtocolConfiguration,
         trace_conf: TraceConfiguration<'a>,
         report_trace: &'a mut dyn ReportTrace,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let state = TraceState::new(Default::default());
-        Tracer {
+        Ok(Tracer {
             state,
             trace_conf,
             proto_conf,
             report_trace,
-        }
+        })
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
