@@ -110,7 +110,7 @@ pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
 /// For specifics see the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TraceState<C: InstructionCache> {
     pub pc: u64,
     pub last_pc: u64,
@@ -151,29 +151,6 @@ impl<C: InstructionCache> TraceState<C> {
             segment_idx: 0,
             instr_cache,
         }
-    }
-}
-
-impl<C: InstructionCache + fmt::Debug> fmt::Debug for TraceState<C> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.write_fmt(format_args!(
-            "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
-        branches: {}, branch_map: 0b{:b}, stop_at_last_branch: {}, \
-        inferred_address: {}, start_of_trace: {}, notify: {}, \
-        updiscon: {}, privilege: {:?}, segment_idx: {} }}",
-            self.pc,
-            self.last_pc,
-            self.address,
-            self.branches,
-            self.branch_map,
-            self.stop_at_last_branch,
-            self.inferred_address,
-            self.start_of_trace,
-            self.notify,
-            self.updiscon,
-            self.privilege,
-            self.segment_idx,
-        ))
     }
 }
 
