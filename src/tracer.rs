@@ -45,6 +45,8 @@ pub enum Error {
     SegmentationFault(u64),
     /// The ir stack has exceeded its allocated size.
     IrStackExhausted(u64, u64),
+    /// The IR stack cannot be constructed for the given size
+    CannotConstructIrStack(usize),
 }
 
 impl core::error::Error for Error {}
@@ -82,6 +84,9 @@ impl fmt::Display for Error {
                     f,
                     "IR stack has grown to {size}, which is greater than the allocated {supremum}",
                 )
+            }
+            Self::CannotConstructIrStack(size) => {
+                write!(f, "Cannot construct return stack of size {size}")
             }
         }
     }
