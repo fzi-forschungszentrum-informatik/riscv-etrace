@@ -157,9 +157,9 @@ pub trait ReportTrace {
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = stack::NoStack> {
     state: TraceState<C, S>,
-    proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     report_trace: &'a mut dyn ReportTrace,
+    sequential_jumps: bool,
 }
 
 impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
@@ -183,7 +183,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         Ok(Tracer {
             state,
             trace_conf,
-            proto_conf,
+            sequential_jumps: proto_conf.sijump_p,
             report_trace,
         })
     }
@@ -517,7 +517,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
     fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<Option<u64>, Error> {
         use instruction::Kind;
 
-        if !self.proto_conf.sijump_p {
+        if !self.sequential_jumps {
             return Ok(None);
         }
         let Some(insn) = self.get_instr(addr)?.kind else {
