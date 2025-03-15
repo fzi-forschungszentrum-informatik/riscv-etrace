@@ -3,7 +3,6 @@
 
 //! Implements all different payloads and their decoding.
 use super::{Decode, Decoder, Error};
-use crate::tracer;
 
 fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
     let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
