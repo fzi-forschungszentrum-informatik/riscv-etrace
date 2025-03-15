@@ -3,7 +3,6 @@
 
 //! Implements all different payloads and their decoding.
 use super::{Decode, Decoder, Error};
-use crate::tracer;
 
 fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
     let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
@@ -187,11 +186,11 @@ impl Payload {
         }
     }
 
-    pub fn get_privilege(&self) -> Result<&Privilege, tracer::Error> {
-        if let Payload::Synchronization(sync) = self {
-            Ok(sync.get_privilege()?)
+    pub fn get_privilege(&self) -> Option<Privilege> {
+        if let Self::Synchronization(sync) = self {
+            sync.get_privilege()
         } else {
-            Err(tracer::Error::WrongGetPrivilegeType)
+            None
         }
     }
 }
@@ -355,21 +354,26 @@ pub enum Synchronization {
 }
 
 impl Synchronization {
-    pub fn get_branch(&self) -> Result<u32, tracer::Error> {
+    /// Check whether we got here without a branch being taken
+    ///
+    /// Returns `false` if the address was a branch target and `true` if the
+    /// branch was not taken or the previous instruction was not a branch
+    /// instruction. Returns `None` if the packet doesn't carry any address
+    /// information.
+    pub fn branch_not_taken(&self) -> Option<bool> {
         match self {
-            Synchronization::Start(start) => Ok(start.branch),
-            Synchronization::Trap(trap) => Ok(trap.branch),
-            _ => Err(tracer::Error::WrongGetBranchType),
+            Self::Start(start) => Some(start.branch),
+            Self::Trap(trap) => Some(trap.branch),
+            _ => None,
         }
-        .map(|b| b as u32)
     }
 
-    pub fn get_privilege(&self) -> Result<&Privilege, tracer::Error> {
+    pub fn get_privilege(&self) -> Option<Privilege> {
         match self {
-            Synchronization::Start(start) => Ok(&start.ctx.privilege),
-            Synchronization::Trap(trap) => Ok(&trap.ctx.privilege),
-            Synchronization::Context(ctx) => Ok(&ctx.privilege),
-            Synchronization::Support(_) => Err(tracer::Error::WrongGetPrivilegeType),
+            Self::Start(start) => Some(start.ctx.privilege),
+            Self::Trap(trap) => Some(trap.ctx.privilege),
+            Self::Context(ctx) => Some(ctx.privilege),
+            _ => None,
         }
     }
 }

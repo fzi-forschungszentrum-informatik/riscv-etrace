@@ -306,7 +306,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 self.state.branch_map = 0;
             }
             if self.get_instr(self.state.address)?.is_branch {
-                let branch = sync.get_branch()?;
+                let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)? as u32;
                 self.state.branch_map |= branch << self.state.branches;
                 self.state.branches += 1;
             }
@@ -318,7 +318,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 self.state.last_pc = self.state.pc;
             }
             if cfg!(not(feature = "tracing_v1")) {
-                self.state.privilege = *sync.get_privilege()?;
+                self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             self.state.start_of_trace = false;
             if cfg!(feature = "implicit_return") {
@@ -396,7 +396,10 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         &mut self,
         payload: &Payload,
     ) -> Result<bool, Error> {
-        Ok(*payload.get_privilege()? == self.state.privilege
+        let priviledge = payload
+            .get_privilege()
+            .ok_or(Error::WrongGetPrivilegeType)?;
+        Ok(priviledge == self.state.privilege
             && self.get_instr(self.state.last_pc)?.is_return_from_trap())
     }
 
