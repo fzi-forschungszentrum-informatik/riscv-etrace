@@ -335,7 +335,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 self.state.last_pc = self.state.pc;
             }
             if cfg!(not(feature = "tracing_v1")) {
-                self.state.privilege = *sync.get_privilege()?;
+                self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             self.state.start_of_trace = false;
             if cfg!(feature = "implicit_return") {

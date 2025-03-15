@@ -206,7 +206,7 @@ impl Payload {
 
     pub fn get_privilege(&self) -> Option<Privilege> {
         if let Self::Synchronization(sync) = self {
-            sync.get_privilege().ok().cloned()
+            sync.get_privilege()
         } else {
             None
         }
@@ -384,12 +384,12 @@ impl Synchronization {
         .map(|b| b as u32)
     }
 
-    pub fn get_privilege(&self) -> Result<&Privilege, tracer::Error> {
+    pub fn get_privilege(&self) -> Option<Privilege> {
         match self {
-            Synchronization::Start(start) => Ok(&start.ctx.privilege),
-            Synchronization::Trap(trap) => Ok(&trap.ctx.privilege),
-            Synchronization::Context(ctx) => Ok(&ctx.privilege),
-            Synchronization::Support(_) => Err(tracer::Error::WrongGetPrivilegeType),
+            Self::Start(start) => Some(start.ctx.privilege),
+            Self::Trap(trap) => Some(trap.ctx.privilege),
+            Self::Context(ctx) => Some(ctx.privilege),
+            _ => None,
         }
     }
 }
