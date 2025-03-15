@@ -375,13 +375,18 @@ pub enum Synchronization {
 }
 
 impl Synchronization {
-    pub fn get_branch(&self) -> Result<u32, tracer::Error> {
+    /// Check whether we got here without a branch being taken
+    ///
+    /// Returns `false` if the address was a branch target and `true` if the
+    /// branch was not taken or the previous instruction was not a branch
+    /// instruction. Returns `None` if the packet doesn't carry any address
+    /// information.
+    pub fn branch_not_taken(&self) -> Option<bool> {
         match self {
-            Synchronization::Start(start) => Ok(start.branch),
-            Synchronization::Trap(trap) => Ok(trap.branch),
-            _ => Err(tracer::Error::WrongGetBranchType),
+            Self::Start(start) => Some(start.branch),
+            Self::Trap(trap) => Some(trap.branch),
+            _ => None,
         }
-        .map(|b| b as u32)
     }
 
     pub fn get_privilege(&self) -> Option<Privilege> {

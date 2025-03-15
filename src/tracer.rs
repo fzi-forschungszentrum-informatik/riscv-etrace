@@ -323,7 +323,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 self.state.branch_map = 0;
             }
             if self.get_instr(self.state.address)?.is_branch {
-                let branch = sync.get_branch()?;
+                let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)? as u32;
                 self.state.branch_map |= branch << self.state.branches;
                 self.state.branches += 1;
             }
