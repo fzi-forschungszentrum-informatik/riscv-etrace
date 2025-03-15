@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
-#[cfg(feature = "implicit_return")]
-use crate::decoder::payload::Extension;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 use crate::instruction::{self, Instruction, InstructionBits, Segment};
 use crate::ProtocolConfiguration;
@@ -264,22 +262,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn recover_ir_status(&self, payload: &Payload) -> bool {
-        return if let Some(addr) = payload.get_address_info() {
-            addr.ir.irreport
-        } else if let Payload::Extension(ext) = payload {
-            match ext {
-                Extension::BranchCount(bc) => {
-                    if let Some(addr) = bc.address {
-                        addr.ir.irreport
-                    } else {
-                        false
-                    }
-                }
-                Extension::JumpTargetIndex(jti) => jti.ir.irreport,
-            }
-        } else {
-            false
-        };
+        payload.implicit_return_depth().is_some()
     }
 
     fn recover_status_fields(&mut self, payload: &Payload) {
@@ -400,10 +383,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn follow_execution_path_ir_state(&self, payload: &Payload) -> bool {
-        self.state.ir
-            || payload
-                .get_implicit_return()
-                .map_or(false, |ir| ir.irdepth == self.state.irstack_depth)
+        self.state.ir || payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -613,10 +593,10 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 name,
                 Kind::jalr(TypeI { rd: 0, rs1: 1, .. }) | Kind::c_jr(TypeR { rs1: 1, .. })
             ) {
-                if let Some(ir) = payload.get_implicit_return() {
-                    if self.state.ir && ir.irdepth == self.state.irstack_depth {
-                        return false;
-                    }
+                if self.state.ir
+                    && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
+                {
+                    return false;
                 }
                 return self.state.irstack_depth > 0;
             }

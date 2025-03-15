@@ -26,6 +26,27 @@ fn read_branches(decoder: &mut Decoder) -> Result<(u8, u8), Error> {
     Ok((branches, len))
 }
 
+/// Read the `irreport` and `irdepth` fields
+///
+/// This fn reads the `irreport` and `irdepth` fields. The former is read
+/// differentially, and if the result is `true` this fn returns `irdepth`.
+/// Otherwise, `None` is returned.
+fn read_implicit_return(decoder: &mut Decoder) -> Result<Option<usize>, Error> {
+    let depth_len = decoder.proto_conf.return_stack_size_p
+        + decoder.proto_conf.call_counter_size_p
+        + (if decoder.proto_conf.return_stack_size_p > 0 {
+            1
+        } else {
+            0
+        });
+    // We intentionally read both the `irreport` and `irdepth` field
+    // unconditionally in order to keep the overall width read constant.
+    let report = decoder.read_differential_bit()?;
+    let depth = decoder.read_bits(depth_len)?;
+
+    Ok(report.then_some(depth))
+}
+
 /// The possible privilege levels with which the instruction was executed.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Privilege {
@@ -100,44 +121,6 @@ impl Decode for QualStatus {
     }
 }
 
-#[cfg(feature = "implicit_return")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct ImplicitReturn {
-    /// Implicit return report
-    ///
-    /// If `true`, packet is reporting an instruction that is either:
-    /// * following a return because its address differs from the predicted
-    ///   return address at the top of the implicit_return return address stack,
-    ///   or
-    /// * the last retired before an exception, interrupt, privilege change or
-    ///   resync because it is necessary to report the current address stack
-    ///   depth or nested call count.
-    pub irreport: bool,
-
-    /// If [Self::irreport] is `true`, this field indicates the number of
-    /// entries on the return address stack (i.e. the entry number of the return
-    /// that failed) or nested call count. If irreport is the same value as
-    /// updiscon, all bits in this field will also be the same value as
-    /// updiscon.
-    pub irdepth: u64,
-}
-
-#[cfg(feature = "implicit_return")]
-impl Decode for ImplicitReturn {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let irreport = decoder.read_differential_bit()?;
-        let irdepth_len = decoder.proto_conf.return_stack_size_p
-            + decoder.proto_conf.call_counter_size_p
-            + (if decoder.proto_conf.return_stack_size_p > 0 {
-                1
-            } else {
-                0
-            });
-        let irdepth = decoder.read_bits(irdepth_len)?;
-        Ok(ImplicitReturn { irreport, irdepth })
-    }
-}
-
 /// Top level enum for all possible payload formats.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload {
@@ -159,27 +142,27 @@ impl Payload {
         }
     }
 
-    #[cfg(feature = "implicit_return")]
-    pub fn get_implicit_return(&self) -> Option<ImplicitReturn> {
-        if let Payload::Address(addr) = self {
-            return Some(addr.ir);
-        } else if let Payload::Branch(branch) = self {
-            if let Some(addr) = branch.address {
-                return Some(addr.ir);
-            }
-        } else if let Payload::Extension(ext) = self {
-            return match ext {
-                Extension::BranchCount(bc) => {
-                    if let Some(addr) = bc.address {
-                        Some(addr.ir)
-                    } else {
-                        None
-                    }
-                },
-                Extension::JumpTargetIndex(jti) => Some(jti.ir)
-            }
+    /// Retrieve the implicit return depth
+    ///
+    /// Returns the number of entries on the return address stack (i.e. the
+    /// entry number of the return that failed) or nested call count if the
+    /// instruction reported by the packet is either:
+    /// * following a return because its address differs from the predicted
+    ///   return address at the top of the implicit_return return address stack,
+    ///   or
+    /// * the last retired before an exception, interrupt, privilege change or
+    ///   resync because it is necessary to report the current address stack
+    ///   depth or nested call count.
+    ///
+    /// Returns `None` otherwise.
+    pub fn implicit_return_depth(&self) -> Option<usize> {
+        match self {
+            Payload::Address(a) => a.irdepth,
+            Payload::Branch(b) => b.address.and_then(|a| a.irdepth),
+            Payload::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
+            Payload::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
+            _ => None,
         }
-        return None
     }
 
     pub fn get_address(&self) -> u64 {
@@ -257,8 +240,9 @@ pub struct JumpTargetIndex {
     pub branches: usize,
     /// An array of bits indicating whether branches are taken (true) or not (false).
     pub branch_map: Option<u32>,
-    #[cfg(feature = "implicit_return")]
-    pub ir: ImplicitReturn,
+
+    /// Implicit return depth
+    pub irdepth: Option<usize>,
 }
 
 impl Decode for JumpTargetIndex {
@@ -272,14 +256,12 @@ impl Decode for JumpTargetIndex {
             Some(branch_map & ((1 << branches) - 1))
         };
 
-        #[cfg(feature = "implicit_return")]
-        let ir = ImplicitReturn::decode(decoder)?;
+        let irdepth = read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
             index,
             branches: branch_map_len as usize,
             branch_map,
-            #[cfg(feature = "implicit_return")]
-            ir,
+            irdepth,
         })
     }
 }
@@ -344,8 +326,8 @@ pub struct AddressInfo {
     /// immediately by a format 3 packet).
     pub updiscon: bool,
 
-    #[cfg(feature = "implicit_return")]
-    pub ir: ImplicitReturn,
+    /// Implicit return depth
+    pub irdepth: Option<usize>,
 }
 
 impl Decode for AddressInfo {
@@ -353,14 +335,12 @@ impl Decode for AddressInfo {
         let address = read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;
-        #[cfg(feature = "implicit_return")]
-        let ir = ImplicitReturn::decode(decoder)?;
+        let irdepth = read_implicit_return(decoder)?;
         Ok(AddressInfo {
             address,
             notify,
             updiscon,
-            #[cfg(feature = "implicit_return")]
-            ir,
+            irdepth,
         })
     }
 }
