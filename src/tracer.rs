@@ -416,7 +416,10 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         &mut self,
         payload: &Payload,
     ) -> Result<bool, Error> {
-        Ok(*payload.get_privilege()? == self.state.privilege
+        let priviledge = payload
+            .get_privilege()
+            .ok_or(Error::WrongGetPrivilegeType)?;
+        Ok(priviledge == self.state.privilege
             && self.get_instr(self.state.last_pc)?.is_return_from_trap())
     }
 

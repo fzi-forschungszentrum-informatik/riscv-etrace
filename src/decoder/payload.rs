@@ -204,11 +204,11 @@ impl Payload {
         }
     }
 
-    pub fn get_privilege(&self) -> Result<&Privilege, tracer::Error> {
-        if let Payload::Synchronization(sync) = self {
-            Ok(sync.get_privilege()?)
+    pub fn get_privilege(&self) -> Option<Privilege> {
+        if let Self::Synchronization(sync) = self {
+            sync.get_privilege().ok().cloned()
         } else {
-            Err(tracer::Error::WrongGetPrivilegeType)
+            None
         }
     }
 }
