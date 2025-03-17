@@ -554,12 +554,6 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         None
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn push_return_stack(&mut self, _: &Instruction, _: u64) -> Result<(), Error> {
-        Ok(())
-    }
-
-    #[cfg(feature = "implicit_return")]
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error> {
         if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
             return Ok(());
