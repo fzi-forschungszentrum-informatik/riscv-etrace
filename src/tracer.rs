@@ -239,16 +239,6 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         }
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn recover_ir_status(&self, _: &Payload) -> bool {
-        false
-    }
-
-    #[cfg(feature = "implicit_return")]
-    fn recover_ir_status(&self, payload: &Payload) -> bool {
-        payload.implicit_return_depth().is_some()
-    }
-
     fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address_info() {
             self.state.notify = addr.notify;
