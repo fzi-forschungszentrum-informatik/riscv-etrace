@@ -534,16 +534,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         Ok(target)
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn implicit_return_address(&self, _: &Instruction, _: &Payload) -> Option<u64> {
-        None
-    }
-
     /// If the given instruction is a function return, try to find the return address
     ///
     /// This roughly corresponds to a combination of `is_implicit_return` and
     /// `pop_return_stack` of the reference implementation.
-    #[cfg(feature = "implicit_return")]
     fn implicit_return_address(&mut self, instr: &Instruction, payload: &Payload) -> Option<u64> {
         use instruction::Kind;
 
