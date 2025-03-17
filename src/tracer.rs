@@ -364,16 +364,6 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         Ok(self.get_instr(self.state.pc)?.is_branch as u8)
     }
 
-    #[cfg(feature = "implicit_return")]
-    fn follow_execution_path_ir_state(&self, payload: &Payload) -> bool {
-        self.state.ir || payload.implicit_return_depth() == Some(self.state.return_stack.depth())
-    }
-
-    #[cfg(not(feature = "implicit_return"))]
-    fn follow_execution_path_ir_state(&self, _: &Payload) -> bool {
-        true
-    }
-
     #[cfg(not(feature = "tracing_v1"))]
     fn follow_execution_path_catch_priv_changes(
         &mut self,
@@ -431,7 +421,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
                     && !&self.get_instr(self.state.last_pc)?.is_uninferable_discon()
                     && !self.state.updiscon
                     && self.state.branches == self.branch_limit()?
-                    && self.follow_execution_path_ir_state(payload)
+                    && payload
+                        .implicit_return_depth()
+                        .map(|v| v == self.state.return_stack.depth())
+                        .unwrap_or(true)
                 {
                     self.state.inferred_address = true;
                     return Ok(());
