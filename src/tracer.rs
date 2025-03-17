@@ -116,7 +116,6 @@ pub struct TraceState<C: InstructionCache, S: ReturnStack> {
     pub start_of_trace: bool,
     pub notify: bool,
     pub updiscon: bool,
-    pub ir: bool,
     pub privilege: Privilege,
     pub segment_idx: usize,
     pub instr_cache: C,
@@ -136,7 +135,6 @@ impl<C: InstructionCache, S: ReturnStack> TraceState<C, S> {
             address: 0,
             notify: false,
             updiscon: false,
-            ir: false,
             privilege: Privilege::User,
             segment_idx: 0,
             instr_cache,
@@ -255,7 +253,6 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         if let Some(addr) = payload.get_address_info() {
             self.state.notify = addr.notify;
             self.state.updiscon = addr.updiscon;
-            self.state.ir = self.recover_ir_status(payload);
         }
     }
 
