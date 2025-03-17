@@ -560,21 +560,15 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
-        use instruction::format::{TypeI, TypeR};
         use instruction::Kind;
 
-        if let Some(name) = instr.kind {
-            if matches!(
-                name,
-                Kind::jalr(TypeI { rd: 0, rs1: 1, .. }) | Kind::c_jr(TypeR { rs1: 1, .. })
-            ) {
-                if self.state.ir
-                    && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
-                {
-                    return false;
-                }
-                return self.state.irstack_depth > 0;
+        if instr.kind.map(Kind::is_return).unwrap_or(false) {
+            if self.state.ir
+                && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
+            {
+                return false;
             }
+            return self.state.irstack_depth > 0;
         }
         return false;
     }
