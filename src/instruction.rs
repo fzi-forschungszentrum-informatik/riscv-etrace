@@ -259,6 +259,19 @@ impl Kind {
         )
     }
 
+    /// Determine whether this instruction can be considered a function return
+    ///
+    /// Returns true if [Self] refers to an instruction that we consider a
+    /// function return, that is a jump register instruction with `ra` (the
+    /// return address register) as `rs1`.
+    pub fn is_return(self) -> bool {
+        matches!(
+            self,
+            Self::jalr(format::TypeI { rd: 0, rs1: 1, .. })
+                | Self::c_jr(format::TypeR { rs1: 1, .. })
+        )
+    }
+
     /// Decode a 32bit ("normal") instruction
     ///
     /// Returns an instruction if it can be decoded, that is if that instruction
