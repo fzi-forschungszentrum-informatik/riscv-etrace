@@ -506,16 +506,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         Ok(taken.then_some(target))
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<Option<u64>, Error> {
-        Ok(None)
-    }
-
     /// If a pair of addresses constitute a sequential jump, compute the target
     ///
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
-    #[cfg(feature = "implicit_return")]
     fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<Option<u64>, Error> {
         use instruction::Kind;
 
