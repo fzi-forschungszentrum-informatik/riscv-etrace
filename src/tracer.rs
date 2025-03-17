@@ -547,9 +547,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         use instruction::Kind;
 
         if instr.kind.map(Kind::is_return).unwrap_or(false) {
-            if self.state.ir
-                && payload.implicit_return_depth() == Some(self.state.return_stack.depth())
-            {
+            if payload.implicit_return_depth() == Some(self.state.return_stack.depth()) {
                 return None;
             }
 
