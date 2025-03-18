@@ -590,3 +590,83 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         }
     }
 }
+
+/// Builder for [Tracer]
+#[derive(Copy, Clone, Default)]
+pub struct Builder<'a> {
+    config: ProtocolConfiguration,
+    segments: &'a [Segment<'a>],
+    full_address: bool,
+}
+
+impl<'a> Builder<'a> {
+    /// Create a new builder for a [Tracer]
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Build the [Tracer] for the given [ProtocolConfiguration]
+    ///
+    /// New builders carry a [Default] configuration.
+    pub fn with_config(self, config: ProtocolConfiguration) -> Self {
+        Self { config, ..self }
+    }
+
+    /// Build the [Tracer] with the given instruction source
+    ///
+    /// New builders carry an empty set of [Segment]s. Thus, the resulting
+    /// [Tracer] will likely be unusable.
+    pub fn with_segments(self, segments: &'a [Segment<'a>]) -> Self {
+        Self { segments, ..self }
+    }
+
+    /// Build a [Tracer] for addresses encoded fully
+    ///
+    /// New builders are configured for differential addresses.
+    pub fn with_full_address(self) -> Self {
+        Self {
+            full_address: true,
+            ..self
+        }
+    }
+
+    /// Build a [Tracer] for addresses encoded differentially
+    ///
+    /// New builders are configured for differential addresses.
+    pub fn with_differential_address(self) -> Self {
+        Self {
+            full_address: false,
+            ..self
+        }
+    }
+
+    /// Build the [Tracer] with the given reporter
+    pub fn build<C, S>(
+        self,
+        report_trace: &'a mut dyn ReportTrace,
+    ) -> Result<Tracer<'a, C, S>, Error>
+    where
+        C: InstructionCache + Default,
+        S: ReturnStack,
+    {
+        let max_stack_depth = if self.config.return_stack_size_p > 0 {
+            1 << self.config.return_stack_size_p
+        } else if self.config.call_counter_size_p > 0 {
+            1 << self.config.call_counter_size_p
+        } else {
+            0
+        };
+
+        let state = TraceState::new(
+            Default::default(),
+            S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
+        );
+        Ok(Tracer {
+            state,
+            report_trace,
+            segments: self.segments,
+            full_address: self.full_address,
+            sequential_jumps: self.config.sijump_p,
+        })
+    }
+}
