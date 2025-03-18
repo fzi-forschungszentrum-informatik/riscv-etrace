@@ -9,8 +9,10 @@ use crate::ProtocolConfiguration;
 use core::fmt;
 
 pub mod cache;
+pub mod stack;
 
 use cache::InstructionCache;
+use stack::ReturnStack;
 
 /// Possible errors which can occur during the tracing algorithm.
 #[derive(Debug)]
@@ -42,8 +44,8 @@ pub enum Error {
     },
     /// The address is not inside a [Segment].
     SegmentationFault(u64),
-    /// The ir stack has exceeded its allocated size.
-    IrStackExhausted(u64, u64),
+    /// The IR stack cannot be constructed for the given size
+    CannotConstructIrStack(usize),
 }
 
 impl core::error::Error for Error {}
@@ -76,11 +78,8 @@ impl fmt::Display for Error {
             Self::SegmentationFault(addr) => {
                 write!(f, "address {addr:#0x} not in any known segment")
             }
-            Self::IrStackExhausted(size, supremum) => {
-                write!(
-                    f,
-                    "IR stack has grown to {size}, which is greater than the allocated {supremum}",
-                )
+            Self::CannotConstructIrStack(size) => {
+                write!(f, "Cannot construct return stack of size {size}")
             }
         }
     }
@@ -104,8 +103,8 @@ pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
 /// For specifics see the pseudocode in the
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
-#[derive(Clone)]
-pub struct TraceState<C: InstructionCache> {
+#[derive(Clone, Debug)]
+pub struct TraceState<C: InstructionCache, S: ReturnStack> {
     pub pc: u64,
     pub last_pc: u64,
     pub address: u64,
@@ -119,14 +118,13 @@ pub struct TraceState<C: InstructionCache> {
     pub updiscon: bool,
     pub ir: bool,
     pub privilege: Privilege,
-    pub return_stack: [u64; 32],
-    pub irstack_depth: u64,
     pub segment_idx: usize,
     pub instr_cache: C,
+    pub return_stack: S,
 }
 
-impl<C: InstructionCache + Default> TraceState<C> {
-    fn default() -> Self {
+impl<C: InstructionCache, S: ReturnStack> TraceState<C, S> {
+    fn new(instr_cache: C, return_stack: S) -> Self {
         TraceState {
             pc: 0,
             last_pc: 0,
@@ -140,34 +138,10 @@ impl<C: InstructionCache + Default> TraceState<C> {
             updiscon: false,
             ir: false,
             privilege: Privilege::User,
-            return_stack: [0; IRSTACK_DEPTH_SUPREMUM as usize],
-            irstack_depth: 0,
             segment_idx: 0,
-            instr_cache: Default::default(),
+            instr_cache,
+            return_stack,
         }
-    }
-}
-
-impl<C: InstructionCache + fmt::Debug> fmt::Debug for TraceState<C> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.write_fmt(format_args!(
-            "TracerState {{ pc: {:#0x}, last_pc: {:#0x}, address: {:#0x}, \
-        branches: {}, branch_map: 0b{:b}, stop_at_last_branch: {}, \
-        inferred_address: {}, start_of_trace: {}, notify: {}, \
-        updiscon: {}, privilege: {:?}, segment_idx: {} }}",
-            self.pc,
-            self.last_pc,
-            self.address,
-            self.branches,
-            self.branch_map,
-            self.stop_at_last_branch,
-            self.inferred_address,
-            self.start_of_trace,
-            self.notify,
-            self.updiscon,
-            self.privilege,
-            self.segment_idx,
-        ))
     }
 }
 
@@ -187,25 +161,37 @@ pub trait ReportTrace {
 
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
-pub struct Tracer<'a, C: InstructionCache = cache::NoCache> {
-    state: TraceState<C>,
+pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = stack::NoStack> {
+    state: TraceState<C, S>,
     proto_conf: ProtocolConfiguration,
     trace_conf: TraceConfiguration<'a>,
     report_trace: &'a mut dyn ReportTrace,
 }
 
-impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
+impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
     pub fn new(
         proto_conf: ProtocolConfiguration,
         trace_conf: TraceConfiguration<'a>,
         report_trace: &'a mut dyn ReportTrace,
-    ) -> Self {
-        Tracer {
-            state: TraceState::default(),
+    ) -> Result<Self, Error> {
+        let max_stack_depth = if proto_conf.return_stack_size_p > 0 {
+            1 << proto_conf.return_stack_size_p
+        } else if proto_conf.call_counter_size_p > 0 {
+            1 << proto_conf.call_counter_size_p
+        } else {
+            0
+        };
+
+        let state = TraceState::new(
+            Default::default(),
+            S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
+        );
+        Ok(Tracer {
+            state,
             trace_conf,
             proto_conf,
             report_trace,
-        }
+        })
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
@@ -321,9 +307,6 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
                 self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             self.state.start_of_trace = false;
-            if cfg!(feature = "implicit_return") {
-                self.state.irstack_depth = 0;
-            }
             Ok(())
         } else {
             if self.state.start_of_trace {
@@ -383,7 +366,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn follow_execution_path_ir_state(&self, payload: &Payload) -> bool {
-        self.state.ir || payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
+        self.state.ir || payload.implicit_return_depth() == Some(self.state.return_stack.depth())
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -572,17 +555,12 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
         if instr.kind.map(Kind::is_return).unwrap_or(false) {
             if self.state.ir
-                && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
+                && payload.implicit_return_depth() == Some(self.state.return_stack.depth())
             {
                 return None;
             }
 
-            self.state.irstack_depth = self.state.irstack_depth.checked_sub(1)?;
-            return self
-                .state
-                .return_stack
-                .get(self.state.irstack_depth as usize)
-                .copied();
+            return self.state.return_stack.pop();
         }
 
         None
@@ -600,33 +578,9 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         }
 
         let local_instr = self.get_instr(addr)?;
-        let mut link = addr;
-
-        let irstack_depth_max = if self.proto_conf.return_stack_size_p != 0 {
-            2_u64.pow(self.proto_conf.return_stack_size_p.into())
-        } else {
-            2_u64.pow(self.proto_conf.call_counter_size_p.into())
-        };
-
-        if irstack_depth_max > IRSTACK_DEPTH_SUPREMUM {
-            return Err(Error::IrStackExhausted(
-                irstack_depth_max,
-                IRSTACK_DEPTH_SUPREMUM,
-            ));
-        }
-
-        if self.state.irstack_depth == irstack_depth_max {
-            self.state.irstack_depth -= 1;
-            for i in 0..irstack_depth_max {
-                self.state.return_stack[i as usize] = self.state.return_stack[i as usize + 1];
-            }
-        }
-
-        link += (local_instr.size as u64) * 8;
-
-        self.state.return_stack[self.state.irstack_depth as usize] = link;
-        self.state.irstack_depth += 1;
-
+        self.state
+            .return_stack
+            .push(addr + (local_instr.size as u64) * 8);
         Ok(())
     }
 

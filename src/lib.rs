@@ -85,7 +85,7 @@
 //!     proto_conf,
 //!     trace_conf,
 //!     &mut reporter,
-//! );
+//! ).expect("Could not construct tracer");
 //!
 //! # let packet_vec: Vec<u8> = vec![0b0101_0000; 32];
 //! # let packet_slice = packet_vec.as_slice();
