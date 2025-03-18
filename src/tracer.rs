@@ -418,7 +418,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     ///
     /// This roughly corresponds to a combination of `is_taken_branch` of the
     /// reference implementation.
-    #[allow(clippy::wrong_self_convention)]
     fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error<B::Error>> {
         let Some(target) = instr.kind.and_then(instruction::Kind::branch_target) else {
             // Not a branch instruction
