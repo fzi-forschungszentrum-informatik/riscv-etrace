@@ -85,15 +85,6 @@ impl fmt::Display for Error {
     }
 }
 
-/// Configuration used only by the tracer.
-#[derive(Copy, Clone, Debug)]
-pub struct TraceConfiguration<'a> {
-    /// The memory segments which will be traced. It is assumed the segments **do not overlap**
-    /// with each other.
-    pub segments: &'a [Segment<'a>],
-    pub full_address: bool,
-}
-
 /// Includes the necessary information for the tracing algorithm to trace the instruction execution.
 ///
 /// For specifics see the pseudocode in the
