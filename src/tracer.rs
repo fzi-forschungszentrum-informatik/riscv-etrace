@@ -154,7 +154,7 @@ pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = sta
     sequential_jumps: bool,
 }
 
-impl<'a, C: InstructionCache, S: ReturnStack> Tracer<'a, C, S> {
+impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
         if !self.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
