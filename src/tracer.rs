@@ -10,7 +10,6 @@ use core::fmt;
 
 pub mod stack;
 
-use cache::InstructionCache;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
 
