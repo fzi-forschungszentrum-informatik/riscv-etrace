@@ -164,32 +164,6 @@ pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = sta
 }
 
 impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
-    pub fn new(
-        proto_conf: ProtocolConfiguration,
-        trace_conf: TraceConfiguration<'a>,
-        report_trace: &'a mut dyn ReportTrace,
-    ) -> Result<Self, Error> {
-        let max_stack_depth = if proto_conf.return_stack_size_p > 0 {
-            1 << proto_conf.return_stack_size_p
-        } else if proto_conf.call_counter_size_p > 0 {
-            1 << proto_conf.call_counter_size_p
-        } else {
-            0
-        };
-
-        let state = TraceState::new(
-            Default::default(),
-            S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
-        );
-        Ok(Tracer {
-            state,
-            report_trace,
-            segments: trace_conf.segments,
-            full_address: trace_conf.full_address,
-            sequential_jumps: proto_conf.sijump_p,
-        })
-    }
-
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
         if !self.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
