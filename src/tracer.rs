@@ -77,7 +77,7 @@ impl<I> fmt::Display for Error<I> {
 /// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
 /// and the specification.
 #[derive(Clone, Debug)]
-pub struct TraceState<C: InstructionCache, S: ReturnStack> {
+pub struct TraceState<S: ReturnStack> {
     pub pc: u64,
     pub last_pc: u64,
     pub address: u64,
@@ -91,12 +91,11 @@ pub struct TraceState<C: InstructionCache, S: ReturnStack> {
     pub updiscon: bool,
     pub privilege: Privilege,
     pub segment_idx: usize,
-    pub instr_cache: C,
     pub return_stack: S,
 }
 
-impl<C: InstructionCache, S: ReturnStack> TraceState<C, S> {
-    fn new(instr_cache: C, return_stack: S) -> Self {
+impl<S: ReturnStack> TraceState<S> {
+    fn new(return_stack: S) -> Self {
         TraceState {
             pc: 0,
             last_pc: 0,
@@ -110,7 +109,6 @@ impl<C: InstructionCache, S: ReturnStack> TraceState<C, S> {
             updiscon: false,
             privilege: Privilege::User,
             segment_idx: 0,
-            instr_cache,
             return_stack,
         }
     }
@@ -133,7 +131,7 @@ pub trait ReportTrace {
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
-    state: TraceState<cache::NoCache, S>,
+    state: TraceState<S>,
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
     full_address: bool,
@@ -609,7 +607,6 @@ impl<B: Binary> Builder<B> {
         };
 
         let state = TraceState::new(
-            Default::default(),
             S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
         );
         Ok(Tracer {
