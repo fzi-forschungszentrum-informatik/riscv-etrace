@@ -24,8 +24,6 @@ pub enum Error {
     /// Some branches which should have been processed are still unprocessed. The number of
     /// unprocessed branches is given.
     UnprocessedBranches(u8),
-    /// The immediate of the disassembled instruction is zero but shouldn't be.
-    ImmediateIsNone(Instruction),
     /// An unexpected uninferable discontinuity was encountered.
     UnexpectedUninferableDiscon,
     /// The tracer cannot resolve the branch because all branches have been processed.
@@ -56,7 +54,6 @@ impl fmt::Display for Error {
             Self::AddressIsZero => write!(f, "address is zero"),
             Self::StartOfTrace => write!(f, "expected sync packet"),
             Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
-            Self::ImmediateIsNone(_) => write!(f, "expected non-zero immediate of instruction"),
             Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
             Self::UnresolvableBranch => write!(f, "unresolvable branch"),
             Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
