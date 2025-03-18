@@ -370,21 +370,6 @@ pub struct Instruction {
     pub kind: Option<Kind>,
 }
 
-impl Instruction {
-    pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
-        match bin_instr {
-            InstructionBits::Bit32(num) => Self {
-                size: InstructionSize::Normal,
-                kind: Kind::decode_32(*num),
-            },
-            InstructionBits::Bit16(num) => Self {
-                size: InstructionSize::Compressed,
-                kind: Kind::decode_16(*num),
-            },
-        }
-    }
-}
-
 impl From<InstructionBits> for Instruction {
     fn from(bits: InstructionBits) -> Self {
         match bits {
