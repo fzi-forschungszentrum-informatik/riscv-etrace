@@ -388,6 +388,21 @@ impl Instruction {
     }
 }
 
+impl From<InstructionBits> for Instruction {
+    fn from(bits: InstructionBits) -> Self {
+        match bits {
+            InstructionBits::Bit32(bits) => Self {
+                size: InstructionSize::Normal,
+                kind: Kind::decode_32(bits),
+            },
+            InstructionBits::Bit16(bits) => Self {
+                size: InstructionSize::Compressed,
+                kind: Kind::decode_16(bits),
+            },
+        }
+    }
+}
+
 impl Default for Instruction {
     fn default() -> Self {
         Self::ignored(Default::default())
