@@ -157,8 +157,9 @@ pub trait ReportTrace {
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = stack::NoStack> {
     state: TraceState<C, S>,
-    trace_conf: TraceConfiguration<'a>,
     report_trace: &'a mut dyn ReportTrace,
+    segments: &'a [Segment<'a>],
+    full_address: bool,
     sequential_jumps: bool,
 }
 
@@ -182,17 +183,18 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         );
         Ok(Tracer {
             state,
-            trace_conf,
-            sequential_jumps: proto_conf.sijump_p,
             report_trace,
+            segments: trace_conf.segments,
+            full_address: trace_conf.full_address,
+            sequential_jumps: proto_conf.sijump_p,
         })
     }
 
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
-        if !self.trace_conf.segments[self.state.segment_idx].contains(pc) {
+        if !self.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
-            for i in 0..self.trace_conf.segments.len() {
-                if self.trace_conf.segments[i].contains(pc) {
+            for i in 0..self.segments.len() {
+                if self.segments[i].contains(pc) {
                     self.state.segment_idx = i;
                     break;
                 }
@@ -205,18 +207,16 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         if let Some(instr) = self.state.instr_cache.get(pc) {
             return Ok(instr);
         }
-        let binary = match InstructionBits::read_binary(
-            pc,
-            &self.trace_conf.segments[self.state.segment_idx],
-        ) {
+        let binary = match InstructionBits::read_binary(pc, &self.segments[self.state.segment_idx])
+        {
             Ok(binary) => binary,
             Err(bytes) => {
                 return Err(Error::UnknownInstruction {
                     address: pc,
                     bytes,
                     segment_idx: self.state.segment_idx,
-                    vaddr_start: self.trace_conf.segments[self.state.segment_idx].first_addr,
-                    vaddr_end: self.trace_conf.segments[self.state.segment_idx].last_addr,
+                    vaddr_start: self.segments[self.state.segment_idx].first_addr,
+                    vaddr_end: self.segments[self.state.segment_idx].last_addr,
                 })
             }
         };
@@ -302,7 +302,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
             }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
                 self.state.stop_at_last_branch = false;
-                if self.trace_conf.full_address {
+                if self.full_address {
                     self.state.address = payload.get_address();
                 } else {
                     let addr = payload.get_address() as i64;
