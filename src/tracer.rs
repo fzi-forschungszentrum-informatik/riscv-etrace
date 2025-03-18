@@ -215,7 +215,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
             } else if let Synchronization::Context(ctx) = sync {
-                if cfg!(not(feature = "tracing_v1")) {
+                if self.version != Version::V1 {
                     self.state.privilege = ctx.privilege;
                 }
                 return Ok(());
@@ -254,7 +254,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
                 self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
             }
-            if cfg!(not(feature = "tracing_v1")) {
+            if self.version != Version::V1 {
                 self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             self.state.start_of_trace = false;
@@ -324,25 +324,25 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         }
     }
 
-    #[cfg(not(feature = "tracing_v1"))]
     fn follow_execution_path_catch_priv_changes(
         &mut self,
         payload: &Payload,
     ) -> Result<bool, Error> {
-        let priviledge = payload
-            .get_privilege()
-            .ok_or(Error::WrongGetPrivilegeType)?;
-        Ok(priviledge == self.state.privilege
-            && self
-                .get_instr(self.state.last_pc)?
-                .kind
-                .map(instruction::Kind::is_return_from_trap)
-                .unwrap_or(false))
-    }
-
-    #[cfg(feature = "tracing_v1")]
-    fn follow_execution_path_catch_priv_changes(&mut self, _: &Payload) -> Result<bool, Error> {
-        Ok(true)
+        let res = match self.version {
+            Version::V1 => {
+                let priviledge = payload
+                    .get_privilege()
+                    .ok_or(Error::WrongGetPrivilegeType)?;
+                priviledge == self.state.privilege
+                    && self
+                        .get_instr(self.state.last_pc)?
+                        .kind
+                        .map(instruction::Kind::is_return_from_trap)
+                        .unwrap_or(false)
+            }
+            Version::V2 => true,
+        };
+        Ok(res)
     }
 
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error> {
