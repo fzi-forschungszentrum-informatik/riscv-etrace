@@ -33,16 +33,6 @@ pub enum Error<I> {
     WrongGetBranchType,
     /// The current packet has no privilege information.
     WrongGetPrivilegeType,
-    /// The instruction at `address` cannot be parsed.
-    UnknownInstruction {
-        address: u64,
-        bytes: [u8; 4],
-        segment_idx: usize,
-        vaddr_start: u64,
-        vaddr_end: u64,
-    },
-    /// The address is not inside a [Segment].
-    SegmentationFault(u64),
     /// The IR stack cannot be constructed for the given size
     CannotConstructIrStack(usize),
     /// We could not fetch an [Instruction] from a given address
@@ -71,23 +61,6 @@ impl<I> fmt::Display for Error<I> {
             Self::UnresolvableBranch => write!(f, "unresolvable branch"),
             Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
             Self::WrongGetPrivilegeType => write!(f, "expected privilege info in packet"),
-            Self::UnknownInstruction {
-                address,
-                bytes,
-                segment_idx,
-                vaddr_start,
-                vaddr_end,
-            } => {
-                let bytes = u32::from_be_bytes(*bytes);
-                write!(f, "unknown instruction {bytes:x} at {address:#0x}")?;
-                write!(
-                    f,
-                    ", segment: {segment_idx} ({vaddr_start:#0x}, {vaddr_end:#0x})"
-                )
-            }
-            Self::SegmentationFault(addr) => {
-                write!(f, "address {addr:#0x} not in any known segment")
-            }
             Self::CannotConstructIrStack(size) => {
                 write!(f, "Cannot construct return stack of size {size}")
             }
