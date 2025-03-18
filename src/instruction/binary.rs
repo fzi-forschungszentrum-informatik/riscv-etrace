@@ -22,6 +22,18 @@ impl<F: Fn(u64) -> Result<Instruction, E>, E> Binary for F {
     }
 }
 
+/// A [Binary] that does not contain any [Instruction]s
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Empty;
+
+impl Binary for Empty {
+    type Error = NoInstruction;
+
+    fn get_insn(&self, _: u64) -> Result<Instruction, Self::Error> {
+        Err(NoInstruction)
+    }
+}
+
 /// An error type expressing simple absence of an [Instruction]
 #[derive(Copy, Clone, Debug)]
 pub struct NoInstruction;
