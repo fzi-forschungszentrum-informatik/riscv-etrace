@@ -514,16 +514,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         Ok(taken.then_some(target))
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<Option<u64>, Error> {
-        Ok(None)
-    }
-
     /// If a pair of addresses constitute a sequential jump, compute the target
     ///
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
-    #[cfg(feature = "implicit_return")]
     fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<Option<u64>, Error> {
         use instruction::Kind;
 
@@ -548,16 +542,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         Ok(target)
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn implicit_return_address(&self, _: &Instruction, _: &Payload) -> Option<u64> {
-        None
-    }
-
     /// If the given instruction is a function return, try to find the return address
     ///
     /// This roughly corresponds to a combination of `is_implicit_return` and
     /// `pop_return_stack` of the reference implementation.
-    #[cfg(feature = "implicit_return")]
     fn implicit_return_address(&mut self, instr: &Instruction, payload: &Payload) -> Option<u64> {
         use instruction::Kind;
 
@@ -572,12 +560,6 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         None
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn push_return_stack(&mut self, _: &Instruction, _: u64) -> Result<(), Error> {
-        Ok(())
-    }
-
-    #[cfg(feature = "implicit_return")]
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error> {
         if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
             return Ok(());
