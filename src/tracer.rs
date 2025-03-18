@@ -632,3 +632,15 @@ impl<'a> Builder<'a> {
         })
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Version {
+    V1,
+    V2,
+}
+
+impl Default for Version {
+    fn default() -> Self {
+        Self::V2
+    }
+}
