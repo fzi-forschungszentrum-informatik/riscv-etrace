@@ -291,7 +291,12 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
                 self.state.branches = 0;
                 self.state.branch_map = 0;
             }
-            if self.get_instr(self.state.address)?.is_branch {
+            if self
+                .get_instr(self.state.address)?
+                .kind
+                .and_then(instruction::Kind::branch_target)
+                .is_some()
+            {
                 let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)? as u32;
                 self.state.branch_map |= branch << self.state.branches;
                 self.state.branches += 1;
@@ -361,7 +366,16 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
     }
 
     fn branch_limit(&mut self) -> Result<u8, Error> {
-        Ok(self.get_instr(self.state.pc)?.is_branch as u8)
+        if self
+            .get_instr(self.state.pc)?
+            .kind
+            .and_then(instruction::Kind::branch_target)
+            .is_some()
+        {
+            Ok(1)
+        } else {
+            Ok(0)
+        }
     }
 
     #[cfg(feature = "implicit_return")]
@@ -383,7 +397,11 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
             .get_privilege()
             .ok_or(Error::WrongGetPrivilegeType)?;
         Ok(priviledge == self.state.privilege
-            && self.get_instr(self.state.last_pc)?.is_return_from_trap())
+            && self
+                .get_instr(self.state.last_pc)?
+                .kind
+                .map(instruction::Kind::is_return_from_trap)
+                .unwrap_or(false))
     }
 
     #[cfg(feature = "tracing_v1")]
@@ -392,6 +410,8 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
     }
 
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error> {
+        use instruction::Kind;
+
         let previous_address = self.state.pc;
         let mut stop_here;
         loop {
@@ -405,7 +425,11 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
                 stop_here = self.next_pc(self.state.address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
                 if self.state.branches == 1
-                    && self.get_instr(self.state.pc)?.is_branch
+                    && self
+                        .get_instr(self.state.pc)?
+                        .kind
+                        .and_then(Kind::branch_target)
+                        .is_some()
                     && self.state.stop_at_last_branch
                 {
                     self.state.stop_at_last_branch = true;
@@ -428,7 +452,11 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
                 if !matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
-                    && !&self.get_instr(self.state.last_pc)?.is_uninferable_discon()
+                    && !&self
+                        .get_instr(self.state.last_pc)?
+                        .kind
+                        .map(Kind::is_uninferable_discon)
+                        .unwrap_or(false)
                     && !self.state.updiscon
                     && self.state.branches == self.branch_limit()?
                     && self.follow_execution_path_ir_state(payload)
@@ -589,7 +617,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
 
         let instr = self.get_instr(self.state.pc)?;
 
-        if instr.is_uninferable_discon() && trap.thaddr {
+        if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) && trap.thaddr {
             Ok(trap.address)
         } else if instr
             .kind
