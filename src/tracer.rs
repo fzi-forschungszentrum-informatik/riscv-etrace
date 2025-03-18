@@ -143,8 +143,8 @@ pub trait ReportTrace {
 
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
-pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = stack::NoStack> {
-    state: TraceState<C, S>,
+pub struct Tracer<'a, S: ReturnStack = stack::NoStack> {
+    state: TraceState<cache::NoCache, S>,
     report_trace: &'a mut dyn ReportTrace,
     segments: &'a [Segment<'a>],
     full_address: bool,
@@ -152,7 +152,7 @@ pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = sta
     version: Version,
 }
 
-impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
+impl<S: ReturnStack> Tracer<'_, S> {
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
         if !self.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
@@ -612,12 +612,11 @@ impl<'a> Builder<'a> {
     }
 
     /// Build the [Tracer] with the given reporter
-    pub fn build<C, S>(
+    pub fn build<S>(
         self,
         report_trace: &'a mut dyn ReportTrace,
-    ) -> Result<Tracer<'a, C, S>, Error>
+    ) -> Result<Tracer<'a, S>, Error>
     where
-        C: InstructionCache + Default,
         S: ReturnStack,
     {
         let max_stack_depth = if self.config.return_stack_size_p > 0 {
