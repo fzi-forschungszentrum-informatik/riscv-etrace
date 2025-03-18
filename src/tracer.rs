@@ -465,30 +465,30 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
     }
 
     fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error> {
+        use instruction::Kind;
+
         let instr = self.get_instr(self.state.pc)?;
         let this_pc = self.state.pc;
         let mut stop_here = false;
 
-        if instr.is_inferable_jump() {
-            let imm = instr.imm.ok_or(Error::ImmediateIsNone(instr))?;
-            self.incr_pc(imm);
-            if imm == 0 {
+        if let Some(target) = instr.kind.and_then(Kind::inferable_jump_target) {
+            self.incr_pc(target);
+            if target == 0 {
                 stop_here = true;
             }
-        } else if self.is_sequential_jump(&instr, self.state.last_pc)? {
-            self.state.pc = self.sequential_jump_target(self.state.pc, self.state.last_pc)?;
-        } else if self.is_implicit_return(&instr, payload) {
-            self.state.pc = self.pop_return_stack();
-        } else if instr.is_uninferable_discon() {
+        } else if let Some(target) = self.sequential_jump_target(this_pc, self.state.last_pc)? {
+            self.state.pc = target;
+        } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
+            self.state.pc = addr;
+        } else if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
             if self.state.stop_at_last_branch {
                 return Err(Error::UnexpectedUninferableDiscon);
             }
             self.state.pc = address;
             stop_here = true;
-        } else if self.is_taken_branch(&instr)? {
-            let imm = instr.imm.ok_or(Error::ImmediateIsNone(instr))?;
-            self.incr_pc(imm);
-            if imm == 0 {
+        } else if let Some(target) = self.taken_branch_target(&instr)? {
+            self.incr_pc(target.into());
+            if target == 0 {
                 stop_here = true;
             }
         } else {
@@ -502,11 +502,16 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         Ok(stop_here)
     }
 
+    /// If the given instruction is a branch and it was taken, return its target
+    ///
+    /// This roughly corresponds to a combination of `is_taken_branch` of the
+    /// reference implementation.
     #[allow(clippy::wrong_self_convention)]
-    fn is_taken_branch(&mut self, instr: &Instruction) -> Result<bool, Error> {
-        if !instr.is_branch {
-            return Ok(false);
-        }
+    fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error> {
+        let Some(target) = instr.kind.and_then(instruction::Kind::branch_target) else {
+            // Not a branch instruction
+            return Ok(None);
+        };
         if self.state.branches == 0 {
             return Err(Error::UnresolvableBranch);
         }
@@ -515,96 +520,72 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
             .report_branch(self.state.branches, self.state.branch_map, taken);
         self.state.branches -= 1;
         self.state.branch_map >>= 1;
-        Ok(taken)
+        Ok(taken.then_some(target))
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    #[allow(clippy::wrong_self_convention)]
-    pub fn is_sequential_jump(&mut self, _: &Instruction, _: u64) -> Result<bool, Error> {
-        Ok(false)
+    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<Option<u64>, Error> {
+        Ok(None)
     }
 
+    /// If a pair of addresses constitute a sequential jump, compute the target
+    ///
+    /// This roughly corresponds to a combination of `is_sequential_jump` and
+    /// `sequential_jump_target` of the reference implementation.
     #[cfg(feature = "implicit_return")]
-    #[allow(clippy::wrong_self_convention)]
-    pub fn is_sequential_jump(
-        &mut self,
-        instr: &Instruction,
-        prev_addr: u64,
-    ) -> Result<bool, Error> {
+    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<Option<u64>, Error> {
         use instruction::Kind;
 
-        if !(instr.is_uninferable_jump() && self.proto_conf.sijump_p) {
-            return Ok(false);
+        if !self.proto_conf.sijump_p {
+            return Ok(None);
         }
+        let Some(insn) = self.get_instr(addr)?.kind else {
+            return Ok(None);
+        };
 
-        let prev_instr = self.get_instr(prev_addr)?;
+        let target = self.get_instr(prev_addr)?.kind.and_then(|i| match i {
+            Kind::auipc(d) => Some((d.rd, prev_addr.wrapping_add_signed(d.imm.into()))),
+            Kind::lui(d) => Some((d.rd, d.imm as u64)),
+            Kind::c_lui(d) => Some((d.rd, d.imm as u64)),
+            _ => None,
+        });
 
-        if prev_instr
-            .kind
-            .filter(|name| matches!(*name, Kind::auipc(_) | Kind::lui(_) | Kind::c_lui(_)))
-            .is_some()
-        {
-            return Ok(instr.rs1 == prev_instr.rd);
-        }
-        Ok(false)
-    }
+        let target = Option::zip(insn.uninferable_jump(), target)
+            .filter(|((dep, _), (r, _))| r == dep)
+            .map(|((_, off), (_, t))| t.wrapping_add_signed(off.into()));
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn sequential_jump_target(&mut self, _: u64, _: u64) -> Result<u64, Error> {
-        unreachable!()
-    }
-
-    #[cfg(feature = "implicit_return")]
-    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<u64, Error> {
-        use instruction::Kind;
-
-        let instr = self.get_instr(addr)?;
-        let prev_instr = self.get_instr(prev_addr)?;
-        let mut target = 0;
-
-        if matches!(prev_instr.kind, Some(Kind::auipc(_))) {
-            target = prev_addr;
-        }
-        let imm = prev_instr.imm.ok_or(Error::ImmediateIsNone(prev_instr))?;
-        if imm.is_negative() {
-            target = target.overflowing_sub(imm.abs() as u64).0
-        } else {
-            target = target.overflowing_add(imm as u64).0;
-        }
-        if matches!(instr.kind, Some(Kind::jalr(_))) {
-            if imm.is_negative() {
-                target = target.overflowing_sub(imm.abs() as u64).0
-            } else {
-                target = target.overflowing_add(imm as u64).0;
-            }
-        }
         Ok(target)
     }
 
     #[cfg(not(feature = "implicit_return"))]
-    fn is_implicit_return(&self, _: &Instruction, _: &Payload) -> bool {
-        false
+    fn implicit_return_address(&self, _: &Instruction, _: &Payload) -> Option<u64> {
+        None
     }
 
+    /// If the given instruction is a function return, try to find the return address
+    ///
+    /// This roughly corresponds to a combination of `is_implicit_return` and
+    /// `pop_return_stack` of the reference implementation.
     #[cfg(feature = "implicit_return")]
-    fn is_implicit_return(&self, instr: &Instruction, payload: &Payload) -> bool {
-        use instruction::format::{TypeI, TypeR};
+    fn implicit_return_address(&mut self, instr: &Instruction, payload: &Payload) -> Option<u64> {
         use instruction::Kind;
 
-        if let Some(name) = instr.kind {
-            if matches!(
-                name,
-                Kind::jalr(TypeI { rd: 0, rs1: 1, .. }) | Kind::c_jr(TypeR { rs1: 1, .. })
-            ) {
-                if self.state.ir
-                    && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
-                {
-                    return false;
-                }
-                return self.state.irstack_depth > 0;
+        if instr.kind.map(Kind::is_return).unwrap_or(false) {
+            if self.state.ir
+                && payload.implicit_return_depth() == Some(self.state.irstack_depth as usize)
+            {
+                return None;
             }
+
+            self.state.irstack_depth = self.state.irstack_depth.checked_sub(1)?;
+            return self
+                .state
+                .return_stack
+                .get(self.state.irstack_depth as usize)
+                .copied();
         }
-        return false;
+
+        None
     }
 
     #[cfg(not(feature = "implicit_return"))]
@@ -614,7 +595,7 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
 
     #[cfg(feature = "implicit_return")]
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error> {
-        if !instr.is_call() {
+        if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
             return Ok(());
         }
 
@@ -647,17 +628,6 @@ impl<'a, C: InstructionCache + Default> Tracer<'a, C> {
         self.state.irstack_depth += 1;
 
         Ok(())
-    }
-
-    #[cfg(not(feature = "implicit_return"))]
-    fn pop_return_stack(&mut self) -> u64 {
-        unreachable!()
-    }
-
-    #[cfg(feature = "implicit_return")]
-    fn pop_return_stack(&mut self) -> u64 {
-        self.state.irstack_depth -= 1;
-        self.state.return_stack[self.state.irstack_depth as usize]
     }
 
     fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, Error> {
