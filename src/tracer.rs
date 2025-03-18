@@ -3,7 +3,7 @@
 
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
-use crate::instruction::{self, Instruction, InstructionBits, Segment};
+use crate::instruction::{self, Instruction};
 use crate::ProtocolConfiguration;
 
 use core::fmt;
