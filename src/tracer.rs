@@ -149,6 +149,7 @@ pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = sta
     segments: &'a [Segment<'a>],
     full_address: bool,
     sequential_jumps: bool,
+    version: Version,
 }
 
 impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
@@ -559,6 +560,7 @@ pub struct Builder<'a> {
     config: ProtocolConfiguration,
     segments: &'a [Segment<'a>],
     full_address: bool,
+    version: Version,
 }
 
 impl<'a> Builder<'a> {
@@ -629,6 +631,7 @@ impl<'a> Builder<'a> {
             segments: self.segments,
             full_address: self.full_address,
             sequential_jumps: self.config.sijump_p,
+            version: self.version,
         })
     }
 }
