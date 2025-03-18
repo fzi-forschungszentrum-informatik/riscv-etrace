@@ -32,11 +32,8 @@
 //! use riscv_etrace::{ProtocolConfiguration};
 //! use riscv_etrace::decoder::Decoder;
 //! use riscv_etrace::Instruction;
-//! use riscv_etrace::Segment;
+//! use riscv_etrace::instruction::binary;
 //! use riscv_etrace::tracer::{self, ReportTrace, Tracer};
-//!
-//! // Create your segments from your ELF files.
-//! let mut segments: Vec<Segment> = Vec::new();
 //!
 //! // Use the default protocol level configuration which will define the bit lengths of packet fields.
 //! let mut proto_conf = ProtocolConfiguration::default();
@@ -72,9 +69,9 @@
 //! let mut decoder = Decoder::new(proto_conf);
 //!
 //! // Create each tracer for the hart we want to trace.
-//! let mut tracer: Tracer = tracer::Builder::new()
+//! let mut tracer: Tracer<_> = tracer::Builder::new()
 //!     .with_config(proto_conf)
-//!     .with_segments(&segments)
+//!     .with_binary(binary::Empty)
 //!     .build(&mut reporter)
 //!     .expect("Could not construct tracer");
 //!
