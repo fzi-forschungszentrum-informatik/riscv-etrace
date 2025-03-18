@@ -604,6 +604,13 @@ impl<'a> Builder<'a> {
         }
     }
 
+    /// Build a [Tracer] for the given version of the tracing specification
+    ///
+    /// New builders are configured for [Version::V2].
+    pub fn with_version(self, version: Version) -> Self {
+        Self { version, ..self }
+    }
+
     /// Build the [Tracer] with the given reporter
     pub fn build<C, S>(
         self,
