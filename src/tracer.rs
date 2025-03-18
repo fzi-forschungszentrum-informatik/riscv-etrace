@@ -116,7 +116,6 @@ pub struct TraceState<C: InstructionCache, S: ReturnStack> {
     pub start_of_trace: bool,
     pub notify: bool,
     pub updiscon: bool,
-    pub ir: bool,
     pub privilege: Privilege,
     pub segment_idx: usize,
     pub instr_cache: C,
@@ -136,7 +135,6 @@ impl<C: InstructionCache, S: ReturnStack> TraceState<C, S> {
             address: 0,
             notify: false,
             updiscon: false,
-            ir: false,
             privilege: Privilege::User,
             segment_idx: 0,
             instr_cache,
@@ -241,21 +239,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         }
     }
 
-    #[cfg(not(feature = "implicit_return"))]
-    fn recover_ir_status(&self, _: &Payload) -> bool {
-        false
-    }
-
-    #[cfg(feature = "implicit_return")]
-    fn recover_ir_status(&self, payload: &Payload) -> bool {
-        payload.implicit_return_depth().is_some()
-    }
-
     fn recover_status_fields(&mut self, payload: &Payload) {
         if let Some(addr) = payload.get_address_info() {
             self.state.notify = addr.notify;
             self.state.updiscon = addr.updiscon;
-            self.state.ir = self.recover_ir_status(payload);
         }
     }
 
@@ -378,16 +365,6 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         }
     }
 
-    #[cfg(feature = "implicit_return")]
-    fn follow_execution_path_ir_state(&self, payload: &Payload) -> bool {
-        self.state.ir || payload.implicit_return_depth() == Some(self.state.return_stack.depth())
-    }
-
-    #[cfg(not(feature = "implicit_return"))]
-    fn follow_execution_path_ir_state(&self, _: &Payload) -> bool {
-        true
-    }
-
     #[cfg(not(feature = "tracing_v1"))]
     fn follow_execution_path_catch_priv_changes(
         &mut self,
@@ -459,7 +436,10 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
                         .unwrap_or(false)
                     && !self.state.updiscon
                     && self.state.branches == self.branch_limit()?
-                    && self.follow_execution_path_ir_state(payload)
+                    && payload
+                        .implicit_return_depth()
+                        .map(|v| v == self.state.return_stack.depth())
+                        .unwrap_or(true)
                 {
                     self.state.inferred_address = true;
                     return Ok(());
@@ -582,9 +562,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         use instruction::Kind;
 
         if instr.kind.map(Kind::is_return).unwrap_or(false) {
-            if self.state.ir
-                && payload.implicit_return_depth() == Some(self.state.return_stack.depth())
-            {
+            if payload.implicit_return_depth() == Some(self.state.return_stack.depth()) {
                 return None;
             }
 
