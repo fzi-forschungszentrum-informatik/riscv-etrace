@@ -94,10 +94,6 @@ pub struct TraceConfiguration<'a> {
     pub full_address: bool,
 }
 
-/// Supremum of depth of the implicit return stack.
-/// This value should **always** be larger than the maximum ir stack depth.
-pub const IRSTACK_DEPTH_SUPREMUM: u64 = 32;
-
 /// Includes the necessary information for the tracing algorithm to trace the instruction execution.
 ///
 /// For specifics see the pseudocode in the
