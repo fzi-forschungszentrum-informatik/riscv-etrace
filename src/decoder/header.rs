@@ -13,8 +13,6 @@ pub struct Header {
     /// [Payload](crate::decoder::Payload) length in bytes.
     pub payload_len: usize,
     pub trace_type: TraceType,
-    pub has_timestamp: bool,
-    #[cfg(feature = "time_tag")]
     pub time_tag: Option<u16>,
     pub hart_index: usize,
 }
@@ -23,9 +21,10 @@ impl Decode for Header {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let payload_len = decoder.read_bits(5)?;
         let trace_type = TraceType::decode(decoder)?;
-        let has_timestamp = decoder.read_bit()?;
-        #[cfg(feature = "time_tag")]
-        let time_tag = Some(decoder.read_bits(16)?);
+        let time_tag = decoder
+            .read_bit()?
+            .then(|| decoder.read_bits(16))
+            .transpose()?;
         let hart_index = decoder.read_bits(decoder.proto_conf.cpu_index_width)?;
         if trace_type != TraceType::Instruction {
             return Err(Error::WrongTraceType(trace_type));
@@ -34,8 +33,6 @@ impl Decode for Header {
         Ok(Header {
             payload_len,
             trace_type,
-            has_timestamp,
-            #[cfg(feature = "time_tag")]
             time_tag,
             hart_index,
         })
