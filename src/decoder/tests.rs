@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
+use payload::AddressInfo;
+
 #[test]
 fn read_u64() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
@@ -153,7 +155,7 @@ fn extension_jti_1() {
     })
     .with_data(&buffer);
 
-    let jti_long = JumpTargetIndex::decode(&mut decoder).unwrap();
+    let jti_long = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_long.index, 768);
     assert_eq!(jti_long.branches, 31);
     assert_eq!(jti_long.branch_map, Some(10));
@@ -172,7 +174,7 @@ fn extension_jti_2() {
     })
     .with_data(&buffer);
 
-    let jti_short = JumpTargetIndex::decode(&mut decoder).unwrap();
+    let jti_short = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
     assert_eq!(jti_short.branches, 0);
     assert_eq!(jti_short.branch_map, None);
@@ -184,7 +186,7 @@ fn branch() {
     buffer[0] = 0b010_00111;
     buffer[1] = 0b0000_1011;
     let mut decoder = Decoder::default().with_data(&buffer);
-    let branch = Branch::decode(&mut decoder).unwrap();
+    let branch = payload::Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch.branches, 7);
     assert_eq!(branch.branch_map, 0b1011_010);
     assert_eq!(
@@ -204,7 +206,7 @@ fn branch_with_zero_branches() {
     buffer[0] = 0b000_00000;
     buffer[1] = 0b100;
     let mut decoder = Decoder::default().with_data(&buffer);
-    let branch_no_addr = Branch::decode(&mut decoder).unwrap();
+    let branch_no_addr = payload::Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch_no_addr.branches, 0);
     assert_eq!(branch_no_addr.branch_map, 32);
     assert_eq!(branch_no_addr.address, None);
@@ -265,9 +267,9 @@ fn synchronization_start() {
         ..protocol_config
     })
     .with_data(&buffer);
-    let sync_start = Start::decode(&mut decoder).unwrap();
+    let sync_start = payload::Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
-    assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
+    assert_eq!(sync_start.ctx.privilege, payload::Privilege::Machine);
     assert_eq!(sync_start.address, u64::MAX);
 }
 
