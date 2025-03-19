@@ -49,7 +49,17 @@ pub enum Error<I> {
     CannotGetInstruction(I, u64),
 }
 
-impl<I: fmt::Debug> core::error::Error for Error<I> {}
+impl<I> core::error::Error for Error<I>
+where
+    I: fmt::Debug + core::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::CannotGetInstruction(inner, _) => Some(inner),
+            _ => None,
+        }
+    }
+}
 
 impl<I> fmt::Display for Error<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
