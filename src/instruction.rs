@@ -362,7 +362,7 @@ impl Default for InstructionSize {
 }
 
 /// Defines a single RISC-V instruction
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Instruction {
     pub size: InstructionSize,
     /// If the instruction was parsed, the name is always available.
@@ -370,10 +370,6 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    fn ignored(size: InstructionSize) -> Self {
-        Instruction { size, kind: None }
-    }
-
     pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
         match bin_instr {
             InstructionBits::Bit32(num) => Self {
@@ -388,8 +384,17 @@ impl Instruction {
     }
 }
 
-impl Default for Instruction {
-    fn default() -> Self {
-        Self::ignored(Default::default())
+impl From<InstructionBits> for Instruction {
+    fn from(bits: InstructionBits) -> Self {
+        match bits {
+            InstructionBits::Bit32(bits) => Self {
+                size: InstructionSize::Normal,
+                kind: Kind::decode_32(bits),
+            },
+            InstructionBits::Bit16(bits) => Self {
+                size: InstructionSize::Compressed,
+                kind: Kind::decode_16(bits),
+            },
+        }
     }
 }
