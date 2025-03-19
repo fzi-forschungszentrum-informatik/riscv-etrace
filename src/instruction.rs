@@ -289,12 +289,12 @@ impl Kind {
 /// Represents the possible byte length of single RISC-V [Instruction].
 /// It is either 4 or 2 bytes.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum InstructionSize {
+pub enum Size {
     Compressed = 2,
     Normal = 4,
 }
 
-impl Default for InstructionSize {
+impl Default for Size {
     fn default() -> Self {
         Self::Normal
     }
@@ -303,7 +303,7 @@ impl Default for InstructionSize {
 /// Defines a single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Instruction {
-    pub size: InstructionSize,
+    pub size: Size,
     /// If the instruction was parsed, the name is always available.
     pub kind: Option<Kind>,
 }
@@ -312,11 +312,11 @@ impl From<Bits> for Instruction {
     fn from(bits: Bits) -> Self {
         match bits {
             Bits::Bit32(bits) => Self {
-                size: InstructionSize::Normal,
+                size: Size::Normal,
                 kind: Kind::decode_32(bits),
             },
             Bits::Bit16(bits) => Self {
-                size: InstructionSize::Compressed,
+                size: Size::Compressed,
                 kind: Kind::decode_16(bits),
             },
         }
