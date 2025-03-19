@@ -60,24 +60,6 @@ pub enum InstructionBits {
     Bit16(u16),
 }
 
-impl InstructionBits {
-    pub(crate) fn read_binary(address: u64, segment: &Segment) -> Result<Self, [u8; 4]> {
-        let pointer = usize::try_from(address - segment.first_addr).unwrap();
-        let bytes = &segment.mem[pointer..pointer + 4];
-        if (bytes[0] & 0x3) != 0x3 {
-            Ok(InstructionBits::Bit16(u16::from_le_bytes(
-                bytes[0..2].try_into().unwrap(),
-            )))
-        } else if (bytes[0] & 0x1F) >= 0x3 && (bytes[0] & 0x1F) < 0x1F {
-            Ok(InstructionBits::Bit32(u32::from_le_bytes(
-                bytes.try_into().unwrap(),
-            )))
-        } else {
-            Err(bytes.try_into().unwrap())
-        }
-    }
-}
-
 #[repr(u32)]
 #[derive(Eq, PartialEq)]
 enum OpCode {
@@ -368,21 +350,6 @@ pub struct Instruction {
     pub size: InstructionSize,
     /// If the instruction was parsed, the name is always available.
     pub kind: Option<Kind>,
-}
-
-impl Instruction {
-    pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
-        match bin_instr {
-            InstructionBits::Bit32(num) => Self {
-                size: InstructionSize::Normal,
-                kind: Kind::decode_32(*num),
-            },
-            InstructionBits::Bit16(num) => Self {
-                size: InstructionSize::Compressed,
-                kind: Kind::decode_16(*num),
-            },
-        }
-    }
 }
 
 impl From<InstructionBits> for Instruction {
