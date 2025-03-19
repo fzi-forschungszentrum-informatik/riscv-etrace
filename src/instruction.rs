@@ -4,6 +4,7 @@
 use core::fmt;
 use core::fmt::Formatter;
 
+pub mod binary;
 pub mod format;
 
 #[cfg(test)]

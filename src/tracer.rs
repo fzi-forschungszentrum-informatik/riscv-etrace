@@ -3,7 +3,7 @@
 
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
-use crate::instruction::{self, Instruction, InstructionBits, Segment};
+use crate::instruction::{self, Instruction};
 use crate::ProtocolConfiguration;
 
 use core::fmt;
@@ -12,11 +12,12 @@ pub mod cache;
 pub mod stack;
 
 use cache::InstructionCache;
+use instruction::binary::{self, Binary};
 use stack::ReturnStack;
 
 /// Possible errors which can occur during the tracing algorithm.
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<I> {
     /// The PC cannot be set to the address, as the address is 0.
     AddressIsZero,
     /// No starting synchronization packet was read and the tracer is still at the start of the trace.
@@ -32,23 +33,25 @@ pub enum Error {
     WrongGetBranchType,
     /// The current packet has no privilege information.
     WrongGetPrivilegeType,
-    /// The instruction at `address` cannot be parsed.
-    UnknownInstruction {
-        address: u64,
-        bytes: [u8; 4],
-        segment_idx: usize,
-        vaddr_start: u64,
-        vaddr_end: u64,
-    },
-    /// The address is not inside a [Segment].
-    SegmentationFault(u64),
     /// The IR stack cannot be constructed for the given size
     CannotConstructIrStack(usize),
+    /// We could not fetch an [Instruction] from a given address
+    CannotGetInstruction(I, u64),
 }
 
-impl core::error::Error for Error {}
+impl<I> core::error::Error for Error<I>
+where
+    I: fmt::Debug + core::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::CannotGetInstruction(inner, _) => Some(inner),
+            _ => None,
+        }
+    }
+}
 
-impl fmt::Display for Error {
+impl<I> fmt::Display for Error<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AddressIsZero => write!(f, "address is zero"),
@@ -58,25 +61,11 @@ impl fmt::Display for Error {
             Self::UnresolvableBranch => write!(f, "unresolvable branch"),
             Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
             Self::WrongGetPrivilegeType => write!(f, "expected privilege info in packet"),
-            Self::UnknownInstruction {
-                address,
-                bytes,
-                segment_idx,
-                vaddr_start,
-                vaddr_end,
-            } => {
-                let bytes = u32::from_be_bytes(*bytes);
-                write!(f, "unknown instruction {bytes:x} at {address:#0x}")?;
-                write!(
-                    f,
-                    ", segment: {segment_idx} ({vaddr_start:#0x}, {vaddr_end:#0x})"
-                )
-            }
-            Self::SegmentationFault(addr) => {
-                write!(f, "address {addr:#0x} not in any known segment")
-            }
             Self::CannotConstructIrStack(size) => {
                 write!(f, "Cannot construct return stack of size {size}")
+            }
+            Self::CannotGetInstruction(_, addr) => {
+                write!(f, "Cannot get the instruction at {addr:#0x}")
             }
         }
     }
@@ -143,50 +132,23 @@ pub trait ReportTrace {
 
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
-pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = stack::NoStack> {
-    state: TraceState<C, S>,
+pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
+    state: TraceState<cache::NoCache, S>,
     report_trace: &'a mut dyn ReportTrace,
-    segments: &'a [Segment<'a>],
+    binary: B,
     full_address: bool,
     sequential_jumps: bool,
     version: Version,
 }
 
-impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
-    fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
-        if !self.segments[self.state.segment_idx].contains(pc) {
-            let old = self.state.segment_idx;
-            for i in 0..self.segments.len() {
-                if self.segments[i].contains(pc) {
-                    self.state.segment_idx = i;
-                    break;
-                }
-            }
-            // The segment index should now point to the segment which contains the pc.
-            if old == self.state.segment_idx {
-                return Err(Error::SegmentationFault(pc));
-            }
-        }
-        if let Some(instr) = self.state.instr_cache.get(pc) {
-            return Ok(instr);
-        }
-        let binary = match InstructionBits::read_binary(pc, &self.segments[self.state.segment_idx])
-        {
-            Ok(binary) => binary,
-            Err(bytes) => {
-                return Err(Error::UnknownInstruction {
-                    address: pc,
-                    bytes,
-                    segment_idx: self.state.segment_idx,
-                    vaddr_start: self.segments[self.state.segment_idx].first_addr,
-                    vaddr_end: self.segments[self.state.segment_idx].last_addr,
-                })
-            }
-        };
+impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
+    fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error<B::Error>> {
+        let instr = self
+            .binary
+            .get_insn(pc)
+            .map_err(|e| Error::CannotGetInstruction(e, pc))?;
 
-        let instr = Instruction::from_binary(&binary);
         self.report_trace.report_instr(pc, &instr);
-        self.state.instr_cache.store(pc, instr);
         Ok(instr)
     }
 
@@ -205,12 +167,12 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         }
     }
 
-    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error> {
+    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         self.recover_status_fields(payload);
         self._process_te_inst(payload)
     }
 
-    fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), Error> {
+    fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
@@ -292,7 +254,11 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         }
     }
 
-    fn process_support(&mut self, support: &Support, payload: &Payload) -> Result<(), Error> {
+    fn process_support(
+        &mut self,
+        support: &Support,
+        payload: &Payload,
+    ) -> Result<(), Error<B::Error>> {
         if support.qual_status != QualStatus::NoChange {
             self.state.start_of_trace = true;
 
@@ -311,7 +277,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         Ok(())
     }
 
-    fn branch_limit(&mut self) -> Result<u8, Error> {
+    fn branch_limit(&mut self) -> Result<u8, Error<B::Error>> {
         if self
             .get_instr(self.state.pc)?
             .kind
@@ -327,7 +293,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
     fn follow_execution_path_catch_priv_changes(
         &mut self,
         payload: &Payload,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool, Error<B::Error>> {
         let res = match self.version {
             Version::V1 => {
                 let priviledge = payload
@@ -345,7 +311,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         Ok(res)
     }
 
-    fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error> {
+    fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         use instruction::Kind;
 
         let previous_address = self.state.pc;
@@ -414,7 +380,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         }
     }
 
-    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error> {
+    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error<B::Error>> {
         use instruction::Kind;
 
         let instr = self.get_instr(self.state.pc)?;
@@ -457,7 +423,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
     /// This roughly corresponds to a combination of `is_taken_branch` of the
     /// reference implementation.
     #[allow(clippy::wrong_self_convention)]
-    fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error> {
+    fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error<B::Error>> {
         let Some(target) = instr.kind.and_then(instruction::Kind::branch_target) else {
             // Not a branch instruction
             return Ok(None);
@@ -477,7 +443,11 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
     ///
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
-    fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<Option<u64>, Error> {
+    fn sequential_jump_target(
+        &mut self,
+        addr: u64,
+        prev_addr: u64,
+    ) -> Result<Option<u64>, Error<B::Error>> {
         use instruction::Kind;
 
         if !self.sequential_jumps {
@@ -519,7 +489,7 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         None
     }
 
-    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error> {
+    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error<B::Error>> {
         if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
             return Ok(());
         }
@@ -531,7 +501,11 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
         Ok(())
     }
 
-    fn exception_address(&mut self, trap: &Trap, payload: &Payload) -> Result<u64, Error> {
+    fn exception_address(
+        &mut self,
+        trap: &Trap,
+        payload: &Payload,
+    ) -> Result<u64, Error<B::Error>> {
         use instruction::Kind;
 
         let instr = self.get_instr(self.state.pc)?;
@@ -556,19 +530,21 @@ impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
 
 /// Builder for [Tracer]
 #[derive(Copy, Clone, Default)]
-pub struct Builder<'a> {
+pub struct Builder<B: Binary = binary::Empty> {
     config: ProtocolConfiguration,
-    segments: &'a [Segment<'a>],
+    binary: B,
     full_address: bool,
     version: Version,
 }
 
-impl<'a> Builder<'a> {
+impl Builder<binary::Empty> {
     /// Create a new builder for a [Tracer]
     pub fn new() -> Self {
         Default::default()
     }
+}
 
+impl<B: Binary> Builder<B> {
     /// Build the [Tracer] for the given [ProtocolConfiguration]
     ///
     /// New builders carry a [Default] configuration.
@@ -576,12 +552,17 @@ impl<'a> Builder<'a> {
         Self { config, ..self }
     }
 
-    /// Build the [Tracer] with the given instruction source
+    /// Build the [Tracer] with the given [Binary]
     ///
-    /// New builders carry an empty set of [Segment]s. Thus, the resulting
-    /// [Tracer] will likely be unusable.
-    pub fn with_segments(self, segments: &'a [Segment<'a>]) -> Self {
-        Self { segments, ..self }
+    /// New builders carry an empty or [Default] [Binary]. This is usually not
+    /// what you want.
+    pub fn with_binary<C: Binary>(self, binary: C) -> Builder<C> {
+        Builder {
+            config: self.config,
+            binary,
+            full_address: self.full_address,
+            version: self.version,
+        }
     }
 
     /// Build a [Tracer] for addresses encoded fully
@@ -612,12 +593,11 @@ impl<'a> Builder<'a> {
     }
 
     /// Build the [Tracer] with the given reporter
-    pub fn build<C, S>(
+    pub fn build<S>(
         self,
-        report_trace: &'a mut dyn ReportTrace,
-    ) -> Result<Tracer<'a, C, S>, Error>
+        report_trace: &mut dyn ReportTrace,
+    ) -> Result<Tracer<'_, B, S>, Error<B::Error>>
     where
-        C: InstructionCache + Default,
         S: ReturnStack,
     {
         let max_stack_depth = if self.config.return_stack_size_p > 0 {
@@ -635,7 +615,7 @@ impl<'a> Builder<'a> {
         Ok(Tracer {
             state,
             report_trace,
-            segments: self.segments,
+            binary: self.binary,
             full_address: self.full_address,
             sequential_jumps: self.config.sijump_p,
             version: self.version,
