@@ -9,7 +9,7 @@ mod tests;
 
 /// The bits from which instructions can be disassembled.
 #[derive(Copy, Clone, Debug)]
-pub enum InstructionBits {
+pub enum Bits {
     Bit32(u32),
     Bit16(u16),
 }
@@ -308,14 +308,14 @@ pub struct Instruction {
     pub kind: Option<Kind>,
 }
 
-impl From<InstructionBits> for Instruction {
-    fn from(bits: InstructionBits) -> Self {
+impl From<Bits> for Instruction {
+    fn from(bits: Bits) -> Self {
         match bits {
-            InstructionBits::Bit32(bits) => Self {
+            Bits::Bit32(bits) => Self {
                 size: InstructionSize::Normal,
                 kind: Kind::decode_32(bits),
             },
-            InstructionBits::Bit16(bits) => Self {
+            Bits::Bit16(bits) => Self {
                 size: InstructionSize::Compressed,
                 kind: Kind::decode_16(bits),
             },
