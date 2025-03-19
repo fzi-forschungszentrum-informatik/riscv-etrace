@@ -82,15 +82,6 @@ impl fmt::Display for Error {
     }
 }
 
-/// Configuration used only by the tracer.
-#[derive(Copy, Clone, Debug)]
-pub struct TraceConfiguration<'a> {
-    /// The memory segments which will be traced. It is assumed the segments **do not overlap**
-    /// with each other.
-    pub segments: &'a [Segment<'a>],
-    pub full_address: bool,
-}
-
 /// Includes the necessary information for the tracing algorithm to trace the instruction execution.
 ///
 /// For specifics see the pseudocode in the
@@ -154,42 +145,18 @@ pub trait ReportTrace {
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, C: InstructionCache = cache::NoCache, S: ReturnStack = stack::NoStack> {
     state: TraceState<C, S>,
-    proto_conf: ProtocolConfiguration,
-    trace_conf: TraceConfiguration<'a>,
     report_trace: &'a mut dyn ReportTrace,
+    segments: &'a [Segment<'a>],
+    full_address: bool,
+    sequential_jumps: bool,
 }
 
-impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
-    pub fn new(
-        proto_conf: ProtocolConfiguration,
-        trace_conf: TraceConfiguration<'a>,
-        report_trace: &'a mut dyn ReportTrace,
-    ) -> Result<Self, Error> {
-        let max_stack_depth = if proto_conf.return_stack_size_p > 0 {
-            1 << proto_conf.return_stack_size_p
-        } else if proto_conf.call_counter_size_p > 0 {
-            1 << proto_conf.call_counter_size_p
-        } else {
-            0
-        };
-
-        let state = TraceState::new(
-            Default::default(),
-            S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
-        );
-        Ok(Tracer {
-            state,
-            trace_conf,
-            proto_conf,
-            report_trace,
-        })
-    }
-
+impl<C: InstructionCache, S: ReturnStack> Tracer<'_, C, S> {
     fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error> {
-        if !self.trace_conf.segments[self.state.segment_idx].contains(pc) {
+        if !self.segments[self.state.segment_idx].contains(pc) {
             let old = self.state.segment_idx;
-            for i in 0..self.trace_conf.segments.len() {
-                if self.trace_conf.segments[i].contains(pc) {
+            for i in 0..self.segments.len() {
+                if self.segments[i].contains(pc) {
                     self.state.segment_idx = i;
                     break;
                 }
@@ -202,18 +169,16 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
         if let Some(instr) = self.state.instr_cache.get(pc) {
             return Ok(instr);
         }
-        let binary = match InstructionBits::read_binary(
-            pc,
-            &self.trace_conf.segments[self.state.segment_idx],
-        ) {
+        let binary = match InstructionBits::read_binary(pc, &self.segments[self.state.segment_idx])
+        {
             Ok(binary) => binary,
             Err(bytes) => {
                 return Err(Error::UnknownInstruction {
                     address: pc,
                     bytes,
                     segment_idx: self.state.segment_idx,
-                    vaddr_start: self.trace_conf.segments[self.state.segment_idx].first_addr,
-                    vaddr_end: self.trace_conf.segments[self.state.segment_idx].last_addr,
+                    vaddr_start: self.segments[self.state.segment_idx].first_addr,
+                    vaddr_end: self.segments[self.state.segment_idx].last_addr,
                 })
             }
         };
@@ -299,7 +264,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
             }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
                 self.state.stop_at_last_branch = false;
-                if self.trace_conf.full_address {
+                if self.full_address {
                     self.state.address = payload.get_address();
                 } else {
                     let addr = payload.get_address() as i64;
@@ -514,7 +479,7 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
     fn sequential_jump_target(&mut self, addr: u64, prev_addr: u64) -> Result<Option<u64>, Error> {
         use instruction::Kind;
 
-        if !self.proto_conf.sijump_p {
+        if !self.sequential_jumps {
             return Ok(None);
         }
         let Some(insn) = self.get_instr(addr)?.kind else {
@@ -585,5 +550,85 @@ impl<'a, C: InstructionCache + Default, S: ReturnStack> Tracer<'a, C, S> {
                 self.state.pc
             })
         }
+    }
+}
+
+/// Builder for [Tracer]
+#[derive(Copy, Clone, Default)]
+pub struct Builder<'a> {
+    config: ProtocolConfiguration,
+    segments: &'a [Segment<'a>],
+    full_address: bool,
+}
+
+impl<'a> Builder<'a> {
+    /// Create a new builder for a [Tracer]
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Build the [Tracer] for the given [ProtocolConfiguration]
+    ///
+    /// New builders carry a [Default] configuration.
+    pub fn with_config(self, config: ProtocolConfiguration) -> Self {
+        Self { config, ..self }
+    }
+
+    /// Build the [Tracer] with the given instruction source
+    ///
+    /// New builders carry an empty set of [Segment]s. Thus, the resulting
+    /// [Tracer] will likely be unusable.
+    pub fn with_segments(self, segments: &'a [Segment<'a>]) -> Self {
+        Self { segments, ..self }
+    }
+
+    /// Build a [Tracer] for addresses encoded fully
+    ///
+    /// New builders are configured for differential addresses.
+    pub fn with_full_address(self) -> Self {
+        Self {
+            full_address: true,
+            ..self
+        }
+    }
+
+    /// Build a [Tracer] for addresses encoded differentially
+    ///
+    /// New builders are configured for differential addresses.
+    pub fn with_differential_address(self) -> Self {
+        Self {
+            full_address: false,
+            ..self
+        }
+    }
+
+    /// Build the [Tracer] with the given reporter
+    pub fn build<C, S>(
+        self,
+        report_trace: &'a mut dyn ReportTrace,
+    ) -> Result<Tracer<'a, C, S>, Error>
+    where
+        C: InstructionCache + Default,
+        S: ReturnStack,
+    {
+        let max_stack_depth = if self.config.return_stack_size_p > 0 {
+            1 << self.config.return_stack_size_p
+        } else if self.config.call_counter_size_p > 0 {
+            1 << self.config.call_counter_size_p
+        } else {
+            0
+        };
+
+        let state = TraceState::new(
+            Default::default(),
+            S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
+        );
+        Ok(Tracer {
+            state,
+            report_trace,
+            segments: self.segments,
+            full_address: self.full_address,
+            sequential_jumps: self.config.sijump_p,
+        })
     }
 }

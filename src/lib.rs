@@ -33,7 +33,7 @@
 //! use riscv_etrace::decoder::Decoder;
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::Segment;
-//! use riscv_etrace::tracer::{ReportTrace, TraceConfiguration, Tracer};
+//! use riscv_etrace::tracer::{self, ReportTrace, Tracer};
 //!
 //! // Create your segments from your ELF files.
 //! let mut segments: Vec<Segment> = Vec::new();
@@ -42,15 +42,6 @@
 //! let mut proto_conf = ProtocolConfiguration::default();
 //! // But we overwrite the hart index width and assume a maximum of 2^10 harts.
 //! proto_conf.cpu_index_width = 10;
-//!
-//! // A single tracing configuration will be used for the tracer. This may be shared between
-//! // multiple tracers for different harts.
-//! let trace_conf = TraceConfiguration {
-//!     // Pass your parsed ELF segments.
-//!     segments: &segments,
-//!     // We will use differential addresses for better efficiency.
-//!     full_address: false,
-//! };
 //!
 //! struct ExampleReport {
 //!     // Here you can define counters etc. which depend on the tracing output.
@@ -81,11 +72,11 @@
 //! let mut decoder = Decoder::new(proto_conf);
 //!
 //! // Create each tracer for the hart we want to trace.
-//! let mut tracer: Tracer = Tracer::new(
-//!     proto_conf,
-//!     trace_conf,
-//!     &mut reporter,
-//! ).expect("Could not construct tracer");
+//! let mut tracer: Tracer = tracer::Builder::new()
+//!     .with_config(proto_conf)
+//!     .with_segments(&segments)
+//!     .build(&mut reporter)
+//!     .expect("Could not construct tracer");
 //!
 //! # let packet_vec: Vec<u8> = vec![0b0101_0000; 32];
 //! # let packet_slice = packet_vec.as_slice();
