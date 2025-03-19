@@ -95,7 +95,7 @@ pub mod decoder;
 pub mod instruction;
 pub mod tracer;
 
-pub use instruction::{Instruction, InstructionSize, Segment};
+pub use instruction::{Instruction, InstructionSize};
 
 /// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
 #[derive(Copy, Clone)]
