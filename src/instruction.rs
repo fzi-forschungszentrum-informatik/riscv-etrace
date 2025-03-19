@@ -1,9 +1,6 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use core::fmt;
-use core::fmt::Formatter;
-
 pub mod binary;
 pub mod format;
 
@@ -11,47 +8,6 @@ pub mod format;
 mod tests;
 
 use OpCode::*;
-
-/// A segment of executable RISC-V code which is executed on the traced system.
-/// `first_addr` is the same address the encoder uses for instructions in this segment.
-/// No instruction in this segment has a larger address than `last_addr`.
-/// `mem` is a slice of `[u8; last_addr - first_addr]` bytes containing the instructions.
-#[derive(Copy, Clone)]
-pub struct Segment<'a> {
-    pub first_addr: u64,
-    pub last_addr: u64,
-    pub mem: &'a [u8],
-}
-
-impl fmt::Debug for Segment<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "Segment {{ first_addr {:#0x}, last_addr: {:#0x} }}",
-            self.first_addr, self.last_addr
-        ))
-    }
-}
-
-impl<'a> Segment<'a> {
-    pub fn new(first_addr: u64, last_addr: u64, mem: &'a [u8]) -> Self {
-        assert!(first_addr < last_addr);
-        assert_eq!(
-            usize::try_from(last_addr - first_addr).unwrap(),
-            mem.len(),
-            "addr length does not equal memory slice length"
-        );
-        Segment {
-            first_addr,
-            last_addr,
-            mem,
-        }
-    }
-
-    /// Returns true if `vaddr_start <= addr <= vaddr_end`.
-    pub fn contains(&self, addr: u64) -> bool {
-        self.first_addr <= addr && addr <= self.last_addr
-    }
-}
 
 /// The bits from which instructions can be disassembled.
 #[derive(Copy, Clone, Debug)]
