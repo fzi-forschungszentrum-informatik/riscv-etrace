@@ -1,20 +1,21 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-
 //! Implements the packet decoder.
-use core::fmt;
-use core::num::NonZeroUsize;
-use core::ops;
-
-use crate::decoder::format::Format;
-use crate::decoder::header::*;
-use crate::decoder::payload::*;
-use crate::{ProtocolConfiguration};
 
 mod format;
 pub mod header;
 pub mod payload;
 pub mod truncate;
+
+use core::fmt;
+use core::num::NonZeroUsize;
+use core::ops;
+
+use crate::ProtocolConfiguration;
+
+use format::Format;
+use header::Header;
+use payload::Payload;
 
 #[cfg(test)]
 mod tests;
@@ -26,7 +27,7 @@ use truncate::TruncateNum;
 pub enum Error {
     /// [TraceType] does not indicate an instruction trace. The unknown trace type is returned.
     UnknownTraceType(u64),
-    WrongTraceType(TraceType),
+    WrongTraceType(header::TraceType),
     /// The branch format in [BranchCount] is `0b01`.
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
