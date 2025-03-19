@@ -25,10 +25,10 @@ use truncate::TruncateNum;
 /// A list of possible errors during decoding of a single packet.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
-    /// [TraceType] does not indicate an instruction trace. The unknown trace type is returned.
+    /// The trace type is not known to us
     UnknownTraceType(u64),
     WrongTraceType(header::TraceType),
-    /// The branch format in [BranchCount] is `0b01`.
+    /// The branch format in [payload::BranchCount] is `0b01`.
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
     InsufficientData(NonZeroUsize),
