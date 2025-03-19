@@ -21,7 +21,7 @@ fn read_u64() {
     buffer[11] = 0b1;
     // ...
     buffer[18] = 0b11_110000;
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     // testing for bit position
     assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
     assert_eq!(decoder.bit_pos, 6);
@@ -50,7 +50,7 @@ fn read_i64() {
     buffer[6] = 0xFF;
     buffer[7] = 0xFF;
     buffer[8] = 0b1;
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(decoder.read_bits(1), Ok(0i64));
     assert_eq!(decoder.read_bits(64), Ok(-24i64));
 }
@@ -58,7 +58,7 @@ fn read_i64() {
 #[test]
 fn read_entire_buffer() {
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
     assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
     assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
@@ -68,7 +68,7 @@ fn read_entire_buffer() {
 #[test]
 fn read_bool_bits() {
     let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(decoder.read_bit(), Ok(true));
     assert_eq!(decoder.read_bit(), Ok(false));
     assert_eq!(decoder.read_bit(), Ok(true));
@@ -91,7 +91,7 @@ fn missing_msb_shift_is_correct() {
     buffer[6] = 0xFF;
     buffer[7] = 0xFF;
     buffer[8] = 0b00_111111;
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(decoder.read_bits(6), Ok(0i64));
     // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
     assert_eq!(decoder.read_bits(63), Ok(-124i64));
@@ -104,7 +104,7 @@ fn sync() {
     use format::Sync;
 
     let buffer = [0b10_01_00_11_u8; 32];
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Support));
     assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Start));
     assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Trap));
@@ -116,7 +116,7 @@ fn extension() {
     use format::Ext;
 
     let buffer = [0b0010u8; 32];
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(Ext::decode(&mut decoder), Ok(Ext::BranchCount));
     assert_eq!(Ext::decode(&mut decoder), Ok(Ext::JumpTargetIndex));
 }
@@ -128,7 +128,7 @@ fn format() {
     let mut buffer = [0u8; 32];
     buffer[0] = 0b1_10_01_100;
     buffer[1] = 0b00000_011;
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     assert_eq!(
         Format::decode(&mut decoder),
         Ok(Format::Ext(Ext::JumpTargetIndex)),
@@ -149,11 +149,12 @@ fn extension_jti_1() {
     buffer[1] = 0b0_11111_11;
     buffer[2] = 0b00000_101;
 
-    let mut decoder = Decoder::new(config::Protocol {
-        cache_size_p: 10,
-        ..protocol_config
-    })
-    .with_data(&buffer);
+    let mut decoder = Builder::new()
+        .with_config(config::Protocol {
+            cache_size_p: 10,
+            ..protocol_config
+        })
+        .build(&buffer);
 
     let jti_long = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_long.index, 768);
@@ -168,11 +169,12 @@ fn extension_jti_2() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b11111111;
     buffer[1] = 0b00000011;
-    let mut decoder = Decoder::new(config::Protocol {
-        cache_size_p: 10,
-        ..protocol_config
-    })
-    .with_data(&buffer);
+    let mut decoder = Builder::new()
+        .with_config(config::Protocol {
+            cache_size_p: 10,
+            ..protocol_config
+        })
+        .build(&buffer);
 
     let jti_short = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
@@ -184,7 +186,7 @@ fn branch() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b010_00111;
     buffer[1] = 0b0000_1011;
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     let branch = payload::Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch.branch_map.count(), 7);
     assert_eq!(branch.branch_map.raw_map(), 0b1011_010);
@@ -204,7 +206,7 @@ fn branch_with_zero_branches() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b000_00000;
     buffer[1] = 0b100;
-    let mut decoder = Decoder::default().with_data(&buffer);
+    let mut decoder = Builder::new().build(&buffer);
     let branch_no_addr = payload::Branch::decode(&mut decoder).unwrap();
     assert_eq!(branch_no_addr.branch_map.count(), 31);
     assert_eq!(branch_no_addr.branch_map.raw_map(), 32);
@@ -218,14 +220,15 @@ fn address_absolute() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b11_000000;
-    let mut decoder = Decoder::new(config::Protocol {
-        // Changed address width and lsb, so that the entire
-        // packet aligns with 64 bit
-        iaddress_width_p: 64,
-        iaddress_lsb_p: 2,
-        ..protocol_config
-    })
-    .with_data(&buffer);
+    let mut decoder = Builder::new()
+        .with_config(config::Protocol {
+            // Changed address width and lsb, so that the entire
+            // packet aligns with 64 bit
+            iaddress_width_p: 64,
+            iaddress_lsb_p: 2,
+            ..protocol_config
+        })
+        .build(&buffer);
 
     let addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(addr.address, 4);
@@ -240,14 +243,15 @@ fn address_differential() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b10_000000;
-    let mut decoder = Decoder::new(config::Protocol {
-        // Changed address width and lsb, so that the entire
-        // packet aligns with 64 bit
-        iaddress_width_p: 64,
-        iaddress_lsb_p: 2,
-        ..protocol_config
-    })
-    .with_data(&buffer);
+    let mut decoder = Builder::new()
+        .with_config(config::Protocol {
+            // Changed address width and lsb, so that the entire
+            // packet aligns with 64 bit
+            iaddress_width_p: 64,
+            iaddress_lsb_p: 2,
+            ..protocol_config
+        })
+        .build(&buffer);
 
     let diff_addr = AddressInfo::decode(&mut decoder).unwrap();
     assert_eq!(diff_addr.address, 4);
@@ -262,12 +266,13 @@ fn synchronization_start() {
     let protocol_config = Default::default();
 
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::new(config::Protocol {
-        iaddress_width_p: 64,
-        iaddress_lsb_p: 0,
-        ..protocol_config
-    })
-    .with_data(&buffer);
+    let mut decoder = Builder::new()
+        .with_config(config::Protocol {
+            iaddress_width_p: 64,
+            iaddress_lsb_p: 0,
+            ..protocol_config
+        })
+        .build(&buffer);
     let sync_start = payload::Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
     assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
