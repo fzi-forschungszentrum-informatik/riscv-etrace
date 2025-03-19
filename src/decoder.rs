@@ -200,6 +200,33 @@ impl Decoder<'_> {
     }
 }
 
+/// Biulder for [Decoder]s
+#[derive(Copy, Clone, Default)]
+pub struct Builder {
+    config: config::Protocol,
+}
+
+impl Builder {
+    /// Create a new builder
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Set the [config::Protocol] of the [Decoder]s built
+    pub fn with_config(self, config: config::Protocol) -> Self {
+        Self { config }
+    }
+
+    /// Build a [Decoder] for the given data
+    pub fn build<'d>(&self, data: &'d [u8]) -> Decoder<'d> {
+        Decoder {
+            data,
+            bit_pos: 0,
+            proto_conf: self.config,
+        }
+    }
+}
+
 trait Decode: Sized {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error>;
 }
