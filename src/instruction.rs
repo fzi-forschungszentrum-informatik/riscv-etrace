@@ -370,10 +370,6 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    fn ignored(size: InstructionSize) -> Self {
-        Instruction { size, kind: None }
-    }
-
     pub(crate) fn from_binary(bin_instr: &InstructionBits) -> Self {
         match bin_instr {
             InstructionBits::Bit32(num) => Self {
