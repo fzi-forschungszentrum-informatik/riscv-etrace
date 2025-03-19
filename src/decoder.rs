@@ -50,10 +50,6 @@ impl fmt::Display for Error {
     }
 }
 
-/// The maximum length a payload can have decompressed. Found by changing this value until the
-/// decoder no longer crashed on a real trace and adding 2.
-pub const PAYLOAD_MAX_DECOMPRESSED_LEN: usize = 20;
-
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
 /// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
