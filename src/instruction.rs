@@ -7,11 +7,9 @@ pub mod format;
 #[cfg(test)]
 mod tests;
 
-use OpCode::*;
-
 /// The bits from which instructions can be disassembled.
 #[derive(Copy, Clone, Debug)]
-pub enum InstructionBits {
+pub enum Bits {
     Bit32(u32),
     Bit16(u16),
 }
@@ -31,6 +29,8 @@ enum OpCode {
 
 impl From<u32> for OpCode {
     fn from(value: u32) -> Self {
+        use OpCode::*;
+
         const MASK: u32 = 0x7F;
         match value & MASK {
             x if x == Auipc as u32 => Auipc,
@@ -289,12 +289,12 @@ impl Kind {
 /// Represents the possible byte length of single RISC-V [Instruction].
 /// It is either 4 or 2 bytes.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum InstructionSize {
+pub enum Size {
     Compressed = 2,
     Normal = 4,
 }
 
-impl Default for InstructionSize {
+impl Default for Size {
     fn default() -> Self {
         Self::Normal
     }
@@ -303,20 +303,20 @@ impl Default for InstructionSize {
 /// Defines a single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Instruction {
-    pub size: InstructionSize,
+    pub size: Size,
     /// If the instruction was parsed, the name is always available.
     pub kind: Option<Kind>,
 }
 
-impl From<InstructionBits> for Instruction {
-    fn from(bits: InstructionBits) -> Self {
+impl From<Bits> for Instruction {
+    fn from(bits: Bits) -> Self {
         match bits {
-            InstructionBits::Bit32(bits) => Self {
-                size: InstructionSize::Normal,
+            Bits::Bit32(bits) => Self {
+                size: Size::Normal,
                 kind: Kind::decode_32(bits),
             },
-            InstructionBits::Bit16(bits) => Self {
-                size: InstructionSize::Compressed,
+            Bits::Bit16(bits) => Self {
+                size: Size::Compressed,
                 kind: Kind::decode_16(bits),
             },
         }
