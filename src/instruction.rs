@@ -7,8 +7,6 @@ pub mod format;
 #[cfg(test)]
 mod tests;
 
-use OpCode::*;
-
 /// The bits from which instructions can be disassembled.
 #[derive(Copy, Clone, Debug)]
 pub enum InstructionBits {
@@ -31,6 +29,8 @@ enum OpCode {
 
 impl From<u32> for OpCode {
     fn from(value: u32) -> Self {
+        use OpCode::*;
+
         const MASK: u32 = 0x7F;
         match value & MASK {
             x if x == Auipc as u32 => Auipc,
