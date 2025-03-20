@@ -121,7 +121,7 @@ pub trait ReportTrace {
     fn report_instr(&mut self, _addr: u64, _instr: &Instruction) {}
     /// Called when a branch will be traced. Reports the number of branches before the branch,
     /// the branch map and if the branch will be taken.
-    fn report_branch(&mut self, _branches: u8, _branch_map: u32, _taken: bool) {}
+    fn report_branch(&mut self, _branch_map: branch::Map, _taken: bool) {}
 }
 
 /// Provides the state to execute the tracing algorithm
@@ -418,11 +418,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             .branch_map
             .pop_taken()
             .ok_or(Error::UnresolvableBranch)?;
-        self.report_trace.report_branch(
-            self.state.branch_map.count(),
-            self.state.branch_map.raw_map() as u32,
-            taken,
-        );
+        self.report_trace
+            .report_branch(self.state.branch_map, taken);
         Ok(taken.then_some(target))
     }
 

@@ -30,7 +30,7 @@
 //! extern crate riscv_etrace;
 //!
 //! use riscv_etrace::{ProtocolConfiguration};
-//! use riscv_etrace::decoder::Decoder;
+//! use riscv_etrace::decoder::{branch, Decoder};
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::instruction::binary;
 //! use riscv_etrace::tracer::{self, ReportTrace, Tracer};
@@ -58,8 +58,8 @@
 //!         println!("instr: {} {:?}", pc, instr)
 //!     }
 //!
-//!     fn report_branch(&mut self, branches: u8, branch_map: u32, taken: bool) {
-//!         println!("branch: {:?} {:032b} {}", branches, branch_map, taken)
+//!     fn report_branch(&mut self, branch_map: branch::Map, taken: bool) {
+//!         println!("branch: {:?} {}", branch_map, taken)
 //!     }
 //! }
 //!
