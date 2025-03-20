@@ -157,8 +157,8 @@ fn extension_jti_1() {
 
     let jti_long = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_long.index, 768);
-    assert_eq!(jti_long.branches, 31);
-    assert_eq!(jti_long.branch_map, Some(10));
+    assert_eq!(jti_long.branch_map.count(), 31);
+    assert_eq!(jti_long.branch_map.raw_map(), 10);
 }
 
 #[test]
@@ -176,8 +176,7 @@ fn extension_jti_2() {
 
     let jti_short = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
-    assert_eq!(jti_short.branches, 0);
-    assert_eq!(jti_short.branch_map, None);
+    assert_eq!(jti_short.branch_map, Default::default());
 }
 
 #[test]

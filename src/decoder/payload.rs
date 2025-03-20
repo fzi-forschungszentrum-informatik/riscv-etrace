@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use super::{Decode, Decoder, Error};
+use super::{branch, Decode, Decoder, Error};
 
 fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
     let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
@@ -235,10 +235,7 @@ impl Decode for BranchCount {
 pub struct JumpTargetIndex {
     /// Jump target cache index of entry containing target address.
     pub index: usize,
-    /// Number of valid bits in `branch_map`.
-    pub branches: usize,
-    /// An array of bits indicating whether branches are taken (true) or not (false).
-    pub branch_map: Option<u32>,
+    pub branch_map: branch::Map,
 
     /// Implicit return depth
     pub irdepth: Option<usize>,
@@ -247,18 +244,11 @@ pub struct JumpTargetIndex {
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
-        let (branches, branch_map_len) = read_branches(decoder)?;
-        let branch_map = if branch_map_len == 0 {
-            None
-        } else {
-            let branch_map: u32 = decoder.read_bits(branch_map_len)?;
-            Some(branch_map & ((1 << branches) - 1))
-        };
+        let branch_map = branch::Count::decode(decoder)?.read_branch_map(decoder)?;
 
         let irdepth = read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
             index,
-            branches: branch_map_len as usize,
             branch_map,
             irdepth,
         })
