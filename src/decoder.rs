@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Implements the packet decoder.
 
+pub mod branch;
 mod format;
 pub mod header;
 pub mod payload;
