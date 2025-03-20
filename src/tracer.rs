@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
+use crate::decoder::branch;
 use crate::decoder::payload::{Payload, Privilege, QualStatus, Support, Synchronization, Trap};
 use crate::instruction::{self, Instruction};
 use crate::ProtocolConfiguration;
@@ -79,9 +80,7 @@ pub struct TraceState<S: ReturnStack> {
     pub pc: u64,
     pub last_pc: u64,
     pub address: u64,
-    pub branches: u8,
-    // u32 because there can be a maximum of 31 branches.
-    pub branch_map: u32,
+    pub branch_map: branch::Map,
     pub stop_at_last_branch: bool,
     pub inferred_address: bool,
     pub start_of_trace: bool,
@@ -97,8 +96,7 @@ impl<S: ReturnStack> TraceState<S> {
         TraceState {
             pc: 0,
             last_pc: 0,
-            branches: 0,
-            branch_map: 0,
+            branch_map: Default::default(),
             stop_at_last_branch: false,
             inferred_address: false,
             start_of_trace: true,
@@ -192,8 +190,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 return Err(Error::AddressIsZero);
             }
             if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
-                self.state.branches = 0;
-                self.state.branch_map = 0;
+                self.state.branch_map = Default::default();
             }
             if self
                 .get_instr(self.state.address)?
@@ -201,9 +198,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 .and_then(instruction::Kind::branch_target)
                 .is_some()
             {
-                let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)? as u32;
-                self.state.branch_map |= branch << self.state.branches;
-                self.state.branches += 1;
+                let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)?;
+                self.state.branch_map.push_branch_taken(!branch);
             }
             if matches!(sync, Synchronization::Start(_)) && !self.state.start_of_trace {
                 self.follow_execution_path(payload)?
@@ -238,11 +234,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 }
             }
             if let Payload::Branch(branch) = payload {
-                let count = branch.branch_map.count();
-                self.state.stop_at_last_branch = count == 0;
-                self.state.branch_map |=
-                    (branch.branch_map.raw_map() as u32) << self.state.branches;
-                self.state.branches += count;
+                self.state.branch_map.append(branch.branch_map);
             }
             self.follow_execution_path(payload)
         }
@@ -320,7 +312,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             } else {
                 stop_here = self.next_pc(self.state.address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
-                if self.state.branches == 1
+                if self.state.branch_map.count() == 1
                     && self
                         .get_instr(self.state.pc)?
                         .kind
@@ -332,8 +324,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                     return Ok(());
                 }
                 if stop_here {
-                    if self.state.branches > self.branch_limit()? {
-                        return Err(Error::UnprocessedBranches(self.state.branches));
+                    if self.state.branch_map.count() > self.branch_limit()? {
+                        return Err(Error::UnprocessedBranches(self.state.branch_map.count()));
                     }
                     return Ok(());
                 }
@@ -341,7 +333,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
                     && self.state.notify
-                    && self.state.branches == self.branch_limit()?
+                    && self.state.branch_map.count() == self.branch_limit()?
                 {
                     return Ok(());
                 }
@@ -354,7 +346,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                         .map(Kind::is_uninferable_discon)
                         .unwrap_or(false)
                     && !self.state.updiscon
-                    && self.state.branches == self.branch_limit()?
+                    && self.state.branch_map.count() == self.branch_limit()?
                     && payload
                         .implicit_return_depth()
                         .map(|v| v == self.state.return_stack.depth())
@@ -365,7 +357,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 }
                 if matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
-                    && self.state.branches == self.branch_limit()?
+                    && self.state.branch_map.count() == self.branch_limit()?
                     && self.follow_execution_path_catch_priv_changes(payload)?
                 {
                     return Ok(());
@@ -421,14 +413,16 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             // Not a branch instruction
             return Ok(None);
         };
-        if self.state.branches == 0 {
-            return Err(Error::UnresolvableBranch);
-        }
-        let taken = self.state.branch_map & 1 == 0;
-        self.report_trace
-            .report_branch(self.state.branches, self.state.branch_map, taken);
-        self.state.branches -= 1;
-        self.state.branch_map >>= 1;
+        let taken = self
+            .state
+            .branch_map
+            .pop_taken()
+            .ok_or(Error::UnresolvableBranch)?;
+        self.report_trace.report_branch(
+            self.state.branch_map.count(),
+            self.state.branch_map.raw_map() as u32,
+            taken,
+        );
         Ok(taken.then_some(target))
     }
 
