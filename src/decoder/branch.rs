@@ -21,6 +21,19 @@ impl Map {
         Some(res)
     }
 
+    /// Push a new branch information
+    pub fn push_branch_taken(&mut self, taken: bool) {
+        let count = self.count;
+        let bit = 1u64.checked_shl(count.into()).unwrap_or_default();
+        self.map = if taken {
+            self.map & !bit
+        } else {
+            self.map | bit
+        };
+
+        self.count = count.saturating_add(1);
+    }
+
     /// Retrieve the number of branchs in the map
     pub fn count(&self) -> u8 {
         self.count
