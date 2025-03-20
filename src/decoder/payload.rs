@@ -181,7 +181,7 @@ impl Payload {
 
     pub fn get_branches(&self) -> Option<u8> {
         match self {
-            Payload::Branch(branch) => Some(branch.branches),
+            Payload::Branch(branch) => Some(branch.branch_map.count()),
             _ => None,
         }
     }
@@ -261,33 +261,27 @@ impl Decode for JumpTargetIndex {
 /// be reported, and there has been at least one branch since the previous packet
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Branch {
-    /// Number of valid bits branch_map.
-    pub branches: u8,
-    /// An array of bits indicating whether branches are taken (false) or not (true).
-    pub branch_map: u32,
+    pub branch_map: branch::Map,
     pub address: Option<AddressInfo>,
 }
 
 impl Decode for Branch {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let (branches, branch_map_len) = read_branches(decoder)?;
-        let branch_map = if branch_map_len == 0 {
-            decoder.read_bits(31)?
+        let count = branch::Count::decode(decoder)?;
+        if count.is_zero() {
+            let branch_map = branch::Count::FULL.read_branch_map(decoder)?;
+            Ok(Branch {
+                branch_map,
+                address: None,
+            })
         } else {
-            let too_long: u32 = decoder.read_bits(branch_map_len)?;
-            too_long & ((1 << branches) - 1)
-        };
-
-        let address = if branch_map_len != 0 {
-            Some(AddressInfo::decode(decoder)?)
-        } else {
-            None
-        };
-        Ok(Branch {
-            branches,
-            branch_map,
-            address,
-        })
+            let branch_map = count.read_branch_map(decoder)?;
+            let address = AddressInfo::decode(decoder)?;
+            Ok(Branch {
+                branch_map,
+                address: Some(address),
+            })
+        }
     }
 }
 

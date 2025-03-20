@@ -238,13 +238,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 }
             }
             if let Payload::Branch(branch) = payload {
-                self.state.stop_at_last_branch = branch.branches == 0;
-                self.state.branch_map |= (branch.branch_map) << self.state.branches;
-                self.state.branches += if branch.branches == 0 {
-                    31
-                } else {
-                    branch.branches
-                };
+                let count = branch.branch_map.count();
+                self.state.stop_at_last_branch = count == 0;
+                self.state.branch_map |=
+                    (branch.branch_map.raw_map() as u32) << self.state.branches;
+                self.state.branches += count;
             }
             self.follow_execution_path(payload)
         }
