@@ -11,20 +11,6 @@ fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
         .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
 }
 
-fn read_branches(decoder: &mut Decoder) -> Result<(u8, u8), Error> {
-    let branches: u8 = decoder.read_bits(5)?;
-    let len = match branches {
-        0 => 0,
-        1 => 1,
-        2..=3 => 3,
-        4..=7 => 7,
-        8..=15 => 15,
-        16..=31 => 31,
-        _ => unreachable!(),
-    };
-    Ok((branches, len))
-}
-
 /// Read the `irreport` and `irdepth` fields
 ///
 /// This fn reads the `irreport` and `irdepth` fields. The former is read
