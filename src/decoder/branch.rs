@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Branch map utilities
 
+use super::{Decode, Decoder, Error};
+
 /// A record of branches that are taken or not taken
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Map {
@@ -55,5 +57,35 @@ impl Map {
     /// represent branches not taken, unset bits represent taken branches.
     pub fn raw_map(&self) -> u64 {
         self.map
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(super) struct Count(pub u8);
+
+impl Count {
+    /// Determine whether this count is zero
+    pub fn is_zero(self) -> bool {
+        self.0 == 0
+    }
+
+    /// Read a branch map with this count
+    pub fn read_branch_map(self, decoder: &mut Decoder) -> Result<Map, Error> {
+        let length = core::iter::successors(Some(31), |l| (*l > 0).then_some(l >> 1))
+            .take_while(|l| *l >= self.0)
+            .last()
+            .expect("Could not determine length");
+        let mut map = decoder.read_bits(length)?;
+        map &= !0u64.checked_shl(self.0.into()).unwrap_or_default();
+        Ok(Map { count: self.0, map })
+    }
+
+    /// Count for a full branch map
+    pub const FULL: Self = Self(31);
+}
+
+impl Decode for Count {
+    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+        decoder.read_bits(5).map(Self)
     }
 }
