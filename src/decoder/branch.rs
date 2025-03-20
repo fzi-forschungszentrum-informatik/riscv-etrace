@@ -10,6 +10,17 @@ pub struct Map {
 }
 
 impl Map {
+    /// Remove the oldest branch information and return it
+    pub fn pop_taken(&mut self) -> Option<bool> {
+        let count = self.count.checked_sub(1)?;
+        let res = self.map & 1 == 0;
+
+        self.map >>= 1;
+        self.count = count;
+
+        Some(res)
+    }
+
     /// Retrieve the number of branchs in the map
     pub fn count(&self) -> u8 {
         self.count
