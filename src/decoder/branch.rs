@@ -34,6 +34,16 @@ impl Map {
         self.count = count.saturating_add(1);
     }
 
+    /// Append another branch map to this one
+    ///
+    /// The branches from the other map are considered newer than the existing
+    /// ones.
+    pub fn append(&mut self, other: Self) {
+        let count = self.count;
+        self.map |= other.map.checked_shl(count.into()).unwrap_or_default();
+        self.count = count.saturating_add(other.count);
+    }
+
     /// Retrieve the number of branchs in the map
     pub fn count(&self) -> u8 {
         self.count
