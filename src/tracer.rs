@@ -84,8 +84,6 @@ pub struct TraceState<S: ReturnStack> {
     pub stop_at_last_branch: bool,
     pub inferred_address: bool,
     pub start_of_trace: bool,
-    pub notify: bool,
-    pub updiscon: bool,
     pub privilege: Privilege,
     pub return_stack: S,
 }
@@ -100,8 +98,6 @@ impl<S: ReturnStack> TraceState<S> {
             inferred_address: false,
             start_of_trace: true,
             address: 0,
-            notify: false,
-            updiscon: false,
             privilege: Privilege::User,
             return_stack,
         }
