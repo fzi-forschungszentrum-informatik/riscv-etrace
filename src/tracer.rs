@@ -528,7 +528,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
 pub struct Builder<B: Binary = binary::Empty> {
     config: ProtocolConfiguration,
     binary: B,
-    full_address: bool,
+    address_mode: AddressMode,
     version: Version,
 }
 
@@ -555,27 +555,17 @@ impl<B: Binary> Builder<B> {
         Builder {
             config: self.config,
             binary,
-            full_address: self.full_address,
+            address_mode: self.address_mode,
             version: self.version,
         }
     }
 
-    /// Build a [Tracer] for addresses encoded fully
+    /// Build a [Tracer] for the given [AddressMode]
     ///
-    /// New builders are configured for differential addresses.
-    pub fn with_full_address(self) -> Self {
+    /// New builders are configured for [AddressMode::Delta].
+    pub fn with_address_mode(self, mode: AddressMode) -> Self {
         Self {
-            full_address: true,
-            ..self
-        }
-    }
-
-    /// Build a [Tracer] for addresses encoded differentially
-    ///
-    /// New builders are configured for differential addresses.
-    pub fn with_differential_address(self) -> Self {
-        Self {
-            full_address: false,
+            address_mode: mode,
             ..self
         }
     }
@@ -610,7 +600,7 @@ impl<B: Binary> Builder<B> {
             state,
             report_trace,
             binary: self.binary,
-            full_address: self.full_address,
+            full_address: self.address_mode == AddressMode::Full,
             sequential_jumps: self.config.sijump_p,
             version: self.version,
         })
