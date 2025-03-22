@@ -152,13 +152,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn recover_status_fields(&mut self, payload: &Payload) {
-        if let Some(addr) = payload.get_address_info() {
-            self.state.notify = addr.notify;
-            self.state.updiscon = addr.updiscon;
-        }
-    }
-
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
