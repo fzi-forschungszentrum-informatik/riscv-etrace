@@ -87,7 +87,6 @@ pub struct TraceState<S: ReturnStack> {
     pub notify: bool,
     pub updiscon: bool,
     pub privilege: Privilege,
-    pub segment_idx: usize,
     pub return_stack: S,
 }
 
@@ -104,7 +103,6 @@ impl<S: ReturnStack> TraceState<S> {
             notify: false,
             updiscon: false,
             privilege: Privilege::User,
-            segment_idx: 0,
             return_stack,
         }
     }
