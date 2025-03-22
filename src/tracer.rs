@@ -132,7 +132,7 @@ pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
     state: TraceState<S>,
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
-    full_address: bool,
+    address_mode: AddressMode,
     sequential_jumps: bool,
     version: Version,
 }
@@ -223,19 +223,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
                 self.state.stop_at_last_branch = false;
-                if self.full_address {
-                    self.state.address = payload.get_address();
-                } else {
-                    let addr = payload.get_address() as i64;
-                    self.state.address = if addr.is_negative() {
-                        self.state
-                            .address
-                            .overflowing_sub(addr.wrapping_abs() as u64)
-                            .0
-                    } else {
-                        self.state.address.overflowing_add(addr as u64).0
-                    };
-                }
+                let address = payload.get_address();
+                self.state.address = match self.address_mode {
+                    AddressMode::Full => address,
+                    AddressMode::Delta => self.state.address.wrapping_add(address),
+                };
             }
             if let Payload::Branch(branch) = payload {
                 self.state.stop_at_last_branch = branch.branches == 0;
@@ -600,7 +592,7 @@ impl<B: Binary> Builder<B> {
             state,
             report_trace,
             binary: self.binary,
-            full_address: self.address_mode == AddressMode::Full,
+            address_mode: self.address_mode,
             sequential_jumps: self.config.sijump_p,
             version: self.version,
         })
