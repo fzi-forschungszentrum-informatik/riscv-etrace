@@ -157,8 +157,8 @@ fn extension_jti_1() {
 
     let jti_long = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_long.index, 768);
-    assert_eq!(jti_long.branches, 31);
-    assert_eq!(jti_long.branch_map, Some(10));
+    assert_eq!(jti_long.branch_map.count(), 31);
+    assert_eq!(jti_long.branch_map.raw_map(), 10);
 }
 
 #[test]
@@ -176,8 +176,7 @@ fn extension_jti_2() {
 
     let jti_short = payload::JumpTargetIndex::decode(&mut decoder).unwrap();
     assert_eq!(jti_short.index, 1023);
-    assert_eq!(jti_short.branches, 0);
-    assert_eq!(jti_short.branch_map, None);
+    assert_eq!(jti_short.branch_map, Default::default());
 }
 
 #[test]
@@ -187,8 +186,8 @@ fn branch() {
     buffer[1] = 0b0000_1011;
     let mut decoder = Decoder::default().with_data(&buffer);
     let branch = payload::Branch::decode(&mut decoder).unwrap();
-    assert_eq!(branch.branches, 7);
-    assert_eq!(branch.branch_map, 0b1011_010);
+    assert_eq!(branch.branch_map.count(), 7);
+    assert_eq!(branch.branch_map.raw_map(), 0b1011_010);
     assert_eq!(
         branch.address,
         Some(AddressInfo {
@@ -207,8 +206,8 @@ fn branch_with_zero_branches() {
     buffer[1] = 0b100;
     let mut decoder = Decoder::default().with_data(&buffer);
     let branch_no_addr = payload::Branch::decode(&mut decoder).unwrap();
-    assert_eq!(branch_no_addr.branches, 0);
-    assert_eq!(branch_no_addr.branch_map, 32);
+    assert_eq!(branch_no_addr.branch_map.count(), 31);
+    assert_eq!(branch_no_addr.branch_map.raw_map(), 32);
     assert_eq!(branch_no_addr.address, None);
 }
 

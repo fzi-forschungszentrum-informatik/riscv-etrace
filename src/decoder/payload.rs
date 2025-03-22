@@ -2,27 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use super::{Decode, Decoder, Error};
+use super::{branch, Decode, Decoder, Error};
 
 fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
     let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
     decoder
         .read_bits::<u64>(width)
         .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
-}
-
-fn read_branches(decoder: &mut Decoder) -> Result<(u8, u8), Error> {
-    let branches: u8 = decoder.read_bits(5)?;
-    let len = match branches {
-        0 => 0,
-        1 => 1,
-        2..=3 => 3,
-        4..=7 => 7,
-        8..=15 => 15,
-        16..=31 => 31,
-        _ => unreachable!(),
-    };
-    Ok((branches, len))
 }
 
 /// Read the `irreport` and `irdepth` fields
@@ -181,7 +167,7 @@ impl Payload {
 
     pub fn get_branches(&self) -> Option<u8> {
         match self {
-            Payload::Branch(branch) => Some(branch.branches),
+            Payload::Branch(branch) => Some(branch.branch_map.count()),
             _ => None,
         }
     }
@@ -235,10 +221,7 @@ impl Decode for BranchCount {
 pub struct JumpTargetIndex {
     /// Jump target cache index of entry containing target address.
     pub index: usize,
-    /// Number of valid bits in `branch_map`.
-    pub branches: usize,
-    /// An array of bits indicating whether branches are taken (true) or not (false).
-    pub branch_map: Option<u32>,
+    pub branch_map: branch::Map,
 
     /// Implicit return depth
     pub irdepth: Option<usize>,
@@ -247,18 +230,11 @@ pub struct JumpTargetIndex {
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
-        let (branches, branch_map_len) = read_branches(decoder)?;
-        let branch_map = if branch_map_len == 0 {
-            None
-        } else {
-            let branch_map: u32 = decoder.read_bits(branch_map_len)?;
-            Some(branch_map & ((1 << branches) - 1))
-        };
+        let branch_map = branch::Count::decode(decoder)?.read_branch_map(decoder)?;
 
         let irdepth = read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
             index,
-            branches: branch_map_len as usize,
             branch_map,
             irdepth,
         })
@@ -271,33 +247,27 @@ impl Decode for JumpTargetIndex {
 /// be reported, and there has been at least one branch since the previous packet
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Branch {
-    /// Number of valid bits branch_map.
-    pub branches: u8,
-    /// An array of bits indicating whether branches are taken (false) or not (true).
-    pub branch_map: u32,
+    pub branch_map: branch::Map,
     pub address: Option<AddressInfo>,
 }
 
 impl Decode for Branch {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let (branches, branch_map_len) = read_branches(decoder)?;
-        let branch_map = if branch_map_len == 0 {
-            decoder.read_bits(31)?
+        let count = branch::Count::decode(decoder)?;
+        if count.is_zero() {
+            let branch_map = branch::Count::FULL.read_branch_map(decoder)?;
+            Ok(Branch {
+                branch_map,
+                address: None,
+            })
         } else {
-            let too_long: u32 = decoder.read_bits(branch_map_len)?;
-            too_long & ((1 << branches) - 1)
-        };
-
-        let address = if branch_map_len != 0 {
-            Some(AddressInfo::decode(decoder)?)
-        } else {
-            None
-        };
-        Ok(Branch {
-            branches,
-            branch_map,
-            address,
-        })
+            let branch_map = count.read_branch_map(decoder)?;
+            let address = AddressInfo::decode(decoder)?;
+            Ok(Branch {
+                branch_map,
+                address: Some(address),
+            })
+        }
     }
 }
 
