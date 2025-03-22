@@ -132,7 +132,7 @@ pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
     state: TraceState<S>,
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
-    full_address: bool,
+    address_mode: AddressMode,
     sequential_jumps: bool,
     version: Version,
 }
@@ -223,19 +223,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
                 self.state.stop_at_last_branch = false;
-                if self.full_address {
-                    self.state.address = payload.get_address();
-                } else {
-                    let addr = payload.get_address() as i64;
-                    self.state.address = if addr.is_negative() {
-                        self.state
-                            .address
-                            .overflowing_sub(addr.wrapping_abs() as u64)
-                            .0
-                    } else {
-                        self.state.address.overflowing_add(addr as u64).0
-                    };
-                }
+                let address = payload.get_address();
+                self.state.address = match self.address_mode {
+                    AddressMode::Full => address,
+                    AddressMode::Delta => self.state.address.wrapping_add(address),
+                };
             }
             if let Payload::Branch(branch) = payload {
                 self.state.stop_at_last_branch = branch.branches == 0;
@@ -528,7 +520,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
 pub struct Builder<B: Binary = binary::Empty> {
     config: ProtocolConfiguration,
     binary: B,
-    full_address: bool,
+    address_mode: AddressMode,
     version: Version,
 }
 
@@ -555,27 +547,17 @@ impl<B: Binary> Builder<B> {
         Builder {
             config: self.config,
             binary,
-            full_address: self.full_address,
+            address_mode: self.address_mode,
             version: self.version,
         }
     }
 
-    /// Build a [Tracer] for addresses encoded fully
+    /// Build a [Tracer] for the given [AddressMode]
     ///
-    /// New builders are configured for differential addresses.
-    pub fn with_full_address(self) -> Self {
+    /// New builders are configured for [AddressMode::Delta].
+    pub fn with_address_mode(self, mode: AddressMode) -> Self {
         Self {
-            full_address: true,
-            ..self
-        }
-    }
-
-    /// Build a [Tracer] for addresses encoded differentially
-    ///
-    /// New builders are configured for differential addresses.
-    pub fn with_differential_address(self) -> Self {
-        Self {
-            full_address: false,
+            address_mode: mode,
             ..self
         }
     }
@@ -610,7 +592,7 @@ impl<B: Binary> Builder<B> {
             state,
             report_trace,
             binary: self.binary,
-            full_address: self.full_address,
+            address_mode: self.address_mode,
             sequential_jumps: self.config.sijump_p,
             version: self.version,
         })
@@ -626,5 +608,20 @@ pub enum Version {
 impl Default for Version {
     fn default() -> Self {
         Self::V2
+    }
+}
+
+/// Address mode
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AddressMode {
+    /// Any addresses is assumed to be a full, absolute addresses
+    Full,
+    /// An addresses is assumed to be relative to the previous address
+    Delta,
+}
+
+impl Default for AddressMode {
+    fn default() -> Self {
+        Self::Delta
     }
 }
