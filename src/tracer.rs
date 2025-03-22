@@ -322,7 +322,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 if !matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
-                    && self.state.notify
+                    && payload
+                        .get_address_info()
+                        .map(|a| a.notify)
+                        .unwrap_or(false)
                     && self.state.branch_map.count() == self.branch_limit()?
                 {
                     return Ok(());
@@ -335,7 +338,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                         .kind
                         .map(Kind::is_uninferable_discon)
                         .unwrap_or(false)
-                    && !self.state.updiscon
+                    && !payload
+                        .get_address_info()
+                        .map(|a| a.updiscon)
+                        .unwrap_or(false)
                     && self.state.branch_map.count() == self.branch_limit()?
                     && payload
                         .implicit_return_depth()
