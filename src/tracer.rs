@@ -4,49 +4,16 @@
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::instruction::{self, Instruction};
-use crate::types::{branch, Privilege};
+use crate::types::branch;
 use crate::ProtocolConfiguration;
 
 pub mod error;
 pub mod stack;
+mod state;
 
 use error::Error;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
-
-/// Includes the necessary information for the tracing algorithm to trace the instruction execution.
-///
-/// For specifics see the pseudocode in the
-/// [repository](https://github.com/riscv-non-isa/riscv-trace-spec/blob/main/referenceFlow/scripts/decoder_model.py)
-/// and the specification.
-#[derive(Clone, Debug)]
-pub struct TraceState<S: ReturnStack> {
-    pub pc: u64,
-    pub last_pc: u64,
-    pub address: u64,
-    pub branch_map: branch::Map,
-    pub stop_at_last_branch: bool,
-    pub inferred_address: bool,
-    pub start_of_trace: bool,
-    pub privilege: Privilege,
-    pub return_stack: S,
-}
-
-impl<S: ReturnStack> TraceState<S> {
-    fn new(return_stack: S) -> Self {
-        TraceState {
-            pc: 0,
-            last_pc: 0,
-            branch_map: Default::default(),
-            stop_at_last_branch: false,
-            inferred_address: false,
-            start_of_trace: true,
-            address: 0,
-            privilege: Privilege::User,
-            return_stack,
-        }
-    }
-}
 
 /// Collects the different callbacks which report the tracing output.
 pub trait ReportTrace {
@@ -65,7 +32,7 @@ pub trait ReportTrace {
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
-    state: TraceState<S>,
+    state: state::State<S>,
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
@@ -509,7 +476,7 @@ impl<B: Binary> Builder<B> {
             0
         };
 
-        let state = TraceState::new(
+        let state = state::State::new(
             S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
         );
         Ok(Tracer {
