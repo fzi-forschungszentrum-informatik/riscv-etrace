@@ -298,7 +298,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             .and_then(|k| self.state.sequential_jump_target(k))
         {
             self.state.pc = target;
-        } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
+        } else if let Some(addr) = instr
+            .kind
+            .and_then(|k| self.state.implicit_return_address(k))
+        {
             self.state.pc = addr;
         } else if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
             if matches!(self.state.stop_condition, state::StopCondition::LastBranch) {
@@ -324,24 +327,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         self.state.last_insn = instr;
 
         Ok(stop_here)
-    }
-
-    /// If the given instruction is a function return, try to find the return address
-    ///
-    /// This roughly corresponds to a combination of `is_implicit_return` and
-    /// `pop_return_stack` of the reference implementation.
-    fn implicit_return_address(&mut self, instr: &Instruction, payload: &Payload) -> Option<u64> {
-        use instruction::Kind;
-
-        if instr.kind.map(Kind::is_return).unwrap_or(false) {
-            if payload.implicit_return_depth() == Some(self.state.return_stack.depth()) {
-                return None;
-            }
-
-            return self.state.return_stack.pop();
-        }
-
-        None
     }
 
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error<B::Error>> {

@@ -95,6 +95,18 @@ impl<S: ReturnStack> State<S> {
         (dep == reg).then_some(target.wrapping_add_signed(off.into()))
     }
 
+    /// If the given instruction is a function return, try to find the return address
+    ///
+    /// This roughly corresponds to a combination of `is_implicit_return` and
+    /// `pop_return_stack` of the reference implementation.
+    pub fn implicit_return_address(&mut self, insn: instruction::Kind) -> Option<u64> {
+        if insn.is_return() && self.stack_depth != Some(self.return_stack.depth()) {
+            self.return_stack.pop()
+        } else {
+            None
+        }
+    }
+
     /// If the given instruction is a branch and it was taken, return its target
     ///
     /// Computes and returns the absolute branch target along side a flag
