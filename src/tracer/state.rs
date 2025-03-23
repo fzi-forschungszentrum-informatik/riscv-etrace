@@ -72,6 +72,29 @@ impl<S: ReturnStack> State<S> {
         self.stop_condition == StopCondition::Fused
     }
 
+    /// If a pair of addresses constitute a sequential jump, compute the target
+    ///
+    /// This roughly corresponds to a combination of `is_sequential_jump` and
+    /// `sequential_jump_target` of the reference implementation.
+    pub fn sequential_jump_target(&self, insn: instruction::Kind) -> Option<u64> {
+        use instruction::Kind;
+
+        if !self.sequential_jumps {
+            return None;
+        }
+
+        let (reg, target) = match self.last_insn.kind? {
+            Kind::auipc(d) => (d.rd, self.last_pc.wrapping_add_signed(d.imm.into())),
+            Kind::lui(d) => (d.rd, d.imm as u64),
+            Kind::c_lui(d) => (d.rd, d.imm as u64),
+            _ => return None,
+        };
+
+        let (dep, off) = insn.uninferable_jump()?;
+
+        (dep == reg).then_some(target.wrapping_add_signed(off.into()))
+    }
+
     /// If the given instruction is a branch and it was taken, return its target
     ///
     /// Computes and returns the absolute branch target along side a flag

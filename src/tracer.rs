@@ -293,7 +293,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             if target == 0 {
                 stop_here = true;
             }
-        } else if let Some(target) = self.sequential_jump_target(this_pc, self.state.last_pc)? {
+        } else if let Some(target) = instr
+            .kind
+            .and_then(|k| self.state.sequential_jump_target(k))
+        {
             self.state.pc = target;
         } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
             self.state.pc = addr;
@@ -321,38 +324,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         self.state.last_insn = instr;
 
         Ok(stop_here)
-    }
-
-    /// If a pair of addresses constitute a sequential jump, compute the target
-    ///
-    /// This roughly corresponds to a combination of `is_sequential_jump` and
-    /// `sequential_jump_target` of the reference implementation.
-    fn sequential_jump_target(
-        &mut self,
-        addr: u64,
-        prev_addr: u64,
-    ) -> Result<Option<u64>, Error<B::Error>> {
-        use instruction::Kind;
-
-        if !self.state.sequential_jumps {
-            return Ok(None);
-        }
-        let Some(insn) = self.get_instr(addr)?.kind else {
-            return Ok(None);
-        };
-
-        let target = self.get_instr(prev_addr)?.kind.and_then(|i| match i {
-            Kind::auipc(d) => Some((d.rd, prev_addr.wrapping_add_signed(d.imm.into()))),
-            Kind::lui(d) => Some((d.rd, d.imm as u64)),
-            Kind::c_lui(d) => Some((d.rd, d.imm as u64)),
-            _ => None,
-        });
-
-        let target = Option::zip(insn.uninferable_jump(), target)
-            .filter(|((dep, _), (r, _))| r == dep)
-            .map(|((_, off), (_, t))| t.wrapping_add_signed(off.into()));
-
-        Ok(target)
     }
 
     /// If the given instruction is a function return, try to find the return address
