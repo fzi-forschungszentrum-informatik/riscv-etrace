@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execution tracing utilities
 
+use crate::instruction::Instruction;
 use crate::types::{branch, Privilege};
 
 use super::stack::ReturnStack;
@@ -12,8 +13,14 @@ pub struct State<S: ReturnStack> {
     /// Current program counter
     pub pc: u64,
 
+    /// Current instruction
+    pub insn: Instruction,
+
     /// Previous program counter
     pub last_pc: u64,
+
+    /// Previous instruction
+    pub last_insn: Instruction,
 
     /// Address reconstructed from the latest packet
     pub address: u64,
@@ -42,7 +49,9 @@ impl<S: ReturnStack> State<S> {
     pub fn new(return_stack: S) -> Self {
         Self {
             pc: 0,
+            insn: Default::default(),
             last_pc: 0,
+            last_insn: Default::default(),
             address: 0,
             branch_map: Default::default(),
             stop_at_last_branch: false,

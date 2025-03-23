@@ -85,8 +85,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
                 self.state.branch_map = Default::default();
             }
-            if self
-                .get_instr(self.state.address)?
+            let insn = self.get_instr(self.state.address)?;
+            if insn
                 .kind
                 .and_then(instruction::Kind::branch_target)
                 .is_some()
@@ -98,8 +98,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 self.follow_execution_path(payload)?
             } else {
                 self.state.pc = self.state.address;
+                self.state.insn = insn;
                 self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
+                self.state.last_insn = Default::default();
             }
             if self.version != Version::V1 {
                 self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
@@ -264,7 +266,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error<B::Error>> {
         use instruction::Kind;
 
-        let instr = self.get_instr(self.state.pc)?;
+        let instr = self.state.insn;
         let this_pc = self.state.pc;
         let mut stop_here = false;
 
@@ -294,7 +296,9 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
 
         self.push_return_stack(&instr, this_pc)?;
 
+        self.state.insn = self.get_instr(self.state.pc)?;
         self.state.last_pc = this_pc;
+        self.state.last_insn = instr;
 
         Ok(stop_here)
     }
