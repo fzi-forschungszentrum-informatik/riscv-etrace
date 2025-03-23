@@ -72,6 +72,16 @@ impl<S: ReturnStack> State<S> {
         self.stop_condition == StopCondition::Fused
     }
 
+    /// If the given instruction is an inferable jump, return its target
+    ///
+    /// Computes and returns the absolute jump target along side a flag
+    /// indicating whether the _relative_ target is zero if the given
+    /// instruction an inferable jump instruction.
+    fn inferable_jump_target(&self, insn: instruction::Kind) -> Option<(u64, bool)> {
+        insn.inferable_jump_target()
+            .map(|t| (self.pc.wrapping_add_signed(t.into()), t == 0))
+    }
+
     /// If a pair of addresses constitute a sequential jump, compute the target
     ///
     /// This roughly corresponds to a combination of `is_sequential_jump` and
