@@ -150,7 +150,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             {
                 let local_previous_address = self.state.pc;
                 loop {
-                    let local_stop_here = self.next_pc(local_previous_address, payload)?;
+                    let (_, local_stop_here) =
+                        self.state.next_pc(&self.binary, local_previous_address)?;
                     self.report_trace.report_pc(self.state.pc);
                     if local_stop_here {
                         self.state.inferred_address = None;
@@ -207,13 +208,13 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         let mut stop_here;
         loop {
             if let Some(address) = self.state.inferred_address {
-                stop_here = self.next_pc(address, payload)?;
+                stop_here = self.state.next_pc(&self.binary, address)?.1;
                 self.report_trace.report_pc(self.state.pc);
                 if stop_here {
                     self.state.inferred_address = None;
                 }
             } else {
-                stop_here = self.next_pc(self.state.address, payload)?;
+                stop_here = self.state.next_pc(&self.binary, self.state.address)?.1;
                 self.report_trace.report_pc(self.state.pc);
                 if stop_here {
                     let branch_limit = self.branch_limit()?;
@@ -281,54 +282,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error<B::Error>> {
-        use instruction::Kind;
-
-        let instr = self.state.insn;
-        let this_pc = self.state.pc;
-        let mut stop_here = false;
-
-        if let Some(target) = instr.kind.and_then(Kind::inferable_jump_target) {
-            self.incr_pc(target);
-            if target == 0 {
-                stop_here = true;
-            }
-        } else if let Some(target) = instr
-            .kind
-            .and_then(|k| self.state.sequential_jump_target(k))
-        {
-            self.state.pc = target;
-        } else if let Some(addr) = instr
-            .kind
-            .and_then(|k| self.state.implicit_return_address(k))
-        {
-            self.state.pc = addr;
-        } else if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
-            if matches!(self.state.stop_condition, state::StopCondition::LastBranch) {
-                return Err(Error::UnexpectedUninferableDiscon);
-            }
-            self.state.pc = address;
-            stop_here = true;
-        } else if let Some((target, end)) = instr
-            .kind
-            .and_then(|k| self.state.taken_branch_target(k).transpose())
-            .transpose()?
-        {
-            self.state.pc = target;
-            stop_here = end;
-        } else {
-            self.incr_pc(instr.size as i32);
-        }
-
-        self.push_return_stack(&instr, this_pc)?;
-
-        self.state.insn = self.get_instr(self.state.pc)?;
-        self.state.last_pc = this_pc;
-        self.state.last_insn = instr;
-
-        Ok(stop_here)
-    }
-
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error<B::Error>> {
         if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
             return Ok(());
@@ -359,7 +312,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         {
             Ok(self.state.pc)
         } else {
-            Ok(if self.next_pc(self.state.pc, payload)? {
+            Ok(if self.state.next_pc(&self.binary, self.state.pc)?.1 {
                 self.state.pc + instr.size as u64
             } else {
                 self.state.pc

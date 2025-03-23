@@ -6,7 +6,10 @@ use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 
 use super::error::Error;
+use super::item::Item;
 use super::stack::ReturnStack;
+
+use instruction::binary::Binary;
 
 /// Execution tracing state
 #[derive(Clone, Debug)]
@@ -70,6 +73,63 @@ impl<S: ReturnStack> State<S> {
     /// Check whether this state is currently fused
     pub fn is_fused(&self) -> bool {
         self.stop_condition == StopCondition::Fused
+    }
+
+    /// Determine the next PC
+    ///
+    /// Determines the next PC based on the given address as well as information
+    /// within the state. Returns the the next [Item] alongside a `bool`
+    /// indicating whether any instructions after the following one can be
+    /// traced based on the given address and information present in the state
+    /// (`false`) or not (`true`).
+    ///
+    /// This roughly corresponds to `next_pc` of the reference implementation.
+    pub fn next_pc<B: Binary>(
+        &mut self,
+        binary: &B,
+        address: u64,
+    ) -> Result<(Item, bool), Error<B::Error>> {
+        // The PC right after the current instruction
+        let after_pc = self.pc.wrapping_add(self.insn.size.into());
+
+        let (next_pc, end) = self
+            .insn
+            .kind
+            .and_then(|k| {
+                self.inferable_jump_target(k)
+                    .or_else(|| self.sequential_jump_target(k).map(|t| (t, false)))
+                    .or_else(|| self.implicit_return_address(k).map(|t| (t, false)))
+                    .map(Ok)
+                    .or_else(|| {
+                        k.is_uninferable_discon().then(|| {
+                            (!matches!(self.stop_condition, StopCondition::LastBranch))
+                                .then_some((address, true))
+                                .ok_or(Error::UnexpectedUninferableDiscon)
+                        })
+                    })
+                    .or_else(|| self.taken_branch_target(k).transpose())
+            })
+            .transpose()?
+            .unwrap_or((after_pc, false));
+
+        if self
+            .insn
+            .kind
+            .map(instruction::Kind::is_call)
+            .unwrap_or(false)
+        {
+            self.return_stack.push(after_pc);
+        }
+
+        self.last_pc = self.pc;
+        self.last_insn = self.insn;
+
+        self.pc = next_pc;
+        self.insn = binary
+            .get_insn(next_pc)
+            .map_err(|e| Error::CannotGetInstruction(e, next_pc))?;
+
+        Ok((Item::new(next_pc, self.insn), end))
     }
 
     /// If the given instruction is an inferable jump, return its target
