@@ -42,11 +42,14 @@ pub struct State<S: ReturnStack> {
 
     /// Stack depth communicated by the current packet
     pub stack_depth: Option<usize>,
+
+    /// Flag indicating whether or not sequential jumps are to be followed
+    pub sequential_jumps: bool,
 }
 
 impl<S: ReturnStack> State<S> {
     /// Create a new, initial state for tracing
-    pub fn new(return_stack: S) -> Self {
+    pub fn new(return_stack: S, sequential_jumps: bool) -> Self {
         Self {
             pc: 0,
             insn: Default::default(),
@@ -59,6 +62,7 @@ impl<S: ReturnStack> State<S> {
             privilege: Default::default(),
             return_stack,
             stack_depth: Default::default(),
+            sequential_jumps,
         }
     }
 

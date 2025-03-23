@@ -38,7 +38,6 @@ pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
-    sequential_jumps: bool,
     version: Version,
 }
 
@@ -352,7 +351,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     ) -> Result<Option<u64>, Error<B::Error>> {
         use instruction::Kind;
 
-        if !self.sequential_jumps {
+        if !self.state.sequential_jumps {
             return Ok(None);
         }
         let Some(insn) = self.get_instr(addr)?.kind else {
@@ -502,6 +501,7 @@ impl<B: Binary> Builder<B> {
 
         let state = state::State::new(
             S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
+            self.config.sijump_p,
         );
         Ok(Tracer {
             state,
@@ -509,7 +509,6 @@ impl<B: Binary> Builder<B> {
             report_trace,
             binary: self.binary,
             address_mode: self.address_mode,
-            sequential_jumps: self.config.sijump_p,
             version: self.version,
         })
     }
