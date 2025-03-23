@@ -303,11 +303,13 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
             self.state.pc = address;
             stop_here = true;
-        } else if let Some(target) = self.taken_branch_target(&instr)? {
-            self.incr_pc(target.into());
-            if target == 0 {
-                stop_here = true;
-            }
+        } else if let Some((target, end)) = instr
+            .kind
+            .and_then(|k| self.state.taken_branch_target(k).transpose())
+            .transpose()?
+        {
+            self.state.pc = target;
+            stop_here = end;
         } else {
             self.incr_pc(instr.size as i32);
         }
@@ -319,25 +321,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         self.state.last_insn = instr;
 
         Ok(stop_here)
-    }
-
-    /// If the given instruction is a branch and it was taken, return its target
-    ///
-    /// This roughly corresponds to a combination of `is_taken_branch` of the
-    /// reference implementation.
-    fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error<B::Error>> {
-        let Some(target) = instr.kind.and_then(instruction::Kind::branch_target) else {
-            // Not a branch instruction
-            return Ok(None);
-        };
-        let taken = self
-            .state
-            .branch_map
-            .pop_taken()
-            .ok_or(Error::UnresolvableBranch)?;
-        self.report_trace
-            .report_branch(self.state.branch_map, taken);
-        Ok(taken.then_some(target))
     }
 
     /// If a pair of addresses constitute a sequential jump, compute the target

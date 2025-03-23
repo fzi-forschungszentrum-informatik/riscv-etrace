@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execution tracing utilities
 
-use crate::instruction::Instruction;
+use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 
+use super::error::Error;
 use super::stack::ReturnStack;
 
 /// Execution tracing state
@@ -69,6 +70,32 @@ impl<S: ReturnStack> State<S> {
     /// Check whether this state is currently fused
     pub fn is_fused(&self) -> bool {
         self.stop_condition == StopCondition::Fused
+    }
+
+    /// If the given instruction is a branch and it was taken, return its target
+    ///
+    /// Computes and returns the absolute branch target along side a flag
+    /// indicating whether the _relative_ target is zero if the given
+    /// instruction
+    /// * is a branch instruciton and
+    /// * the branch was taken according to the current branch map.
+    ///
+    /// This roughly corresponds to a combination of `is_taken_branch` of the
+    /// reference implementation.
+    pub fn taken_branch_target<I>(
+        &mut self,
+        insn: instruction::Kind,
+    ) -> Result<Option<(u64, bool)>, Error<I>> {
+        let Some(target) = insn.branch_target() else {
+            // Not a branch instruction
+            return Ok(None);
+        };
+        let res = self
+            .branch_map
+            .pop_taken()
+            .ok_or(Error::UnresolvableBranch)?
+            .then_some((self.pc.wrapping_add_signed(target.into()), target == 0));
+        Ok(res)
     }
 
     /// Determine whether the stack's depth matches the current packet's value
