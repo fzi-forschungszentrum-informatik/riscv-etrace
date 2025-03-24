@@ -473,7 +473,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         let local_instr = self.get_instr(addr)?;
         self.state
             .return_stack
-            .push(addr + (local_instr.size as u64) * 8);
+            .push(addr + (local_instr.size as u64));
         Ok(())
     }
 
