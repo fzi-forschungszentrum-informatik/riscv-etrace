@@ -300,6 +300,12 @@ impl Default for Size {
     }
 }
 
+impl From<Size> for u64 {
+    fn from(size: Size) -> Self {
+        size as u64
+    }
+}
+
 /// Defines a single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Instruction {
