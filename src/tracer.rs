@@ -84,10 +84,7 @@ pub struct TraceState<S: ReturnStack> {
     pub stop_at_last_branch: bool,
     pub inferred_address: bool,
     pub start_of_trace: bool,
-    pub notify: bool,
-    pub updiscon: bool,
     pub privilege: Privilege,
-    pub segment_idx: usize,
     pub return_stack: S,
 }
 
@@ -101,10 +98,7 @@ impl<S: ReturnStack> TraceState<S> {
             inferred_address: false,
             start_of_trace: true,
             address: 0,
-            notify: false,
-            updiscon: false,
             privilege: Privilege::User,
-            segment_idx: 0,
             return_stack,
         }
     }
@@ -154,19 +148,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn recover_status_fields(&mut self, payload: &Payload) {
-        if let Some(addr) = payload.get_address_info() {
-            self.state.notify = addr.notify;
-            self.state.updiscon = addr.updiscon;
-        }
-    }
-
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
-        self.recover_status_fields(payload);
-        self._process_te_inst(payload)
-    }
-
-    fn _process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
@@ -324,7 +306,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 if !matches!(payload, Payload::Synchronization(_))
                     && self.state.pc == self.state.address
                     && !self.state.stop_at_last_branch
-                    && self.state.notify
+                    && payload
+                        .get_address_info()
+                        .map(|a| a.notify)
+                        .unwrap_or(false)
                     && self.state.branch_map.count() == self.branch_limit()?
                 {
                     return Ok(());
@@ -337,7 +322,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                         .kind
                         .map(Kind::is_uninferable_discon)
                         .unwrap_or(false)
-                    && !self.state.updiscon
+                    && !payload
+                        .get_address_info()
+                        .map(|a| a.updiscon)
+                        .unwrap_or(false)
                     && self.state.branch_map.count() == self.branch_limit()?
                     && payload
                         .implicit_return_depth()
