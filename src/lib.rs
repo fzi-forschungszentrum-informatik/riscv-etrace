@@ -94,6 +94,7 @@
 pub mod decoder;
 pub mod instruction;
 pub mod tracer;
+pub mod types;
 
 pub use instruction::Instruction;
 
