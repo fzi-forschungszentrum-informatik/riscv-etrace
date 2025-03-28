@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use crate::types::{branch, Privilege};
+use crate::types::{branch, trap, Privilege};
 
 use super::{util, Decode, Decoder, Error};
 
@@ -334,15 +334,12 @@ pub struct Trap {
     /// or the instruction is not a branch.
     pub branch: bool,
     pub ctx: Context,
-    pub ecause: u64,
-    pub interrupt: bool,
     /// True, if the address points to the trap handler. False, if address points to the EPC for
     /// an exception at the target of an updiscon, and is undefined for other exceptions and interrupts.
     pub thaddr: bool,
     /// Full address of the instruction.
     pub address: u64,
-    /// Value from appropriate *tval CSR.
-    pub tval: u64,
+    pub info: trap::Info,
 }
 
 impl Decode for Trap {
@@ -350,18 +347,20 @@ impl Decode for Trap {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
         let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
-        let interrupt = decoder.read_bit()?;
+        let kind = if decoder.read_bit()? {
+            trap::Kind::Interrupt
+        } else {
+            trap::Kind::Exception
+        };
         let thaddr = decoder.read_bit()?;
         let address = util::read_address(decoder)?;
         let tval = decoder.read_bits(decoder.proto_conf.iaddress_width_p)?;
         Ok(Trap {
             branch,
             ctx,
-            ecause,
-            interrupt,
             thaddr,
             address,
-            tval,
+            info: trap::Info { ecause, tval, kind },
         })
     }
 }
