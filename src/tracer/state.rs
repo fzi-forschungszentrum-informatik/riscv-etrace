@@ -42,6 +42,9 @@ pub struct State<S: ReturnStack> {
 
     /// Stack of (regular) call return addresses
     pub return_stack: S,
+
+    /// Stack depth communicated by the current packet
+    pub stack_depth: Option<usize>,
 }
 
 impl<S: ReturnStack> State<S> {
@@ -59,6 +62,7 @@ impl<S: ReturnStack> State<S> {
             start_of_trace: true,
             privilege: Default::default(),
             return_stack,
+            stack_depth: Default::default(),
         }
     }
 }

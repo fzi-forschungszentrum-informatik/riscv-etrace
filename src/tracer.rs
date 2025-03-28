@@ -60,6 +60,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     }
 
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
+        self.state.stack_depth = payload.implicit_return_depth();
+
         if let Payload::Synchronization(sync) = payload {
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
