@@ -8,6 +8,7 @@ use crate::types::{branch, trap};
 use crate::ProtocolConfiguration;
 
 pub mod error;
+pub mod item;
 pub mod stack;
 mod state;
 
