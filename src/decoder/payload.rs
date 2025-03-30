@@ -4,27 +4,6 @@
 //! Implements all different payloads and their decoding.
 use super::{branch, util, Decode, Decoder, Error};
 
-/// Read the `irreport` and `irdepth` fields
-///
-/// This fn reads the `irreport` and `irdepth` fields. The former is read
-/// differentially, and if the result is `true` this fn returns `irdepth`.
-/// Otherwise, `None` is returned.
-fn read_implicit_return(decoder: &mut Decoder) -> Result<Option<usize>, Error> {
-    let depth_len = decoder.proto_conf.return_stack_size_p
-        + decoder.proto_conf.call_counter_size_p
-        + (if decoder.proto_conf.return_stack_size_p > 0 {
-            1
-        } else {
-            0
-        });
-    // We intentionally read both the `irreport` and `irdepth` field
-    // unconditionally in order to keep the overall width read constant.
-    let report = decoder.read_differential_bit()?;
-    let depth = decoder.read_bits(depth_len)?;
-
-    Ok(report.then_some(depth))
-}
-
 /// The possible privilege levels with which the instruction was executed.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Privilege {
@@ -225,7 +204,7 @@ impl Decode for JumpTargetIndex {
         let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
         let branch_map = branch::Count::decode(decoder)?.read_branch_map(decoder)?;
 
-        let irdepth = read_implicit_return(decoder)?;
+        let irdepth = util::read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
             index,
             branch_map,
@@ -297,7 +276,7 @@ impl Decode for AddressInfo {
         let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;
-        let irdepth = read_implicit_return(decoder)?;
+        let irdepth = util::read_implicit_return(decoder)?;
         Ok(AddressInfo {
             address,
             notify,
