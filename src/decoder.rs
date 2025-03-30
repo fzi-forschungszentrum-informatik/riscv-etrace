@@ -7,6 +7,7 @@ mod format;
 pub mod header;
 pub mod payload;
 pub mod truncate;
+mod util;
 
 use core::fmt;
 use core::num::NonZeroUsize;
