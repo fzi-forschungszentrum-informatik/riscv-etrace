@@ -12,6 +12,11 @@ pub struct Map {
 }
 
 impl Map {
+    /// Create a new branch map
+    pub(crate) fn new(count: u8, map: u64) -> Self {
+        Self { count, map }
+    }
+
     /// Remove the oldest branch information and return it
     pub fn pop_taken(&mut self) -> Option<bool> {
         let count = self.count.checked_sub(1)?;
