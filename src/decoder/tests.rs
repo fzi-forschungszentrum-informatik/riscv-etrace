@@ -257,6 +257,8 @@ fn address_differential() {
 
 #[test]
 fn synchronization_start() {
+    use crate::types::Privilege;
+
     let protocol_config = ProtocolConfiguration::default();
 
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
@@ -268,7 +270,7 @@ fn synchronization_start() {
     .with_data(&buffer);
     let sync_start = payload::Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
-    assert_eq!(sync_start.ctx.privilege, payload::Privilege::Machine);
+    assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
     assert_eq!(sync_start.address, u64::MAX);
 }
 
