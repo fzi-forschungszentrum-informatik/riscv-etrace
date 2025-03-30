@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Utilities for decoding specific items of packets/payloads
 
-use super::{branch, Decode, Decoder, Error};
+use crate::types::branch;
+
+use super::{Decode, Decoder, Error};
 
 /// Read an address as `u64`
 ///

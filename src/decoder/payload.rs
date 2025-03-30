@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use super::{branch, util, Decode, Decoder, Error};
+use crate::types::branch;
+
+use super::{util, Decode, Decoder, Error};
 
 /// The possible privilege levels with which the instruction was executed.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

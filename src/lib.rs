@@ -30,7 +30,8 @@
 //! extern crate riscv_etrace;
 //!
 //! use riscv_etrace::{ProtocolConfiguration};
-//! use riscv_etrace::decoder::{branch, Decoder};
+//! use riscv_etrace::decoder::Decoder;
+//! use riscv_etrace::types::branch;
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::instruction::binary;
 //! use riscv_etrace::tracer::{self, ReportTrace, Tracer};
