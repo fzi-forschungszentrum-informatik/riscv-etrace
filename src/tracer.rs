@@ -294,7 +294,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                         .is_some()
                     && self.state.stop_at_last_branch
                 {
-                    self.state.stop_at_last_branch = true;
+                    self.state.stop_at_last_branch = false;
                     return Ok(());
                 }
                 if stop_here {
