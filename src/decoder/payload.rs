@@ -2,14 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use super::{branch, Decode, Decoder, Error};
-
-fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
-    let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
-    decoder
-        .read_bits::<u64>(width)
-        .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
-}
+use super::{branch, util, Decode, Decoder, Error};
 
 /// Read the `irreport` and `irdepth` fields
 ///
@@ -301,7 +294,7 @@ pub struct AddressInfo {
 
 impl Decode for AddressInfo {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let address = read_address(decoder)?;
+        let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;
         let irdepth = read_implicit_return(decoder)?;
@@ -364,7 +357,7 @@ impl Decode for Start {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
-        let address = read_address(decoder)?;
+        let address = util::read_address(decoder)?;
         Ok(Start {
             branch,
             ctx,
@@ -399,7 +392,7 @@ impl Decode for Trap {
         let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
         let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
-        let address = read_address(decoder)?;
+        let address = util::read_address(decoder)?;
         let tval = decoder.read_bits(decoder.proto_conf.iaddress_width_p)?;
         Ok(Trap {
             branch,
