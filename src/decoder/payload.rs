@@ -2,35 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use super::{branch, Decode, Decoder, Error};
-
-fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
-    let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
-    decoder
-        .read_bits::<u64>(width)
-        .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
-}
-
-/// Read the `irreport` and `irdepth` fields
-///
-/// This fn reads the `irreport` and `irdepth` fields. The former is read
-/// differentially, and if the result is `true` this fn returns `irdepth`.
-/// Otherwise, `None` is returned.
-fn read_implicit_return(decoder: &mut Decoder) -> Result<Option<usize>, Error> {
-    let depth_len = decoder.proto_conf.return_stack_size_p
-        + decoder.proto_conf.call_counter_size_p
-        + (if decoder.proto_conf.return_stack_size_p > 0 {
-            1
-        } else {
-            0
-        });
-    // We intentionally read both the `irreport` and `irdepth` field
-    // unconditionally in order to keep the overall width read constant.
-    let report = decoder.read_differential_bit()?;
-    let depth = decoder.read_bits(depth_len)?;
-
-    Ok(report.then_some(depth))
-}
+use super::{branch, util, Decode, Decoder, Error};
 
 /// The possible privilege levels with which the instruction was executed.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -230,9 +202,8 @@ pub struct JumpTargetIndex {
 impl Decode for JumpTargetIndex {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
-        let branch_map = branch::Count::decode(decoder)?.read_branch_map(decoder)?;
-
-        let irdepth = read_implicit_return(decoder)?;
+        let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
+        let irdepth = util::read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
             index,
             branch_map,
@@ -253,9 +224,11 @@ pub struct Branch {
 
 impl Decode for Branch {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let count = branch::Count::decode(decoder)?;
+        use util::BranchCount;
+
+        let count = BranchCount::decode(decoder)?;
         if count.is_zero() {
-            let branch_map = branch::Count::FULL.read_branch_map(decoder)?;
+            let branch_map = BranchCount::FULL.read_branch_map(decoder)?;
             Ok(Branch {
                 branch_map,
                 address: None,
@@ -301,10 +274,10 @@ pub struct AddressInfo {
 
 impl Decode for AddressInfo {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let address = read_address(decoder)?;
+        let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;
-        let irdepth = read_implicit_return(decoder)?;
+        let irdepth = util::read_implicit_return(decoder)?;
         Ok(AddressInfo {
             address,
             notify,
@@ -364,7 +337,7 @@ impl Decode for Start {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
-        let address = read_address(decoder)?;
+        let address = util::read_address(decoder)?;
         Ok(Start {
             branch,
             ctx,
@@ -399,7 +372,7 @@ impl Decode for Trap {
         let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
         let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
-        let address = read_address(decoder)?;
+        let address = util::read_address(decoder)?;
         let tval = decoder.read_bits(decoder.proto_conf.iaddress_width_p)?;
         Ok(Trap {
             branch,
