@@ -31,6 +31,9 @@ pub struct State<S: ReturnStack> {
     /// Execution is to stop at the last branch recorded in [Self::branch_map]
     pub stop_at_last_branch: bool,
 
+    /// Stop condition for the current packet
+    pub stop_condition: StopCondition,
+
     /// Inferred address that was reported
     pub inferred_address: Option<u64>,
 
@@ -58,6 +61,7 @@ impl<S: ReturnStack> State<S> {
             address: 0,
             branch_map: Default::default(),
             stop_at_last_branch: false,
+            stop_condition: Default::default(),
             inferred_address: Default::default(),
             start_of_trace: true,
             privilege: Default::default(),
@@ -74,5 +78,30 @@ impl<S: ReturnStack> State<S> {
         self.stack_depth
             .map(|d| d == self.return_stack.depth())
             .unwrap_or(true)
+    }
+}
+
+/// Condition for stopping instruction tracing (for a single packet)
+///
+/// This type represents various conditions for stopping instruction tracing.
+/// They correspond to conditions for breaking the tracing loop in the fns
+/// `follow_execution_path` and `process_support` of the reference pseudo-code.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum StopCondition {
+    /// Stop when instructions/PCs can no longer be inferred
+    NotInferred,
+    /// Stop at the last branch recorded in the branch map (i.e. don't empty it)
+    LastBranch,
+    /// Stop when reaching a condition provided by an address packet
+    Address { notify: bool, not_updiscon: bool },
+    /// Stop when reaching a condition provided by a sync packet
+    Sync { privilege: Option<Privilege> },
+    /// The state is already fused and shall not be advanced
+    Fused,
+}
+
+impl Default for StopCondition {
+    fn default() -> Self {
+        Self::Fused
     }
 }
