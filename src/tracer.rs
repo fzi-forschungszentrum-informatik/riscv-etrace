@@ -158,7 +158,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 }
                 return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
-                if !trap.interrupt {
+                if trap.info.is_exception() {
                     let addr = self.exception_address(trap, payload)?;
                     self.report_trace.report_epc(addr);
                 }

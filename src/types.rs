@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod branch;
+pub mod trap;
 
 /// RISC-V priviledge levels
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
