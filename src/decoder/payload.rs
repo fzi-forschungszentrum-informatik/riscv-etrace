@@ -2,29 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements all different payloads and their decoding.
-use super::{branch, util, Decode, Decoder, Error};
+use crate::types::{branch, Privilege};
 
-/// The possible privilege levels with which the instruction was executed.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Privilege {
-    User = 0b00,
-    Supervisor = 0b01,
-    Machine = 0b11,
-}
-
-impl Decode for Privilege {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        match decoder.read_bits::<u8>(2)? {
-            0b00 => Ok(Privilege::User),
-            0b01 => Ok(Privilege::Supervisor),
-            0b11 => Ok(Privilege::Machine),
-            err => Err(Error::UnknownPrivilege(err)),
-        }
-    }
-}
+use super::{util, Decode, Decoder, Error};
 
 /// Determines the layout of [BranchCount].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -398,10 +378,16 @@ pub struct Context {
 
 impl Decode for Context {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+        let privilege = decoder
+            .read_bits::<u8>(2)?
+            .try_into()
+            .map_err(Error::UnknownPrivilege)?;
+        let time = decoder.read_bits(decoder.proto_conf.time_width_p)?;
+        let context = decoder.read_bits(decoder.proto_conf.context_width_p)?;
         Ok(Context {
-            privilege: Privilege::decode(decoder)?,
-            time: decoder.read_bits(decoder.proto_conf.time_width_p)?,
-            context: decoder.read_bits(decoder.proto_conf.context_width_p)?,
+            privilege,
+            time,
+            context,
         })
     }
 }
