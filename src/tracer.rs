@@ -77,7 +77,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                     return Ok(());
                 }
             }
-            self.state.inferred_address = false;
+            self.state.inferred_address = None;
             self.state.address = payload.get_address();
             if self.state.address == 0 {
                 return Err(Error::AddressIsZero);
@@ -134,13 +134,14 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         if support.qual_status != QualStatus::NoChange {
             self.state.start_of_trace = true;
 
-            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address {
+            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
+            {
                 let local_previous_address = self.state.pc;
-                self.state.inferred_address = false;
                 loop {
                     let local_stop_here = self.next_pc(local_previous_address, payload)?;
                     self.report_trace.report_pc(self.state.pc);
                     if local_stop_here {
+                        self.state.inferred_address = None;
                         return Ok(());
                     }
                 }
@@ -186,14 +187,13 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         use instruction::Kind;
 
-        let previous_address = self.state.pc;
         let mut stop_here;
         loop {
-            if self.state.inferred_address {
-                stop_here = self.next_pc(previous_address, payload)?;
+            if let Some(address) = self.state.inferred_address {
+                stop_here = self.next_pc(address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
                 if stop_here {
-                    self.state.inferred_address = false;
+                    self.state.inferred_address = None;
                 }
             } else {
                 stop_here = self.next_pc(self.state.address, payload)?;
@@ -247,7 +247,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                         .map(|v| v == self.state.return_stack.depth())
                         .unwrap_or(true)
                 {
-                    self.state.inferred_address = true;
+                    self.state.inferred_address = Some(self.state.pc);
                     return Ok(());
                 }
                 if matches!(payload, Payload::Synchronization(_))

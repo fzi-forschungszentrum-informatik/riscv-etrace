@@ -24,8 +24,8 @@ pub struct State<S: ReturnStack> {
     /// Execution is to stop at the last branch recorded in [Self::branch_map]
     pub stop_at_last_branch: bool,
 
-    /// Flag indicating whether the reported address was inferred
-    pub inferred_address: bool,
+    /// Inferred address that was reported
+    pub inferred_address: Option<u64>,
 
     /// Flag indicating we're at the start of a trace
     pub start_of_trace: bool,
@@ -46,7 +46,7 @@ impl<S: ReturnStack> State<S> {
             address: 0,
             branch_map: Default::default(),
             stop_at_last_branch: false,
-            inferred_address: false,
+            inferred_address: Default::default(),
             start_of_trace: true,
             privilege: Default::default(),
             return_stack,
