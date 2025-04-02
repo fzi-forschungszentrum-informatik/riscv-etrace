@@ -120,6 +120,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
             if let Payload::Branch(branch) = payload {
                 self.state.branch_map.append(branch.branch_map);
+                self.state.stop_at_last_branch = branch.address.is_none();
             }
             self.follow_execution_path(payload)
         }
