@@ -190,7 +190,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         loop {
             if self.state.inferred_address {
                 stop_here = self.next_pc(previous_address, payload)?;
-                self.report_trace.report_pc(previous_address);
+                self.report_trace.report_pc(self.state.pc);
                 if stop_here {
                     self.state.inferred_address = false;
                 }
