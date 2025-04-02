@@ -242,8 +242,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                     return Ok(());
                 }
                 if stop_here {
-                    if self.state.branch_map.count() > self.branch_limit()? {
-                        return Err(Error::UnprocessedBranches(self.state.branch_map.count()));
+                    let branch_limit = self.branch_limit()?;
+                    if let Some(n) = core::num::NonZeroU8::new(self.state.branch_map.count())
+                        .filter(|n| n.get() > branch_limit)
+                    {
+                        return Err(Error::UnprocessedBranches(n));
                     }
                     return Ok(());
                 }

@@ -18,7 +18,7 @@ pub enum Error<I> {
     ///
     /// Some number of branches which should have been processed are still
     /// unprocessed.
-    UnprocessedBranches(u8),
+    UnprocessedBranches(core::num::NonZeroU8),
     /// An unexpected uninferable discontinuity was encountered
     UnexpectedUninferableDiscon,
     /// The tracer cannot resolve some branch
