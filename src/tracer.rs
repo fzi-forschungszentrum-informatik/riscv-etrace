@@ -7,68 +7,12 @@ use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 use crate::ProtocolConfiguration;
 
-use core::fmt;
-
+pub mod error;
 pub mod stack;
 
+use error::Error;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
-
-/// Possible errors which can occur during the tracing algorithm.
-#[derive(Debug)]
-pub enum Error<I> {
-    /// The PC cannot be set to the address, as the address is 0.
-    AddressIsZero,
-    /// No starting synchronization packet was read and the tracer is still at the start of the trace.
-    StartOfTrace,
-    /// Some branches which should have been processed are still unprocessed. The number of
-    /// unprocessed branches is given.
-    UnprocessedBranches(u8),
-    /// An unexpected uninferable discontinuity was encountered.
-    UnexpectedUninferableDiscon,
-    /// The tracer cannot resolve the branch because all branches have been processed.
-    UnresolvableBranch,
-    /// The current synchronization packet has no branching information.
-    WrongGetBranchType,
-    /// The current packet has no privilege information.
-    WrongGetPrivilegeType,
-    /// The IR stack cannot be constructed for the given size
-    CannotConstructIrStack(usize),
-    /// We could not fetch an [Instruction] from a given address
-    CannotGetInstruction(I, u64),
-}
-
-impl<I> core::error::Error for Error<I>
-where
-    I: fmt::Debug + core::error::Error + 'static,
-{
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            Self::CannotGetInstruction(inner, _) => Some(inner),
-            _ => None,
-        }
-    }
-}
-
-impl<I> fmt::Display for Error<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::AddressIsZero => write!(f, "address is zero"),
-            Self::StartOfTrace => write!(f, "expected sync packet"),
-            Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
-            Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
-            Self::UnresolvableBranch => write!(f, "unresolvable branch"),
-            Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
-            Self::WrongGetPrivilegeType => write!(f, "expected privilege info in packet"),
-            Self::CannotConstructIrStack(size) => {
-                write!(f, "Cannot construct return stack of size {size}")
-            }
-            Self::CannotGetInstruction(_, addr) => {
-                write!(f, "Cannot get the instruction at {addr:#0x}")
-            }
-        }
-    }
-}
 
 /// Includes the necessary information for the tracing algorithm to trace the instruction execution.
 ///
