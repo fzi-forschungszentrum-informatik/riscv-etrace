@@ -143,10 +143,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             {
                 self.state.inferred_address = Some(self.state.pc);
                 self.state.stop_condition = state::StopCondition::NotInferred;
-
-                while let Some(item) = self.state.next_item(&self.binary)? {
-                    self.report_trace.report_pc(item.pc());
-                }
             }
         }
         Ok(())
@@ -180,11 +176,30 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
         };
 
-        while let Some(item) = self.state.next_item(&self.binary)? {
-            self.report_trace.report_pc(item.pc());
-        }
-
         Ok(())
+    }
+}
+
+impl<B: Binary, S: ReturnStack> Iterator for Tracer<'_, B, S> {
+    type Item = Result<item::Item, Error<B::Error>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter_state {
+            IterationState::SingleItem(trap) => {
+                self.iter_state = IterationState::FollowExec;
+
+                let item = self.state.current_item();
+                let item = if let Some((epc, info)) = trap {
+                    item.with_trap(epc, info)
+                } else {
+                    item
+                };
+                Some(Ok(item))
+            }
+            IterationState::FollowExec | IterationState::Depleting => {
+                self.state.next_item(&self.binary).transpose()
+            }
+        }
     }
 }
 
