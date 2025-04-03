@@ -176,9 +176,15 @@ impl Kind {
     /// * a [return from trap][Self::is_return_from_trap] or
     /// * an `ecall` or `ebreak` (compressed or uncompressed).
     pub fn is_uninferable_discon(self) -> bool {
-        self.uninferable_jump().is_some()
-            || self.is_return_from_trap()
-            || matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
+        self.uninferable_jump().is_some() || self.is_return_from_trap() || self.is_ecall_or_ebreak()
+    }
+
+    /// Determine whether this instruction is an `ecall` or `ebreak`
+    ///
+    /// Returns true if this refers to either an `ecall`, `ebreak` or
+    /// `c.ebreak`.
+    pub fn is_ecall_or_ebreak(self) -> bool {
+        matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
     }
 
     /// Determine whether this instruction can be considered a function call
