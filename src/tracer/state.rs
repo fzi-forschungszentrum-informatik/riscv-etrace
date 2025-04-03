@@ -28,9 +28,6 @@ pub struct State<S: ReturnStack> {
     /// Sequence of future branches
     pub branch_map: branch::Map,
 
-    /// Execution is to stop at the last branch recorded in [Self::branch_map]
-    pub stop_at_last_branch: bool,
-
     /// Stop condition for the current packet
     pub stop_condition: StopCondition,
 
@@ -60,7 +57,6 @@ impl<S: ReturnStack> State<S> {
             last_insn: Default::default(),
             address: 0,
             branch_map: Default::default(),
-            stop_at_last_branch: false,
             stop_condition: Default::default(),
             inferred_address: Default::default(),
             start_of_trace: true,
