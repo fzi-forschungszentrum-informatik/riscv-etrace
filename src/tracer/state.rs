@@ -75,6 +75,11 @@ impl<S: ReturnStack> State<S> {
         self.stop_condition == StopCondition::Fused
     }
 
+    /// Retrieve the current [Item] without advancing the state
+    pub fn current_item(&self) -> Item {
+        Item::new(self.pc, self.insn)
+    }
+
     /// Determine next [Item]
     ///
     /// Returns the next tracing [Item] based on the given address as well as
