@@ -65,4 +65,14 @@ impl<S: ReturnStack> State<S> {
             stack_depth: Default::default(),
         }
     }
+
+    /// Determine whether the stack's depth matches the current packet's value
+    ///
+    /// Returns true if [Self::stack_depth] matches [Self::return_stack]'s
+    /// depth or if [Self::stack_depth] is `None`.
+    pub fn stack_depth_matches(&self) -> bool {
+        self.stack_depth
+            .map(|d| d == self.return_stack.depth())
+            .unwrap_or(true)
+    }
 }
