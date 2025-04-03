@@ -34,9 +34,6 @@ pub struct State<S: ReturnStack> {
     /// Inferred address that was reported
     pub inferred_address: Option<u64>,
 
-    /// Flag indicating we're at the start of a trace
-    pub start_of_trace: bool,
-
     /// Current [Privilege] level the core is operating in
     pub privilege: Privilege,
 
@@ -59,7 +56,6 @@ impl<S: ReturnStack> State<S> {
             branch_map: Default::default(),
             stop_condition: Default::default(),
             inferred_address: Default::default(),
-            start_of_trace: true,
             privilege: Default::default(),
             return_stack,
             stack_depth: Default::default(),
