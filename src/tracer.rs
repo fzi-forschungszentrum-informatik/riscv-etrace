@@ -389,7 +389,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
 
         let instr = self.get_instr(self.state.pc)?;
 
-        if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) && trap.thaddr {
+        if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) && !trap.thaddr {
             Ok(trap.address)
         } else if instr
             .kind
