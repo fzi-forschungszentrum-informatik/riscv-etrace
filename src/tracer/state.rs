@@ -166,6 +166,38 @@ impl<S: ReturnStack> State<S> {
         }
     }
 
+    /// Determine the exception address for the current instruction
+    ///
+    /// This roughly corresponds to `exception_address` of the reference
+    /// implementation.
+    pub fn exception_address<B: Binary>(
+        &mut self,
+        binary: &B,
+        packet_epc: Option<u64>,
+    ) -> Result<u64, Error<B::Error>> {
+        use instruction::Kind;
+
+        let insn = self.insn;
+
+        if insn.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
+            if let Some(epc) = packet_epc {
+                return Ok(epc);
+            }
+        }
+
+        if insn.kind.map(Kind::is_ecall_or_ebreak).unwrap_or(false) {
+            Ok(self.pc)
+        } else {
+            self.next_pc(binary, self.pc).map(|(i, e)| {
+                if e {
+                    i.pc().wrapping_add(insn.size.into())
+                } else {
+                    i.pc()
+                }
+            })
+        }
+    }
+
     /// Determine the next PC
     ///
     /// Determines the next PC based on the given address as well as information

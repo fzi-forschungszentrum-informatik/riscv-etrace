@@ -75,7 +75,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             } else if let Synchronization::Trap(trap) = sync {
                 let epc = match trap.info.kind {
                     trap::Kind::Exception => {
-                        let addr = self.exception_address(trap, payload)?;
+                        let epc = (!trap.thaddr).then_some(trap.address);
+                        let addr = self.state.exception_address(&self.binary, epc)?;
                         self.report_trace.report_epc(addr);
                         addr
                     }
@@ -217,32 +218,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             .return_stack
             .push(addr + (local_instr.size as u64));
         Ok(())
-    }
-
-    fn exception_address(
-        &mut self,
-        trap: &Trap,
-        payload: &Payload,
-    ) -> Result<u64, Error<B::Error>> {
-        use instruction::Kind;
-
-        let instr = self.get_instr(self.state.pc)?;
-
-        if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) && !trap.thaddr {
-            Ok(trap.address)
-        } else if instr
-            .kind
-            .filter(|name| matches!(*name, Kind::ecall | Kind::ebreak | Kind::c_ebreak))
-            .is_some()
-        {
-            Ok(self.state.pc)
-        } else {
-            Ok(if self.state.next_pc(&self.binary, self.state.pc)?.1 {
-                self.state.pc + instr.size as u64
-            } else {
-                self.state.pc
-            })
-        }
     }
 }
 
