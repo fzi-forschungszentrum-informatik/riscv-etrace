@@ -96,6 +96,9 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)?;
                 self.state.branch_map.push_branch_taken(!branch);
             }
+            if self.version != Version::V1 {
+                self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
+            }
             if matches!(sync, Synchronization::Start(_)) && self.iter_state.is_tracing() {
                 self.follow_execution_path(payload, false)?
             } else {
@@ -106,9 +109,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 self.state.last_insn = Default::default();
 
                 self.iter_state = IterationState::SingleItem(trap_info);
-            }
-            if self.version != Version::V1 {
-                self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             Ok(())
         } else {
