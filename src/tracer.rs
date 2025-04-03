@@ -4,7 +4,7 @@
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::instruction::{self, Instruction};
-use crate::types::branch;
+use crate::types::{branch, trap};
 use crate::ProtocolConfiguration;
 
 pub mod error;
@@ -33,6 +33,7 @@ pub trait ReportTrace {
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
+    iter_state: IterationState,
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
@@ -63,6 +64,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         self.state.stack_depth = payload.implicit_return_depth();
 
         if let Payload::Synchronization(sync) = payload {
+            let mut trap_info = None;
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
             } else if let Synchronization::Context(ctx) = sync {
@@ -71,20 +73,25 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 }
                 return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
-                if trap.info.is_exception() {
-                    let addr = self.exception_address(trap, payload)?;
-                    self.report_trace.report_epc(addr);
-                }
+                let epc = match trap.info.kind {
+                    trap::Kind::Exception => {
+                        let addr = self.exception_address(trap, payload)?;
+                        self.report_trace.report_epc(addr);
+                        addr
+                    }
+                    trap::Kind::Interrupt => self.state.pc,
+                };
                 if !trap.thaddr {
                     return Ok(());
                 }
+                trap_info = Some((epc, trap.info));
             }
             self.state.inferred_address = None;
             self.state.address = payload.get_address();
             if self.state.address == 0 {
                 return Err(Error::AddressIsZero);
             }
-            if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
+            if matches!(sync, Synchronization::Trap(_)) || !self.iter_state.is_tracing() {
                 self.state.branch_map = Default::default();
             }
             let insn = self.get_instr(self.state.address)?;
@@ -96,7 +103,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)?;
                 self.state.branch_map.push_branch_taken(!branch);
             }
-            if matches!(sync, Synchronization::Start(_)) && !self.state.start_of_trace {
+            if matches!(sync, Synchronization::Start(_)) && self.iter_state.is_tracing() {
                 self.follow_execution_path(payload, false)?
             } else {
                 self.state.pc = self.state.address;
@@ -104,14 +111,15 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
                 self.state.last_insn = Default::default();
+
+                self.iter_state = IterationState::SingleItem(trap_info);
             }
             if self.version != Version::V1 {
                 self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
-            self.state.start_of_trace = false;
             Ok(())
         } else {
-            if self.state.start_of_trace {
+            if !self.iter_state.is_tracing() {
                 return Err(Error::StartOfTrace);
             }
             let mut stop_at_last_branch = false;
@@ -136,7 +144,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         payload: &Payload,
     ) -> Result<(), Error<B::Error>> {
         if support.qual_status != QualStatus::NoChange {
-            self.state.start_of_trace = true;
+            self.iter_state = IterationState::Depleting;
 
             if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
             {
@@ -517,6 +525,7 @@ impl<B: Binary> Builder<B> {
         );
         Ok(Tracer {
             state,
+            iter_state: Default::default(),
             report_trace,
             binary: self.binary,
             address_mode: self.address_mode,
@@ -550,5 +559,32 @@ pub enum AddressMode {
 impl Default for AddressMode {
     fn default() -> Self {
         Self::Delta
+    }
+}
+
+/// [Tracer] iteration states
+#[derive(Copy, Clone, Debug)]
+enum IterationState {
+    /// The [Tracer] reports a single item
+    ///
+    /// We know about exactly one item we report, which may have an EPC and
+    /// [trap::Info] associated with it. We don't have any information beyond
+    /// this item (yet).
+    SingleItem(Option<(u64, trap::Info)>),
+    /// We follow the execution path based on the current packet's data
+    FollowExec,
+    /// We follow the execution path as long as it's inferable
+    Depleting,
+}
+
+impl Default for IterationState {
+    fn default() -> Self {
+        Self::Depleting
+    }
+}
+
+impl IterationState {
+    pub fn is_tracing(&self) -> bool {
+        !matches!(self, Self::Depleting)
     }
 }
