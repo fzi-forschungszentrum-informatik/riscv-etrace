@@ -70,6 +70,11 @@ impl<S: ReturnStack> State<S> {
         }
     }
 
+    /// Check whether this state is currently fused
+    pub fn is_fused(&self) -> bool {
+        self.stop_condition == StopCondition::Fused
+    }
+
     /// Determine whether the stack's depth matches the current packet's value
     ///
     /// Returns true if [Self::stack_depth] matches [Self::return_stack]'s
