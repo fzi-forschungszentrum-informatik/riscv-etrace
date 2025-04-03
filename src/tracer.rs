@@ -148,15 +148,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
 
             if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
             {
-                let local_previous_address = self.state.pc;
-                loop {
-                    let (_, local_stop_here) =
-                        self.state.next_pc(&self.binary, local_previous_address)?;
-                    self.report_trace.report_pc(self.state.pc);
-                    if local_stop_here {
-                        self.state.inferred_address = None;
-                        return Ok(());
-                    }
+                self.state.inferred_address = Some(self.state.pc);
+                self.state.stop_condition = state::StopCondition::NotInferred;
+
+                while let Some(item) = self.state.next_item(&self.binary)? {
+                    self.report_trace.report_pc(item.pc());
                 }
             }
         }
@@ -181,7 +177,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         payload: &Payload,
         stop_at_last_branch: bool,
     ) -> Result<(), Error<B::Error>> {
-        use instruction::Kind;
         use state::StopCondition;
 
         self.state.stop_condition = if stop_at_last_branch {
@@ -205,81 +200,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
         };
 
-        let mut stop_here;
-        loop {
-            if let Some(address) = self.state.inferred_address {
-                stop_here = self.state.next_pc(&self.binary, address)?.1;
-                self.report_trace.report_pc(self.state.pc);
-                if stop_here {
-                    self.state.inferred_address = None;
-                }
-            } else {
-                stop_here = self.state.next_pc(&self.binary, self.state.address)?.1;
-                self.report_trace.report_pc(self.state.pc);
-                if stop_here {
-                    let branch_limit = self.branch_limit()?;
-                    if let Some(n) = core::num::NonZeroU8::new(self.state.branch_map.count())
-                        .filter(|n| n.get() > branch_limit)
-                    {
-                        return Err(Error::UnprocessedBranches(n));
-                    }
-                    return Ok(());
-                }
-
-                let hit_address_and_branch = self.state.pc == self.state.address
-                    && self.state.branch_map.count() == self.branch_limit()?;
-                match self.state.stop_condition {
-                    StopCondition::LastBranch
-                        if self.state.branch_map.count() == 1
-                            && self.state.insn.kind.and_then(Kind::branch_target).is_some() =>
-                    {
-                        self.state.stop_condition = StopCondition::Fused;
-                        return Ok(());
-                    }
-                    StopCondition::Address {
-                        notify,
-                        not_updiscon,
-                    } if hit_address_and_branch => {
-                        if notify {
-                            self.state.stop_condition = StopCondition::Fused;
-                            return Ok(());
-                        }
-                        if not_updiscon
-                            && self
-                                .state
-                                .last_insn
-                                .kind
-                                .map(Kind::is_uninferable_discon)
-                                .unwrap_or(false)
-                            && self.state.stack_depth_matches()
-                        {
-                            self.state.inferred_address = Some(self.state.pc);
-                            self.state.stop_condition = StopCondition::Fused;
-                            return Ok(());
-                        }
-                    }
-                    StopCondition::Sync {
-                        privilege: Some(privilege),
-                    } if hit_address_and_branch
-                        && privilege == self.state.privilege
-                        && self
-                            .state
-                            .last_insn
-                            .kind
-                            .map(Kind::is_return_from_trap)
-                            .unwrap_or(false) =>
-                    {
-                        self.state.stop_condition = StopCondition::Fused;
-                        return Ok(());
-                    }
-                    StopCondition::Sync { privilege: None } if hit_address_and_branch => {
-                        self.state.stop_condition = StopCondition::Fused;
-                        return Ok(());
-                    }
-                    _ => (),
-                }
-            }
+        while let Some(item) = self.state.next_item(&self.binary)? {
+            self.report_trace.report_pc(item.pc());
         }
+
+        Ok(())
     }
 
     fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error<B::Error>> {

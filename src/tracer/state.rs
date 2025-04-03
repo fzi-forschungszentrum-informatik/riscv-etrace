@@ -75,6 +75,92 @@ impl<S: ReturnStack> State<S> {
         self.stop_condition == StopCondition::Fused
     }
 
+    /// Determine next [Item]
+    ///
+    /// Returns the next tracing [Item] based on the given address as well as
+    /// information within the state if the state is not fused. After
+    /// determining the [Item], the stop condition is evaluated and the state is
+    /// fused if necessary.
+    ///
+    /// This roughly corresponds to the loop bodies in`follow_execution_path`
+    /// and `process_support` of the reference implementation.
+    pub fn next_item<B: Binary>(&mut self, binary: &B) -> Result<Option<Item>, Error<B::Error>> {
+        use instruction::Kind;
+
+        if self.is_fused() {
+            return Ok(None);
+        }
+
+        if let Some(address) = self.inferred_address {
+            let (item, end) = self.next_pc(binary, address)?;
+            if end {
+                self.inferred_address = None;
+                if self.stop_condition == StopCondition::NotInferred {
+                    self.stop_condition = StopCondition::Fused;
+                }
+            }
+
+            Ok(Some(item))
+        } else {
+            let (item, end) = self.next_pc(binary, self.address)?;
+
+            let is_branch = self.insn.kind.and_then(Kind::branch_target).is_some();
+            let branch_limit = if is_branch { 1 } else { 0 };
+
+            if end {
+                if let Some(n) = core::num::NonZeroU8::new(self.branch_map.count())
+                    .filter(|n| n.get() > branch_limit)
+                {
+                    return Err(Error::UnprocessedBranches(n));
+                }
+            }
+
+            let hit_address_and_branch =
+                self.pc == self.address && self.branch_map.count() == branch_limit;
+            match self.stop_condition {
+                StopCondition::LastBranch if self.branch_map.count() == 1 && is_branch => {
+                    self.stop_condition = StopCondition::Fused;
+                }
+                StopCondition::Address {
+                    notify,
+                    not_updiscon,
+                } if hit_address_and_branch => {
+                    if notify {
+                        self.stop_condition = StopCondition::Fused;
+                    } else if not_updiscon
+                        && self
+                            .last_insn
+                            .kind
+                            .map(Kind::is_uninferable_discon)
+                            .unwrap_or(false)
+                        && self.stack_depth_matches()
+                    {
+                        self.inferred_address = Some(self.pc);
+                        self.stop_condition = StopCondition::Fused;
+                    }
+                }
+                StopCondition::Sync {
+                    privilege: Some(privilege),
+                } if hit_address_and_branch
+                    && privilege == self.privilege
+                    && self
+                        .last_insn
+                        .kind
+                        .map(instruction::Kind::is_return_from_trap)
+                        .unwrap_or(false) =>
+                {
+                    self.stop_condition = StopCondition::Fused;
+                }
+                StopCondition::Sync { privilege: None } if hit_address_and_branch => {
+                    self.stop_condition = StopCondition::Fused;
+                }
+                _ => (),
+            }
+
+            Ok(Some(item))
+        }
+    }
+
     /// Determine the next PC
     ///
     /// Determines the next PC based on the given address as well as information
