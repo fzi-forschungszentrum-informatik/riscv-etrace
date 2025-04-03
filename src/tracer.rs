@@ -175,27 +175,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn follow_execution_path_catch_priv_changes(
-        &mut self,
-        payload: &Payload,
-    ) -> Result<bool, Error<B::Error>> {
-        let res = match self.version {
-            Version::V1 => {
-                let priviledge = payload
-                    .get_privilege()
-                    .ok_or(Error::WrongGetPrivilegeType)?;
-                priviledge == self.state.privilege
-                    && self
-                        .get_instr(self.state.last_pc)?
-                        .kind
-                        .map(instruction::Kind::is_return_from_trap)
-                        .unwrap_or(false)
-            }
-            Version::V2 => true,
-        };
-        Ok(res)
-    }
-
     fn follow_execution_path(
         &mut self,
         payload: &Payload,
