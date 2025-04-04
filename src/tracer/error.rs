@@ -4,7 +4,7 @@
 use core::fmt;
 
 /// Tracing specific errors
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error<I> {
     /// Address provided by packet is zero
     ///
