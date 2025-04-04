@@ -3,8 +3,8 @@
 
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization};
-use crate::instruction::{self, Instruction};
-use crate::types::{branch, trap};
+use crate::instruction;
+use crate::types::trap;
 use crate::ProtocolConfiguration;
 
 pub mod error;
