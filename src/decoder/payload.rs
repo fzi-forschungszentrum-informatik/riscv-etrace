@@ -133,6 +133,66 @@ impl Payload {
     }
 }
 
+impl From<Extension> for Payload {
+    fn from(ex: Extension) -> Self {
+        Self::Extension(ex)
+    }
+}
+
+impl From<BranchCount> for Payload {
+    fn from(count: BranchCount) -> Self {
+        Self::Extension(Extension::BranchCount(count))
+    }
+}
+
+impl From<JumpTargetIndex> for Payload {
+    fn from(idx: JumpTargetIndex) -> Self {
+        Self::Extension(Extension::JumpTargetIndex(idx))
+    }
+}
+
+impl From<Branch> for Payload {
+    fn from(branch: Branch) -> Self {
+        Self::Branch(branch)
+    }
+}
+
+impl From<AddressInfo> for Payload {
+    fn from(addr: AddressInfo) -> Self {
+        Self::Address(addr)
+    }
+}
+
+impl From<Synchronization> for Payload {
+    fn from(sync: Synchronization) -> Self {
+        Self::Synchronization(sync)
+    }
+}
+
+impl From<Start> for Payload {
+    fn from(start: Start) -> Self {
+        Self::Synchronization(start.into())
+    }
+}
+
+impl From<Trap> for Payload {
+    fn from(trap: Trap) -> Self {
+        Self::Synchronization(trap.into())
+    }
+}
+
+impl From<Context> for Payload {
+    fn from(ctx: Context) -> Self {
+        Self::Synchronization(ctx.into())
+    }
+}
+
+impl From<Support> for Payload {
+    fn from(support: Support) -> Self {
+        Self::Synchronization(support.into())
+    }
+}
+
 /// #### Format 0
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Extension {
