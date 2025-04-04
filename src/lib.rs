@@ -73,7 +73,7 @@
 //! let mut tracer: Tracer<_> = tracer::Builder::new()
 //!     .with_config(proto_conf)
 //!     .with_binary(binary::Empty)
-//!     .build(&mut reporter)
+//!     .build()
 //!     .expect("Could not construct tracer");
 //!
 //! # let packet_vec: Vec<u8> = vec![0b0101_0000; 32];

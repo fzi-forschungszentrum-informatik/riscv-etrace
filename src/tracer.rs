@@ -32,16 +32,15 @@ pub trait ReportTrace {
 
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
-pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
+pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
-    report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
     version: Version,
 }
 
-impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
+impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         if !self.state.is_fused() {
             return Err(Error::UnprocessedInstructions);
@@ -62,9 +61,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 let epc = match trap.info.kind {
                     trap::Kind::Exception => {
                         let epc = (!trap.thaddr).then_some(trap.address);
-                        let addr = self.state.exception_address(&self.binary, epc)?;
-                        self.report_trace.report_epc(addr);
-                        addr
+                        self.state.exception_address(&self.binary, epc)?
                     }
                     trap::Kind::Interrupt => self.state.pc,
                 };
@@ -101,7 +98,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             } else {
                 self.state.pc = self.state.address;
                 self.state.insn = insn;
-                self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
                 self.state.last_insn = Default::default();
 
@@ -173,7 +169,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     }
 }
 
-impl<B: Binary, S: ReturnStack> Iterator for Tracer<'_, B, S> {
+impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
     type Item = Result<item::Item, Error<B::Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -251,10 +247,7 @@ impl<B: Binary> Builder<B> {
     }
 
     /// Build the [Tracer] with the given reporter
-    pub fn build<S>(
-        self,
-        report_trace: &mut dyn ReportTrace,
-    ) -> Result<Tracer<'_, B, S>, Error<B::Error>>
+    pub fn build<S>(self) -> Result<Tracer<B, S>, Error<B::Error>>
     where
         S: ReturnStack,
     {
@@ -273,7 +266,6 @@ impl<B: Binary> Builder<B> {
         Ok(Tracer {
             state,
             iter_state: Default::default(),
-            report_trace,
             binary: self.binary,
             address_mode: self.address_mode,
             version: self.version,
