@@ -368,3 +368,25 @@ impl From<Bits> for Instruction {
         }
     }
 }
+
+impl From<Kind> for Instruction {
+    fn from(kind: Kind) -> Self {
+        let size = match kind {
+            Kind::mret | Kind::sret | Kind::uret | Kind::dret => Size::Normal,
+            Kind::fence | Kind::sfence_vma | Kind::wfi => Size::Normal,
+            Kind::ecall | Kind::ebreak | Kind::fence_i => Size::Normal,
+            Kind::beq(_) | Kind::bne(_) | Kind::blt(_) | Kind::bge(_) => Size::Normal,
+            Kind::bltu(_) | Kind::bgeu(_) => Size::Normal,
+            Kind::auipc(_) | Kind::lui(_) => Size::Normal,
+            Kind::c_beqz(_) | Kind::c_bnez(_) => Size::Compressed,
+            Kind::jal(_) | Kind::jalr(_) => Size::Normal,
+            Kind::c_j(_) | Kind::c_jal(_) | Kind::c_jr(_) | Kind::c_jalr(_) => Size::Compressed,
+            Kind::c_lui(_) => Size::Compressed,
+            Kind::c_ebreak => Size::Compressed,
+        };
+        Self {
+            kind: Some(kind),
+            size,
+        }
+    }
+}
