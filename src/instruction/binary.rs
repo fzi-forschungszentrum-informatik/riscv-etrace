@@ -50,7 +50,7 @@ impl Binary for Empty {
 }
 
 /// An error type expressing simple absence of an [Instruction]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
 impl core::error::Error for NoInstruction {}
