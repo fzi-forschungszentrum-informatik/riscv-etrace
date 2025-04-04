@@ -16,20 +16,6 @@ use error::Error;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
 
-/// Collects the different callbacks which report the tracing output.
-pub trait ReportTrace {
-    /// Called after a program counter was traced.
-    fn report_pc(&mut self, _pc: u64) {}
-    /// Called after a trap instruction was traced.
-    fn report_epc(&mut self, _epc: u64) {}
-    /// Called when an instruction was disassembled. May be called multiple times for the same
-    /// address.
-    fn report_instr(&mut self, _addr: u64, _instr: &Instruction) {}
-    /// Called when a branch will be traced. Reports the number of branches before the branch,
-    /// the branch map and if the branch will be taken.
-    fn report_branch(&mut self, _branch_map: branch::Map, _taken: bool) {}
-}
-
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
 pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
