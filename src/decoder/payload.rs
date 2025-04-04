@@ -451,7 +451,7 @@ impl Decode for Trap {
 
 /// #### Format 3, sub format 2
 /// Informs that the context changed or used as part of other payloads.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Context {
     /// The privilege level of the reported instruction.
     pub privilege: Privilege,
