@@ -42,16 +42,6 @@ pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
 }
 
 impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
-    fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error<B::Error>> {
-        let instr = self
-            .binary
-            .get_insn(pc)
-            .map_err(|e| Error::CannotGetInstruction(e, pc))?;
-
-        self.report_trace.report_instr(pc, &instr);
-        Ok(instr)
-    }
-
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         if !self.state.is_fused() {
             return Err(Error::UnprocessedInstructions);
@@ -91,7 +81,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             if matches!(sync, Synchronization::Trap(_)) || !self.iter_state.is_tracing() {
                 self.state.branch_map = Default::default();
             }
-            let insn = self.get_instr(self.state.address)?;
+            let insn = self
+                .binary
+                .get_insn(self.state.address)
+                .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
             if insn
                 .kind
                 .and_then(instruction::Kind::branch_target)
