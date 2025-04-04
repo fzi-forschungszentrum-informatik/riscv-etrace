@@ -34,37 +34,12 @@
 //! use riscv_etrace::types::branch;
 //! use riscv_etrace::Instruction;
 //! use riscv_etrace::instruction::binary;
-//! use riscv_etrace::tracer::{self, ReportTrace, Tracer};
+//! use riscv_etrace::tracer::{self, Tracer};
 //!
 //! // Use the default protocol level configuration which will define the bit lengths of packet fields.
 //! let mut proto_conf = ProtocolConfiguration::default();
 //! // But we overwrite the hart index width and assume a maximum of 2^10 harts.
 //! proto_conf.cpu_index_width = 10;
-//!
-//! struct ExampleReport {
-//!     // Here you can define counters etc. which depend on the tracing output.
-//! }
-//!
-//! // Define your custom callbacks such as report_pc:
-//! impl ReportTrace for ExampleReport {
-//!     fn report_pc(&mut self, pc: u64) {
-//!         println!("pc: 0x{:x}", pc);
-//!     }
-//!
-//!     fn report_epc(&mut self, epc: u64) {
-//!         println!("epc: 0x{:x}", epc);
-//!     }
-//!
-//!     fn report_instr(&mut self, pc: u64, instr: &Instruction) {
-//!         println!("instr: {} {:?}", pc, instr)
-//!     }
-//!
-//!     fn report_branch(&mut self, branch_map: branch::Map, taken: bool) {
-//!         println!("branch: {:?} {}", branch_map, taken)
-//!     }
-//! }
-//!
-//! let mut reporter = ExampleReport {};
 //!
 //! // Create the packet decoder.
 //! let mut decoder = Decoder::new(proto_conf);
