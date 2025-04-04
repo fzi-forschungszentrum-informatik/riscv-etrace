@@ -12,6 +12,9 @@ pub mod item;
 pub mod stack;
 mod state;
 
+#[cfg(test)]
+mod tests;
+
 use error::Error;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
