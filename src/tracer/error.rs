@@ -14,6 +14,7 @@ pub enum Error<I> {
     ///
     /// The tracer requires a synchronization packet as the first packet.
     StartOfTrace,
+    UnprocessedInstructions,
     /// Unprocessed branches left
     ///
     /// Some number of branches which should have been processed are still
@@ -52,6 +53,7 @@ impl<I> fmt::Display for Error<I> {
         match self {
             Self::AddressIsZero => write!(f, "address is zero"),
             Self::StartOfTrace => write!(f, "expected sync packet"),
+            Self::UnprocessedInstructions => write!(f, "unprocessed instructions"),
             Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
             Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
             Self::UnresolvableBranch => write!(f, "unresolvable branch"),
