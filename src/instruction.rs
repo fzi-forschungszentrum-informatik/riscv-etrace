@@ -8,7 +8,7 @@ pub mod format;
 mod tests;
 
 /// The bits from which instructions can be disassembled.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
     Bit32(u32),
     Bit16(u16),
