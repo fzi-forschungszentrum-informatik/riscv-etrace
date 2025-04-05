@@ -301,6 +301,30 @@ impl Synchronization {
     }
 }
 
+impl From<Start> for Synchronization {
+    fn from(start: Start) -> Self {
+        Self::Start(start)
+    }
+}
+
+impl From<Trap> for Synchronization {
+    fn from(trap: Trap) -> Self {
+        Self::Trap(trap)
+    }
+}
+
+impl From<Context> for Synchronization {
+    fn from(ctx: Context) -> Self {
+        Self::Context(ctx)
+    }
+}
+
+impl From<Support> for Synchronization {
+    fn from(support: Support) -> Self {
+        Self::Support(support)
+    }
+}
+
 /// #### Format 3, sub format 0
 /// Sent for the first traced instruction or when resynchronization is necessary.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
