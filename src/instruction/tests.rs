@@ -701,3 +701,23 @@ fn type_j() {
         },
     );
 }
+
+// Bits extraction tests
+
+#[test]
+fn bits_extract_16() {
+    let data = [0x14, 0x41, 0x11, 0x05];
+    assert_eq!(
+        Bits::extract(&data),
+        Some((Bits::Bit16(0x4114), [0x11, 0x05].as_slice())),
+    );
+}
+
+#[test]
+fn bits_extract_32() {
+    let data = [0x97, 0x06, 0x00, 0x00, 0x93, 0x86, 0x86, 0x05];
+    assert_eq!(
+        Bits::extract(&data),
+        Some((Bits::Bit32(0x00000697), [0x93, 0x86, 0x86, 0x05].as_slice())),
+    );
+}
