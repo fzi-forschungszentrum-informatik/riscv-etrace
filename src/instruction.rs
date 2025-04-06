@@ -344,6 +344,16 @@ pub struct Instruction {
     pub kind: Option<Kind>,
 }
 
+impl Instruction {
+    /// Extract an instruction from a raw byte slice
+    ///
+    /// Try to extract [Bits] from the beginning of the given slice, then decode
+    /// them into an [Instruction]. See [Bits::extract] for details.
+    pub fn extract(data: &[u8]) -> Option<(Self, &[u8])> {
+        Bits::extract(data).map(|(b, r)| (b.into(), r))
+    }
+}
+
 impl From<Bits> for Instruction {
     fn from(bits: Bits) -> Self {
         match bits {
