@@ -3,8 +3,8 @@
 
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization};
-use crate::instruction::{self, Instruction};
-use crate::types::{branch, trap};
+use crate::instruction;
+use crate::types::trap;
 use crate::ProtocolConfiguration;
 
 pub mod error;
@@ -16,42 +16,17 @@ use error::Error;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
 
-/// Collects the different callbacks which report the tracing output.
-pub trait ReportTrace {
-    /// Called after a program counter was traced.
-    fn report_pc(&mut self, _pc: u64) {}
-    /// Called after a trap instruction was traced.
-    fn report_epc(&mut self, _epc: u64) {}
-    /// Called when an instruction was disassembled. May be called multiple times for the same
-    /// address.
-    fn report_instr(&mut self, _addr: u64, _instr: &Instruction) {}
-    /// Called when a branch will be traced. Reports the number of branches before the branch,
-    /// the branch map and if the branch will be taken.
-    fn report_branch(&mut self, _branch_map: branch::Map, _taken: bool) {}
-}
-
 /// Provides the state to execute the tracing algorithm
 /// and executes the user-defined report callbacks.
-pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
+pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
-    report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
     version: Version,
 }
 
-impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
-    fn get_instr(&mut self, pc: u64) -> Result<Instruction, Error<B::Error>> {
-        let instr = self
-            .binary
-            .get_insn(pc)
-            .map_err(|e| Error::CannotGetInstruction(e, pc))?;
-
-        self.report_trace.report_instr(pc, &instr);
-        Ok(instr)
-    }
-
+impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         if !self.state.is_fused() {
             return Err(Error::UnprocessedInstructions);
@@ -72,9 +47,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 let epc = match trap.info.kind {
                     trap::Kind::Exception => {
                         let epc = (!trap.thaddr).then_some(trap.address);
-                        let addr = self.state.exception_address(&self.binary, epc)?;
-                        self.report_trace.report_epc(addr);
-                        addr
+                        self.state.exception_address(&self.binary, epc)?
                     }
                     trap::Kind::Interrupt => self.state.pc,
                 };
@@ -91,7 +64,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             if matches!(sync, Synchronization::Trap(_)) || !self.iter_state.is_tracing() {
                 self.state.branch_map = Default::default();
             }
-            let insn = self.get_instr(self.state.address)?;
+            let insn = self
+                .binary
+                .get_insn(self.state.address)
+                .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
             if insn
                 .kind
                 .and_then(instruction::Kind::branch_target)
@@ -108,7 +84,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             } else {
                 self.state.pc = self.state.address;
                 self.state.insn = insn;
-                self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
                 self.state.last_insn = Default::default();
 
@@ -180,7 +155,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     }
 }
 
-impl<B: Binary, S: ReturnStack> Iterator for Tracer<'_, B, S> {
+impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
     type Item = Result<item::Item, Error<B::Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -258,10 +233,7 @@ impl<B: Binary> Builder<B> {
     }
 
     /// Build the [Tracer] with the given reporter
-    pub fn build<S>(
-        self,
-        report_trace: &mut dyn ReportTrace,
-    ) -> Result<Tracer<'_, B, S>, Error<B::Error>>
+    pub fn build<S>(self) -> Result<Tracer<B, S>, Error<B::Error>>
     where
         S: ReturnStack,
     {
@@ -280,7 +252,6 @@ impl<B: Binary> Builder<B> {
         Ok(Tracer {
             state,
             iter_state: Default::default(),
-            report_trace,
             binary: self.binary,
             address_mode: self.address_mode,
             version: self.version,
