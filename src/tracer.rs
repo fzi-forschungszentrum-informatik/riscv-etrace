@@ -66,7 +66,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         if let Payload::Synchronization(sync) = payload {
             let mut trap_info = None;
             if let Synchronization::Support(sup) = sync {
-                return self.process_support(sup, payload);
+                return self.process_support(sup);
             } else if let Synchronization::Context(ctx) = sync {
                 if self.version != Version::V1 {
                     self.state.privilege = ctx.privilege;
@@ -139,11 +139,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn process_support(
-        &mut self,
-        support: &Support,
-        payload: &Payload,
-    ) -> Result<(), Error<B::Error>> {
+    fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
         if support.qual_status != QualStatus::NoChange {
             self.iter_state = IterationState::Depleting;
 
