@@ -52,14 +52,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         Ok(instr)
     }
 
-    fn incr_pc(&mut self, incr: i32) {
-        self.state.pc = if incr.is_negative() {
-            self.state.pc.overflowing_sub(incr.wrapping_abs() as u64).0
-        } else {
-            self.state.pc.overflowing_add(incr as u64).0
-        }
-    }
-
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         self.state.stack_depth = payload.implicit_return_depth();
 
@@ -156,19 +148,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         Ok(())
     }
 
-    fn branch_limit(&mut self) -> Result<u8, Error<B::Error>> {
-        if self
-            .get_instr(self.state.pc)?
-            .kind
-            .and_then(instruction::Kind::branch_target)
-            .is_some()
-        {
-            Ok(1)
-        } else {
-            Ok(0)
-        }
-    }
-
     fn follow_execution_path(
         &mut self,
         payload: &Payload,
@@ -201,18 +180,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             self.report_trace.report_pc(item.pc());
         }
 
-        Ok(())
-    }
-
-    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error<B::Error>> {
-        if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
-            return Ok(());
-        }
-
-        let local_instr = self.get_instr(addr)?;
-        self.state
-            .return_stack
-            .push(addr + (local_instr.size as u64));
         Ok(())
     }
 }
