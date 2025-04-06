@@ -22,6 +22,21 @@ impl<F: Fn(u64) -> Result<Instruction, E>, E> Binary for F {
     }
 }
 
+/// [Binary] implementation for mapping from address to [Instruction]
+///
+/// # Notice
+///
+/// This impl only functions correctly for slices that are sorted by address.
+impl Binary for &[(u64, Instruction)] {
+    type Error = NoInstruction;
+
+    fn get_insn(&self, address: u64) -> Result<Instruction, Self::Error> {
+        self.binary_search_by_key(&address, |(a, _)| *a)
+            .map(|i| self[i].1)
+            .map_err(|_| NoInstruction)
+    }
+}
+
 /// A [Binary] that does not contain any [Instruction]s
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Empty;
@@ -35,7 +50,7 @@ impl Binary for Empty {
 }
 
 /// An error type expressing simple absence of an [Instruction]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
 impl core::error::Error for NoInstruction {}

@@ -8,10 +8,34 @@ pub mod format;
 mod tests;
 
 /// The bits from which instructions can be disassembled.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
     Bit32(u32),
     Bit16(u16),
+}
+
+impl Bits {
+    /// Extract [Bits] from a raw byte slice
+    ///
+    /// Try to extract [Bits] from the beginning of the given slice, honoring
+    /// the Base Instruction-Length Encoding specified in Section 1.5 of The
+    /// RISC-V Instruction Set Manual Volume I.
+    ///
+    /// Returns a tuple containing the [Bits] and the remaining part of the
+    /// slice if successful. Returns `None` if the beginning does not appear to
+    /// be either a 16 or 32 bit instruction, or if the slice does not contain
+    /// enough bytes.
+    pub fn extract(data: &[u8]) -> Option<(Self, &[u8])> {
+        match data {
+            [a, b, r @ ..] if a & 0b11 != 0b11 => {
+                Some((Self::Bit16(u16::from_le_bytes([*a, *b])), r))
+            }
+            [a, b, c, d, r @ ..] if a & 0b11100 != 0b11100 => {
+                Some((Self::Bit32(u32::from_le_bytes([*a, *b, *c, *d])), r))
+            }
+            _ => None,
+        }
+    }
 }
 
 #[repr(u32)]
@@ -320,6 +344,16 @@ pub struct Instruction {
     pub kind: Option<Kind>,
 }
 
+impl Instruction {
+    /// Extract an instruction from a raw byte slice
+    ///
+    /// Try to extract [Bits] from the beginning of the given slice, then decode
+    /// them into an [Instruction]. See [Bits::extract] for details.
+    pub fn extract(data: &[u8]) -> Option<(Self, &[u8])> {
+        Bits::extract(data).map(|(b, r)| (b.into(), r))
+    }
+}
+
 impl From<Bits> for Instruction {
     fn from(bits: Bits) -> Self {
         match bits {
@@ -331,6 +365,28 @@ impl From<Bits> for Instruction {
                 size: Size::Compressed,
                 kind: Kind::decode_16(bits),
             },
+        }
+    }
+}
+
+impl From<Kind> for Instruction {
+    fn from(kind: Kind) -> Self {
+        let size = match kind {
+            Kind::mret | Kind::sret | Kind::uret | Kind::dret => Size::Normal,
+            Kind::fence | Kind::sfence_vma | Kind::wfi => Size::Normal,
+            Kind::ecall | Kind::ebreak | Kind::fence_i => Size::Normal,
+            Kind::beq(_) | Kind::bne(_) | Kind::blt(_) | Kind::bge(_) => Size::Normal,
+            Kind::bltu(_) | Kind::bgeu(_) => Size::Normal,
+            Kind::auipc(_) | Kind::lui(_) => Size::Normal,
+            Kind::c_beqz(_) | Kind::c_bnez(_) => Size::Compressed,
+            Kind::jal(_) | Kind::jalr(_) => Size::Normal,
+            Kind::c_j(_) | Kind::c_jal(_) | Kind::c_jr(_) | Kind::c_jalr(_) => Size::Compressed,
+            Kind::c_lui(_) => Size::Compressed,
+            Kind::c_ebreak => Size::Compressed,
+        };
+        Self {
+            kind: Some(kind),
+            size,
         }
     }
 }
