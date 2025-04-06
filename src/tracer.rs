@@ -4,7 +4,7 @@
 //! Implements the instruction tracing algorithm.
 use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
 use crate::instruction::{self, Instruction};
-use crate::types::branch;
+use crate::types::{branch, trap};
 use crate::ProtocolConfiguration;
 
 pub mod error;
@@ -33,6 +33,7 @@ pub trait ReportTrace {
 /// and executes the user-defined report callbacks.
 pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
+    iter_state: IterationState,
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
@@ -60,7 +61,10 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     }
 
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
+        self.state.stack_depth = payload.implicit_return_depth();
+
         if let Payload::Synchronization(sync) = payload {
+            let mut trap_info = None;
             if let Synchronization::Support(sup) = sync {
                 return self.process_support(sup, payload);
             } else if let Synchronization::Context(ctx) = sync {
@@ -69,24 +73,29 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 }
                 return Ok(());
             } else if let Synchronization::Trap(trap) = sync {
-                if trap.info.is_exception() {
-                    let addr = self.exception_address(trap, payload)?;
-                    self.report_trace.report_epc(addr);
-                }
+                let epc = match trap.info.kind {
+                    trap::Kind::Exception => {
+                        let addr = self.exception_address(trap, payload)?;
+                        self.report_trace.report_epc(addr);
+                        addr
+                    }
+                    trap::Kind::Interrupt => self.state.pc,
+                };
                 if !trap.thaddr {
                     return Ok(());
                 }
+                trap_info = Some((epc, trap.info));
             }
-            self.state.inferred_address = false;
+            self.state.inferred_address = None;
             self.state.address = payload.get_address();
             if self.state.address == 0 {
                 return Err(Error::AddressIsZero);
             }
-            if matches!(sync, Synchronization::Trap(_)) || self.state.start_of_trace {
+            if matches!(sync, Synchronization::Trap(_)) || !self.iter_state.is_tracing() {
                 self.state.branch_map = Default::default();
             }
-            if self
-                .get_instr(self.state.address)?
+            let insn = self.get_instr(self.state.address)?;
+            if insn
                 .kind
                 .and_then(instruction::Kind::branch_target)
                 .is_some()
@@ -94,24 +103,27 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                 let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)?;
                 self.state.branch_map.push_branch_taken(!branch);
             }
-            if matches!(sync, Synchronization::Start(_)) && !self.state.start_of_trace {
-                self.follow_execution_path(payload)?
+            if matches!(sync, Synchronization::Start(_)) && self.iter_state.is_tracing() {
+                self.follow_execution_path(payload, false)?
             } else {
                 self.state.pc = self.state.address;
+                self.state.insn = insn;
                 self.report_trace.report_pc(self.state.pc);
                 self.state.last_pc = self.state.pc;
+                self.state.last_insn = Default::default();
+
+                self.iter_state = IterationState::SingleItem(trap_info);
             }
             if self.version != Version::V1 {
                 self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
-            self.state.start_of_trace = false;
             Ok(())
         } else {
-            if self.state.start_of_trace {
+            if !self.iter_state.is_tracing() {
                 return Err(Error::StartOfTrace);
             }
+            let mut stop_at_last_branch = false;
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
-                self.state.stop_at_last_branch = false;
                 let address = payload.get_address();
                 self.state.address = match self.address_mode {
                     AddressMode::Full => address,
@@ -120,9 +132,9 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
             if let Payload::Branch(branch) = payload {
                 self.state.branch_map.append(branch.branch_map);
-                self.state.stop_at_last_branch = branch.address.is_none();
+                stop_at_last_branch = branch.address.is_none();
             }
-            self.follow_execution_path(payload)
+            self.follow_execution_path(payload, stop_at_last_branch)
         }
     }
 
@@ -132,15 +144,16 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         payload: &Payload,
     ) -> Result<(), Error<B::Error>> {
         if support.qual_status != QualStatus::NoChange {
-            self.state.start_of_trace = true;
+            self.iter_state = IterationState::Depleting;
 
-            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address {
+            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
+            {
                 let local_previous_address = self.state.pc;
-                self.state.inferred_address = false;
                 loop {
                     let local_stop_here = self.next_pc(local_previous_address, payload)?;
                     self.report_trace.report_pc(self.state.pc);
                     if local_stop_here {
+                        self.state.inferred_address = None;
                         return Ok(());
                     }
                 }
@@ -162,53 +175,46 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn follow_execution_path_catch_priv_changes(
+    fn follow_execution_path(
         &mut self,
         payload: &Payload,
-    ) -> Result<bool, Error<B::Error>> {
-        let res = match self.version {
-            Version::V1 => {
-                let priviledge = payload
-                    .get_privilege()
-                    .ok_or(Error::WrongGetPrivilegeType)?;
-                priviledge == self.state.privilege
-                    && self
-                        .get_instr(self.state.last_pc)?
-                        .kind
-                        .map(instruction::Kind::is_return_from_trap)
-                        .unwrap_or(false)
-            }
-            Version::V2 => true,
-        };
-        Ok(res)
-    }
-
-    fn follow_execution_path(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
+        stop_at_last_branch: bool,
+    ) -> Result<(), Error<B::Error>> {
         use instruction::Kind;
+        use state::StopCondition;
 
-        let previous_address = self.state.pc;
+        self.state.stop_condition = if stop_at_last_branch {
+            StopCondition::LastBranch
+        } else if let Some(info) = payload.get_address_info() {
+            StopCondition::Address {
+                notify: info.notify,
+                not_updiscon: !info.updiscon,
+            }
+        } else {
+            match self.version {
+                Version::V1 => {
+                    let privilege = payload
+                        .get_privilege()
+                        .ok_or(Error::WrongGetPrivilegeType)?;
+                    StopCondition::Sync {
+                        privilege: Some(privilege),
+                    }
+                }
+                _ => StopCondition::Sync { privilege: None },
+            }
+        };
+
         let mut stop_here;
         loop {
-            if self.state.inferred_address {
-                stop_here = self.next_pc(previous_address, payload)?;
+            if let Some(address) = self.state.inferred_address {
+                stop_here = self.next_pc(address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
                 if stop_here {
-                    self.state.inferred_address = false;
+                    self.state.inferred_address = None;
                 }
             } else {
                 stop_here = self.next_pc(self.state.address, payload)?;
                 self.report_trace.report_pc(self.state.pc);
-                if self.state.branch_map.count() == 1
-                    && self
-                        .get_instr(self.state.pc)?
-                        .kind
-                        .and_then(Kind::branch_target)
-                        .is_some()
-                    && self.state.stop_at_last_branch
-                {
-                    self.state.stop_at_last_branch = false;
-                    return Ok(());
-                }
                 if stop_here {
                     let branch_limit = self.branch_limit()?;
                     if let Some(n) = core::num::NonZeroU8::new(self.state.branch_map.count())
@@ -218,44 +224,58 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
                     }
                     return Ok(());
                 }
-                if !matches!(payload, Payload::Synchronization(_))
-                    && self.state.pc == self.state.address
-                    && !self.state.stop_at_last_branch
-                    && payload
-                        .get_address_info()
-                        .map(|a| a.notify)
-                        .unwrap_or(false)
-                    && self.state.branch_map.count() == self.branch_limit()?
-                {
-                    return Ok(());
-                }
-                if !matches!(payload, Payload::Synchronization(_))
-                    && self.state.pc == self.state.address
-                    && !self.state.stop_at_last_branch
-                    && !&self
-                        .get_instr(self.state.last_pc)?
-                        .kind
-                        .map(Kind::is_uninferable_discon)
-                        .unwrap_or(false)
-                    && !payload
-                        .get_address_info()
-                        .map(|a| a.updiscon)
-                        .unwrap_or(false)
-                    && self.state.branch_map.count() == self.branch_limit()?
-                    && payload
-                        .implicit_return_depth()
-                        .map(|v| v == self.state.return_stack.depth())
-                        .unwrap_or(true)
-                {
-                    self.state.inferred_address = true;
-                    return Ok(());
-                }
-                if matches!(payload, Payload::Synchronization(_))
-                    && self.state.pc == self.state.address
-                    && self.state.branch_map.count() == self.branch_limit()?
-                    && self.follow_execution_path_catch_priv_changes(payload)?
-                {
-                    return Ok(());
+
+                let hit_address_and_branch = self.state.pc == self.state.address
+                    && self.state.branch_map.count() == self.branch_limit()?;
+                match self.state.stop_condition {
+                    StopCondition::LastBranch
+                        if self.state.branch_map.count() == 1
+                            && self.state.insn.kind.and_then(Kind::branch_target).is_some() =>
+                    {
+                        self.state.stop_condition = StopCondition::Fused;
+                        return Ok(());
+                    }
+                    StopCondition::Address {
+                        notify,
+                        not_updiscon,
+                    } if hit_address_and_branch => {
+                        if notify {
+                            self.state.stop_condition = StopCondition::Fused;
+                            return Ok(());
+                        }
+                        if not_updiscon
+                            && self
+                                .state
+                                .last_insn
+                                .kind
+                                .map(Kind::is_uninferable_discon)
+                                .unwrap_or(false)
+                            && self.state.stack_depth_matches()
+                        {
+                            self.state.inferred_address = Some(self.state.pc);
+                            self.state.stop_condition = StopCondition::Fused;
+                            return Ok(());
+                        }
+                    }
+                    StopCondition::Sync {
+                        privilege: Some(privilege),
+                    } if hit_address_and_branch
+                        && privilege == self.state.privilege
+                        && self
+                            .state
+                            .last_insn
+                            .kind
+                            .map(Kind::is_return_from_trap)
+                            .unwrap_or(false) =>
+                    {
+                        self.state.stop_condition = StopCondition::Fused;
+                        return Ok(());
+                    }
+                    StopCondition::Sync { privilege: None } if hit_address_and_branch => {
+                        self.state.stop_condition = StopCondition::Fused;
+                        return Ok(());
+                    }
+                    _ => (),
                 }
             }
         }
@@ -264,7 +284,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
     fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error<B::Error>> {
         use instruction::Kind;
 
-        let instr = self.get_instr(self.state.pc)?;
+        let instr = self.state.insn;
         let this_pc = self.state.pc;
         let mut stop_here = false;
 
@@ -278,7 +298,7 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
             self.state.pc = addr;
         } else if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
-            if self.state.stop_at_last_branch {
+            if matches!(self.state.stop_condition, state::StopCondition::LastBranch) {
                 return Err(Error::UnexpectedUninferableDiscon);
             }
             self.state.pc = address;
@@ -294,7 +314,9 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
 
         self.push_return_stack(&instr, this_pc)?;
 
+        self.state.insn = self.get_instr(self.state.pc)?;
         self.state.last_pc = this_pc;
+        self.state.last_insn = instr;
 
         Ok(stop_here)
     }
@@ -482,6 +504,7 @@ impl<B: Binary> Builder<B> {
         );
         Ok(Tracer {
             state,
+            iter_state: Default::default(),
             report_trace,
             binary: self.binary,
             address_mode: self.address_mode,
@@ -515,5 +538,32 @@ pub enum AddressMode {
 impl Default for AddressMode {
     fn default() -> Self {
         Self::Delta
+    }
+}
+
+/// [Tracer] iteration states
+#[derive(Copy, Clone, Debug)]
+enum IterationState {
+    /// The [Tracer] reports a single item
+    ///
+    /// We know about exactly one item we report, which may have an EPC and
+    /// [trap::Info] associated with it. We don't have any information beyond
+    /// this item (yet).
+    SingleItem(Option<(u64, trap::Info)>),
+    /// We follow the execution path based on the current packet's data
+    FollowExec,
+    /// We follow the execution path as long as it's inferable
+    Depleting,
+}
+
+impl Default for IterationState {
+    fn default() -> Self {
+        Self::Depleting
+    }
+}
+
+impl IterationState {
+    pub fn is_tracing(&self) -> bool {
+        !matches!(self, Self::Depleting)
     }
 }
