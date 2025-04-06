@@ -61,9 +61,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             }
             self.state.inferred_address = None;
             self.state.address = payload.get_address();
-            if self.state.address == 0 {
-                return Err(Error::AddressIsZero);
-            }
             if matches!(sync, Synchronization::Trap(_)) || !self.iter_state.is_tracing() {
                 self.state.branch_map = Default::default();
             }
