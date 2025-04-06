@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
-use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization, Trap};
+use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization};
 use crate::instruction::{self, Instruction};
 use crate::types::{branch, trap};
 use crate::ProtocolConfiguration;
 
 pub mod error;
+pub mod item;
 pub mod stack;
 mod state;
 
@@ -37,7 +38,6 @@ pub struct Tracer<'a, B: Binary, S: ReturnStack = stack::NoStack> {
     report_trace: &'a mut dyn ReportTrace,
     binary: B,
     address_mode: AddressMode,
-    sequential_jumps: bool,
     version: Version,
 }
 
@@ -52,21 +52,13 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         Ok(instr)
     }
 
-    fn incr_pc(&mut self, incr: i32) {
-        self.state.pc = if incr.is_negative() {
-            self.state.pc.overflowing_sub(incr.wrapping_abs() as u64).0
-        } else {
-            self.state.pc.overflowing_add(incr as u64).0
-        }
-    }
-
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         self.state.stack_depth = payload.implicit_return_depth();
 
         if let Payload::Synchronization(sync) = payload {
             let mut trap_info = None;
             if let Synchronization::Support(sup) = sync {
-                return self.process_support(sup, payload);
+                return self.process_support(sup);
             } else if let Synchronization::Context(ctx) = sync {
                 if self.version != Version::V1 {
                     self.state.privilege = ctx.privilege;
@@ -75,7 +67,8 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             } else if let Synchronization::Trap(trap) = sync {
                 let epc = match trap.info.kind {
                     trap::Kind::Exception => {
-                        let addr = self.exception_address(trap, payload)?;
+                        let epc = (!trap.thaddr).then_some(trap.address);
+                        let addr = self.state.exception_address(&self.binary, epc)?;
                         self.report_trace.report_epc(addr);
                         addr
                     }
@@ -138,41 +131,21 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         }
     }
 
-    fn process_support(
-        &mut self,
-        support: &Support,
-        payload: &Payload,
-    ) -> Result<(), Error<B::Error>> {
+    fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
         if support.qual_status != QualStatus::NoChange {
             self.iter_state = IterationState::Depleting;
 
             if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
             {
-                let local_previous_address = self.state.pc;
-                loop {
-                    let local_stop_here = self.next_pc(local_previous_address, payload)?;
-                    self.report_trace.report_pc(self.state.pc);
-                    if local_stop_here {
-                        self.state.inferred_address = None;
-                        return Ok(());
-                    }
+                self.state.inferred_address = Some(self.state.pc);
+                self.state.stop_condition = state::StopCondition::NotInferred;
+
+                while let Some(item) = self.state.next_item(&self.binary)? {
+                    self.report_trace.report_pc(item.pc());
                 }
             }
         }
         Ok(())
-    }
-
-    fn branch_limit(&mut self) -> Result<u8, Error<B::Error>> {
-        if self
-            .get_instr(self.state.pc)?
-            .kind
-            .and_then(instruction::Kind::branch_target)
-            .is_some()
-        {
-            Ok(1)
-        } else {
-            Ok(0)
-        }
     }
 
     fn follow_execution_path(
@@ -180,7 +153,6 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
         payload: &Payload,
         stop_at_last_branch: bool,
     ) -> Result<(), Error<B::Error>> {
-        use instruction::Kind;
         use state::StopCondition;
 
         self.state.stop_condition = if stop_at_last_branch {
@@ -204,228 +176,11 @@ impl<B: Binary, S: ReturnStack> Tracer<'_, B, S> {
             }
         };
 
-        let mut stop_here;
-        loop {
-            if let Some(address) = self.state.inferred_address {
-                stop_here = self.next_pc(address, payload)?;
-                self.report_trace.report_pc(self.state.pc);
-                if stop_here {
-                    self.state.inferred_address = None;
-                }
-            } else {
-                stop_here = self.next_pc(self.state.address, payload)?;
-                self.report_trace.report_pc(self.state.pc);
-                if stop_here {
-                    let branch_limit = self.branch_limit()?;
-                    if let Some(n) = core::num::NonZeroU8::new(self.state.branch_map.count())
-                        .filter(|n| n.get() > branch_limit)
-                    {
-                        return Err(Error::UnprocessedBranches(n));
-                    }
-                    return Ok(());
-                }
-
-                let hit_address_and_branch = self.state.pc == self.state.address
-                    && self.state.branch_map.count() == self.branch_limit()?;
-                match self.state.stop_condition {
-                    StopCondition::LastBranch
-                        if self.state.branch_map.count() == 1
-                            && self.state.insn.kind.and_then(Kind::branch_target).is_some() =>
-                    {
-                        self.state.stop_condition = StopCondition::Fused;
-                        return Ok(());
-                    }
-                    StopCondition::Address {
-                        notify,
-                        not_updiscon,
-                    } if hit_address_and_branch => {
-                        if notify {
-                            self.state.stop_condition = StopCondition::Fused;
-                            return Ok(());
-                        }
-                        if not_updiscon
-                            && self
-                                .state
-                                .last_insn
-                                .kind
-                                .map(Kind::is_uninferable_discon)
-                                .unwrap_or(false)
-                            && self.state.stack_depth_matches()
-                        {
-                            self.state.inferred_address = Some(self.state.pc);
-                            self.state.stop_condition = StopCondition::Fused;
-                            return Ok(());
-                        }
-                    }
-                    StopCondition::Sync {
-                        privilege: Some(privilege),
-                    } if hit_address_and_branch
-                        && privilege == self.state.privilege
-                        && self
-                            .state
-                            .last_insn
-                            .kind
-                            .map(Kind::is_return_from_trap)
-                            .unwrap_or(false) =>
-                    {
-                        self.state.stop_condition = StopCondition::Fused;
-                        return Ok(());
-                    }
-                    StopCondition::Sync { privilege: None } if hit_address_and_branch => {
-                        self.state.stop_condition = StopCondition::Fused;
-                        return Ok(());
-                    }
-                    _ => (),
-                }
-            }
-        }
-    }
-
-    fn next_pc(&mut self, address: u64, payload: &Payload) -> Result<bool, Error<B::Error>> {
-        use instruction::Kind;
-
-        let instr = self.state.insn;
-        let this_pc = self.state.pc;
-        let mut stop_here = false;
-
-        if let Some(target) = instr.kind.and_then(Kind::inferable_jump_target) {
-            self.incr_pc(target);
-            if target == 0 {
-                stop_here = true;
-            }
-        } else if let Some(target) = self.sequential_jump_target(this_pc, self.state.last_pc)? {
-            self.state.pc = target;
-        } else if let Some(addr) = self.implicit_return_address(&instr, payload) {
-            self.state.pc = addr;
-        } else if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
-            if matches!(self.state.stop_condition, state::StopCondition::LastBranch) {
-                return Err(Error::UnexpectedUninferableDiscon);
-            }
-            self.state.pc = address;
-            stop_here = true;
-        } else if let Some(target) = self.taken_branch_target(&instr)? {
-            self.incr_pc(target.into());
-            if target == 0 {
-                stop_here = true;
-            }
-        } else {
-            self.incr_pc(instr.size as i32);
+        while let Some(item) = self.state.next_item(&self.binary)? {
+            self.report_trace.report_pc(item.pc());
         }
 
-        self.push_return_stack(&instr, this_pc)?;
-
-        self.state.insn = self.get_instr(self.state.pc)?;
-        self.state.last_pc = this_pc;
-        self.state.last_insn = instr;
-
-        Ok(stop_here)
-    }
-
-    /// If the given instruction is a branch and it was taken, return its target
-    ///
-    /// This roughly corresponds to a combination of `is_taken_branch` of the
-    /// reference implementation.
-    fn taken_branch_target(&mut self, instr: &Instruction) -> Result<Option<i16>, Error<B::Error>> {
-        let Some(target) = instr.kind.and_then(instruction::Kind::branch_target) else {
-            // Not a branch instruction
-            return Ok(None);
-        };
-        let taken = self
-            .state
-            .branch_map
-            .pop_taken()
-            .ok_or(Error::UnresolvableBranch)?;
-        self.report_trace
-            .report_branch(self.state.branch_map, taken);
-        Ok(taken.then_some(target))
-    }
-
-    /// If a pair of addresses constitute a sequential jump, compute the target
-    ///
-    /// This roughly corresponds to a combination of `is_sequential_jump` and
-    /// `sequential_jump_target` of the reference implementation.
-    fn sequential_jump_target(
-        &mut self,
-        addr: u64,
-        prev_addr: u64,
-    ) -> Result<Option<u64>, Error<B::Error>> {
-        use instruction::Kind;
-
-        if !self.sequential_jumps {
-            return Ok(None);
-        }
-        let Some(insn) = self.get_instr(addr)?.kind else {
-            return Ok(None);
-        };
-
-        let target = self.get_instr(prev_addr)?.kind.and_then(|i| match i {
-            Kind::auipc(d) => Some((d.rd, prev_addr.wrapping_add_signed(d.imm.into()))),
-            Kind::lui(d) => Some((d.rd, d.imm as u64)),
-            Kind::c_lui(d) => Some((d.rd, d.imm as u64)),
-            _ => None,
-        });
-
-        let target = Option::zip(insn.uninferable_jump(), target)
-            .filter(|((dep, _), (r, _))| r == dep)
-            .map(|((_, off), (_, t))| t.wrapping_add_signed(off.into()));
-
-        Ok(target)
-    }
-
-    /// If the given instruction is a function return, try to find the return address
-    ///
-    /// This roughly corresponds to a combination of `is_implicit_return` and
-    /// `pop_return_stack` of the reference implementation.
-    fn implicit_return_address(&mut self, instr: &Instruction, payload: &Payload) -> Option<u64> {
-        use instruction::Kind;
-
-        if instr.kind.map(Kind::is_return).unwrap_or(false) {
-            if payload.implicit_return_depth() == Some(self.state.return_stack.depth()) {
-                return None;
-            }
-
-            return self.state.return_stack.pop();
-        }
-
-        None
-    }
-
-    fn push_return_stack(&mut self, instr: &Instruction, addr: u64) -> Result<(), Error<B::Error>> {
-        if !instr.kind.map(instruction::Kind::is_call).unwrap_or(false) {
-            return Ok(());
-        }
-
-        let local_instr = self.get_instr(addr)?;
-        self.state
-            .return_stack
-            .push(addr + (local_instr.size as u64));
         Ok(())
-    }
-
-    fn exception_address(
-        &mut self,
-        trap: &Trap,
-        payload: &Payload,
-    ) -> Result<u64, Error<B::Error>> {
-        use instruction::Kind;
-
-        let instr = self.get_instr(self.state.pc)?;
-
-        if instr.kind.map(Kind::is_uninferable_discon).unwrap_or(false) && !trap.thaddr {
-            Ok(trap.address)
-        } else if instr
-            .kind
-            .filter(|name| matches!(*name, Kind::ecall | Kind::ebreak | Kind::c_ebreak))
-            .is_some()
-        {
-            Ok(self.state.pc)
-        } else {
-            Ok(if self.next_pc(self.state.pc, payload)? {
-                self.state.pc + instr.size as u64
-            } else {
-                self.state.pc
-            })
-        }
     }
 }
 
@@ -501,6 +256,7 @@ impl<B: Binary> Builder<B> {
 
         let state = state::State::new(
             S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
+            self.config.sijump_p,
         );
         Ok(Tracer {
             state,
@@ -508,7 +264,6 @@ impl<B: Binary> Builder<B> {
             report_trace,
             binary: self.binary,
             address_mode: self.address_mode,
-            sequential_jumps: self.config.sijump_p,
             version: self.version,
         })
     }
