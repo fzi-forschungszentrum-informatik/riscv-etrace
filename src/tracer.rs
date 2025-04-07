@@ -31,6 +31,8 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
 
 impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
+        use state::StopCondition;
+
         if !self.state.is_fused() {
             return Err(Error::UnprocessedInstructions);
         }
@@ -85,7 +87,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             if matches!(sync, Synchronization::Start(_)) && self.iter_state.is_tracing() {
-                self.follow_execution_path(payload, false)?
+                let privilege = match self.version {
+                    Version::V1 => {
+                        let privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
+                        Some(privilege)
+                    }
+                    _ => None,
+                };
+                self.state.stop_condition = StopCondition::Sync { privilege };
             } else {
                 self.state.pc = self.state.address;
                 self.state.insn = insn;
@@ -115,7 +124,17 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 self.state.branch_map.append(branch.branch_map);
                 stop_at_last_branch = branch.address.is_none();
             }
-            self.follow_execution_path(payload, stop_at_last_branch)
+            self.state.stop_condition = if stop_at_last_branch {
+                StopCondition::LastBranch
+            } else if let Some(info) = payload.get_address_info() {
+                StopCondition::Address {
+                    notify: info.notify,
+                    not_updiscon: !info.updiscon,
+                }
+            } else {
+                unreachable!()
+            };
+            Ok(())
         }
     }
 
@@ -129,37 +148,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 self.state.stop_condition = state::StopCondition::NotInferred;
             }
         }
-        Ok(())
-    }
-
-    fn follow_execution_path(
-        &mut self,
-        payload: &Payload,
-        stop_at_last_branch: bool,
-    ) -> Result<(), Error<B::Error>> {
-        use state::StopCondition;
-
-        self.state.stop_condition = if stop_at_last_branch {
-            StopCondition::LastBranch
-        } else if let Some(info) = payload.get_address_info() {
-            StopCondition::Address {
-                notify: info.notify,
-                not_updiscon: !info.updiscon,
-            }
-        } else {
-            match self.version {
-                Version::V1 => {
-                    let privilege = payload
-                        .get_privilege()
-                        .ok_or(Error::WrongGetPrivilegeType)?;
-                    StopCondition::Sync {
-                        privilege: Some(privilege),
-                    }
-                }
-                _ => StopCondition::Sync { privilege: None },
-            }
-        };
-
         Ok(())
     }
 }
