@@ -38,64 +38,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         }
 
         if let Payload::Synchronization(sync) = payload {
-            let mut trap_info = None;
-            match sync {
-                Synchronization::Start(start) => {
-                    self.sync_init(
-                        start.address,
-                        !self.iter_state.is_tracing(),
-                        !start.branch,
-                        &start.ctx,
-                    )?;
-
-                    if self.iter_state.is_tracing() {
-                        let privilege = match self.version {
-                            Version::V1 => Some(start.ctx.privilege),
-                            _ => None,
-                        };
-                        self.state.stop_condition = StopCondition::Sync { privilege };
-                        return Ok(());
-                    }
-                }
-                Synchronization::Trap(trap) => {
-                    let epc = match trap.info.kind {
-                        trap::Kind::Exception => {
-                            let epc = (!trap.thaddr).then_some(trap.address);
-                            self.state.exception_address(&self.binary, epc)?
-                        }
-                        trap::Kind::Interrupt => self.state.pc,
-                    };
-                    if !trap.thaddr {
-                        self.state.stack_depth = None;
-                        return Ok(());
-                    }
-                    trap_info = Some((epc, trap.info));
-
-                    self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?;
-                }
-                Synchronization::Context(ctx) => {
-                    self.state.stack_depth = None;
-                    if self.version != Version::V1 {
-                        self.state.privilege = ctx.privilege;
-                    }
-                    return Ok(());
-                }
-                Synchronization::Support(sup) => {
-                    return self.process_support(sup);
-                }
-            }
-
-            let insn = self
-                .binary
-                .get_insn(self.state.address)
-                .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
-            self.state.pc = self.state.address;
-            self.state.insn = insn;
-            self.state.last_pc = self.state.pc;
-            self.state.last_insn = Default::default();
-
-            self.iter_state = IterationState::SingleItem(trap_info);
-            Ok(())
+            self.process_sync(sync)
         } else {
             self.state.stack_depth = payload.implicit_return_depth();
 
@@ -125,6 +68,69 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             }
             Ok(())
         }
+    }
+
+    /// Process a [payload::Synchronization]
+    fn process_sync(&mut self, sync: &payload::Synchronization) -> Result<(), Error<B::Error>> {
+        use payload::Synchronization;
+
+        let mut trap_info = None;
+        match sync {
+            Synchronization::Start(start) => {
+                self.sync_init(
+                    start.address,
+                    !self.iter_state.is_tracing(),
+                    !start.branch,
+                    &start.ctx,
+                )?;
+
+                if self.iter_state.is_tracing() {
+                    let privilege = match self.version {
+                        Version::V1 => Some(start.ctx.privilege),
+                        _ => None,
+                    };
+                    self.state.stop_condition = state::StopCondition::Sync { privilege };
+                    return Ok(());
+                }
+            }
+            Synchronization::Trap(trap) => {
+                let epc = match trap.info.kind {
+                    trap::Kind::Exception => {
+                        let epc = (!trap.thaddr).then_some(trap.address);
+                        self.state.exception_address(&self.binary, epc)?
+                    }
+                    trap::Kind::Interrupt => self.state.pc,
+                };
+                if !trap.thaddr {
+                    return Ok(());
+                }
+                trap_info = Some((epc, trap.info));
+
+                self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?;
+            }
+            Synchronization::Context(ctx) => {
+                self.state.stack_depth = None;
+                if self.version != Version::V1 {
+                    self.state.privilege = ctx.privilege;
+                }
+                return Ok(());
+            }
+            Synchronization::Support(sup) => {
+                return self.process_support(sup);
+            }
+        }
+
+        let insn = self
+            .binary
+            .get_insn(self.state.address)
+            .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
+        self.state.pc = self.state.address;
+        self.state.insn = insn;
+        self.state.last_pc = self.state.pc;
+        self.state.last_insn = Default::default();
+
+        self.iter_state = IterationState::SingleItem(trap_info);
+        Ok(())
     }
 
     fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
