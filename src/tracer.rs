@@ -147,40 +147,41 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         Ok(())
     }
 
-    /// Perform initialization for processing of some [Synchronization] variants
+    /// Create a [state::Initializer] for some [Synchronization] variants
     fn sync_init(
         &mut self,
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
         ctx: &payload::Context,
-    ) -> Result<(), Error<B::Error>> {
+    ) -> Result<state::Initializer<S, B>, Error<B::Error>> {
+        let mut initer = self.state.initializer(&self.binary)?;
         let insn = self
             .binary
             .get_insn(address)
             .map_err(|e| Error::CannotGetInstruction(e, address))?;
 
-        self.state.address = address;
-        self.state.inferred_address = None;
+        initer.set_address(address);
 
+        let branch_map = initer.get_branch_map_mut();
         if reset_branch_map {
-            self.state.branch_map = Default::default();
+            *branch_map = Default::default();
         }
         if insn
             .kind
             .and_then(instruction::Kind::branch_target)
             .is_some()
         {
-            self.state.branch_map.push_branch_taken(branch_taken);
+            branch_map.push_branch_taken(branch_taken);
         }
 
         if self.version != Version::V1 {
-            self.state.privilege = ctx.privilege;
+            initer.set_privilege(ctx.privilege);
         }
 
-        self.state.stack_depth = None;
+        initer.set_stack_depth(None);
 
-        Ok(())
+        Ok(initer)
     }
 }
 
