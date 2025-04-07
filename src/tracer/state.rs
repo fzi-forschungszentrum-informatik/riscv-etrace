@@ -15,40 +15,40 @@ use instruction::binary::Binary;
 #[derive(Clone, Debug)]
 pub struct State<S: ReturnStack> {
     /// Current program counter
-    pub pc: u64,
+    pc: u64,
 
     /// Current instruction
-    pub insn: Instruction,
+    insn: Instruction,
 
     /// Previous program counter
-    pub last_pc: u64,
+    last_pc: u64,
 
     /// Previous instruction
-    pub last_insn: Instruction,
+    last_insn: Instruction,
 
     /// Address reconstructed from the latest packet
-    pub address: u64,
+    address: u64,
 
     /// Sequence of future branches
-    pub branch_map: branch::Map,
+    branch_map: branch::Map,
 
     /// Stop condition for the current packet
-    pub stop_condition: StopCondition,
+    stop_condition: StopCondition,
 
     /// Inferred address that was reported
-    pub inferred_address: Option<u64>,
+    inferred_address: Option<u64>,
 
     /// Current [Privilege] level the core is operating in
-    pub privilege: Privilege,
+    privilege: Privilege,
 
     /// Stack of (regular) call return addresses
-    pub return_stack: S,
+    return_stack: S,
 
     /// Stack depth communicated by the current packet
-    pub stack_depth: Option<usize>,
+    stack_depth: Option<usize>,
 
     /// Flag indicating whether or not sequential jumps are to be followed
-    pub sequential_jumps: bool,
+    sequential_jumps: bool,
 }
 
 impl<S: ReturnStack> State<S> {
