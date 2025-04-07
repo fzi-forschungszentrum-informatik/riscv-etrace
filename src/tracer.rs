@@ -25,7 +25,7 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
     binary: B,
-    address_mode: AddressMode,
+    address_delta_width: Option<u8>,
     version: Version,
 }
 
@@ -99,10 +99,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             }
             let mut stop_at_last_branch = false;
             if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
-                let address = payload.get_address();
-                self.state.address = match self.address_mode {
-                    AddressMode::Full => address,
-                    AddressMode::Delta => self.state.address.wrapping_add(address),
+                let mut address = payload.get_address();
+                self.state.address = if let Some(width) = self.address_delta_width {
+                    if address >> width.saturating_sub(1) != 0 {
+                        address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
+                    }
+                    self.state.address.wrapping_add(address)
+                } else {
+                    address
                 };
             }
             if let Payload::Branch(branch) = payload {
@@ -252,11 +256,15 @@ impl<B: Binary> Builder<B> {
             S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
             self.config.sijump_p,
         );
+        let address_delta_width = match self.address_mode {
+            AddressMode::Full => None,
+            AddressMode::Delta => Some(self.config.iaddress_width_p),
+        };
         Ok(Tracer {
             state,
             iter_state: Default::default(),
             binary: self.binary,
-            address_mode: self.address_mode,
+            address_delta_width,
             version: self.version,
         })
     }
