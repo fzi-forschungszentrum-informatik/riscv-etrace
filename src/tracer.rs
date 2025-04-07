@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
-use crate::decoder::payload::{Payload, QualStatus, Support, Synchronization};
+use crate::decoder::payload::{self, Payload, QualStatus, Support, Synchronization};
 use crate::instruction;
 use crate::types::trap;
 use crate::ProtocolConfiguration;
@@ -38,11 +38,16 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         }
 
         if let Payload::Synchronization(sync) = payload {
-            self.state.stack_depth = None;
-
             let mut trap_info = None;
             match sync {
-                Synchronization::Start(_) => (),
+                Synchronization::Start(start) => {
+                    self.sync_init(
+                        start.address,
+                        !self.iter_state.is_tracing(),
+                        !start.branch,
+                        &start.ctx,
+                    )?;
+                }
                 Synchronization::Trap(trap) => {
                     let epc = match trap.info.kind {
                         trap::Kind::Exception => {
@@ -52,11 +57,15 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         trap::Kind::Interrupt => self.state.pc,
                     };
                     if !trap.thaddr {
+                        self.state.stack_depth = None;
                         return Ok(());
                     }
                     trap_info = Some((epc, trap.info));
+
+                    self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?;
                 }
                 Synchronization::Context(ctx) => {
+                    self.state.stack_depth = None;
                     if self.version != Version::V1 {
                         self.state.privilege = ctx.privilege;
                     }
@@ -65,26 +74,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 Synchronization::Support(sup) => {
                     return self.process_support(sup);
                 }
-            }
-            self.state.inferred_address = None;
-            self.state.address = payload.get_address();
-            if matches!(sync, Synchronization::Trap(_)) || !self.iter_state.is_tracing() {
-                self.state.branch_map = Default::default();
-            }
-            let insn = self
-                .binary
-                .get_insn(self.state.address)
-                .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
-            if insn
-                .kind
-                .and_then(instruction::Kind::branch_target)
-                .is_some()
-            {
-                let branch = sync.branch_not_taken().ok_or(Error::WrongGetBranchType)?;
-                self.state.branch_map.push_branch_taken(!branch);
-            }
-            if self.version != Version::V1 {
-                self.state.privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
             }
             if matches!(sync, Synchronization::Start(_)) && self.iter_state.is_tracing() {
                 let privilege = match self.version {
@@ -96,6 +85,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 };
                 self.state.stop_condition = StopCondition::Sync { privilege };
             } else {
+                let insn = self
+                    .binary
+                    .get_insn(self.state.address)
+                    .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
                 self.state.pc = self.state.address;
                 self.state.insn = insn;
                 self.state.last_pc = self.state.pc;
@@ -136,6 +129,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 
     fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
+        self.state.stack_depth = None;
         if support.qual_status != QualStatus::NoChange {
             self.iter_state = IterationState::Depleting;
 
@@ -145,6 +139,42 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 self.state.stop_condition = state::StopCondition::NotInferred;
             }
         }
+        Ok(())
+    }
+
+    /// Perform initialization for processing of some [Synchronization] variants
+    fn sync_init(
+        &mut self,
+        address: u64,
+        reset_branch_map: bool,
+        branch_taken: bool,
+        ctx: &payload::Context,
+    ) -> Result<(), Error<B::Error>> {
+        let insn = self
+            .binary
+            .get_insn(address)
+            .map_err(|e| Error::CannotGetInstruction(e, address))?;
+
+        self.state.address = address;
+        self.state.inferred_address = None;
+
+        if reset_branch_map {
+            self.state.branch_map = Default::default();
+        }
+        if insn
+            .kind
+            .and_then(instruction::Kind::branch_target)
+            .is_some()
+        {
+            self.state.branch_map.push_branch_taken(branch_taken);
+        }
+
+        if self.version != Version::V1 {
+            self.state.privilege = ctx.privilege;
+        }
+
+        self.state.stack_depth = None;
+
         Ok(())
     }
 }
