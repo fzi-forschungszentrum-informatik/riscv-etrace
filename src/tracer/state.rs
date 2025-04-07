@@ -198,6 +198,21 @@ impl<S: ReturnStack> State<S> {
         }
     }
 
+    /// Create an [Initializer]
+    ///
+    /// Returns an [Initializer] for this state if the state is fused.
+    pub fn initializer<'a, B: Binary>(
+        &'a mut self,
+        binary: &'a B,
+    ) -> Result<Initializer<'a, S, B>, Error<B::Error>> {
+        self.is_fused()
+            .then_some(Initializer {
+                state: self,
+                binary,
+            })
+            .ok_or(Error::UnprocessedInstructions)
+    }
+
     /// Determine the next PC
     ///
     /// Determines the next PC based on the given address as well as information
@@ -334,6 +349,89 @@ impl<S: ReturnStack> State<S> {
         self.stack_depth
             .map(|d| d == self.return_stack.depth())
             .unwrap_or(true)
+    }
+}
+
+/// [State] initializer
+///
+/// Allows configuration of [State] and subsequent setting of a [StopCondition].
+/// It allows safe configuration as long as it is created for a fused [State].
+pub struct Initializer<'a, S: ReturnStack, B: Binary> {
+    state: &'a mut State<S>,
+    binary: &'a B,
+}
+
+impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
+    /// Set an absolute address
+    ///
+    /// Set an absolute address and clear the inferred address.
+    pub fn set_address(&mut self, address: u64) {
+        self.state.address = address;
+        self.state.inferred_address = None;
+    }
+
+    /// Set a relative address
+    ///
+    /// Set a relative address and clear the inferred address.
+    pub fn set_rel_address(&mut self, address: u64) {
+        self.set_address(self.state.address.wrapping_add(address));
+    }
+
+    /// Update the inferred address
+    ///
+    /// If there is an inferred address present in the state, update it to the
+    /// current PC. Returns `true` if an inferred address was present, `false`
+    /// otherwise.
+    pub fn update_inferred(&mut self) -> bool {
+        self.state
+            .inferred_address
+            .as_mut()
+            .map(|a| *a = self.state.pc)
+            .is_some()
+    }
+
+    /// Get a mutable reference to the [State]'s [branch::Map]
+    pub fn get_branch_map_mut(&mut self) -> &mut branch::Map {
+        &mut self.state.branch_map
+    }
+
+    /// Set the privilege
+    pub fn set_privilege(&mut self, privilege: Privilege) {
+        self.state.privilege = privilege;
+    }
+
+    /// Set the stack depth
+    pub fn set_stack_depth(&mut self, depth: Option<usize>) {
+        self.state.stack_depth = depth;
+    }
+
+    /// Set a [StopCondition]
+    ///
+    /// This operation concludes the configuration.
+    pub fn set_condition(self, condition: StopCondition) {
+        self.state.stop_condition = condition;
+    }
+
+    /// Reset the [State] to the current address
+    ///
+    /// The current PC is updated to the current address and the current
+    /// [Instruction] updated accordingly. Other values are adjusted such that
+    /// e.g. sequential jumps are evalued correctly.
+    ///
+    /// This operation concludes the configuration.
+    pub fn reset_to_address(self) -> Result<(), Error<B::Error>> {
+        let address = self.state.address;
+        let insn = self
+            .binary
+            .get_insn(address)
+            .map_err(|e| Error::CannotGetInstruction(e, address))?;
+
+        self.state.pc = address;
+        self.state.insn = insn;
+        self.state.last_pc = address;
+        self.state.last_insn = Default::default();
+
+        Ok(())
     }
 }
 
