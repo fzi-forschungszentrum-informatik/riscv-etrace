@@ -108,7 +108,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             if !self.iter_state.is_tracing() {
                 return Err(Error::StartOfTrace);
             }
-            let mut stop_at_last_branch = false;
+            if let Payload::Branch(branch) = payload {
+                self.state.branch_map.append(branch.branch_map);
+            }
             if let Some(info) = payload.get_address_info() {
                 let mut address = info.address;
                 self.state.address = if let Some(width) = self.address_delta_width {
@@ -119,21 +121,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 } else {
                     address
                 };
-            }
-            if let Payload::Branch(branch) = payload {
-                self.state.branch_map.append(branch.branch_map);
-                stop_at_last_branch = branch.address.is_none();
-            }
-            self.state.stop_condition = if stop_at_last_branch {
-                StopCondition::LastBranch
-            } else if let Some(info) = payload.get_address_info() {
-                StopCondition::Address {
+
+                self.state.stop_condition = StopCondition::Address {
                     notify: info.notify,
                     not_updiscon: !info.updiscon,
-                }
+                };
             } else {
-                unreachable!()
-            };
+                self.state.stop_condition = StopCondition::LastBranch;
+            }
             Ok(())
         }
     }
