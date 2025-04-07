@@ -39,25 +39,30 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
 
         if let Payload::Synchronization(sync) = payload {
             let mut trap_info = None;
-            if let Synchronization::Support(sup) = sync {
-                return self.process_support(sup);
-            } else if let Synchronization::Context(ctx) = sync {
-                if self.version != Version::V1 {
-                    self.state.privilege = ctx.privilege;
-                }
-                return Ok(());
-            } else if let Synchronization::Trap(trap) = sync {
-                let epc = match trap.info.kind {
-                    trap::Kind::Exception => {
-                        let epc = (!trap.thaddr).then_some(trap.address);
-                        self.state.exception_address(&self.binary, epc)?
+            match sync {
+                Synchronization::Start(_) => (),
+                Synchronization::Trap(trap) => {
+                    let epc = match trap.info.kind {
+                        trap::Kind::Exception => {
+                            let epc = (!trap.thaddr).then_some(trap.address);
+                            self.state.exception_address(&self.binary, epc)?
+                        }
+                        trap::Kind::Interrupt => self.state.pc,
+                    };
+                    if !trap.thaddr {
+                        return Ok(());
                     }
-                    trap::Kind::Interrupt => self.state.pc,
-                };
-                if !trap.thaddr {
+                    trap_info = Some((epc, trap.info));
+                }
+                Synchronization::Context(ctx) => {
+                    if self.version != Version::V1 {
+                        self.state.privilege = ctx.privilege;
+                    }
                     return Ok(());
                 }
-                trap_info = Some((epc, trap.info));
+                Synchronization::Support(sup) => {
+                    return self.process_support(sup);
+                }
             }
             self.state.inferred_address = None;
             self.state.address = payload.get_address();
