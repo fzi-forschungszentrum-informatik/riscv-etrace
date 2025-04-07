@@ -447,6 +447,75 @@ fn complex() {
     assert_eq!(tracer.next(), None);
 }
 
+#[test]
+fn full_branch_map() {
+    let code: &[(u64, _)] = &[
+        (0x80000028, COMPRESSED),
+        (0x8000002a, COMPRESSED),
+        (
+            0x8000002c,
+            Kind::c_beqz(TypeB {
+                rs1: 10,
+                rs2: 0,
+                imm: -0x004,
+            })
+            .into(),
+        ),
+        (0x8000002e, COMPRESSED),
+    ];
+
+    let mut tracer: Tracer<_> = Builder::new()
+        .with_binary(code)
+        .build()
+        .expect("Could not build tracer");
+
+    tracer
+        .process_te_inst(&start_packet(0x80000028))
+        .expect("Could not process packet");
+    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80000028, COMPRESSED))));
+    assert_eq!(tracer.next(), None);
+
+    tracer
+        .process_te_inst(
+            &payload::Branch {
+                branch_map: branch::Map::new(31, 0),
+                address: None,
+            }
+            .into(),
+        )
+        .expect("Could not process packet");
+    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000002a, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(
+            0x8000002c,
+            Kind::c_beqz(TypeB {
+                rs1: 10,
+                rs2: 0,
+                imm: -0x004,
+            })
+            .into()
+        )))
+    );
+    (2..=31).for_each(|_| {
+        assert_eq!(tracer.next(), Some(Ok(Item::new(0x80000028, COMPRESSED))));
+        assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000002a, COMPRESSED))));
+        assert_eq!(
+            tracer.next(),
+            Some(Ok(Item::new(
+                0x8000002c,
+                Kind::c_beqz(TypeB {
+                    rs1: 10,
+                    rs2: 0,
+                    imm: -0x004,
+                })
+                .into()
+            )))
+        );
+    });
+    assert_eq!(tracer.next(), None);
+}
+
 fn start_packet(address: u64) -> payload::Payload {
     payload::Start {
         branch: false,

@@ -98,8 +98,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 return Err(Error::StartOfTrace);
             }
             let mut stop_at_last_branch = false;
-            if matches!(payload, Payload::Address(_)) || payload.get_branches().unwrap_or(0) != 0 {
-                let mut address = payload.get_address();
+            if let Some(info) = payload.get_address_info() {
+                let mut address = info.address;
                 self.state.address = if let Some(width) = self.address_delta_width {
                     if address >> width.saturating_sub(1) != 0 {
                         address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
