@@ -26,43 +26,49 @@
 //! be used in bare metal environments.
 //!
 //! # Example
-//! ```
-//! extern crate riscv_etrace;
 //!
-//! use riscv_etrace::{ProtocolConfiguration};
+//! The following example demonstrates basic instruction tracing, with default
+//! [`ProtocolConfiguration`], a custom [`Binary`][instruction::binary::Binary]
+//! and tracing packets placed in a single buffer.
+//!
+//! ```
 //! use riscv_etrace::decoder::Decoder;
-//! use riscv_etrace::types::branch;
-//! use riscv_etrace::Instruction;
-//! use riscv_etrace::instruction::binary;
+//! use riscv_etrace::instruction::{binary, Instruction};
 //! use riscv_etrace::tracer::{self, Tracer};
 //!
-//! // Use the default protocol level configuration which will define the bit lengths of packet fields.
-//! let mut proto_conf = ProtocolConfiguration::default();
-//! // But we overwrite the hart index width and assume a maximum of 2^10 harts.
-//! proto_conf.cpu_index_width = 10;
+//! # let binary_data = b"\x14\x41\x11\x05\x94\xc1\x91\x05\xe3\xec\xc5\xfe\x82\x80";
+//! # let binary_offset = 0x80000028;
+//! # let trace_data = b"\x45\x00\x73\x0a\x00\x00\x20\x41\x00\x01";
+//! # let hart_to_trace = 0;
+//! let binary = |addr: u64| {
+//!     addr.checked_sub(binary_offset)
+//!         .and_then(|a| binary_data.split_at_checked(a as usize))
+//!         .and_then(|(_, d)| Instruction::extract(d))
+//!         .map(|(i, _)| i)
+//!         .ok_or(binary::NoInstruction)
+//! };
 //!
-//! // Create the packet decoder.
-//! let mut decoder = Decoder::new(proto_conf);
-//!
-//! // Create each tracer for the hart we want to trace.
+//! let proto_conf = Default::default();
+//! let mut decoder = Decoder::new(proto_conf).with_data(trace_data);
 //! let mut tracer: Tracer<_> = tracer::Builder::new()
 //!     .with_config(proto_conf)
-//!     .with_binary(binary::Empty)
+//!     .with_binary(binary)
 //!     .build()
-//!     .expect("Could not construct tracer");
+//!     .unwrap();
 //!
-//! # let packet_vec: Vec<u8> = vec![0b0101_0000; 32];
-//! # let packet_slice = packet_vec.as_slice();
-//! # const HART_WE_WANT_TO_TRACE: usize = 0;
-//! // Assuming we have a slice given with a packet already written in binary in it,
-//! // the decoder will decompress and parse it.
-//! // Note that a single decoder can be used for different harts.
-//! let packet = decoder.with_data(packet_slice).decode_packet().unwrap();
-//! println!("{:?}", packet);
-//! // Select the packet based on the hart index...
-//! if packet.header.hart_index == HART_WE_WANT_TO_TRACE {
-//!     // ...and trace it. This will call the previously defined `report...` callbacks.
-//!     tracer.process_te_inst(&packet.payload).unwrap();
+//! while decoder.bytes_left() > 0 {
+//!     let packet = decoder.decode_packet().unwrap();
+//!     eprintln!("{packet:?}");
+//!     if packet.header.hart_index == hart_to_trace {
+//!         tracer.process_te_inst(&packet.payload).unwrap();
+//!         tracer.by_ref().for_each(|i| {
+//!             let item = i.unwrap();
+//!             if let Some((epc, info)) = item.trap() {
+//!                 println!("Trap! EPC={epc:0x}, interrupt={}", info.is_interrupt());
+//!             }
+//!             println!("PC: {:0x}", item.pc());
+//!         });
+//!     }
 //! }
 //! ```
 #![no_std]
