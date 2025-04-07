@@ -65,7 +65,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 
     /// Process a [payload::Synchronization]
-    fn process_sync(&mut self, sync: &payload::Synchronization) -> Result<(), Error<B::Error>> {
+    pub fn process_sync(&mut self, sync: &payload::Synchronization) -> Result<(), Error<B::Error>> {
         use payload::Synchronization;
 
         match sync {
