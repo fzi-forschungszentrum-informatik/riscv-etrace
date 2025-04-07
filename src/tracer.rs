@@ -47,6 +47,15 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         !start.branch,
                         &start.ctx,
                     )?;
+
+                    if self.iter_state.is_tracing() {
+                        let privilege = match self.version {
+                            Version::V1 => Some(start.ctx.privilege),
+                            _ => None,
+                        };
+                        self.state.stop_condition = StopCondition::Sync { privilege };
+                        return Ok(());
+                    }
                 }
                 Synchronization::Trap(trap) => {
                     let epc = match trap.info.kind {
@@ -75,27 +84,17 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     return self.process_support(sup);
                 }
             }
-            if matches!(sync, Synchronization::Start(_)) && self.iter_state.is_tracing() {
-                let privilege = match self.version {
-                    Version::V1 => {
-                        let privilege = sync.get_privilege().ok_or(Error::WrongGetPrivilegeType)?;
-                        Some(privilege)
-                    }
-                    _ => None,
-                };
-                self.state.stop_condition = StopCondition::Sync { privilege };
-            } else {
-                let insn = self
-                    .binary
-                    .get_insn(self.state.address)
-                    .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
-                self.state.pc = self.state.address;
-                self.state.insn = insn;
-                self.state.last_pc = self.state.pc;
-                self.state.last_insn = Default::default();
 
-                self.iter_state = IterationState::SingleItem(trap_info);
-            }
+            let insn = self
+                .binary
+                .get_insn(self.state.address)
+                .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
+            self.state.pc = self.state.address;
+            self.state.insn = insn;
+            self.state.last_pc = self.state.pc;
+            self.state.last_insn = Default::default();
+
+            self.iter_state = IterationState::SingleItem(trap_info);
             Ok(())
         } else {
             self.state.stack_depth = payload.implicit_return_depth();
