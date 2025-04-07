@@ -97,7 +97,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         let epc = (!trap.thaddr).then_some(trap.address);
                         self.state.exception_address(&self.binary, epc)?
                     }
-                    trap::Kind::Interrupt => self.state.pc,
+                    trap::Kind::Interrupt => self.state.current_item().pc(),
                 };
                 if !trap.thaddr {
                     self.state.initializer(&self.binary)?.set_stack_depth(None);
