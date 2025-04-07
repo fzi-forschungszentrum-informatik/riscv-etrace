@@ -207,7 +207,7 @@ impl<S: ReturnStack> State<S> {
     /// (`false`) or not (`true`).
     ///
     /// This roughly corresponds to `next_pc` of the reference implementation.
-    pub fn next_pc<B: Binary>(
+    fn next_pc<B: Binary>(
         &mut self,
         binary: &B,
         address: u64,
@@ -269,7 +269,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
-    pub fn sequential_jump_target(&self, insn: instruction::Kind) -> Option<u64> {
+    fn sequential_jump_target(&self, insn: instruction::Kind) -> Option<u64> {
         use instruction::Kind;
 
         if !self.sequential_jumps {
@@ -292,7 +292,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to a combination of `is_implicit_return` and
     /// `pop_return_stack` of the reference implementation.
-    pub fn implicit_return_address(&mut self, insn: instruction::Kind) -> Option<u64> {
+    fn implicit_return_address(&mut self, insn: instruction::Kind) -> Option<u64> {
         if insn.is_return() && self.stack_depth != Some(self.return_stack.depth()) {
             self.return_stack.pop()
         } else {
@@ -310,7 +310,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to a combination of `is_taken_branch` of the
     /// reference implementation.
-    pub fn taken_branch_target<I>(
+    fn taken_branch_target<I>(
         &mut self,
         insn: instruction::Kind,
     ) -> Result<Option<(u64, bool)>, Error<I>> {
@@ -330,7 +330,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// Returns true if [Self::stack_depth] matches [Self::return_stack]'s
     /// depth or if [Self::stack_depth] is `None`.
-    pub fn stack_depth_matches(&self) -> bool {
+    fn stack_depth_matches(&self) -> bool {
         self.stack_depth
             .map(|d| d == self.return_stack.depth())
             .unwrap_or(true)
