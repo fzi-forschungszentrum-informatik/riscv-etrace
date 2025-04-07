@@ -33,38 +33,32 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         use state::StopCondition;
 
-        if !self.state.is_fused() {
-            return Err(Error::UnprocessedInstructions);
-        }
-
         if let Payload::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
-            self.state.stack_depth = payload.implicit_return_depth();
+            let mut initer = self.state.initializer(&self.binary)?;
+            initer.set_stack_depth(payload.implicit_return_depth());
 
-            if !self.iter_state.is_tracing() {
-                return Err(Error::StartOfTrace);
-            }
             if let Payload::Branch(branch) = payload {
-                self.state.branch_map.append(branch.branch_map);
+                initer.get_branch_map_mut().append(branch.branch_map);
             }
             if let Some(info) = payload.get_address_info() {
                 let mut address = info.address;
-                self.state.address = if let Some(width) = self.address_delta_width {
+                if let Some(width) = self.address_delta_width {
                     if address >> width.saturating_sub(1) != 0 {
                         address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
                     }
-                    self.state.address.wrapping_add(address)
+                    initer.set_rel_address(address);
                 } else {
-                    address
+                    initer.set_address(address);
                 };
 
-                self.state.stop_condition = StopCondition::Address {
+                initer.set_condition(StopCondition::Address {
                     notify: info.notify,
                     not_updiscon: !info.updiscon,
-                };
+                });
             } else {
-                self.state.stop_condition = StopCondition::LastBranch;
+                initer.set_condition(StopCondition::LastBranch);
             }
             Ok(())
         }
