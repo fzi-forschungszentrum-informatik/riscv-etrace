@@ -37,9 +37,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             return Err(Error::UnprocessedInstructions);
         }
 
-        self.state.stack_depth = payload.implicit_return_depth();
-
         if let Payload::Synchronization(sync) = payload {
+            self.state.stack_depth = None;
+
             let mut trap_info = None;
             match sync {
                 Synchronization::Start(_) => (),
@@ -105,6 +105,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             }
             Ok(())
         } else {
+            self.state.stack_depth = payload.implicit_return_depth();
+
             if !self.iter_state.is_tracing() {
                 return Err(Error::StartOfTrace);
             }
