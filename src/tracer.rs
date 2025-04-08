@@ -33,38 +33,32 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
         use state::StopCondition;
 
-        if !self.state.is_fused() {
-            return Err(Error::UnprocessedInstructions);
-        }
-
         if let Payload::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
-            self.state.stack_depth = payload.implicit_return_depth();
+            let mut initer = self.state.initializer(&self.binary)?;
+            initer.set_stack_depth(payload.implicit_return_depth());
 
-            if !self.iter_state.is_tracing() {
-                return Err(Error::StartOfTrace);
-            }
             if let Payload::Branch(branch) = payload {
-                self.state.branch_map.append(branch.branch_map);
+                initer.get_branch_map_mut().append(branch.branch_map);
             }
             if let Some(info) = payload.get_address_info() {
                 let mut address = info.address;
-                self.state.address = if let Some(width) = self.address_delta_width {
+                if let Some(width) = self.address_delta_width {
                     if address >> width.saturating_sub(1) != 0 {
                         address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
                     }
-                    self.state.address.wrapping_add(address)
+                    initer.set_rel_address(address);
                 } else {
-                    address
+                    initer.set_address(address);
                 };
 
-                self.state.stop_condition = StopCondition::Address {
+                initer.set_condition(StopCondition::Address {
                     notify: info.notify,
                     not_updiscon: !info.updiscon,
-                };
+                });
             } else {
-                self.state.stop_condition = StopCondition::LastBranch;
+                initer.set_condition(StopCondition::LastBranch);
             }
             Ok(())
         }
@@ -74,23 +68,27 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     fn process_sync(&mut self, sync: &payload::Synchronization) -> Result<(), Error<B::Error>> {
         use payload::Synchronization;
 
-        let mut trap_info = None;
         match sync {
             Synchronization::Start(start) => {
-                self.sync_init(
+                let is_tracing = self.iter_state.is_tracing();
+                let version = self.version;
+
+                let initer = self.sync_init(
                     start.address,
                     !self.iter_state.is_tracing(),
                     !start.branch,
                     &start.ctx,
                 )?;
 
-                if self.iter_state.is_tracing() {
-                    let privilege = match self.version {
+                if is_tracing {
+                    let privilege = match version {
                         Version::V1 => Some(start.ctx.privilege),
                         _ => None,
                     };
-                    self.state.stop_condition = state::StopCondition::Sync { privilege };
-                    return Ok(());
+                    initer.set_condition(state::StopCondition::Sync { privilege });
+                } else {
+                    initer.reset_to_address()?;
+                    self.iter_state = IterationState::SingleItem(None);
                 }
             }
             Synchronization::Trap(trap) => {
@@ -99,88 +97,80 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         let epc = (!trap.thaddr).then_some(trap.address);
                         self.state.exception_address(&self.binary, epc)?
                     }
-                    trap::Kind::Interrupt => self.state.pc,
+                    trap::Kind::Interrupt => self.state.current_item().pc(),
                 };
                 if !trap.thaddr {
-                    return Ok(());
+                    self.state.initializer(&self.binary)?.set_stack_depth(None);
+                } else {
+                    self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?
+                        .reset_to_address()?;
+                    self.iter_state = IterationState::SingleItem(Some((epc, trap.info)));
                 }
-                trap_info = Some((epc, trap.info));
-
-                self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?;
             }
             Synchronization::Context(ctx) => {
-                self.state.stack_depth = None;
+                let mut initer = self.state.initializer(&self.binary)?;
+                initer.set_stack_depth(None);
                 if self.version != Version::V1 {
-                    self.state.privilege = ctx.privilege;
+                    initer.set_privilege(ctx.privilege);
                 }
-                return Ok(());
             }
             Synchronization::Support(sup) => {
-                return self.process_support(sup);
+                self.process_support(sup)?;
             }
         }
 
-        let insn = self
-            .binary
-            .get_insn(self.state.address)
-            .map_err(|e| Error::CannotGetInstruction(e, self.state.address))?;
-        self.state.pc = self.state.address;
-        self.state.insn = insn;
-        self.state.last_pc = self.state.pc;
-        self.state.last_insn = Default::default();
-
-        self.iter_state = IterationState::SingleItem(trap_info);
         Ok(())
     }
 
     fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
-        self.state.stack_depth = None;
+        let mut initer = self.state.initializer(&self.binary)?;
+        initer.set_stack_depth(None);
+
         if support.qual_status != QualStatus::NoChange {
             self.iter_state = IterationState::Depleting;
 
-            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
-            {
-                self.state.inferred_address = Some(self.state.pc);
-                self.state.stop_condition = state::StopCondition::NotInferred;
+            if support.qual_status == QualStatus::EndedNtr && initer.update_inferred() {
+                initer.set_condition(state::StopCondition::NotInferred);
             }
         }
         Ok(())
     }
 
-    /// Perform initialization for processing of some [Synchronization] variants
+    /// Create a [state::Initializer] for some [Synchronization] variants
     fn sync_init(
         &mut self,
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
         ctx: &payload::Context,
-    ) -> Result<(), Error<B::Error>> {
+    ) -> Result<state::Initializer<S, B>, Error<B::Error>> {
+        let mut initer = self.state.initializer(&self.binary)?;
         let insn = self
             .binary
             .get_insn(address)
             .map_err(|e| Error::CannotGetInstruction(e, address))?;
 
-        self.state.address = address;
-        self.state.inferred_address = None;
+        initer.set_address(address);
 
+        let branch_map = initer.get_branch_map_mut();
         if reset_branch_map {
-            self.state.branch_map = Default::default();
+            *branch_map = Default::default();
         }
         if insn
             .kind
             .and_then(instruction::Kind::branch_target)
             .is_some()
         {
-            self.state.branch_map.push_branch_taken(branch_taken);
+            branch_map.push_branch_taken(branch_taken);
         }
 
         if self.version != Version::V1 {
-            self.state.privilege = ctx.privilege;
+            initer.set_privilege(ctx.privilege);
         }
 
-        self.state.stack_depth = None;
+        initer.set_stack_depth(None);
 
-        Ok(())
+        Ok(initer)
     }
 }
 
