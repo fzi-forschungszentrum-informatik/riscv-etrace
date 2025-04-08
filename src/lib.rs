@@ -28,8 +28,8 @@
 //! # Example
 //!
 //! The following example demonstrates basic instruction tracing, with default
-//! [`ProtocolConfiguration`], a custom [`Binary`][instruction::binary::Binary]
-//! and tracing packets placed in a single buffer.
+//! [`config::Protocol`], a custom [`Binary`][instruction::binary::Binary] and
+//! tracing packets placed in a single buffer.
 //!
 //! ```
 //! use riscv_etrace::decoder::Decoder;
@@ -73,45 +73,8 @@
 //! ```
 #![no_std]
 
+pub mod config;
 pub mod decoder;
 pub mod instruction;
 pub mod tracer;
 pub mod types;
-
-/// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
-#[derive(Copy, Clone)]
-pub struct ProtocolConfiguration {
-    pub context_width_p: u8,
-    pub time_width_p: u8,
-    pub ecause_width_p: u8,
-    pub iaddress_lsb_p: u8,
-    pub iaddress_width_p: u8,
-    pub cache_size_p: u8,
-    pub privilege_width_p: u8,
-    pub cpu_index_width: u8,
-    pub encoder_mode_n: u8,
-    pub ioptions_n: u8,
-    pub sijump_p: bool,
-    pub call_counter_size_p: u8,
-    pub return_stack_size_p: u8,
-}
-
-impl Default for ProtocolConfiguration {
-    fn default() -> Self {
-        ProtocolConfiguration {
-            context_width_p: 0,
-            time_width_p: 0,
-            ecause_width_p: 6,
-            iaddress_lsb_p: 1,
-            iaddress_width_p: 64,
-            cache_size_p: 0,
-            privilege_width_p: 2,
-            cpu_index_width: 2,
-            encoder_mode_n: 1,
-            ioptions_n: 5,
-            sijump_p: false,
-            call_counter_size_p: 0,
-            return_stack_size_p: 0,
-        }
-    }
-}

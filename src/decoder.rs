@@ -12,7 +12,7 @@ use core::fmt;
 use core::num::NonZeroUsize;
 use core::ops;
 
-use crate::ProtocolConfiguration;
+use crate::config;
 
 use format::Format;
 use header::Header;
@@ -58,17 +58,17 @@ impl fmt::Display for Error {
 pub struct Decoder<'d> {
     data: &'d [u8],
     bit_pos: usize,
-    proto_conf: ProtocolConfiguration,
+    proto_conf: config::Protocol,
 }
 
 impl Default for Decoder<'static> {
     fn default() -> Self {
-        Decoder::new(ProtocolConfiguration::default())
+        Decoder::new(Default::default())
     }
 }
 
 impl Decoder<'_> {
-    pub fn new(proto_conf: ProtocolConfiguration) -> Self {
+    pub fn new(proto_conf: config::Protocol) -> Self {
         Decoder {
             data: &[],
             bit_pos: 0,

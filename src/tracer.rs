@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
+use crate::config;
 use crate::decoder::payload::{self, Payload, QualStatus, Support};
 use crate::instruction;
 use crate::types::trap;
-use crate::ProtocolConfiguration;
 
 pub mod error;
 pub mod item;
@@ -210,7 +210,7 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
 /// Builder for [Tracer]
 #[derive(Copy, Clone, Default)]
 pub struct Builder<B: Binary = binary::Empty> {
-    config: ProtocolConfiguration,
+    config: config::Protocol,
     binary: B,
     address_mode: AddressMode,
     version: Version,
@@ -224,10 +224,10 @@ impl Builder<binary::Empty> {
 }
 
 impl<B: Binary> Builder<B> {
-    /// Build the [Tracer] for the given [ProtocolConfiguration]
+    /// Build the [Tracer] for the given [config::Protocol]
     ///
     /// New builders carry a [Default] configuration.
-    pub fn with_config(self, config: ProtocolConfiguration) -> Self {
+    pub fn with_config(self, config: config::Protocol) -> Self {
         Self { config, ..self }
     }
 

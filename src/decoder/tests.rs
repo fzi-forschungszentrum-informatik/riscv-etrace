@@ -142,14 +142,14 @@ fn format() {
 
 #[test]
 fn extension_jti_1() {
-    let protocol_config = ProtocolConfiguration::default();
+    let protocol_config = Default::default();
 
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b00000000;
     buffer[1] = 0b0_11111_11;
     buffer[2] = 0b00000_101;
 
-    let mut decoder = Decoder::new(ProtocolConfiguration {
+    let mut decoder = Decoder::new(config::Protocol {
         cache_size_p: 10,
         ..protocol_config
     })
@@ -163,12 +163,12 @@ fn extension_jti_1() {
 
 #[test]
 fn extension_jti_2() {
-    let protocol_config = ProtocolConfiguration::default();
+    let protocol_config = Default::default();
 
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b11111111;
     buffer[1] = 0b00000011;
-    let mut decoder = Decoder::new(ProtocolConfiguration {
+    let mut decoder = Decoder::new(config::Protocol {
         cache_size_p: 10,
         ..protocol_config
     })
@@ -213,12 +213,12 @@ fn branch_with_zero_branches() {
 
 #[test]
 fn address_absolute() {
-    let protocol_config = ProtocolConfiguration::default();
+    let protocol_config = Default::default();
 
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b11_000000;
-    let mut decoder = Decoder::new(ProtocolConfiguration {
+    let mut decoder = Decoder::new(config::Protocol {
         // Changed address width and lsb, so that the entire
         // packet aligns with 64 bit
         iaddress_width_p: 64,
@@ -235,12 +235,12 @@ fn address_absolute() {
 
 #[test]
 fn address_differential() {
-    let protocol_config = ProtocolConfiguration::default();
+    let protocol_config = Default::default();
 
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b10_000000;
-    let mut decoder = Decoder::new(ProtocolConfiguration {
+    let mut decoder = Decoder::new(config::Protocol {
         // Changed address width and lsb, so that the entire
         // packet aligns with 64 bit
         iaddress_width_p: 64,
@@ -259,10 +259,10 @@ fn address_differential() {
 fn synchronization_start() {
     use crate::types::Privilege;
 
-    let protocol_config = ProtocolConfiguration::default();
+    let protocol_config = Default::default();
 
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Decoder::new(ProtocolConfiguration {
+    let mut decoder = Decoder::new(config::Protocol {
         iaddress_width_p: 64,
         iaddress_lsb_p: 0,
         ..protocol_config
