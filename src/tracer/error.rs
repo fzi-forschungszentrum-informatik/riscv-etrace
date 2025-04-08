@@ -6,10 +6,6 @@ use core::fmt;
 /// Tracing specific errors
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<I> {
-    /// Address provided by packet is zero
-    ///
-    /// The PC cannot be set to the address, as the address is 0.
-    AddressIsZero,
     /// Invalid input at start of trace
     ///
     /// The tracer requires a synchronization packet as the first packet.
@@ -26,10 +22,6 @@ pub enum Error<I> {
     ///
     /// The tracer has exhausted all availible branch information.
     UnresolvableBranch,
-    /// The current synchronization packet has no branching information
-    WrongGetBranchType,
-    /// The current packet has no privilege information
-    WrongGetPrivilegeType,
     /// The IR stack cannot be constructed for the given size
     CannotConstructIrStack(usize),
     /// We could not fetch an `Instruction` from a given address
@@ -51,14 +43,11 @@ where
 impl<I> fmt::Display for Error<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AddressIsZero => write!(f, "address is zero"),
             Self::StartOfTrace => write!(f, "expected sync packet"),
             Self::UnprocessedInstructions => write!(f, "unprocessed instructions"),
             Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
             Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
             Self::UnresolvableBranch => write!(f, "unresolvable branch"),
-            Self::WrongGetBranchType => write!(f, "expected branching info in packet"),
-            Self::WrongGetPrivilegeType => write!(f, "expected privilege info in packet"),
             Self::CannotConstructIrStack(size) => {
                 write!(f, "Cannot construct return stack of size {size}")
             }
