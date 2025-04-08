@@ -134,14 +134,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 
     fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
-        self.state.stack_depth = None;
+        let mut initer = self.state.initializer(&self.binary)?;
+        initer.set_stack_depth(None);
+
         if support.qual_status != QualStatus::NoChange {
             self.iter_state = IterationState::Depleting;
 
-            if support.qual_status == QualStatus::EndedNtr && self.state.inferred_address.is_some()
-            {
-                self.state.inferred_address = Some(self.state.pc);
-                self.state.stop_condition = state::StopCondition::NotInferred;
+            if support.qual_status == QualStatus::EndedNtr && initer.update_inferred() {
+                initer.set_condition(state::StopCondition::NotInferred);
             }
         }
         Ok(())
