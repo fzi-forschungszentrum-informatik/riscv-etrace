@@ -85,6 +85,11 @@ impl Decoder<'_> {
         }
     }
 
+    /// Retrieve the number of bytes left in this decoder's data
+    pub fn bytes_left(&self) -> usize {
+        self.data.len()
+    }
+
     /// Decode a single [Packet] consisting of header and payload
     ///
     /// Decodes a single [Packet], consuming the associated data from the input.
