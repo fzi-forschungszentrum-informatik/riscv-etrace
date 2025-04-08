@@ -31,7 +31,7 @@
 //! tracing packets placed in a single buffer.
 //!
 //! ```
-//! use riscv_etrace::decoder::Decoder;
+//! use riscv_etrace::decoder;
 //! use riscv_etrace::instruction::{binary, Instruction};
 //! use riscv_etrace::tracer::{self, Tracer};
 //!
@@ -48,7 +48,9 @@
 //! };
 //!
 //! let proto_conf = Default::default();
-//! let mut decoder = Decoder::new(proto_conf).with_data(trace_data);
+//! let mut decoder = decoder::Builder::new()
+//!     .with_config(proto_conf)
+//!     .build(trace_data);
 //! let mut tracer: Tracer<_> = tracer::Builder::new()
 //!     .with_config(proto_conf)
 //!     .with_binary(binary)
