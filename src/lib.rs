@@ -78,8 +78,6 @@ pub mod instruction;
 pub mod tracer;
 pub mod types;
 
-pub use instruction::Instruction;
-
 /// Defines the bit widths of the protocols packet fields. Used by the [decoder] and [tracer].
 #[derive(Copy, Clone)]
 pub struct ProtocolConfiguration {
