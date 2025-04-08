@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements the instruction tracing algorithm.
-use crate::decoder::payload::{self, Payload, QualStatus, Support, Synchronization};
+use crate::decoder::payload::{self, Payload, QualStatus, Support};
 use crate::instruction;
 use crate::types::trap;
 use crate::ProtocolConfiguration;
