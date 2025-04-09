@@ -4,6 +4,9 @@
 pub mod binary;
 pub mod format;
 
+#[cfg(feature = "elf")]
+pub mod elf;
+
 #[cfg(test)]
 mod tests;
 
