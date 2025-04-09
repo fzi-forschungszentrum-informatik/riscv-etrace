@@ -11,13 +11,13 @@ pub trait Binary {
     type Error;
 
     /// Retrieve the [Instruction] at the given address
-    fn get_insn(&self, address: u64) -> Result<Instruction, Self::Error>;
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error>;
 }
 
 impl<F: Fn(u64) -> Result<Instruction, E>, E> Binary for F {
     type Error = E;
 
-    fn get_insn(&self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
         self(address)
     }
 }
@@ -30,7 +30,7 @@ impl<F: Fn(u64) -> Result<Instruction, E>, E> Binary for F {
 impl Binary for &[(u64, Instruction)] {
     type Error = NoInstruction;
 
-    fn get_insn(&self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
         self.binary_search_by_key(&address, |(a, _)| *a)
             .map(|i| self[i].1)
             .map_err(|_| NoInstruction)
@@ -44,7 +44,7 @@ pub struct Empty;
 impl Binary for Empty {
     type Error = NoInstruction;
 
-    fn get_insn(&self, _: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, _: u64) -> Result<Instruction, Self::Error> {
         Err(NoInstruction)
     }
 }
