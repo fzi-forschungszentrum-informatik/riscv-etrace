@@ -7,7 +7,7 @@
 /// A protocol configuration defines the bit widths, and in some cases the
 /// presence, of the protocols packet fields as well as some options that are
 /// relevant for the [tracer][crate::tracer::Tracer].
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Protocol {
     pub context_width_p: u8,
