@@ -124,7 +124,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         Ok(())
     }
 
-    fn process_support(&mut self, support: &payload::Support) -> Result<(), Error<B::Error>> {
+    /// Process a [payload::Support]
+    pub fn process_support(&mut self, support: &payload::Support) -> Result<(), Error<B::Error>> {
         use payload::QualStatus;
 
         let mut initer = self.state.initializer(&mut self.binary)?;
