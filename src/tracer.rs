@@ -3,7 +3,7 @@
 
 //! Implements the instruction tracing algorithm.
 use crate::config;
-use crate::decoder::payload::{self, Payload, QualStatus, Support};
+use crate::decoder::payload::{self, Payload};
 use crate::instruction;
 use crate::types::trap;
 
@@ -124,7 +124,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         Ok(())
     }
 
-    fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
+    fn process_support(&mut self, support: &payload::Support) -> Result<(), Error<B::Error>> {
+        use payload::QualStatus;
+
         let mut initer = self.state.initializer(&mut self.binary)?;
         initer.set_stack_depth(None);
 
