@@ -390,3 +390,15 @@ impl From<Kind> for Instruction {
         }
     }
 }
+
+/// An unknown 16bit [Instruction]
+pub const COMPRESSED: Instruction = Instruction {
+    kind: None,
+    size: Size::Compressed,
+};
+
+/// An unknown 32bit [Instruction]
+pub const UNCOMPRESSED: Instruction = Instruction {
+    kind: None,
+    size: Size::Normal,
+};
