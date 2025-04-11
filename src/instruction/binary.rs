@@ -37,6 +37,21 @@ impl Binary for &[(u64, Instruction)] {
     }
 }
 
+/// [Binary] implementation for a tuple of two binaries
+///
+/// The second [Binary] is considered a "patch" that is only consulted if the
+/// first one did not yield an [Instruction]. Errors emitted always stem from
+/// the first [Binary].
+impl<B: Binary, P: Binary> Binary for (B, P) {
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        self.0
+            .get_insn(address)
+            .or_else(|e| self.1.get_insn(address).map_err(|_| e))
+    }
+}
+
 /// A [Binary] that does not contain any [Instruction]s
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Empty;
