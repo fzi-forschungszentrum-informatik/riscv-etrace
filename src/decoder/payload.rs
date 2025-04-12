@@ -102,21 +102,6 @@ impl Payload {
         }
     }
 
-    pub fn get_address(&self) -> u64 {
-        match self.get_address_info() {
-            None => {
-                if let Payload::Synchronization(Synchronization::Start(start)) = self {
-                    start.address
-                } else if let Payload::Synchronization(Synchronization::Trap(trap)) = self {
-                    trap.address
-                } else {
-                    panic!("{:?} does not have an address", self)
-                }
-            }
-            Some(addr_info) => addr_info.address,
-        }
-    }
-
     pub fn get_branches(&self) -> Option<u8> {
         match self {
             Payload::Branch(branch) => Some(branch.branch_map.count()),
