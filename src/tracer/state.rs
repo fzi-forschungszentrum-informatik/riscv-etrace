@@ -113,6 +113,7 @@ impl<S: ReturnStack> State<S> {
             let branch_limit = if is_branch { 1 } else { 0 };
 
             if end {
+                self.stop_condition = StopCondition::Fused;
                 if let Some(n) = core::num::NonZeroU8::new(self.branch_map.count())
                     .filter(|n| n.get() > branch_limit)
                 {
