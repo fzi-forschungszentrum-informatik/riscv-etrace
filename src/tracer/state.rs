@@ -133,7 +133,7 @@ impl<S: ReturnStack> State<S> {
                     if notify {
                         self.stop_condition = StopCondition::Fused;
                     } else if not_updiscon
-                        && self
+                        && !self
                             .last_insn
                             .kind
                             .map(Kind::is_uninferable_discon)
