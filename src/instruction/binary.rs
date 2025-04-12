@@ -12,6 +12,19 @@ pub trait Binary {
 
     /// Retrieve the [Instruction] at the given address
     fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error>;
+
+    /// "Move" this binary by the given offset
+    ///
+    /// See [Offset] for more details.
+    fn with_offset(self, offset: u64) -> Offset<Self>
+    where
+        Self: Sized,
+    {
+        Offset {
+            inner: self,
+            offset,
+        }
+    }
 }
 
 impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for F {
@@ -49,6 +62,25 @@ impl<B: Binary, P: Binary> Binary for (B, P) {
         self.0
             .get_insn(address)
             .or_else(|e| self.1.get_insn(address).map_err(|_| e))
+    }
+}
+
+/// [Binary] moved by a fixed offset
+///
+/// Accesses will be mapped by subtracting the fixed offset from the address.
+/// The subtraction is done in a wrapping fashion, i.e. accesses to addresses
+/// lower than the offset will translate to accesses to higher addresses.
+#[derive(Copy, Clone, Debug)]
+pub struct Offset<B: Binary> {
+    inner: B,
+    offset: u64,
+}
+
+impl<B: Binary> Binary for Offset<B> {
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        self.inner.get_insn(address.wrapping_sub(self.offset))
     }
 }
 
