@@ -1,7 +1,7 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-
 //! Implements the header and its decoding.
+
 use core::fmt;
 
 use super::{Decode, Decoder, Error};
