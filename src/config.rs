@@ -38,7 +38,7 @@ pub const PROTOCOL: Protocol = Protocol {
     time_width_p: 0,
     ecause_width_p: 6,
     iaddress_lsb_p: 1,
-    iaddress_width_p: 64,
+    iaddress_width_p: 32,
     cache_size_p: 0,
     privilege_width_p: 2,
     cpu_index_width: 2,
