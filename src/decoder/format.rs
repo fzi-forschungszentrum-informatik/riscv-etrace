@@ -80,10 +80,10 @@ pub enum Sync {
 impl Decode for Sync {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
-            0b00 => Sync::Start,
-            0b01 => Sync::Trap,
-            0b10 => Sync::Context,
-            0b11 => Sync::Support,
+            0b00 => Self::Start,
+            0b01 => Self::Trap,
+            0b10 => Self::Context,
+            0b11 => Self::Support,
             _ => unreachable!(),
         })
     }
