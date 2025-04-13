@@ -8,6 +8,9 @@ pub mod payload;
 pub mod truncate;
 mod util;
 
+#[cfg(test)]
+mod tests;
+
 use core::fmt;
 use core::num::NonZeroUsize;
 use core::ops;
@@ -17,10 +20,6 @@ use crate::config;
 use format::Format;
 use header::Header;
 use payload::Payload;
-
-#[cfg(test)]
-mod tests;
-
 use truncate::TruncateNum;
 
 /// A list of possible errors during decoding of a single packet.
