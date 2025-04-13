@@ -36,7 +36,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         if let Payload::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
-            let mut initer = self.state.initializer(&self.binary)?;
+            let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
             if let Payload::Branch(branch) = payload {
@@ -95,12 +95,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let epc = match trap.info.kind {
                     trap::Kind::Exception => {
                         let epc = (!trap.thaddr).then_some(trap.address);
-                        self.state.exception_address(&self.binary, epc)?
+                        self.state.exception_address(&mut self.binary, epc)?
                     }
                     trap::Kind::Interrupt => self.state.current_item().pc(),
                 };
                 if !trap.thaddr {
-                    self.state.initializer(&self.binary)?.set_stack_depth(None);
+                    self.state
+                        .initializer(&mut self.binary)?
+                        .set_stack_depth(None);
                 } else {
                     self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?
                         .reset_to_address()?;
@@ -108,7 +110,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 }
             }
             Synchronization::Context(ctx) => {
-                let mut initer = self.state.initializer(&self.binary)?;
+                let mut initer = self.state.initializer(&mut self.binary)?;
                 initer.set_stack_depth(None);
                 if self.version != Version::V1 {
                     initer.set_privilege(ctx.privilege);
@@ -123,7 +125,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 
     fn process_support(&mut self, support: &Support) -> Result<(), Error<B::Error>> {
-        let mut initer = self.state.initializer(&self.binary)?;
+        let mut initer = self.state.initializer(&mut self.binary)?;
         initer.set_stack_depth(None);
 
         if support.qual_status != QualStatus::NoChange {
@@ -144,11 +146,11 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         branch_taken: bool,
         ctx: &payload::Context,
     ) -> Result<state::Initializer<S, B>, Error<B::Error>> {
-        let mut initer = self.state.initializer(&self.binary)?;
         let insn = self
             .binary
             .get_insn(address)
             .map_err(|e| Error::CannotGetInstruction(e, address))?;
+        let mut initer = self.state.initializer(&mut self.binary)?;
 
         initer.set_address(address);
 
@@ -191,7 +193,7 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
                 Some(Ok(item))
             }
             IterationState::FollowExec | IterationState::Depleting => {
-                self.state.next_item(&self.binary).transpose()
+                self.state.next_item(&mut self.binary).transpose()
             }
         }
     }

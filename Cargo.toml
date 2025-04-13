@@ -8,3 +8,6 @@ description = "An implementation of RISC-V's efficient instruction tracing"
 categories = ["embedded", "no-std", "parser-implementations"]
 keywords = ["riscv", "tracing"]
 repository = "https://github.com/fzi-forschungszentrum-informatik/riscv-etrace"
+
+[dependencies]
+elf = { version = "0.7", optional = true }

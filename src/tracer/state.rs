@@ -89,7 +89,10 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to the loop bodies in`follow_execution_path`
     /// and `process_support` of the reference implementation.
-    pub fn next_item<B: Binary>(&mut self, binary: &B) -> Result<Option<Item>, Error<B::Error>> {
+    pub fn next_item<B: Binary>(
+        &mut self,
+        binary: &mut B,
+    ) -> Result<Option<Item>, Error<B::Error>> {
         use instruction::Kind;
 
         if self.is_fused() {
@@ -173,7 +176,7 @@ impl<S: ReturnStack> State<S> {
     /// implementation.
     pub fn exception_address<B: Binary>(
         &mut self,
-        binary: &B,
+        binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
         use instruction::Kind;
@@ -204,7 +207,7 @@ impl<S: ReturnStack> State<S> {
     /// Returns an [Initializer] for this state if the state is fused.
     pub fn initializer<'a, B: Binary>(
         &'a mut self,
-        binary: &'a B,
+        binary: &'a mut B,
     ) -> Result<Initializer<'a, S, B>, Error<B::Error>> {
         self.is_fused()
             .then_some(Initializer {
@@ -225,7 +228,7 @@ impl<S: ReturnStack> State<S> {
     /// This roughly corresponds to `next_pc` of the reference implementation.
     fn next_pc<B: Binary>(
         &mut self,
-        binary: &B,
+        binary: &mut B,
         address: u64,
     ) -> Result<(Item, bool), Error<B::Error>> {
         // The PC right after the current instruction
@@ -359,7 +362,7 @@ impl<S: ReturnStack> State<S> {
 /// It allows safe configuration as long as it is created for a fused [State].
 pub struct Initializer<'a, S: ReturnStack, B: Binary> {
     state: &'a mut State<S>,
-    binary: &'a B,
+    binary: &'a mut B,
 }
 
 impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
