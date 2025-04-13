@@ -62,9 +62,9 @@ pub enum Ext {
 impl Decode for Ext {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         Ok(if decoder.read_bit()? {
-            Ext::JumpTargetIndex
+            Self::JumpTargetIndex
         } else {
-            Ext::BranchCount
+            Self::BranchCount
         })
     }
 }
