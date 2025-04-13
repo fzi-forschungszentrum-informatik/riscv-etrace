@@ -2,11 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Implements the instruction tracing algorithm.
 
-use crate::config;
-use crate::decoder::payload::{self, Payload};
-use crate::instruction;
-use crate::types::trap;
-
 pub mod error;
 pub mod item;
 pub mod stack;
@@ -14,6 +9,11 @@ mod state;
 
 #[cfg(test)]
 mod tests;
+
+use crate::config;
+use crate::decoder::payload::{self, Payload};
+use crate::instruction;
+use crate::types::trap;
 
 use error::Error;
 use instruction::binary::{self, Binary};
