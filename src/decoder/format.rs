@@ -17,24 +17,24 @@ pub enum Format {
 impl Format {
     pub fn decode_payload(&self, decoder: &mut Decoder) -> Result<Payload, Error> {
         Ok(match self {
-            Format::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
+            Self::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
                 crate::decoder::payload::BranchCount::decode(decoder)?,
             )),
-            Format::Ext(Ext::JumpTargetIndex) => Payload::Extension(Extension::JumpTargetIndex(
+            Self::Ext(Ext::JumpTargetIndex) => Payload::Extension(Extension::JumpTargetIndex(
                 crate::decoder::payload::JumpTargetIndex::decode(decoder)?,
             )),
-            Format::Branch => Payload::Branch(Branch::decode(decoder)?),
-            Format::Addr => Payload::Address(AddressInfo::decode(decoder)?),
-            Format::Sync(Sync::Start) => {
+            Self::Branch => Payload::Branch(Branch::decode(decoder)?),
+            Self::Addr => Payload::Address(AddressInfo::decode(decoder)?),
+            Self::Sync(Sync::Start) => {
                 Payload::Synchronization(Synchronization::Start(Start::decode(decoder)?))
             }
-            Format::Sync(Sync::Trap) => {
+            Self::Sync(Sync::Trap) => {
                 Payload::Synchronization(Synchronization::Trap(Trap::decode(decoder)?))
             }
-            Format::Sync(Sync::Context) => {
+            Self::Sync(Sync::Context) => {
                 Payload::Synchronization(Synchronization::Context(Context::decode(decoder)?))
             }
-            Format::Sync(Sync::Support) => {
+            Self::Sync(Sync::Support) => {
                 Payload::Synchronization(Synchronization::Support(Support::decode(decoder)?))
             }
         })
