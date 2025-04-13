@@ -1,9 +1,7 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use super::payload::{
-    AddressInfo, Branch, Context, Extension, Payload, Start, Support, Synchronization, Trap,
-};
+use super::payload::{self, Payload};
 use super::{Decode, Decoder, Error};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -16,28 +14,18 @@ pub enum Format {
 
 impl Format {
     pub fn decode_payload(&self, decoder: &mut Decoder) -> Result<Payload, Error> {
-        Ok(match self {
-            Self::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
-                crate::decoder::payload::BranchCount::decode(decoder)?,
-            )),
-            Self::Ext(Ext::JumpTargetIndex) => Payload::Extension(Extension::JumpTargetIndex(
-                crate::decoder::payload::JumpTargetIndex::decode(decoder)?,
-            )),
-            Self::Branch => Payload::Branch(Branch::decode(decoder)?),
-            Self::Addr => Payload::Address(AddressInfo::decode(decoder)?),
-            Self::Sync(Sync::Start) => {
-                Payload::Synchronization(Synchronization::Start(Start::decode(decoder)?))
+        match self {
+            Self::Ext(Ext::BranchCount) => payload::BranchCount::decode(decoder).map(Into::into),
+            Self::Ext(Ext::JumpTargetIndex) => {
+                payload::JumpTargetIndex::decode(decoder).map(Into::into)
             }
-            Self::Sync(Sync::Trap) => {
-                Payload::Synchronization(Synchronization::Trap(Trap::decode(decoder)?))
-            }
-            Self::Sync(Sync::Context) => {
-                Payload::Synchronization(Synchronization::Context(Context::decode(decoder)?))
-            }
-            Self::Sync(Sync::Support) => {
-                Payload::Synchronization(Synchronization::Support(Support::decode(decoder)?))
-            }
-        })
+            Self::Branch => payload::Branch::decode(decoder).map(Into::into),
+            Self::Addr => payload::AddressInfo::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Start) => payload::Start::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Trap) => payload::Trap::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Context) => payload::Context::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Support) => payload::Support::decode(decoder).map(Into::into),
+        }
     }
 }
 
