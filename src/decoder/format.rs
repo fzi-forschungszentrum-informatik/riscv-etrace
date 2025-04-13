@@ -1,9 +1,7 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
-use super::payload::{
-    AddressInfo, Branch, Context, Extension, Payload, Start, Support, Synchronization, Trap,
-};
+use super::payload::{self, Payload};
 use super::{Decode, Decoder, Error};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -16,28 +14,18 @@ pub enum Format {
 
 impl Format {
     pub fn decode_payload(&self, decoder: &mut Decoder) -> Result<Payload, Error> {
-        Ok(match self {
-            Format::Ext(Ext::BranchCount) => Payload::Extension(Extension::BranchCount(
-                crate::decoder::payload::BranchCount::decode(decoder)?,
-            )),
-            Format::Ext(Ext::JumpTargetIndex) => Payload::Extension(Extension::JumpTargetIndex(
-                crate::decoder::payload::JumpTargetIndex::decode(decoder)?,
-            )),
-            Format::Branch => Payload::Branch(Branch::decode(decoder)?),
-            Format::Addr => Payload::Address(AddressInfo::decode(decoder)?),
-            Format::Sync(Sync::Start) => {
-                Payload::Synchronization(Synchronization::Start(Start::decode(decoder)?))
+        match self {
+            Self::Ext(Ext::BranchCount) => payload::BranchCount::decode(decoder).map(Into::into),
+            Self::Ext(Ext::JumpTargetIndex) => {
+                payload::JumpTargetIndex::decode(decoder).map(Into::into)
             }
-            Format::Sync(Sync::Trap) => {
-                Payload::Synchronization(Synchronization::Trap(Trap::decode(decoder)?))
-            }
-            Format::Sync(Sync::Context) => {
-                Payload::Synchronization(Synchronization::Context(Context::decode(decoder)?))
-            }
-            Format::Sync(Sync::Support) => {
-                Payload::Synchronization(Synchronization::Support(Support::decode(decoder)?))
-            }
-        })
+            Self::Branch => payload::Branch::decode(decoder).map(Into::into),
+            Self::Addr => payload::AddressInfo::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Start) => payload::Start::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Trap) => payload::Trap::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Context) => payload::Context::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Support) => payload::Support::decode(decoder).map(Into::into),
+        }
     }
 }
 
@@ -62,9 +50,9 @@ pub enum Ext {
 impl Decode for Ext {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         Ok(if decoder.read_bit()? {
-            Ext::JumpTargetIndex
+            Self::JumpTargetIndex
         } else {
-            Ext::BranchCount
+            Self::BranchCount
         })
     }
 }
@@ -80,10 +68,10 @@ pub enum Sync {
 impl Decode for Sync {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
-            0b00 => Sync::Start,
-            0b01 => Sync::Trap,
-            0b10 => Sync::Context,
-            0b11 => Sync::Support,
+            0b00 => Self::Start,
+            0b01 => Self::Trap,
+            0b10 => Self::Context,
+            0b11 => Self::Support,
             _ => unreachable!(),
         })
     }
