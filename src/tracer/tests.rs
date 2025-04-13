@@ -7,7 +7,7 @@ use crate::instruction;
 use crate::types::branch;
 
 use instruction::format::{TypeB, TypeJ, TypeR};
-use instruction::Kind;
+use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use item::Item;
 
 /// Test derived from the specification's Chaper 12, examples 1 and 2
@@ -524,13 +524,3 @@ fn start_packet(address: u64) -> payload::Payload {
     }
     .into()
 }
-
-const UNCOMPRESSED: instruction::Instruction = instruction::Instruction {
-    kind: None,
-    size: instruction::Size::Normal,
-};
-
-const COMPRESSED: instruction::Instruction = instruction::Instruction {
-    kind: None,
-    size: instruction::Size::Compressed,
-};
