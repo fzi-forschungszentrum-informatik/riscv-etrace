@@ -10,16 +10,16 @@
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Protocol {
+    pub cache_size_p: u8,
+    pub call_counter_size_p: u8,
     pub context_width_p: u8,
     pub time_width_p: u8,
     pub ecause_width_p: u8,
     pub iaddress_lsb_p: u8,
     pub iaddress_width_p: u8,
-    pub cache_size_p: u8,
     pub privilege_width_p: u8,
-    pub sijump_p: bool,
-    pub call_counter_size_p: u8,
     pub return_stack_size_p: u8,
+    pub sijump_p: bool,
 }
 
 /// See [PROTOCOL] for default values of individual fields
@@ -31,16 +31,16 @@ impl Default for Protocol {
 
 /// Default [Protocol] configuration
 pub const PROTOCOL: Protocol = Protocol {
+    cache_size_p: 0,
+    call_counter_size_p: 0,
     context_width_p: 0,
     time_width_p: 0,
     ecause_width_p: 6,
     iaddress_lsb_p: 1,
     iaddress_width_p: 32,
-    cache_size_p: 0,
     privilege_width_p: 2,
-    sijump_p: false,
-    call_counter_size_p: 0,
     return_stack_size_p: 0,
+    sijump_p: false,
 };
 
 /// Address mode
