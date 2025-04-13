@@ -1,7 +1,7 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-
 //! Implements the instruction tracing algorithm.
+
 use crate::config;
 use crate::decoder::payload::{self, Payload};
 use crate::instruction;
