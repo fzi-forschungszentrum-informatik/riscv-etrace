@@ -25,22 +25,26 @@ pub struct Protocol {
     pub return_stack_size_p: u8,
 }
 
+/// See [PROTOCOL] for default values of individual fields
 impl Default for Protocol {
     fn default() -> Self {
-        Self {
-            context_width_p: 0,
-            time_width_p: 0,
-            ecause_width_p: 6,
-            iaddress_lsb_p: 1,
-            iaddress_width_p: 64,
-            cache_size_p: 0,
-            privilege_width_p: 2,
-            cpu_index_width: 2,
-            encoder_mode_n: 1,
-            ioptions_n: 5,
-            sijump_p: false,
-            call_counter_size_p: 0,
-            return_stack_size_p: 0,
-        }
+        PROTOCOL
     }
 }
+
+/// Default [Protocol] configuration
+pub const PROTOCOL: Protocol = Protocol {
+    context_width_p: 0,
+    time_width_p: 0,
+    ecause_width_p: 6,
+    iaddress_lsb_p: 1,
+    iaddress_width_p: 64,
+    cache_size_p: 0,
+    privilege_width_p: 2,
+    cpu_index_width: 2,
+    encoder_mode_n: 1,
+    ioptions_n: 5,
+    sijump_p: false,
+    call_counter_size_p: 0,
+    return_stack_size_p: 0,
+};
