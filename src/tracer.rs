@@ -93,12 +93,11 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 }
             }
             Synchronization::Trap(trap) => {
-                let epc = match trap.info.kind {
-                    trap::Kind::Exception => {
-                        let epc = (!trap.thaddr).then_some(trap.address);
-                        self.state.exception_address(&mut self.binary, epc)?
-                    }
-                    trap::Kind::Interrupt => self.state.current_item().pc(),
+                let epc = if trap.info.is_exception() {
+                    let epc = (!trap.thaddr).then_some(trap.address);
+                    self.state.exception_address(&mut self.binary, epc)?
+                } else {
+                    self.state.current_item().pc()
                 };
                 if !trap.thaddr {
                     self.state
