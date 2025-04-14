@@ -1,5 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Trap related types and utilities
 
 /// Information about a trap
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
