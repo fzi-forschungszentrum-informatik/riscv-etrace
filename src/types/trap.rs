@@ -4,22 +4,15 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Info {
     pub ecause: u64,
-    pub tval: u64,
-    pub kind: Kind,
+    pub tval: Option<u64>,
 }
 
 impl Info {
     pub fn is_interrupt(&self) -> bool {
-        self.kind == Kind::Interrupt
+        self.tval.is_none()
     }
 
     pub fn is_exception(&self) -> bool {
-        self.kind == Kind::Exception
+        self.tval.is_some()
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Kind {
-    Interrupt,
-    Exception,
 }

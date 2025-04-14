@@ -125,20 +125,20 @@ impl Decode for Trap {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
         let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
-        let kind = if decoder.read_bit()? {
-            trap::Kind::Interrupt
-        } else {
-            trap::Kind::Exception
-        };
+        let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
         let address = util::read_address(decoder)?;
-        let tval = decoder.read_bits(decoder.proto_conf.iaddress_width_p)?;
+        let tval = if interrupt {
+            None
+        } else {
+            Some(decoder.read_bits(decoder.proto_conf.iaddress_width_p)?)
+        };
         Ok(Trap {
             branch,
             ctx,
             thaddr,
             address,
-            info: trap::Info { ecause, tval, kind },
+            info: trap::Info { ecause, tval },
         })
     }
 }
