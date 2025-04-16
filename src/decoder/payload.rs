@@ -1,10 +1,10 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Implements all different payloads and their decoding.
+//! Definitions of various payloads
 
-use crate::types::{branch, trap, Privilege};
+use crate::types::{branch, Privilege};
 
-use super::{util, Decode, Decoder, Error};
+use super::{sync, util, Decode, Decoder, Error};
 
 /// Determines the layout of [BranchCount].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -31,40 +31,13 @@ impl Decode for BranchFmt {
     }
 }
 
-/// Reports how or if the filter qualification changed.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum QualStatus {
-    /// No change to filter qualification.
-    NoChange,
-    /// Qualification ended, preceding packet sent explicitly to indicate last qualification
-    /// instruction.
-    EndedRep,
-    /// One or more instruction trace packets lost.
-    TraceLost,
-    /// Qualification ended, preceding packet    would have been sent anyway due to an updiscon,
-    /// even if it wasn’t the last qualified instruction
-    EndedNtr,
-}
-
-impl Decode for QualStatus {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        Ok(match decoder.read_bits::<u8>(2)? {
-            0b00 => QualStatus::NoChange,
-            0b01 => QualStatus::EndedRep,
-            0b10 => QualStatus::TraceLost,
-            0b11 => QualStatus::EndedNtr,
-            _ => unreachable!(),
-        })
-    }
-}
-
 /// Top level enum for all possible payload formats.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload {
     Extension(Extension),
     Branch(Branch),
     Address(AddressInfo),
-    Synchronization(Synchronization),
+    Synchronization(sync::Synchronization),
 }
 
 impl Payload {
@@ -148,32 +121,32 @@ impl From<AddressInfo> for Payload {
     }
 }
 
-impl From<Synchronization> for Payload {
-    fn from(sync: Synchronization) -> Self {
+impl From<sync::Synchronization> for Payload {
+    fn from(sync: sync::Synchronization) -> Self {
         Self::Synchronization(sync)
     }
 }
 
-impl From<Start> for Payload {
-    fn from(start: Start) -> Self {
+impl From<sync::Start> for Payload {
+    fn from(start: sync::Start) -> Self {
         Self::Synchronization(start.into())
     }
 }
 
-impl From<Trap> for Payload {
-    fn from(trap: Trap) -> Self {
+impl From<sync::Trap> for Payload {
+    fn from(trap: sync::Trap) -> Self {
         Self::Synchronization(trap.into())
     }
 }
 
-impl From<Context> for Payload {
-    fn from(ctx: Context) -> Self {
+impl From<sync::Context> for Payload {
+    fn from(ctx: sync::Context) -> Self {
         Self::Synchronization(ctx.into())
     }
 }
 
-impl From<Support> for Payload {
-    fn from(support: Support) -> Self {
+impl From<sync::Support> for Payload {
+    fn from(support: sync::Support) -> Self {
         Self::Synchronization(support.into())
     }
 }
@@ -308,188 +281,6 @@ impl Decode for AddressInfo {
             notify,
             updiscon,
             irdepth,
-        })
-    }
-}
-
-/// #### Format 3
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Synchronization {
-    Start(Start),
-    Trap(Trap),
-    Context(Context),
-    Support(Support),
-}
-
-impl Synchronization {
-    /// Check whether we got here without a branch being taken
-    ///
-    /// Returns `false` if the address was a branch target and `true` if the
-    /// branch was not taken or the previous instruction was not a branch
-    /// instruction. Returns `None` if the packet doesn't carry any address
-    /// information.
-    pub fn branch_not_taken(&self) -> Option<bool> {
-        match self {
-            Self::Start(start) => Some(start.branch),
-            Self::Trap(trap) => Some(trap.branch),
-            _ => None,
-        }
-    }
-
-    pub fn get_privilege(&self) -> Option<Privilege> {
-        match self {
-            Self::Start(start) => Some(start.ctx.privilege),
-            Self::Trap(trap) => Some(trap.ctx.privilege),
-            Self::Context(ctx) => Some(ctx.privilege),
-            _ => None,
-        }
-    }
-}
-
-impl From<Start> for Synchronization {
-    fn from(start: Start) -> Self {
-        Self::Start(start)
-    }
-}
-
-impl From<Trap> for Synchronization {
-    fn from(trap: Trap) -> Self {
-        Self::Trap(trap)
-    }
-}
-
-impl From<Context> for Synchronization {
-    fn from(ctx: Context) -> Self {
-        Self::Context(ctx)
-    }
-}
-
-impl From<Support> for Synchronization {
-    fn from(support: Support) -> Self {
-        Self::Support(support)
-    }
-}
-
-/// #### Format 3, sub format 0
-/// Sent for the first traced instruction or when resynchronization is necessary.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Start {
-    /// False, if the address is a taken branch instruction. True, if the branch was not taken
-    /// or the instruction is not a branch.
-    pub branch: bool,
-    pub ctx: Context,
-    /// Full address of the instruction.
-    pub address: u64,
-}
-
-impl Decode for Start {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let branch = decoder.read_bit()?;
-        let ctx = Context::decode(decoder)?;
-        let address = util::read_address(decoder)?;
-        Ok(Start {
-            branch,
-            ctx,
-            address,
-        })
-    }
-}
-
-/// #### Format 3, sub format 1
-/// Sent following an exception or interrupt.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Trap {
-    /// False, if the address is a taken branch instruction. True, if the branch was not taken
-    /// or the instruction is not a branch.
-    pub branch: bool,
-    pub ctx: Context,
-    /// True, if the address points to the trap handler. False, if address points to the EPC for
-    /// an exception at the target of an updiscon, and is undefined for other exceptions and interrupts.
-    pub thaddr: bool,
-    /// Full address of the instruction.
-    pub address: u64,
-    pub info: trap::Info,
-}
-
-impl Decode for Trap {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let branch = decoder.read_bit()?;
-        let ctx = Context::decode(decoder)?;
-        let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
-        let kind = if decoder.read_bit()? {
-            trap::Kind::Interrupt
-        } else {
-            trap::Kind::Exception
-        };
-        let thaddr = decoder.read_bit()?;
-        let address = util::read_address(decoder)?;
-        let tval = decoder.read_bits(decoder.proto_conf.iaddress_width_p)?;
-        Ok(Trap {
-            branch,
-            ctx,
-            thaddr,
-            address,
-            info: trap::Info { ecause, tval, kind },
-        })
-    }
-}
-
-/// #### Format 3, sub format 2
-/// Informs that the context changed or used as part of other payloads.
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub struct Context {
-    /// The privilege level of the reported instruction.
-    pub privilege: Privilege,
-    pub time: u64,
-    pub context: u64,
-}
-
-impl Decode for Context {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let privilege = decoder
-            .read_bits::<u8>(2)?
-            .try_into()
-            .map_err(Error::UnknownPrivilege)?;
-        let time = decoder.read_bits(decoder.proto_conf.time_width_p)?;
-        let context = decoder.read_bits(decoder.proto_conf.context_width_p)?;
-        Ok(Context {
-            privilege,
-            time,
-            context,
-        })
-    }
-}
-
-/// #### Format 3, sub format 3
-/// Supporting information for the decoder.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Support {
-    pub ienable: bool,
-    pub encoder_mode: u64,
-    pub qual_status: QualStatus,
-    pub ioptions: u64,
-    pub denable: bool,
-    pub dloss: bool,
-    pub doptions: u64,
-}
-
-impl Decode for Support {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
-        let ienable = decoder.read_bit()?;
-        let encoder_mode = decoder.read_bits(decoder.proto_conf.encoder_mode_n)?;
-        let qual_status = QualStatus::decode(decoder)?;
-        let ioptions = decoder.read_bits(decoder.proto_conf.ioptions_n)?;
-        let denable = decoder.read_bit()?;
-        let dloss = decoder.read_bit()?;
-        let doptions = decoder.read_bits(4)?;
-        Ok(Support {
-            ienable,
-            encoder_mode,
-            qual_status,
-            ioptions,
-            denable,
-            dloss,
-            doptions,
         })
     }
 }

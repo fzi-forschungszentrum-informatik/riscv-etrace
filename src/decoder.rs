@@ -5,6 +5,7 @@
 mod format;
 pub mod header;
 pub mod payload;
+pub mod sync;
 pub mod truncate;
 mod util;
 

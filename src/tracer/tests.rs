@@ -517,7 +517,7 @@ fn full_branch_map() {
 }
 
 fn start_packet(address: u64) -> payload::Payload {
-    payload::Start {
+    sync::Start {
         branch: false,
         ctx: Default::default(),
         address,

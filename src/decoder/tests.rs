@@ -273,7 +273,7 @@ fn synchronization_start() {
             ..protocol_config
         })
         .build(&buffer);
-    let sync_start = payload::Start::decode(&mut decoder).unwrap();
+    let sync_start = sync::Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
     assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
     assert_eq!(sync_start.address, u64::MAX);

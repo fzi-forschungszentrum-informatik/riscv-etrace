@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::payload::{self, Payload};
-use super::{Decode, Decoder, Error};
+use super::{sync, Decode, Decoder, Error};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Format {
@@ -21,10 +21,10 @@ impl Format {
             }
             Self::Branch => payload::Branch::decode(decoder).map(Into::into),
             Self::Addr => payload::AddressInfo::decode(decoder).map(Into::into),
-            Self::Sync(Sync::Start) => payload::Start::decode(decoder).map(Into::into),
-            Self::Sync(Sync::Trap) => payload::Trap::decode(decoder).map(Into::into),
-            Self::Sync(Sync::Context) => payload::Context::decode(decoder).map(Into::into),
-            Self::Sync(Sync::Support) => payload::Support::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Start) => sync::Start::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Trap) => sync::Trap::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Context) => sync::Context::decode(decoder).map(Into::into),
+            Self::Sync(Sync::Support) => sync::Support::decode(decoder).map(Into::into),
         }
     }
 }

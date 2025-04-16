@@ -11,7 +11,8 @@ mod state;
 mod tests;
 
 use crate::config;
-use crate::decoder::payload::{self, Payload};
+use crate::decoder::payload::Payload;
+use crate::decoder::sync;
 use crate::instruction;
 use crate::types::trap;
 
@@ -64,9 +65,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         }
     }
 
-    /// Process a [payload::Synchronization]
-    pub fn process_sync(&mut self, sync: &payload::Synchronization) -> Result<(), Error<B::Error>> {
-        use payload::Synchronization;
+    /// Process a [sync::Synchronization]
+    pub fn process_sync(&mut self, sync: &sync::Synchronization) -> Result<(), Error<B::Error>> {
+        use sync::Synchronization;
 
         match sync {
             Synchronization::Start(start) => {
@@ -124,9 +125,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         Ok(())
     }
 
-    /// Process a [payload::Support]
-    pub fn process_support(&mut self, support: &payload::Support) -> Result<(), Error<B::Error>> {
-        use payload::QualStatus;
+    /// Process a [sync::Support]
+    pub fn process_support(&mut self, support: &sync::Support) -> Result<(), Error<B::Error>> {
+        use sync::QualStatus;
 
         let mut initer = self.state.initializer(&mut self.binary)?;
         initer.set_stack_depth(None);
@@ -147,7 +148,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
-        ctx: &payload::Context,
+        ctx: &sync::Context,
     ) -> Result<state::Initializer<S, B>, Error<B::Error>> {
         let insn = self
             .binary
