@@ -60,30 +60,7 @@ pub struct Decoder<'d> {
     proto_conf: config::Protocol,
 }
 
-impl Default for Decoder<'static> {
-    fn default() -> Self {
-        Decoder::new(Default::default())
-    }
-}
-
 impl Decoder<'_> {
-    pub fn new(proto_conf: config::Protocol) -> Self {
-        Decoder {
-            data: &[],
-            bit_pos: 0,
-            proto_conf,
-        }
-    }
-
-    /// Set the data being decoded
-    pub fn with_data(self, data: &[u8]) -> Decoder<'_> {
-        Decoder {
-            data,
-            bit_pos: 0,
-            ..self
-        }
-    }
-
     /// Retrieve the number of bytes left in this decoder's data
     pub fn bytes_left(&self) -> usize {
         self.data.len()
@@ -95,8 +72,7 @@ impl Decoder<'_> {
     /// The returned packet's [Packet::len] will contain the number of bytes
     /// consumed. After successful operation, the decoder is left at the byte
     /// boundary following the packet, ready to decode the next one. A failure
-    /// may leave the decoder in an unspecified state, requireing a reset via
-    /// a call to [Self::with_data].
+    /// may leave the decoder in an unspecified state.
     pub fn decode_packet(&mut self) -> Result<Packet, Error> {
         let header = Header::decode(self)?;
         self.advance_to_byte();
@@ -196,6 +172,33 @@ impl Decoder<'_> {
                 .last()
                 .map(|b| if b & 0x80 != 0 { 0xFF } else { 0x00 })
                 .ok_or(Error::InsufficientData(NonZeroUsize::MIN))
+        }
+    }
+}
+
+/// Biulder for [Decoder]s
+#[derive(Copy, Clone, Default)]
+pub struct Builder {
+    config: config::Protocol,
+}
+
+impl Builder {
+    /// Create a new builder
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Set the [config::Protocol] of the [Decoder]s built
+    pub fn with_config(self, config: config::Protocol) -> Self {
+        Self { config }
+    }
+
+    /// Build a [Decoder] for the given data
+    pub fn build<'d>(&self, data: &'d [u8]) -> Decoder<'d> {
+        Decoder {
+            data,
+            bit_pos: 0,
+            proto_conf: self.config,
         }
     }
 }
