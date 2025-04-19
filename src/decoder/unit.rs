@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Trace unit implementation specific definitions and utilities
 
-use super::{Decoder, Error};
+use super::{Decode, Decoder, Error};
 
 /// Specifics about a trace unit implementation
 pub trait Unit {
@@ -14,4 +14,49 @@ pub trait Unit {
 
     /// Decode instruction trace options
     fn decode_ioptions(decoder: &mut Decoder) -> Result<Self::IOptions, Error>;
+}
+
+/// Reference trace [Unit]
+///
+/// This unit is used in the reference flow (in the form of a model).
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Reference;
+
+impl Unit for Reference {
+    type IOptions = ReferenceIOptions;
+
+    fn encoder_mode_width(&self) -> u8 {
+        1
+    }
+
+    fn decode_ioptions(decoder: &mut Decoder) -> Result<Self::IOptions, Error> {
+        Decode::decode(decoder)
+    }
+}
+
+/// IOptions for the [Reference] [Unit]
+#[derive(Copy, Clone, Debug)]
+pub struct ReferenceIOptions {
+    pub implicit_return: bool,
+    pub implicit_exception: bool,
+    pub full_address: bool,
+    pub jump_target_cache: bool,
+    pub branch_prediction: bool,
+}
+
+impl Decode for ReferenceIOptions {
+    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+        let implicit_return = decoder.read_bit()?;
+        let implicit_exception = decoder.read_bit()?;
+        let full_address = decoder.read_bit()?;
+        let jump_target_cache = decoder.read_bit()?;
+        let branch_prediction = decoder.read_bit()?;
+        Ok(Self {
+            implicit_return,
+            implicit_exception,
+            full_address,
+            jump_target_cache,
+            branch_prediction,
+        })
+    }
 }
