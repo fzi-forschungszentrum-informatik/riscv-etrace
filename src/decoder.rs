@@ -195,7 +195,7 @@ impl Builder {
     }
 
     /// Build a [Decoder] for the given data
-    pub fn build<'d>(&self, data: &'d [u8]) -> Decoder<'d> {
+    pub fn build(self, data: &[u8]) -> Decoder {
         Decoder {
             data,
             bit_pos: 0,
