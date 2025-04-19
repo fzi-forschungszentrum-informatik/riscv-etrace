@@ -79,7 +79,10 @@ impl<U> Decoder<'_, U> {
     /// consumed. After successful operation, the decoder is left at the byte
     /// boundary following the packet, ready to decode the next one. A failure
     /// may leave the decoder in an unspecified state.
-    pub fn decode_packet(&mut self) -> Result<Packet, Error> {
+    pub fn decode_packet(&mut self) -> Result<Packet<U::IOptions>, Error>
+    where
+        U: unit::Unit,
+    {
         let header = Header::decode(self)?;
         self.advance_to_byte();
         let payload_start = self.bit_pos >> 3;
@@ -227,9 +230,9 @@ trait Decode<U>: Sized {
 /// A single protocol packet emitted by the encoder.
 /// Each packet consists of a single header and a payload.
 #[derive(Debug)]
-pub struct Packet {
+pub struct Packet<I> {
     pub header: Header,
-    pub payload: Payload,
+    pub payload: Payload<I>,
     /// Length of the packet in bytes.
     pub len: usize,
 }

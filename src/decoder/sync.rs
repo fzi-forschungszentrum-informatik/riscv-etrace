@@ -8,20 +8,21 @@
 
 use crate::types::{trap, Privilege};
 
+use super::unit::{self, Unit};
 use super::{util, Decode, Decoder, Error};
 
 /// Synchronization payload
 ///
 /// Represents a format 3 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Synchronization {
+pub enum Synchronization<I = unit::ReferenceIOptions> {
     Start(Start),
     Trap(Trap),
     Context(Context),
-    Support(Support),
+    Support(Support<I>),
 }
 
-impl Synchronization {
+impl<I> Synchronization<I> {
     /// Check whether we got here without a branch being taken
     ///
     /// Returns `false` if the address was a branch target and `true` if the
@@ -50,26 +51,26 @@ impl Synchronization {
     }
 }
 
-impl From<Start> for Synchronization {
+impl<I> From<Start> for Synchronization<I> {
     fn from(start: Start) -> Self {
         Self::Start(start)
     }
 }
 
-impl From<Trap> for Synchronization {
+impl<I> From<Trap> for Synchronization<I> {
     fn from(trap: Trap) -> Self {
         Self::Trap(trap)
     }
 }
 
-impl From<Context> for Synchronization {
+impl<I> From<Context> for Synchronization<I> {
     fn from(ctx: Context) -> Self {
         Self::Context(ctx)
     }
 }
 
-impl From<Support> for Synchronization {
-    fn from(support: Support) -> Self {
+impl<I> From<Support<I>> for Synchronization<I> {
+    fn from(support: Support<I>) -> Self {
         Self::Support(support)
     }
 }
@@ -175,25 +176,25 @@ impl<U> Decode<U> for Context {
 ///
 /// Represents a format 3, subformat 3 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Support {
+pub struct Support<I = unit::ReferenceIOptions> {
     pub ienable: bool,
     pub encoder_mode: EncoderMode,
     pub qual_status: QualStatus,
-    pub ioptions: u64,
+    pub ioptions: I,
     pub denable: bool,
     pub dloss: bool,
     pub doptions: u64,
 }
 
-impl<U> Decode<U> for Support {
+impl<U: Unit> Decode<U> for Support<U::IOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
         let encoder_mode = decoder
-            .read_bits::<u8>(decoder.proto_conf.encoder_mode_n)?
+            .read_bits::<u8>(decoder.unit.encoder_mode_width())?
             .try_into()
             .map_err(Error::UnknownEncoderMode)?;
         let qual_status = QualStatus::decode(decoder)?;
-        let ioptions = decoder.read_bits(decoder.proto_conf.ioptions_n)?;
+        let ioptions = U::decode_ioptions(decoder)?;
         let denable = decoder.read_bit()?;
         let dloss = decoder.read_bit()?;
         let doptions = decoder.read_bits(4)?;

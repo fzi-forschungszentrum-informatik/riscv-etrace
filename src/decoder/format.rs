@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::payload::{self, Payload};
-use super::{sync, Decode, Decoder, Error};
+use super::{sync, unit, Decode, Decoder, Error};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Format {
@@ -13,7 +13,10 @@ pub enum Format {
 }
 
 impl Format {
-    pub fn decode_payload<U>(&self, decoder: &mut Decoder<U>) -> Result<Payload, Error> {
+    pub fn decode_payload<U: unit::Unit>(
+        &self,
+        decoder: &mut Decoder<U>,
+    ) -> Result<Payload<U::IOptions>, Error> {
         match self {
             Self::Ext(Ext::BranchCount) => payload::BranchCount::decode(decoder).map(Into::into),
             Self::Ext(Ext::JumpTargetIndex) => {
