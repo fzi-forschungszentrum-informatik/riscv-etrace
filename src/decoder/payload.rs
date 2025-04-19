@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Definitions of various payloads
 
-use crate::types::{branch, Privilege};
+use crate::types::branch;
 
 use super::{sync, unit, util, Decode, Decoder, Error};
 
@@ -72,21 +72,6 @@ impl<I> Payload<I> {
             Payload::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
             Payload::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
             _ => None,
-        }
-    }
-
-    pub fn get_branches(&self) -> Option<u8> {
-        match self {
-            Payload::Branch(branch) => Some(branch.branch_map.count()),
-            _ => None,
-        }
-    }
-
-    pub fn get_privilege(&self) -> Option<Privilege> {
-        if let Self::Synchronization(sync) = self {
-            sync.get_privilege()
-        } else {
-            None
         }
     }
 }
