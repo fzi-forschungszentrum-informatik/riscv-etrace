@@ -35,6 +35,8 @@ pub enum Error {
     InsufficientData(NonZeroUsize),
     /// The privilege level is not known. You might want to implement it.
     UnknownPrivilege(u8),
+    /// Encountered an unknown encoder mode
+    UnknownEncoderMode(u8),
 }
 
 impl core::error::Error for Error {}
@@ -47,6 +49,7 @@ impl fmt::Display for Error {
             Self::BadBranchFmt => write!(f, "Malformed branch format"),
             Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
+            Self::UnknownEncoderMode(m) => write!(f, "Unknown encoder mode {m}"),
         }
     }
 }

@@ -177,7 +177,7 @@ impl Decode for Context {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Support {
     pub ienable: bool,
-    pub encoder_mode: u64,
+    pub encoder_mode: EncoderMode,
     pub qual_status: QualStatus,
     pub ioptions: u64,
     pub denable: bool,
@@ -188,7 +188,10 @@ pub struct Support {
 impl Decode for Support {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
-        let encoder_mode = decoder.read_bits(decoder.proto_conf.encoder_mode_n)?;
+        let encoder_mode = decoder
+            .read_bits::<u8>(decoder.proto_conf.encoder_mode_n)?
+            .try_into()
+            .map_err(Error::UnknownEncoderMode)?;
         let qual_status = QualStatus::decode(decoder)?;
         let ioptions = decoder.read_bits(decoder.proto_conf.ioptions_n)?;
         let denable = decoder.read_bit()?;
@@ -230,5 +233,22 @@ impl Decode for QualStatus {
             0b11 => QualStatus::EndedNtr,
             _ => unreachable!(),
         })
+    }
+}
+
+/// Mode the encoder is operating in
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum EncoderMode {
+    BranchTrace,
+}
+
+impl TryFrom<u8> for EncoderMode {
+    type Error = u8;
+
+    fn try_from(num: u8) -> Result<Self, Self::Error> {
+        match num {
+            0 => Ok(Self::BranchTrace),
+            e => Err(e),
+        }
     }
 }
