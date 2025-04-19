@@ -37,15 +37,15 @@ impl<I> Synchronization<I> {
         }
     }
 
-    /// Retrieve the [Context::privilege] from this payload
+    /// Retrieve the [Context] from this payload
     ///
     /// Returns [None] if the payload does not contain a context. This is the
     /// case for [Support][Self::Support] packets.
-    pub fn get_privilege(&self) -> Option<Privilege> {
+    pub fn as_context(&self) -> Option<&Context> {
         match self {
-            Self::Start(start) => Some(start.ctx.privilege),
-            Self::Trap(trap) => Some(trap.ctx.privilege),
-            Self::Context(ctx) => Some(ctx.privilege),
+            Self::Start(start) => Some(&start.ctx),
+            Self::Trap(trap) => Some(&trap.ctx),
+            Self::Context(ctx) => Some(ctx),
             _ => None,
         }
     }
