@@ -26,9 +26,6 @@ impl<U> Decode<U> for Header {
             .then(|| decoder.read_bits(16))
             .transpose()?;
         let hart_index = decoder.read_bits(decoder.hart_index_width)?;
-        if trace_type != TraceType::Instruction {
-            return Err(Error::WrongTraceType(trace_type));
-        }
 
         Ok(Header {
             payload_len,
