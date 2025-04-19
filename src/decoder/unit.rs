@@ -5,7 +5,7 @@
 use super::{Decode, Decoder, Error};
 
 /// Specifics about a trace unit implementation
-pub trait Unit {
+pub trait Unit<U = Self> {
     /// Instruction trace options
     type IOptions;
 
@@ -13,7 +13,7 @@ pub trait Unit {
     fn encoder_mode_width(&self) -> u8;
 
     /// Decode instruction trace options
-    fn decode_ioptions(decoder: &mut Decoder) -> Result<Self::IOptions, Error>;
+    fn decode_ioptions(decoder: &mut Decoder<U>) -> Result<Self::IOptions, Error>;
 }
 
 /// Reference trace [Unit]
@@ -22,14 +22,14 @@ pub trait Unit {
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Reference;
 
-impl Unit for Reference {
+impl<U> Unit<U> for Reference {
     type IOptions = ReferenceIOptions;
 
     fn encoder_mode_width(&self) -> u8 {
         1
     }
 
-    fn decode_ioptions(decoder: &mut Decoder) -> Result<Self::IOptions, Error> {
+    fn decode_ioptions(decoder: &mut Decoder<U>) -> Result<Self::IOptions, Error> {
         Decode::decode(decoder)
     }
 }
@@ -44,8 +44,8 @@ pub struct ReferenceIOptions {
     pub branch_prediction: bool,
 }
 
-impl Decode for ReferenceIOptions {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for ReferenceIOptions {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let implicit_return = decoder.read_bit()?;
         let implicit_exception = decoder.read_bit()?;
         let full_address = decoder.read_bit()?;

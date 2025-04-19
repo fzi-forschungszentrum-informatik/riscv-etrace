@@ -59,13 +59,14 @@ impl fmt::Display for Error {
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
 /// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
 #[derive(Clone)]
-pub struct Decoder<'d> {
+pub struct Decoder<'d, U> {
     data: &'d [u8],
     bit_pos: usize,
     proto_conf: config::Protocol,
+    unit: U,
 }
 
-impl Decoder<'_> {
+impl<U> Decoder<'_, U> {
     /// Retrieve the number of bytes left in this decoder's data
     pub fn bytes_left(&self) -> usize {
         self.data.len()
@@ -183,33 +184,44 @@ impl Decoder<'_> {
 
 /// Biulder for [Decoder]s
 #[derive(Copy, Clone, Default)]
-pub struct Builder {
+pub struct Builder<U = unit::Reference> {
     config: config::Protocol,
+    unit: U,
 }
 
-impl Builder {
+impl Builder<unit::Reference> {
     /// Create a new builder
     pub fn new() -> Self {
         Default::default()
     }
+}
 
+impl<U> Builder<U> {
     /// Set the [config::Protocol] of the [Decoder]s built
     pub fn with_config(self, config: config::Protocol) -> Self {
-        Self { config }
+        Self { config, ..self }
+    }
+
+    pub fn for_unit<V>(self, unit: V) -> Builder<V> {
+        Builder {
+            config: self.config,
+            unit,
+        }
     }
 
     /// Build a [Decoder] for the given data
-    pub fn build(self, data: &[u8]) -> Decoder {
+    pub fn build(self, data: &[u8]) -> Decoder<U> {
         Decoder {
             data,
             bit_pos: 0,
             proto_conf: self.config,
+            unit: self.unit,
         }
     }
 }
 
-trait Decode: Sized {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error>;
+trait Decode<U>: Sized {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error>;
 }
 
 /// A single protocol packet emitted by the encoder.

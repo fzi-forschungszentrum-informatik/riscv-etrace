@@ -17,8 +17,8 @@ pub struct Header {
     pub hart_index: usize,
 }
 
-impl Decode for Header {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Header {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let payload_len = decoder.read_bits(5)?;
         let trace_type = TraceType::decode(decoder)?;
         let time_tag = decoder
@@ -53,8 +53,8 @@ impl fmt::Display for TraceType {
     }
 }
 
-impl Decode for TraceType {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for TraceType {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b10 => Ok(TraceType::Instruction),
             unknown => Err(Error::UnknownTraceType(unknown.into())),

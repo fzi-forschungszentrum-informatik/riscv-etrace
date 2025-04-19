@@ -19,8 +19,8 @@ pub enum BranchFmt {
     AddrFail = 3,
 }
 
-impl Decode for BranchFmt {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for BranchFmt {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b00 => Ok(BranchFmt::NoAddr),
             0b01 => Err(Error::BadBranchFmt),
@@ -168,8 +168,8 @@ pub struct BranchCount {
     pub address: Option<AddressInfo>,
 }
 
-impl Decode for BranchCount {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for BranchCount {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch_count = decoder.read_bits::<u32>(32)? - 31;
         let branch_fmt = BranchFmt::decode(decoder)?;
         let address = if branch_fmt == BranchFmt::NoAddr {
@@ -197,8 +197,8 @@ pub struct JumpTargetIndex {
     pub irdepth: Option<usize>,
 }
 
-impl Decode for JumpTargetIndex {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for JumpTargetIndex {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
         let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
         let irdepth = util::read_implicit_return(decoder)?;
@@ -220,8 +220,8 @@ pub struct Branch {
     pub address: Option<AddressInfo>,
 }
 
-impl Decode for Branch {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Branch {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         use util::BranchCount;
 
         let count = BranchCount::decode(decoder)?;
@@ -270,8 +270,8 @@ pub struct AddressInfo {
     pub irdepth: Option<usize>,
 }
 
-impl Decode for AddressInfo {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for AddressInfo {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;

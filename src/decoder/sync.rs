@@ -88,8 +88,8 @@ pub struct Start {
     pub address: u64,
 }
 
-impl Decode for Start {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Start {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
         let address = util::read_address(decoder)?;
@@ -120,8 +120,8 @@ pub struct Trap {
     pub info: trap::Info,
 }
 
-impl Decode for Trap {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Trap {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
         let ecause = decoder.read_bits(decoder.proto_conf.ecause_width_p)?;
@@ -155,8 +155,8 @@ pub struct Context {
     pub context: u64,
 }
 
-impl Decode for Context {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Context {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let privilege = decoder
             .read_bits::<u8>(2)?
             .try_into()
@@ -185,8 +185,8 @@ pub struct Support {
     pub doptions: u64,
 }
 
-impl Decode for Support {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Support {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
         let encoder_mode = decoder
             .read_bits::<u8>(decoder.proto_conf.encoder_mode_n)?
@@ -224,8 +224,8 @@ pub enum QualStatus {
     EndedNtr,
 }
 
-impl Decode for QualStatus {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for QualStatus {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => QualStatus::NoChange,
             0b01 => QualStatus::EndedRep,
