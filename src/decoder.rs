@@ -7,6 +7,7 @@ pub mod header;
 pub mod payload;
 pub mod sync;
 pub mod truncate;
+pub mod unit;
 mod util;
 
 #[cfg(test)]
