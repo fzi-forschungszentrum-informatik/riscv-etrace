@@ -57,7 +57,7 @@ impl Decode for TraceType {
     fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b10 => Ok(TraceType::Instruction),
-            unknown => Err(Error::UnknownTraceType(unknown.into())),
+            unknown => Err(Error::UnknownTraceType(unknown)),
         }
     }
 }

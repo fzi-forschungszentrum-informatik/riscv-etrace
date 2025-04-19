@@ -27,7 +27,7 @@ use truncate::TruncateNum;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// The trace type is not known to us
-    UnknownTraceType(u64),
+    UnknownTraceType(u8),
     WrongTraceType(header::TraceType),
     /// The branch format in [payload::BranchCount] is `0b01`.
     BadBranchFmt,
