@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::payload::{self, Payload};
-use super::{sync, Decode, Decoder, Error};
+use super::{sync, unit, Decode, Decoder, Error};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Format {
@@ -13,7 +13,10 @@ pub enum Format {
 }
 
 impl Format {
-    pub fn decode_payload(&self, decoder: &mut Decoder) -> Result<Payload, Error> {
+    pub fn decode_payload<U: unit::Unit>(
+        &self,
+        decoder: &mut Decoder<U>,
+    ) -> Result<Payload<U::IOptions>, Error> {
         match self {
             Self::Ext(Ext::BranchCount) => payload::BranchCount::decode(decoder).map(Into::into),
             Self::Ext(Ext::JumpTargetIndex) => {
@@ -29,8 +32,8 @@ impl Format {
     }
 }
 
-impl Decode for Format {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Format {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => Self::Ext(Ext::decode(decoder)?),
             0b01 => Self::Branch,
@@ -47,8 +50,8 @@ pub enum Ext {
     JumpTargetIndex,
 }
 
-impl Decode for Ext {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Ext {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(if decoder.read_bit()? {
             Self::JumpTargetIndex
         } else {
@@ -65,8 +68,8 @@ pub enum Sync {
     Support,
 }
 
-impl Decode for Sync {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Sync {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => Self::Start,
             0b01 => Self::Trap,

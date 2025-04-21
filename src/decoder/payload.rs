@@ -4,7 +4,7 @@
 
 use crate::types::{branch, Privilege};
 
-use super::{sync, util, Decode, Decoder, Error};
+use super::{sync, unit, util, Decode, Decoder, Error};
 
 /// Determines the layout of [BranchCount].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -19,8 +19,8 @@ pub enum BranchFmt {
     AddrFail = 3,
 }
 
-impl Decode for BranchFmt {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for BranchFmt {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b00 => Ok(BranchFmt::NoAddr),
             0b01 => Err(Error::BadBranchFmt),
@@ -33,14 +33,14 @@ impl Decode for BranchFmt {
 
 /// Top level enum for all possible payload formats.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Payload {
+pub enum Payload<I = unit::ReferenceIOptions> {
     Extension(Extension),
     Branch(Branch),
     Address(AddressInfo),
-    Synchronization(sync::Synchronization),
+    Synchronization(sync::Synchronization<I>),
 }
 
-impl Payload {
+impl<I> Payload<I> {
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
         match self {
             Payload::Address(addr) => Some(addr),
@@ -91,62 +91,62 @@ impl Payload {
     }
 }
 
-impl From<Extension> for Payload {
+impl<I> From<Extension> for Payload<I> {
     fn from(ex: Extension) -> Self {
         Self::Extension(ex)
     }
 }
 
-impl From<BranchCount> for Payload {
+impl<I> From<BranchCount> for Payload<I> {
     fn from(count: BranchCount) -> Self {
         Self::Extension(Extension::BranchCount(count))
     }
 }
 
-impl From<JumpTargetIndex> for Payload {
+impl<I> From<JumpTargetIndex> for Payload<I> {
     fn from(idx: JumpTargetIndex) -> Self {
         Self::Extension(Extension::JumpTargetIndex(idx))
     }
 }
 
-impl From<Branch> for Payload {
+impl<I> From<Branch> for Payload<I> {
     fn from(branch: Branch) -> Self {
         Self::Branch(branch)
     }
 }
 
-impl From<AddressInfo> for Payload {
+impl<I> From<AddressInfo> for Payload<I> {
     fn from(addr: AddressInfo) -> Self {
         Self::Address(addr)
     }
 }
 
-impl From<sync::Synchronization> for Payload {
-    fn from(sync: sync::Synchronization) -> Self {
+impl<I> From<sync::Synchronization<I>> for Payload<I> {
+    fn from(sync: sync::Synchronization<I>) -> Self {
         Self::Synchronization(sync)
     }
 }
 
-impl From<sync::Start> for Payload {
+impl<I> From<sync::Start> for Payload<I> {
     fn from(start: sync::Start) -> Self {
         Self::Synchronization(start.into())
     }
 }
 
-impl From<sync::Trap> for Payload {
+impl<I> From<sync::Trap> for Payload<I> {
     fn from(trap: sync::Trap) -> Self {
         Self::Synchronization(trap.into())
     }
 }
 
-impl From<sync::Context> for Payload {
+impl<I> From<sync::Context> for Payload<I> {
     fn from(ctx: sync::Context) -> Self {
         Self::Synchronization(ctx.into())
     }
 }
 
-impl From<sync::Support> for Payload {
-    fn from(support: sync::Support) -> Self {
+impl<I> From<sync::Support<I>> for Payload<I> {
+    fn from(support: sync::Support<I>) -> Self {
         Self::Synchronization(support.into())
     }
 }
@@ -168,8 +168,8 @@ pub struct BranchCount {
     pub address: Option<AddressInfo>,
 }
 
-impl Decode for BranchCount {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for BranchCount {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch_count = decoder.read_bits::<u32>(32)? - 31;
         let branch_fmt = BranchFmt::decode(decoder)?;
         let address = if branch_fmt == BranchFmt::NoAddr {
@@ -197,8 +197,8 @@ pub struct JumpTargetIndex {
     pub irdepth: Option<usize>,
 }
 
-impl Decode for JumpTargetIndex {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for JumpTargetIndex {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
         let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
         let irdepth = util::read_implicit_return(decoder)?;
@@ -220,8 +220,8 @@ pub struct Branch {
     pub address: Option<AddressInfo>,
 }
 
-impl Decode for Branch {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for Branch {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         use util::BranchCount;
 
         let count = BranchCount::decode(decoder)?;
@@ -270,8 +270,8 @@ pub struct AddressInfo {
     pub irdepth: Option<usize>,
 }
 
-impl Decode for AddressInfo {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for AddressInfo {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
         let updiscon = decoder.read_differential_bit()?;

@@ -11,7 +11,7 @@ use super::{Decode, Decoder, Error};
 /// Read an address as an `u64`, honouring the address width and lsb offset
 /// specified in the `decoder`'s protocol configuration. Since it is read as an
 /// `u64`, it is not sign extended.
-pub fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
+pub fn read_address<U>(decoder: &mut Decoder<U>) -> Result<u64, Error> {
     let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
     decoder
         .read_bits::<u64>(width)
@@ -23,7 +23,7 @@ pub fn read_address(decoder: &mut Decoder) -> Result<u64, Error> {
 /// This fn reads the `irreport` and `irdepth` fields. The former is read
 /// differentially, and if the result is `true` this fn returns `irdepth`.
 /// Otherwise, `None` is returned.
-pub fn read_implicit_return(decoder: &mut Decoder) -> Result<Option<usize>, Error> {
+pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>, Error> {
     let depth_len = decoder.proto_conf.return_stack_size_p
         + decoder.proto_conf.call_counter_size_p
         + (if decoder.proto_conf.return_stack_size_p > 0 {
@@ -54,7 +54,7 @@ impl BranchCount {
     }
 
     /// Read a branch map with this count
-    pub fn read_branch_map(self, decoder: &mut Decoder) -> Result<branch::Map, Error> {
+    pub fn read_branch_map<U>(self, decoder: &mut Decoder<U>) -> Result<branch::Map, Error> {
         let length = core::iter::successors(Some(31), |l| (*l > 0).then_some(l >> 1))
             .take_while(|l| *l >= self.0)
             .last()
@@ -68,8 +68,8 @@ impl BranchCount {
     pub const FULL: Self = Self(31);
 }
 
-impl Decode for BranchCount {
-    fn decode(decoder: &mut Decoder) -> Result<Self, Error> {
+impl<U> Decode<U> for BranchCount {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         decoder.read_bits(5).map(Self)
     }
 }
