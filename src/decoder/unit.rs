@@ -9,7 +9,7 @@ use super::{Decode, Decoder, Error};
 /// Specifics about a trace unit implementation
 pub trait Unit<U = Self> {
     /// Instruction trace options
-    type IOptions;
+    type IOptions: IOptions;
 
     /// Width of the encoder mode field
     fn encoder_mode_width(&self) -> u8;
