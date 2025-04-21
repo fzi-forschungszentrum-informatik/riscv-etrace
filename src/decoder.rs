@@ -64,6 +64,7 @@ pub struct Decoder<'d, U> {
     bit_pos: usize,
     proto_conf: config::Protocol,
     unit: U,
+    hart_index_width: u8,
 }
 
 impl<U> Decoder<'_, U> {
@@ -190,6 +191,7 @@ impl<U> Decoder<'_, U> {
 pub struct Builder<U = unit::Reference> {
     config: config::Protocol,
     unit: U,
+    hart_index_width: u8,
 }
 
 impl Builder<unit::Reference> {
@@ -209,6 +211,15 @@ impl<U> Builder<U> {
         Builder {
             config: self.config,
             unit,
+            hart_index_width: self.hart_index_width,
+        }
+    }
+
+    /// Set the width to use for CPU index fields
+    pub fn with_hart_index_width(self, hart_index_width: u8) -> Self {
+        Self {
+            hart_index_width,
+            ..self
         }
     }
 
@@ -219,6 +230,7 @@ impl<U> Builder<U> {
             bit_pos: 0,
             proto_conf: self.config,
             unit: self.unit,
+            hart_index_width: self.hart_index_width,
         }
     }
 }

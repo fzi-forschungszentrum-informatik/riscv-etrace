@@ -37,7 +37,7 @@
 //!
 //! # let binary_data = b"\x14\x41\x11\x05\x94\xc1\x91\x05\xe3\xec\xc5\xfe\x82\x80";
 //! # let binary_offset = 0x80000028;
-//! # let trace_data = b"\x45\x00\x73\x0a\x00\x00\x20\x41\x00\x01";
+//! # let trace_data = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
 //! # let hart_to_trace = 0;
 //! let binary = |addr: u64| {
 //!     addr.checked_sub(binary_offset)
