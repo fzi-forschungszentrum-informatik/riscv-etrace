@@ -10,7 +10,7 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-use crate::config;
+use crate::config::{self, AddressMode};
 use crate::decoder::payload::Payload;
 use crate::decoder::sync;
 use crate::instruction;
@@ -296,21 +296,6 @@ pub enum Version {
 impl Default for Version {
     fn default() -> Self {
         Self::V2
-    }
-}
-
-/// Address mode
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum AddressMode {
-    /// Any addresses is assumed to be a full, absolute addresses
-    Full,
-    /// An addresses is assumed to be relative to the previous address
-    Delta,
-}
-
-impl Default for AddressMode {
-    fn default() -> Self {
-        Self::Delta
     }
 }
 

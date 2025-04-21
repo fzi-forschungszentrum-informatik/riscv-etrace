@@ -42,3 +42,18 @@ pub const PROTOCOL: Protocol = Protocol {
     call_counter_size_p: 0,
     return_stack_size_p: 0,
 };
+
+/// Address mode
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AddressMode {
+    /// Any addresses is assumed to be a full, absolute addresses
+    Full,
+    /// An addresses is assumed to be relative to the previous address
+    Delta,
+}
+
+impl Default for AddressMode {
+    fn default() -> Self {
+        Self::Delta
+    }
+}
