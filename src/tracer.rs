@@ -33,7 +33,10 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
 }
 
 impl<B: Binary, S: ReturnStack> Tracer<B, S> {
-    pub fn process_te_inst(&mut self, payload: &Payload) -> Result<(), Error<B::Error>> {
+    pub fn process_te_inst(
+        &mut self,
+        payload: &Payload<impl IOptions>,
+    ) -> Result<(), Error<B::Error>> {
         use state::StopCondition;
 
         if let Payload::Synchronization(sync) = payload {
@@ -71,7 +74,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 
     /// Process a [sync::Synchronization]
-    pub fn process_sync(&mut self, sync: &sync::Synchronization) -> Result<(), Error<B::Error>> {
+    pub fn process_sync(
+        &mut self,
+        sync: &sync::Synchronization<impl IOptions>,
+    ) -> Result<(), Error<B::Error>> {
         use sync::Synchronization;
 
         match sync {
@@ -130,7 +136,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 
     /// Process a [sync::Support]
-    pub fn process_support(&mut self, support: &sync::Support) -> Result<(), Error<B::Error>> {
+    pub fn process_support(
+        &mut self,
+        support: &sync::Support<impl IOptions>,
+    ) -> Result<(), Error<B::Error>> {
         use sync::QualStatus;
 
         // Before touching any state, we need to assert no unsupported option is
