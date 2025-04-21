@@ -112,3 +112,25 @@ impl<U> Decode<U> for ReferenceIOptions {
         })
     }
 }
+
+impl IOptions for ReferenceIOptions {
+    fn address_mode(&self) -> Option<AddressMode> {
+        Some(AddressMode::from_full(self.full_address))
+    }
+
+    fn implicit_return(&self) -> Option<bool> {
+        Some(self.implicit_return)
+    }
+
+    fn implicit_exception(&self) -> Option<bool> {
+        Some(self.implicit_exception)
+    }
+
+    fn branch_prediction(&self) -> Option<bool> {
+        Some(self.branch_prediction)
+    }
+
+    fn jump_target_cache(&self) -> Option<bool> {
+        Some(self.jump_target_cache)
+    }
+}
