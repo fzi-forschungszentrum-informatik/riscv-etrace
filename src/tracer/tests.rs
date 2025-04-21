@@ -46,16 +46,15 @@ fn debug_printf() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001a80, UNCOMPRESSED))));
     assert_eq!(tracer.next(), None);
 
+    let payload: Payload = payload::AddressInfo {
+        address: 0x80001a88 - 0x80001a80,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    }
+    .into();
     tracer
-        .process_te_inst(
-            &payload::AddressInfo {
-                address: 0x80001a88 - 0x80001a80,
-                notify: false,
-                updiscon: false,
-                irdepth: None,
-            }
-            .into(),
-        )
+        .process_te_inst(&payload)
         .expect("Could not process packet");
     assert_eq!(
         tracer.next(),
@@ -127,19 +126,18 @@ fn exitting_from_func_2() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010da, COMPRESSED))));
     assert_eq!(tracer.next(), None);
 
+    let payload: Payload = payload::Branch {
+        branch_map: branch::Map::new(1, 0),
+        address: Some(payload::AddressInfo {
+            address: 0xab0,
+            notify: false,
+            updiscon: false,
+            irdepth: None,
+        }),
+    }
+    .into();
     tracer
-        .process_te_inst(
-            &payload::Branch {
-                branch_map: branch::Map::new(1, 0),
-                address: Some(payload::AddressInfo {
-                    address: 0xab0,
-                    notify: false,
-                    updiscon: false,
-                    irdepth: None,
-                }),
-            }
-            .into(),
-        )
+        .process_te_inst(&payload)
         .expect("Could not process packet");
     assert_eq!(
         tracer.next(),
@@ -233,19 +231,18 @@ fn three_branches() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001110, COMPRESSED))));
     assert_eq!(tracer.next(), None);
 
+    let payload: Payload = payload::Branch {
+        branch_map: branch::Map::new(3, 0b011),
+        address: Some(payload::AddressInfo {
+            address: 0x148,
+            notify: false,
+            updiscon: false,
+            irdepth: None,
+        }),
+    }
+    .into();
     tracer
-        .process_te_inst(
-            &payload::Branch {
-                branch_map: branch::Map::new(3, 0b011),
-                address: Some(payload::AddressInfo {
-                    address: 0x148,
-                    notify: false,
-                    updiscon: false,
-                    irdepth: None,
-                }),
-            }
-            .into(),
-        )
+        .process_te_inst(&payload)
         .expect("Could not process packet");
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001112, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001114, COMPRESSED))));
@@ -368,19 +365,18 @@ fn complex() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000121c, COMPRESSED))));
     assert_eq!(tracer.next(), None);
 
+    let payload: Payload = payload::Branch {
+        branch_map: branch::Map::new(2, 0b10),
+        address: Some(payload::AddressInfo {
+            address: 0xffff_ffff_ffff_fef4,
+            notify: false,
+            updiscon: false,
+            irdepth: None,
+        }),
+    }
+    .into();
     tracer
-        .process_te_inst(
-            &payload::Branch {
-                branch_map: branch::Map::new(2, 0b10),
-                address: Some(payload::AddressInfo {
-                    address: 0xffff_ffff_ffff_fef4,
-                    notify: false,
-                    updiscon: false,
-                    irdepth: None,
-                }),
-            }
-            .into(),
-        )
+        .process_te_inst(&payload)
         .expect("Could not process packet");
     assert_eq!(
         tracer.next(),
@@ -475,14 +471,13 @@ fn full_branch_map() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80000028, COMPRESSED))));
     assert_eq!(tracer.next(), None);
 
+    let payload: Payload = payload::Branch {
+        branch_map: branch::Map::new(31, 0),
+        address: None,
+    }
+    .into();
     tracer
-        .process_te_inst(
-            &payload::Branch {
-                branch_map: branch::Map::new(31, 0),
-                address: None,
-            }
-            .into(),
-        )
+        .process_te_inst(&payload)
         .expect("Could not process packet");
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000002a, COMPRESSED))));
     assert_eq!(
