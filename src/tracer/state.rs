@@ -49,6 +49,9 @@ pub struct State<S: ReturnStack> {
 
     /// Flag indicating whether or not sequential jumps are to be followed
     sequential_jumps: bool,
+
+    /// Flag indicating whether or not to infer fn returns
+    implicit_return: bool,
 }
 
 impl<S: ReturnStack> State<S> {
@@ -67,6 +70,7 @@ impl<S: ReturnStack> State<S> {
             return_stack,
             stack_depth: Default::default(),
             sequential_jumps,
+            implicit_return: false,
         }
     }
 
@@ -254,11 +258,12 @@ impl<S: ReturnStack> State<S> {
             .transpose()?
             .unwrap_or((after_pc, false));
 
-        if self
-            .insn
-            .kind
-            .map(instruction::Kind::is_call)
-            .unwrap_or(false)
+        if self.implicit_return
+            && self
+                .insn
+                .kind
+                .map(instruction::Kind::is_call)
+                .unwrap_or(false)
         {
             self.return_stack.push(after_pc);
         }
@@ -312,7 +317,10 @@ impl<S: ReturnStack> State<S> {
     /// This roughly corresponds to a combination of `is_implicit_return` and
     /// `pop_return_stack` of the reference implementation.
     fn implicit_return_address(&mut self, insn: instruction::Kind) -> Option<u64> {
-        if insn.is_return() && self.stack_depth != Some(self.return_stack.depth()) {
+        if self.implicit_return
+            && insn.is_return()
+            && self.stack_depth != Some(self.return_stack.depth())
+        {
             self.return_stack.pop()
         } else {
             None
@@ -412,6 +420,11 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
     /// Set whether or not to infer sequential jumps
     pub fn set_sequential_jumps(&mut self, sequential_jumps: bool) {
         self.state.sequential_jumps = sequential_jumps;
+    }
+
+    /// Set whether or not to infer function returns
+    pub fn set_implicit_return(&mut self, implicit_return: bool) {
+        self.state.implicit_return = implicit_return;
     }
 
     /// Set a [StopCondition]
