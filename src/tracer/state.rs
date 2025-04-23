@@ -409,6 +409,11 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
         self.state.stack_depth = depth;
     }
 
+    /// Set whether or not to infer sequential jumps
+    pub fn set_sequential_jumps(&mut self, sequential_jumps: bool) {
+        self.state.sequential_jumps = sequential_jumps;
+    }
+
     /// Set a [StopCondition]
     ///
     /// This operation concludes the configuration.
