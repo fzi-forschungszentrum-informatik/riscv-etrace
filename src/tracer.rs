@@ -13,6 +13,7 @@ mod tests;
 use crate::config::{self, AddressMode, Version};
 use crate::decoder::payload::Payload;
 use crate::decoder::sync;
+use crate::decoder::unit::IOptions;
 use crate::instruction;
 use crate::types::trap;
 
@@ -133,6 +134,17 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         use sync::QualStatus;
 
         let mut initer = self.state.initializer(&mut self.binary)?;
+
+        if let Some(mode) = support.ioptions.address_mode() {
+            self.address_mode = mode;
+        }
+        if let Some(jumps) = support.ioptions.sequentially_inferred_jumps() {
+            initer.set_sequential_jumps(jumps);
+        }
+        if let Some(returns) = support.ioptions.implicit_return() {
+            initer.set_implicit_return(returns);
+        }
+
         initer.set_stack_depth(None);
 
         if support.qual_status != QualStatus::NoChange {
