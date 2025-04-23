@@ -133,6 +133,18 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_support(&mut self, support: &sync::Support) -> Result<(), Error<B::Error>> {
         use sync::QualStatus;
 
+        // Before touching any state, we need to assert no unsupported option is
+        // active.
+        if support.ioptions.implicit_exception() == Some(true) {
+            return Err(Error::UnsupportedFeature("implicit exceptions"));
+        }
+        if support.ioptions.branch_prediction() == Some(true) {
+            return Err(Error::UnsupportedFeature("branch prediction"));
+        }
+        if support.ioptions.jump_target_cache() == Some(true) {
+            return Err(Error::UnsupportedFeature("jump target cache"));
+        }
+
         let mut initer = self.state.initializer(&mut self.binary)?;
 
         if let Some(mode) = support.ioptions.address_mode() {
