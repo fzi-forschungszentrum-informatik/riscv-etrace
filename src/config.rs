@@ -52,6 +52,17 @@ pub enum AddressMode {
     Delta,
 }
 
+impl AddressMode {
+    /// Create an address mode from a [`bool`] indicating full address mode
+    pub const fn from_full(full: bool) -> Self {
+        if full {
+            Self::Full
+        } else {
+            Self::Delta
+        }
+    }
+}
+
 impl Default for AddressMode {
     fn default() -> Self {
         Self::Delta
