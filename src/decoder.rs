@@ -62,7 +62,7 @@ impl fmt::Display for Error {
 pub struct Decoder<'d, U> {
     data: &'d [u8],
     bit_pos: usize,
-    proto_conf: config::Protocol,
+    field_widths: Widths,
     unit: U,
     hart_index_width: u8,
 }
@@ -189,7 +189,7 @@ impl<U> Decoder<'_, U> {
 /// Biulder for [Decoder]s
 #[derive(Copy, Clone, Default)]
 pub struct Builder<U = unit::Reference> {
-    config: config::Protocol,
+    field_widths: Widths,
     unit: U,
     hart_index_width: u8,
 }
@@ -205,14 +205,14 @@ impl<U> Builder<U> {
     /// Set the [config::Protocol] of the [Decoder]s built
     pub fn with_config(self, config: &config::Protocol) -> Self {
         Self {
-            config: *config,
+            field_widths: config.into(),
             ..self
         }
     }
 
     pub fn for_unit<V>(self, unit: V) -> Builder<V> {
         Builder {
-            config: self.config,
+            field_widths: self.field_widths,
             unit,
             hart_index_width: self.hart_index_width,
         }
@@ -231,7 +231,7 @@ impl<U> Builder<U> {
         Decoder {
             data,
             bit_pos: 0,
-            proto_conf: self.config,
+            field_widths: self.field_widths,
             unit: self.unit,
             hart_index_width: self.hart_index_width,
         }
