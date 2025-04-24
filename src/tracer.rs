@@ -226,8 +226,11 @@ impl<B: Binary> Builder<B> {
     /// Build the [Tracer] for the given [config::Protocol]
     ///
     /// New builders carry a [Default] configuration.
-    pub fn with_config(self, config: config::Protocol) -> Self {
-        Self { config, ..self }
+    pub fn with_config(self, config: &config::Protocol) -> Self {
+        Self {
+            config: *config,
+            ..self
+        }
     }
 
     /// Build the [Tracer] with the given [Binary]
