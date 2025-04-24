@@ -207,6 +207,7 @@ impl<U> Builder<U> {
         Self { config, ..self }
     }
 
+    /// Set the trace [`Unit`][unit::Unit] implementation for the [`Decoder`]
     pub fn for_unit<V>(self, unit: V) -> Builder<V> {
         Builder {
             config: self.config,
