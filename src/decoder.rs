@@ -203,8 +203,11 @@ impl Builder<unit::Reference> {
 
 impl<U> Builder<U> {
     /// Set the [config::Protocol] of the [Decoder]s built
-    pub fn with_config(self, config: config::Protocol) -> Self {
-        Self { config, ..self }
+    pub fn with_config(self, config: &config::Protocol) -> Self {
+        Self {
+            config: *config,
+            ..self
+        }
     }
 
     pub fn for_unit<V>(self, unit: V) -> Builder<V> {
