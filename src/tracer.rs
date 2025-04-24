@@ -271,10 +271,7 @@ impl<B: Binary> Builder<B> {
         Self {
             max_stack_depth,
             sequentially_inferred_jumps: config.sijump_p,
-            address_delta_width: config
-                .iaddress_width_p
-                .try_into()
-                .expect("Instruction address width must be non-zero"),
+            address_delta_width: config.iaddress_width_p,
             ..self
         }
     }

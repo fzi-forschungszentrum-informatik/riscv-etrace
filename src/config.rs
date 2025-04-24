@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Configuration and utilities
 
+use core::num::NonZeroU8;
+
 /// Protocol configuration
 ///
 /// A protocol configuration defines the bit widths, and in some cases the
@@ -12,12 +14,14 @@
 pub struct Protocol {
     pub cache_size_p: u8,
     pub call_counter_size_p: u8,
-    pub context_width_p: u8,
-    pub time_width_p: u8,
-    pub ecause_width_p: u8,
-    pub iaddress_lsb_p: u8,
-    pub iaddress_width_p: u8,
-    pub privilege_width_p: u8,
+    pub context_width_p: NonZeroU8,
+    pub time_width_p: NonZeroU8,
+    pub ecause_width_p: NonZeroU8,
+    pub iaddress_lsb_p: NonZeroU8,
+    pub iaddress_width_p: NonZeroU8,
+    pub nocontext_p: bool,
+    pub notime_p: bool,
+    pub privilege_width_p: NonZeroU8,
     pub return_stack_size_p: u8,
     pub sijump_p: bool,
 }
@@ -33,12 +37,14 @@ impl Default for Protocol {
 pub const PROTOCOL: Protocol = Protocol {
     cache_size_p: 0,
     call_counter_size_p: 0,
-    context_width_p: 0,
-    time_width_p: 0,
-    ecause_width_p: 6,
-    iaddress_lsb_p: 1,
-    iaddress_width_p: 32,
-    privilege_width_p: 2,
+    context_width_p: NonZeroU8::MIN,
+    time_width_p: NonZeroU8::MIN,
+    ecause_width_p: NonZeroU8::new(6).unwrap(),
+    iaddress_lsb_p: NonZeroU8::MIN,
+    iaddress_width_p: NonZeroU8::new(32).unwrap(),
+    nocontext_p: true,
+    notime_p: true,
+    privilege_width_p: NonZeroU8::new(2).unwrap(),
     return_stack_size_p: 0,
     sijump_p: false,
 };

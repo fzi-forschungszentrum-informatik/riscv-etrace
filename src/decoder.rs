@@ -276,13 +276,11 @@ impl From<&config::Protocol> for Widths {
             + if params.return_stack_size_p > 0 { 1 } else { 0 };
         Self {
             cache_index: params.cache_size_p,
-            context: NonZeroU8::new(params.context_width_p),
-            time: NonZeroU8::new(params.time_width_p),
-            ecause: NonZeroU8::new(params.ecause_width_p).expect("ecause width must be non-zero"),
-            iaddress_lsb: NonZeroU8::new(params.iaddress_lsb_p)
-                .expect("iaddress LSB width must be non-zero"),
-            iaddress: NonZeroU8::new(params.iaddress_width_p)
-                .expect("iaddress width must be non-zero"),
+            context: (!params.nocontext_p).then_some(params.context_width_p),
+            time: (!params.notime_p).then_some(params.time_width_p),
+            ecause: params.ecause_width_p,
+            iaddress_lsb: params.iaddress_lsb_p,
+            iaddress: params.iaddress_width_p,
             stack_depth: NonZeroU8::new(stack_depth),
         }
     }

@@ -224,8 +224,8 @@ fn address_absolute() {
         .with_config(&config::Protocol {
             // Changed address width and lsb, so that the entire
             // packet aligns with 64 bit
-            iaddress_width_p: 64,
-            iaddress_lsb_p: 2,
+            iaddress_width_p: 64.try_into().unwrap(),
+            iaddress_lsb_p: 2.try_into().unwrap(),
             ..protocol_config
         })
         .build(&buffer);
@@ -247,8 +247,8 @@ fn address_differential() {
         .with_config(&config::Protocol {
             // Changed address width and lsb, so that the entire
             // packet aligns with 64 bit
-            iaddress_width_p: 64,
-            iaddress_lsb_p: 2,
+            iaddress_width_p: 64.try_into().unwrap(),
+            iaddress_lsb_p: 2.try_into().unwrap(),
             ..protocol_config
         })
         .build(&buffer);
@@ -268,8 +268,8 @@ fn synchronization_start() {
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
     let mut decoder = Builder::new()
         .with_config(&config::Protocol {
-            iaddress_width_p: 64,
-            iaddress_lsb_p: 1,
+            iaddress_width_p: 64.try_into().unwrap(),
+            iaddress_lsb_p: 1.try_into().unwrap(),
             ..protocol_config
         })
         .build(&buffer);
