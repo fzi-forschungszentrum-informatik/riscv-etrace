@@ -14,7 +14,7 @@ mod util;
 mod tests;
 
 use core::fmt;
-use core::num::NonZeroUsize;
+use core::num::{NonZeroU8, NonZeroUsize};
 use core::ops;
 
 use crate::config;
@@ -250,4 +250,41 @@ pub struct Packet<I> {
     pub payload: Payload<I>,
     /// Length of the packet in bytes.
     pub len: usize,
+}
+
+/// Widths of various payload fields
+#[derive(Copy, Clone)]
+struct Widths {
+    pub cache_index: u8,
+    pub context: Option<NonZeroU8>,
+    pub time: Option<NonZeroU8>,
+    pub ecause: NonZeroU8,
+    pub iaddress_lsb: NonZeroU8,
+    pub iaddress: NonZeroU8,
+    pub stack_depth: Option<NonZeroU8>,
+}
+
+impl Default for Widths {
+    fn default() -> Self {
+        (&config::Protocol::default()).into()
+    }
+}
+
+impl From<&config::Protocol> for Widths {
+    fn from(params: &config::Protocol) -> Self {
+        let stack_depth = params.return_stack_size_p
+            + params.call_counter_size_p
+            + if params.return_stack_size_p > 0 { 1 } else { 0 };
+        Self {
+            cache_index: params.cache_size_p,
+            context: NonZeroU8::new(params.context_width_p),
+            time: NonZeroU8::new(params.time_width_p),
+            ecause: NonZeroU8::new(params.ecause_width_p).expect("ecause width must be non-zero"),
+            iaddress_lsb: NonZeroU8::new(params.iaddress_lsb_p)
+                .expect("iaddress LSB width must be non-zero"),
+            iaddress: NonZeroU8::new(params.iaddress_width_p)
+                .expect("iaddress width must be non-zero"),
+            stack_depth: NonZeroU8::new(stack_depth),
+        }
+    }
 }
