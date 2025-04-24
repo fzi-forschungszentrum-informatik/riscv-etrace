@@ -200,10 +200,10 @@ impl Builder<unit::Reference> {
 }
 
 impl<U> Builder<U> {
-    /// Set the [config::Protocol] of the [Decoder]s built
-    pub fn with_config(self, config: &config::Protocol) -> Self {
+    /// Set the [config::Parameters] of the [Decoder] built
+    pub fn with_params(self, params: &config::Parameters) -> Self {
         Self {
-            field_widths: config.into(),
+            field_widths: params.into(),
             ..self
         }
     }
@@ -265,12 +265,12 @@ struct Widths {
 
 impl Default for Widths {
     fn default() -> Self {
-        (&config::Protocol::default()).into()
+        (&config::Parameters::default()).into()
     }
 }
 
-impl From<&config::Protocol> for Widths {
-    fn from(params: &config::Protocol) -> Self {
+impl From<&config::Parameters> for Widths {
+    fn from(params: &config::Parameters) -> Self {
         let stack_depth = params.return_stack_size_p
             + params.call_counter_size_p
             + if params.return_stack_size_p > 0 { 1 } else { 0 };

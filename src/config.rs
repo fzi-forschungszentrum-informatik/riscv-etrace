@@ -7,14 +7,22 @@ mod serde_utils;
 
 use core::num::NonZeroU8;
 
-/// Protocol configuration
+/// Encoder parameters
 ///
-/// A protocol configuration defines the bit widths, and in some cases the
-/// presence, of the protocols packet fields as well as some options that are
-/// relevant for the [tracer][crate::tracer::Tracer].
+/// These parameters to the encoder are defined in the specification. They
+/// define the widths, and in some cases the presence or absence, of various
+/// fields in packets decoded by the [decoder][crate::decoder] and sizes of
+/// state that needs to be preserved by the [tracer][crate::tracer].
+///
+/// # Serde
+///
+/// If the `serde` feature is enabled, this type supports (de)serialization.
+/// Note that flags of type `bool` such as [`notime_p`][Self::notime_p] are
+/// (de)serialized to/from the numerical values `0` and `1` to be in line with
+/// the specification.
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Protocol {
+pub struct Parameters {
     pub cache_size_p: u8,
     pub call_counter_size_p: u8,
     pub context_width_p: NonZeroU8,
@@ -32,15 +40,15 @@ pub struct Protocol {
     pub sijump_p: bool,
 }
 
-/// See [PROTOCOL] for default values of individual fields
-impl Default for Protocol {
+/// See [`PARAMETERS`] for default values of individual fields
+impl Default for Parameters {
     fn default() -> Self {
-        PROTOCOL
+        PARAMETERS
     }
 }
 
-/// Default [Protocol] configuration
-pub const PROTOCOL: Protocol = Protocol {
+/// Default [`Parameters`]
+pub const PARAMETERS: Parameters = Parameters {
     cache_size_p: 0,
     call_counter_size_p: 0,
     context_width_p: NonZeroU8::MIN,
