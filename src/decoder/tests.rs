@@ -269,14 +269,14 @@ fn synchronization_start() {
     let mut decoder = Builder::new()
         .with_config(config::Protocol {
             iaddress_width_p: 64,
-            iaddress_lsb_p: 0,
+            iaddress_lsb_p: 1,
             ..protocol_config
         })
         .build(&buffer);
     let sync_start = sync::Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
     assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
-    assert_eq!(sync_start.address, u64::MAX);
+    assert_eq!(sync_start.address, 0xffff_ffff_ffff_fffe);
 }
 
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
