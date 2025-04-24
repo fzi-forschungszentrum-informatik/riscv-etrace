@@ -152,8 +152,8 @@ impl<U> Decode<U> for Trap {
 pub struct Context {
     /// The privilege level of the reported instruction.
     pub privilege: Privilege,
-    pub time: u64,
-    pub context: u64,
+    pub time: Option<u64>,
+    pub context: Option<u64>,
 }
 
 impl<U> Decode<U> for Context {
@@ -162,8 +162,16 @@ impl<U> Decode<U> for Context {
             .read_bits::<u8>(2)?
             .try_into()
             .map_err(Error::UnknownPrivilege)?;
-        let time = decoder.read_bits(decoder.proto_conf.time_width_p)?;
-        let context = decoder.read_bits(decoder.proto_conf.context_width_p)?;
+        let time = if decoder.proto_conf.time_width_p > 0 {
+            Some(decoder.read_bits(decoder.proto_conf.time_width_p)?)
+        } else {
+            None
+        };
+        let context = if decoder.proto_conf.context_width_p > 0 {
+            Some(decoder.read_bits(decoder.proto_conf.context_width_p)?)
+        } else {
+            None
+        };
         Ok(Context {
             privilege,
             time,
