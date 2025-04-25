@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Configuration and utilities
 
+#[cfg(feature = "serde")]
+mod serde_utils;
+
 use core::num::NonZeroU8;
 
 /// Protocol configuration
@@ -19,10 +22,13 @@ pub struct Protocol {
     pub ecause_width_p: NonZeroU8,
     pub iaddress_lsb_p: NonZeroU8,
     pub iaddress_width_p: NonZeroU8,
+    #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
     pub nocontext_p: bool,
+    #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
     pub notime_p: bool,
     pub privilege_width_p: NonZeroU8,
     pub return_stack_size_p: u8,
+    #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
     pub sijump_p: bool,
 }
 
