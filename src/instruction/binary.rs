@@ -1,5 +1,9 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Binaries containing [`Instruction`]s
+//!
+//! This module defines the [`Binary`] trait for programs that may be traced as
+//! well as a number of types that may serve as a [`Binary`].
 
 use core::fmt;
 
