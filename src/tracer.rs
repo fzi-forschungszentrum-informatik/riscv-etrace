@@ -13,6 +13,7 @@ mod tests;
 use crate::config::{self, AddressMode, Version};
 use crate::decoder::payload::Payload;
 use crate::decoder::sync;
+use crate::decoder::unit::IOptions;
 use crate::instruction;
 use crate::types::trap;
 
@@ -132,7 +133,30 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     pub fn process_support(&mut self, support: &sync::Support) -> Result<(), Error<B::Error>> {
         use sync::QualStatus;
 
+        // Before touching any state, we need to assert no unsupported option is
+        // active.
+        if support.ioptions.implicit_exception() == Some(true) {
+            return Err(Error::UnsupportedFeature("implicit exceptions"));
+        }
+        if support.ioptions.branch_prediction() == Some(true) {
+            return Err(Error::UnsupportedFeature("branch prediction"));
+        }
+        if support.ioptions.jump_target_cache() == Some(true) {
+            return Err(Error::UnsupportedFeature("jump target cache"));
+        }
+
         let mut initer = self.state.initializer(&mut self.binary)?;
+
+        if let Some(mode) = support.ioptions.address_mode() {
+            self.address_mode = mode;
+        }
+        if let Some(jumps) = support.ioptions.sequentially_inferred_jumps() {
+            initer.set_sequential_jumps(jumps);
+        }
+        if let Some(returns) = support.ioptions.implicit_return() {
+            initer.set_implicit_return(returns);
+        }
+
         initer.set_stack_depth(None);
 
         if support.qual_status != QualStatus::NoChange {

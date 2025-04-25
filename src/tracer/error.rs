@@ -10,6 +10,8 @@ pub enum Error<I> {
     ///
     /// The tracer requires a synchronization packet as the first packet.
     StartOfTrace,
+    /// Some (named) feature is not supported
+    UnsupportedFeature(&'static str),
     UnprocessedInstructions,
     /// Unprocessed branches left
     ///
@@ -44,6 +46,7 @@ impl<I> fmt::Display for Error<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::StartOfTrace => write!(f, "expected sync packet"),
+            Self::UnsupportedFeature(feat) => write!(f, "feature \"{feat}\" not supported"),
             Self::UnprocessedInstructions => write!(f, "unprocessed instructions"),
             Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
             Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
