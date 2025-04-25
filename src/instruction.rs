@@ -14,7 +14,7 @@ pub mod elf;
 #[cfg(test)]
 mod tests;
 
-/// The bits from which instructions can be disassembled.
+/// Bits from which [`Instruction`]s can be disassembled
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
     Bit32(u32),
@@ -22,13 +22,13 @@ pub enum Bits {
 }
 
 impl Bits {
-    /// Extract [Bits] from a raw byte slice
+    /// Extract [`Bits`] from a raw byte slice
     ///
-    /// Try to extract [Bits] from the beginning of the given slice, honoring
+    /// Try to extract [`Bits`] from the beginning of the given slice, honoring
     /// the Base Instruction-Length Encoding specified in Section 1.5 of The
     /// RISC-V Instruction Set Manual Volume I.
     ///
-    /// Returns a tuple containing the [Bits] and the remaining part of the
+    /// Returns a tuple containing the [`Bits`] and the remaining part of the
     /// slice if successful. Returns `None` if the beginning does not appear to
     /// be either a 16 or 32 bit instruction, or if the slice does not contain
     /// enough bytes.
