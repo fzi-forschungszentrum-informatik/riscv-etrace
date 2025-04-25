@@ -28,7 +28,7 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     iter_state: IterationState,
     binary: B,
     address_mode: AddressMode,
-    address_delta_width: u8,
+    address_delta_width: core::num::NonZeroU8,
     version: Version,
 }
 
@@ -52,11 +52,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 match self.address_mode {
                     AddressMode::Full => initer.set_address(info.address),
                     AddressMode::Delta => {
+                        let width = self.address_delta_width.get();
                         let mut address = info.address;
-                        if address >> self.address_delta_width.saturating_sub(1) != 0 {
-                            address |= u64::MAX
-                                .checked_shl(self.address_delta_width.into())
-                                .unwrap_or(0);
+                        if address >> (width - 1) != 0 {
+                            address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
                         }
                         initer.set_rel_address(address);
                     }
@@ -327,7 +326,7 @@ impl<B: Binary> Builder<B> {
             iter_state: Default::default(),
             binary: self.binary,
             address_mode: self.address_mode,
-            address_delta_width: self.address_delta_width.into(),
+            address_delta_width: self.address_delta_width,
             version: self.version,
         })
     }
