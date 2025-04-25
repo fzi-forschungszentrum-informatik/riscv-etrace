@@ -344,19 +344,20 @@ impl From<Size> for u64 {
     }
 }
 
-/// Defines a single RISC-V instruction
+/// A single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Instruction {
+    /// [`Size`] of the instruction
     pub size: Size,
-    /// If the instruction was parsed, the name is always available.
+    /// [`Kind`] of the instruciton if known
     pub kind: Option<Kind>,
 }
 
 impl Instruction {
     /// Extract an instruction from a raw byte slice
     ///
-    /// Try to extract [Bits] from the beginning of the given slice, then decode
-    /// them into an [Instruction]. See [Bits::extract] for details.
+    /// Try to extract [`Bits`] from the beginning of the given slice, then
+    /// decode them into an [`Instruction`]. See [`Bits::extract`] for details.
     pub fn extract(data: &[u8]) -> Option<(Self, &[u8])> {
         Bits::extract(data).map(|(b, r)| (b.into(), r))
     }
@@ -399,13 +400,13 @@ impl From<Kind> for Instruction {
     }
 }
 
-/// An unknown 16bit [Instruction]
+/// An unknown 16bit [`Instruction`]
 pub const COMPRESSED: Instruction = Instruction {
     kind: None,
     size: Size::Compressed,
 };
 
-/// An unknown 32bit [Instruction]
+/// An unknown 32bit [`Instruction`]
 pub const UNCOMPRESSED: Instruction = Instruction {
     kind: None,
     size: Size::Normal,
