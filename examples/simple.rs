@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Simple tracer for single core platforms
 //!
-//!     Usage: simple ELF-file trace-file [parameter-file]
+//!     Usage: simple ELF-file trace-file [parameter-file] [reference-trace]
 //!
 //! This program traces a program provided in the form of an ELF file. The trace
 //! is supplies as a file consisting of concatenated trace packets. Optionally,
 //! parameters may be supplied in the form of a TOML file (such as `params.toml`
-//! in this directory).
+//! in this directory). If an assitional reference spike trace is supplied, this
+//! program will compare the reconstructed trace against that reference and
+//! abort if a mismatch is found.
 //!
 //! Only a single hart (hart `0`) is traced.
 //!
@@ -49,6 +51,11 @@ fn main() {
     if debug {
         eprintln!("Parameters: {params:?}");
     }
+
+    // Given a reference trace, we can check whether our trace is correct.
+    let mut reference = args
+        .next()
+        .map(|p| reference_iter(std::fs::File::open(p).expect("Could open reference trace")));
 
     // We need to construct a `Binary`. For PIE executables, we simply assume
     // that they are placed at a known offset.
@@ -130,12 +137,100 @@ fn main() {
                 } else {
                     println!("{:0x}", item.pc());
                 }
+
+                if let Some(reference) = reference.as_mut() {
+                    cmp_reference(reference.next().expect("Reference trace ended"), &item);
+                }
+
                 icount += 1;
             });
         }
     }
 
+    if let Some(reference) = reference.as_mut() {
+        assert_eq!(reference.next(), None);
+    }
+
     if debug {
         println!("npackets {pcount}");
+    }
+}
+
+/// Make an iterator over discrete trace items from a reference trace
+fn reference_iter(
+    reference: impl std::io::Read,
+) -> impl Iterator<Item = (u64, u8, u8, u64, u64, u8)> {
+    use std::io::BufRead;
+
+    let mut lines = std::io::BufReader::new(reference).lines();
+    let header = lines
+        .next()
+        .expect("No header in reference trace")
+        .expect("Could not extract header from reference trace");
+    assert_eq!(
+        header.trim_end(),
+        "VALID,ADDRESS,INSN,PRIVILEGE,EXCEPTION,ECAUSE,TVAL,INTERRUPT"
+    );
+    lines.filter_map(|l| {
+        let line = l.expect("Could not read next reference item");
+        let mut fields = line.trim_end().split(',');
+        let valid: u8 = fields
+            .next()
+            .expect("Could not extract \"valid\" field")
+            .parse()
+            .expect("Could not parse \"valid\" field");
+        if valid != 1 {
+            return None;
+        }
+
+        let address = u64::from_str_radix(
+            fields.next().expect("Could not extract \"address\" field"),
+            16,
+        )
+        .expect("Could not parse \"address\" field");
+        let _ = fields.next().expect("Could not extract \"insn\" field");
+        let privilege: u8 = fields
+            .next()
+            .expect("Could not extract \"privilege\" field")
+            .parse()
+            .expect("Could not parse \"privilege\" field");
+        let exception: u8 = fields
+            .next()
+            .expect("Could not extract \"exception\" field")
+            .parse()
+            .expect("Could not parse \"exception\" field");
+        let ecause: u64 = fields
+            .next()
+            .expect("Could not extract \"ecause\" field")
+            .parse()
+            .expect("Could not parse \"ecause\" field");
+        let tval =
+            u64::from_str_radix(fields.next().expect("Could not extract \"tval\" field"), 16)
+                .expect("Could not parse \"tval\" field");
+        let interrupt: u8 = fields
+            .next()
+            .expect("Could not extract \"interrupt\" field")
+            .parse()
+            .expect("Could not parse \"interrupt\" field");
+        Some((address, privilege, exception, ecause, tval, interrupt))
+    })
+}
+
+/// Compare a reference trace item against a generated trace item
+fn cmp_reference(
+    (address, _, exception, ecause, tval, interrupt): (u64, u8, u8, u64, u64, u8),
+    item: &riscv_etrace::tracer::item::Item,
+) {
+    assert_eq!(item.pc(), address);
+    if let Some((_, trap)) = item.trap() {
+        assert_eq!(exception, trap.is_exception() as u8);
+        assert_eq!(interrupt, trap.is_interrupt() as u8);
+        assert_eq!(ecause, trap.ecause);
+        if let Some(t) = trap.tval {
+            assert_eq!(tval, t);
+        }
+    } else {
+        assert_eq!(exception, 0);
+        assert_eq!(interrupt, 0);
     }
 }
