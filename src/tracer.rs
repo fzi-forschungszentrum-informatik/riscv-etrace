@@ -26,7 +26,8 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
     binary: B,
-    address_delta_width: Option<u8>,
+    address_mode: AddressMode,
+    address_delta_width: u8,
     version: Version,
 }
 
@@ -44,15 +45,18 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 initer.get_branch_map_mut().append(branch.branch_map);
             }
             if let Some(info) = payload.get_address_info() {
-                let mut address = info.address;
-                if let Some(width) = self.address_delta_width {
-                    if address >> width.saturating_sub(1) != 0 {
-                        address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
+                match self.address_mode {
+                    AddressMode::Full => initer.set_address(info.address),
+                    AddressMode::Delta => {
+                        let mut address = info.address;
+                        if address >> self.address_delta_width.saturating_sub(1) != 0 {
+                            address |= u64::MAX
+                                .checked_shl(self.address_delta_width.into())
+                                .unwrap_or(0);
+                        }
+                        initer.set_rel_address(address);
                     }
-                    initer.set_rel_address(address);
-                } else {
-                    initer.set_address(address);
-                };
+                }
 
                 initer.set_condition(StopCondition::Address {
                     notify: info.notify,
@@ -273,15 +277,12 @@ impl<B: Binary> Builder<B> {
             S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
             self.config.sijump_p,
         );
-        let address_delta_width = match self.address_mode {
-            AddressMode::Full => None,
-            AddressMode::Delta => Some(self.config.iaddress_width_p),
-        };
         Ok(Tracer {
             state,
             iter_state: Default::default(),
             binary: self.binary,
-            address_delta_width,
+            address_mode: self.address_mode,
+            address_delta_width: self.config.iaddress_width_p,
             version: self.version,
         })
     }
