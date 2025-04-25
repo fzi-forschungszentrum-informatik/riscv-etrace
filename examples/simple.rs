@@ -9,8 +9,12 @@
 //! parameters may be supplied in the form of a TOML file (such as `params.toml`
 //! in this directory).
 //!
-//! Only a single hart (hart `0`) is traced. The program prints every traced PC
-//! as a hex value to stdout.
+//! Only a single hart (hart `0`) is traced.
+//!
+//! By default, the program prints every traced PC as a hex value to stdout. If
+//! run with the environment variable `DEBUG` set to `1`, the program prints
+//! trace information in a format similar to the debug output of the reference
+//! flow's decoder model, allowing for easy comparison (after some filtering).
 
 const TARGET_HART: usize = 0;
 
@@ -21,6 +25,7 @@ fn main() {
 
     use instruction::binary::Binary;
 
+    let debug = std::env::var_os("DEBUG").map(|v| v == "1").unwrap_or(false);
     let mut args = std::env::args_os().skip(1);
 
     // For tracing, we need the program to trace ...
@@ -41,6 +46,9 @@ fn main() {
             toml::from_str(params.as_ref()).expect("Could not parse parameters")
         })
         .unwrap_or_default();
+    if debug {
+        eprintln!("Parameters: {params:?}");
+    }
 
     // We need to construct a `Binary`. For PIE executables, we simply assume
     // that they are placed at a known offset.
@@ -84,9 +92,18 @@ fn main() {
         .expect("Could not set up tracer");
 
     // ... and get going.
+    let mut icount = 0u64;
+    let mut pcount = 0u64;
     while decoder.bytes_left() > 0 {
         // We decode a packet ...
         let packet = decoder.decode_packet().expect("Could not decode packet");
+        if debug {
+            eprintln!(
+                "Decoded packet: {packet:?} ({} bytes left)",
+                decoder.bytes_left()
+            );
+        }
+        pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.
         if packet.header.hart_index == TARGET_HART {
@@ -99,8 +116,26 @@ fn main() {
             tracer.by_ref().for_each(|i| {
                 let item = i.expect("Error while tracing");
 
-                println!("{:0x}", item.pc());
+                if debug {
+                    if let Some((epc, info)) = item.trap() {
+                        if let Some(tval) = info.tval {
+                            println!("  TRAP: ecause: {} tval: 0x{tval:0x}", info.ecause);
+                            println!("  EPC: 0x{epc:0x}");
+                        } else {
+                            println!("  TRAP(interrupt): ecause: {}", info.ecause);
+                        }
+                    }
+
+                    println!("report_pc[{icount}] --------------> 0x{:0x}", item.pc());
+                } else {
+                    println!("{:0x}", item.pc());
+                }
+                icount += 1;
             });
         }
+    }
+
+    if debug {
+        println!("npackets {pcount}");
     }
 }
