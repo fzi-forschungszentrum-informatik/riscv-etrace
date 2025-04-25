@@ -9,17 +9,17 @@ use core::fmt;
 
 use super::Instruction;
 
-/// A binary of some sort that contains [Instruction]s
+/// A binary of some sort that contains [`Instruction`]s
 pub trait Binary {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
 
-    /// Retrieve the [Instruction] at the given address
+    /// Retrieve the [`Instruction`] at the given address
     fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error>;
 
     /// "Move" this binary by the given offset
     ///
-    /// See [Offset] for more details.
+    /// See [`Offset`] for more details.
     fn with_offset(self, offset: u64) -> Offset<Self>
     where
         Self: Sized,
@@ -39,7 +39,7 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for F {
     }
 }
 
-/// [Binary] implementation for mapping from address to [Instruction]
+/// [`Binary`] implementation for mapping from address to [`Instruction`]
 ///
 /// # Notice
 ///
@@ -54,11 +54,11 @@ impl Binary for &[(u64, Instruction)] {
     }
 }
 
-/// [Binary] implementation for a tuple of two binaries
+/// [`Binary`] implementation for a tuple of two binaries
 ///
-/// The second [Binary] is considered a "patch" that is only consulted if the
-/// first one did not yield an [Instruction]. Errors emitted always stem from
-/// the first [Binary].
+/// The second [`Binary`] is considered a "patch" that is only consulted if the
+/// first one did not yield an [`Instruction`]. Errors emitted always stem from
+/// the first [`Binary`].
 impl<B: Binary, P: Binary> Binary for (B, P) {
     type Error = B::Error;
 
