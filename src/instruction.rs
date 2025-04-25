@@ -325,8 +325,7 @@ impl Kind {
     }
 }
 
-/// Represents the possible byte length of single RISC-V [Instruction].
-/// It is either 4 or 2 bytes.
+/// Length of single RISC-V [`Instruction`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Size {
     Compressed = 2,
