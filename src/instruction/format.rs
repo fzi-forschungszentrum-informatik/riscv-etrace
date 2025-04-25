@@ -269,7 +269,7 @@ const fn rs1c_from(insn: u16) -> u8 {
     ((insn >> 7) as u8 & 0x07) | 0x08
 }
 
-/// Convert an [u16] to an [i16], sign extending it from a given bit
+/// Convert an [`u16`] to an [`i16`], sign extending it from a given bit
 const fn sign_extend_u16(value: u16, pos: u8) -> i16 {
     if (value & (1 << pos)) > 0 {
         (value | !((1 << pos) - 1)) as i16
@@ -278,7 +278,7 @@ const fn sign_extend_u16(value: u16, pos: u8) -> i16 {
     }
 }
 
-/// Convert an [u32] to an [i32], sign extending it from a given bit
+/// Convert an [`u32`] to an [`i32`], sign extending it from a given bit
 const fn sign_extend_u32(value: u32, pos: u8) -> i32 {
     if (value & (1 << pos)) > 0 {
         (value | !((1 << pos) - 1)) as i32
