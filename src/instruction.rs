@@ -1,5 +1,9 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Instruction disassembly/decoding and information
+//!
+//! This module provides utilities for decoding [`Instruction`]s and for
+//! extracting information relevant for tracing.
 
 pub mod binary;
 pub mod format;
