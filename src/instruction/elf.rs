@@ -11,11 +11,11 @@ use elf::ElfBytes;
 use super::binary::Binary;
 use super::Instruction;
 
-/// Static ELF [Binary]
+/// Static ELF [`Binary`]
 ///
-/// This [Binary] retrieves [Instruction]s from executable `LOAD` segments
-/// found in [ElfBytes] based on virtual address mapping. Neither decompression
-/// nor dynamic linking are supported.
+/// This [`Binary`] retrieves [`Instruction`]s from executable `LOAD` segments
+/// found in [`ElfBytes`] based on virtual address mapping. Neither
+/// decompression nor dynamic linking are supported.
 #[derive(Copy, Clone)]
 pub struct Elf<'d, E, P>
 where
@@ -32,7 +32,7 @@ where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
 {
-    /// Create a new [Binary]
+    /// Create a new ELF [`Binary`]
     pub fn new(elf: E) -> Result<Self, Error> {
         use elf::abi;
 
@@ -50,7 +50,7 @@ where
         }
     }
 
-    /// Retrieve the inner [ElfBytes]
+    /// Retrieve the inner [`ElfBytes`]
     pub fn inner(&self) -> &ElfBytes<'d, P> {
         self.elf.borrow()
     }

@@ -1,5 +1,9 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Instruction disassembly/decoding and information
+//!
+//! This module provides utilities for decoding [`Instruction`]s and for
+//! extracting information relevant for tracing.
 
 pub mod binary;
 pub mod format;
@@ -10,7 +14,7 @@ pub mod elf;
 #[cfg(test)]
 mod tests;
 
-/// The bits from which instructions can be disassembled.
+/// Bits from which [`Instruction`]s can be disassembled
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
     Bit32(u32),
@@ -18,13 +22,13 @@ pub enum Bits {
 }
 
 impl Bits {
-    /// Extract [Bits] from a raw byte slice
+    /// Extract [`Bits`] from a raw byte slice
     ///
-    /// Try to extract [Bits] from the beginning of the given slice, honoring
+    /// Try to extract [`Bits`] from the beginning of the given slice, honoring
     /// the Base Instruction-Length Encoding specified in Section 1.5 of The
     /// RISC-V Instruction Set Manual Volume I.
     ///
-    /// Returns a tuple containing the [Bits] and the remaining part of the
+    /// Returns a tuple containing the [`Bits`] and the remaining part of the
     /// slice if successful. Returns `None` if the beginning does not appear to
     /// be either a 16 or 32 bit instruction, or if the slice does not contain
     /// enough bytes.
@@ -72,7 +76,7 @@ impl From<u32> for OpCode {
     }
 }
 
-/// A list of the name of all control flow changing instructions the tracing algorithm needs to know.  
+/// Specific [`Instruction`] kinds relevant for tracing
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Kind {
@@ -120,10 +124,10 @@ pub enum Kind {
 impl Kind {
     /// Determine the branch target
     ///
-    /// If [Self] refers to a branch instruction, this fn returns the immediate,
-    /// which is the branch target relative to this instruction. Returns `None`
-    /// if [Self] does not refer to a (known) branch instruction. Jump
-    /// instructions are not considered branch instructions.
+    /// If [`Self`] refers to a branch instruction, this fn returns the
+    /// immediate, which is the branch target relative to this instruction.
+    /// Returns `None` if [`Self`] does not refer to a (known) branch
+    /// instruction. Jump instructions are not considered branch instructions.
     pub fn branch_target(self) -> Option<i16> {
         match self {
             Self::c_beqz(d) => Some(d.imm),
@@ -140,10 +144,11 @@ impl Kind {
 
     /// Determine the inferable jump target
     ///
-    /// If [Self] refers to a jump instruction that in itself determines the
+    /// If [`Self`] refers to a jump instruction that in itself determines the
     /// jump target, this fn returns that target relative to this instruction.
-    /// Returns `None` if [Self] does not refer to a (known) jump instruction or
-    /// if the branch target cannot be inferred based on the instruction alone.
+    /// Returns `None` if [`Self`] does not refer to a (known) jump instruction
+    /// or if the branch target cannot be inferred based on the instruction
+    /// alone.
     ///
     /// For example, a `jalr` instruciton's target will never be considered
     /// inferable unless the source register is the `zero` register, even if it
@@ -163,11 +168,12 @@ impl Kind {
 
     /// Determine whether this instruction refers to an uninferable jump
     ///
-    /// If [Self] refers to a jump instruction that in itself does not determine
-    /// the (relative) jump target, this fn returns the information neccessary
-    /// to determine the target in the form of a register number (first tuple
-    /// element) and an offset (decond tuple element). The jump target is
-    /// computed by adding the offset to the contents of the denoted register.
+    /// If [`Self`] refers to a jump instruction that in itself does not
+    /// determine the (relative) jump target, this fn returns the information
+    /// neccessary to determine the target in the form of a register number
+    /// (first tuple element) and an offset (second tuple element). The jump
+    /// target is computed by adding the offset to the contents of the denoted
+    /// register.
     ///
     /// Note that a `jalr` instruciton's target will always be considered
     /// uninferable unless the source register is the `zero` register, even if
@@ -188,15 +194,15 @@ impl Kind {
 
     /// Determine whether this instruction returns from a trap
     ///
-    /// Returns true if [Self] refers to one of the (known) special instructions
-    /// that return from a trap.
+    /// Returns `true` if [`Self`] refers to one of the (known) special
+    /// instructions that return from a trap.
     pub fn is_return_from_trap(self) -> bool {
         matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
     }
 
     /// Determine whether this instruction causes an uninferable discontinuity
     ///
-    /// Returns true if [Self] refers to an instruction that causes a (PC)
+    /// Returns `true` if [`Self`] refers to an instruction that causes a (PC)
     /// discontinuity with a target that can not be inferred from the
     /// instruction alone. This is the case if the instruction is either
     /// * an [uninferable jump][Self::uninferable_jump],
@@ -208,7 +214,7 @@ impl Kind {
 
     /// Determine whether this instruction is an `ecall` or `ebreak`
     ///
-    /// Returns true if this refers to either an `ecall`, `ebreak` or
+    /// Returns `true` if this refers to either an `ecall`, `ebreak` or
     /// `c.ebreak`.
     pub fn is_ecall_or_ebreak(self) -> bool {
         matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
@@ -216,7 +222,7 @@ impl Kind {
 
     /// Determine whether this instruction can be considered a function call
     ///
-    /// Returns true if [Self] refers to an instruction that we consider a
+    /// Returns `true` if [`Self`] refers to an instruction that we consider a
     /// function call, that is a jump-and-link instruction with `ra` (the return
     /// address register) as `rd`.
     pub fn is_call(self) -> bool {
@@ -231,7 +237,7 @@ impl Kind {
 
     /// Determine whether this instruction can be considered a function return
     ///
-    /// Returns true if [Self] refers to an instruction that we consider a
+    /// Returns `true` if [`Self`] refers to an instruction that we consider a
     /// function return, that is a jump register instruction with `ra` (the
     /// return address register) as `rs1`.
     pub fn is_return(self) -> bool {
@@ -319,8 +325,7 @@ impl Kind {
     }
 }
 
-/// Represents the possible byte length of single RISC-V [Instruction].
-/// It is either 4 or 2 bytes.
+/// Length of single RISC-V [`Instruction`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Size {
     Compressed = 2,
@@ -339,19 +344,20 @@ impl From<Size> for u64 {
     }
 }
 
-/// Defines a single RISC-V instruction
+/// A single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Instruction {
+    /// [`Size`] of the instruction
     pub size: Size,
-    /// If the instruction was parsed, the name is always available.
+    /// [`Kind`] of the instruciton if known
     pub kind: Option<Kind>,
 }
 
 impl Instruction {
     /// Extract an instruction from a raw byte slice
     ///
-    /// Try to extract [Bits] from the beginning of the given slice, then decode
-    /// them into an [Instruction]. See [Bits::extract] for details.
+    /// Try to extract [`Bits`] from the beginning of the given slice, then
+    /// decode them into an [`Instruction`]. See [`Bits::extract`] for details.
     pub fn extract(data: &[u8]) -> Option<(Self, &[u8])> {
         Bits::extract(data).map(|(b, r)| (b.into(), r))
     }
@@ -394,13 +400,13 @@ impl From<Kind> for Instruction {
     }
 }
 
-/// An unknown 16bit [Instruction]
+/// An unknown 16bit [`Instruction`]
 pub const COMPRESSED: Instruction = Instruction {
     kind: None,
     size: Size::Compressed,
 };
 
-/// An unknown 32bit [Instruction]
+/// An unknown 32bit [`Instruction`]
 pub const UNCOMPRESSED: Instruction = Instruction {
     kind: None,
     size: Size::Normal,

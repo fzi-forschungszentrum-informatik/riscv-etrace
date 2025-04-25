@@ -3,23 +3,25 @@
 //! Variable instruction fields
 //!
 //! This module provides data types holding variable fields of instruction
-//! encoding variants as defined by The RISCV-V Instruction Set Manual Volume I
-//! sections 2.2 Base Instruction Formats and 2.3 Immediate Encoding Variants.
-//! The variants, or "types" differ in their variable fields, that is what
-//! register and immediate fields are present and in the case of immediates
+//! encoding variants as defined by The RISC-V Instruction Set Manual Volume I
+//! [^spec] sections 2.2 Base Instruction Formats and 2.3 Immediate Encoding
+//! Variants. The variants, or "types" differ in their variable fields, that is
+//! what register and immediate fields are present and in the case of immediates
 //! also in their position and composition.
 //!
-//! This module defines a data type for each of those variants with a [From]
-//! impl that extracts those fields from an instruction represented as an [u32].
-//! In addition, some types also impl `From<u16>`, extracting the information
-//! from compressed instructions as defined in section 26.2 Compressed
-//! Instruction Formats of the aforementioned The RISCV-V Instruction Set Manual
-//! Volume I.
+//! This module defines a data type for each of those variants with a [`From`]
+//! impl that extracts those fields from an instruction represented as an
+//! [`u32`]. In addition, some types also impl `From<u16>`, extracting the
+//! information from compressed instructions as defined in section 26.2
+//! Compressed Instruction Formats of the aforementioned The RISC-V Instruction
+//! Set Manual Volume I.
 //!
 //! The extracted values reflect the fields' semantics: for immediates, we
 //! extract the immediate value rather than the bit-patters as present in the
 //! encoded instruction. We thus differentiate between S- and B-type
 //! instrucitons as well as between U- and J-type instructions.
+//!
+//! [^spec]: found here: <https://riscv.org/specifications/ratified/>
 
 /// Variable fields in R-type and CR-type instructions
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -267,7 +269,7 @@ const fn rs1c_from(insn: u16) -> u8 {
     ((insn >> 7) as u8 & 0x07) | 0x08
 }
 
-/// Convert an [u16] to an [i16], sign extending it from a given bit
+/// Convert an [`u16`] to an [`i16`], sign extending it from a given bit
 const fn sign_extend_u16(value: u16, pos: u8) -> i16 {
     if (value & (1 << pos)) > 0 {
         (value | !((1 << pos) - 1)) as i16
@@ -276,7 +278,7 @@ const fn sign_extend_u16(value: u16, pos: u8) -> i16 {
     }
 }
 
-/// Convert an [u32] to an [i32], sign extending it from a given bit
+/// Convert an [`u32`] to an [`i32`], sign extending it from a given bit
 const fn sign_extend_u32(value: u32, pos: u8) -> i32 {
     if (value & (1 << pos)) > 0 {
         (value | !((1 << pos) - 1)) as i32

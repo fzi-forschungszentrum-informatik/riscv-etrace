@@ -1,21 +1,25 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Binaries containing [`Instruction`]s
+//!
+//! This module defines the [`Binary`] trait for programs that may be traced as
+//! well as a number of types that may serve as a [`Binary`].
 
 use core::fmt;
 
 use super::Instruction;
 
-/// A binary of some sort that contains [Instruction]s
+/// A binary of some sort that contains [`Instruction`]s
 pub trait Binary {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
 
-    /// Retrieve the [Instruction] at the given address
+    /// Retrieve the [`Instruction`] at the given address
     fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error>;
 
     /// "Move" this binary by the given offset
     ///
-    /// See [Offset] for more details.
+    /// See [`Offset`] for more details.
     fn with_offset(self, offset: u64) -> Offset<Self>
     where
         Self: Sized,
@@ -35,7 +39,7 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for F {
     }
 }
 
-/// [Binary] implementation for mapping from address to [Instruction]
+/// [`Binary`] implementation for mapping from address to [`Instruction`]
 ///
 /// # Notice
 ///
@@ -50,11 +54,11 @@ impl Binary for &[(u64, Instruction)] {
     }
 }
 
-/// [Binary] implementation for a tuple of two binaries
+/// [`Binary`] implementation for a tuple of two binaries
 ///
-/// The second [Binary] is considered a "patch" that is only consulted if the
-/// first one did not yield an [Instruction]. Errors emitted always stem from
-/// the first [Binary].
+/// The second [`Binary`] is considered a "patch" that is only consulted if the
+/// first one did not yield an [`Instruction`]. Errors emitted always stem from
+/// the first [`Binary`].
 impl<B: Binary, P: Binary> Binary for (B, P) {
     type Error = B::Error;
 
@@ -65,7 +69,7 @@ impl<B: Binary, P: Binary> Binary for (B, P) {
     }
 }
 
-/// [Binary] moved by a fixed offset
+/// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
 /// The subtraction is done in a wrapping fashion, i.e. accesses to addresses
@@ -84,7 +88,7 @@ impl<B: Binary> Binary for Offset<B> {
     }
 }
 
-/// A [Binary] that does not contain any [Instruction]s
+/// A [`Binary`] that does not contain any [`Instruction`]s
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Empty;
 
@@ -96,7 +100,7 @@ impl Binary for Empty {
     }
 }
 
-/// An error type expressing simple absence of an [Instruction]
+/// An error type expressing simple absence of an [`Instruction`]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
