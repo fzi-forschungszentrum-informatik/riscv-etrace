@@ -6,7 +6,8 @@
 //!
 //! This program traces a program provided in the form of an ELF file. The trace
 //! is supplies as a file consisting of concatenated trace packets. Optionally,
-//! parameters may be supplied in the form of a TOML file.
+//! parameters may be supplied in the form of a TOML file (such as `params.toml`
+//! in this directory).
 //!
 //! Only a single hart (hart `0`) is traced. The program prints every traced PC
 //! as a hex value to stdout.
