@@ -76,7 +76,7 @@ impl From<u32> for OpCode {
     }
 }
 
-/// A list of the name of all control flow changing instructions the tracing algorithm needs to know.  
+/// Specific [`Instruction`] kinds relevant for tracing
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Kind {
@@ -124,10 +124,10 @@ pub enum Kind {
 impl Kind {
     /// Determine the branch target
     ///
-    /// If [Self] refers to a branch instruction, this fn returns the immediate,
-    /// which is the branch target relative to this instruction. Returns `None`
-    /// if [Self] does not refer to a (known) branch instruction. Jump
-    /// instructions are not considered branch instructions.
+    /// If [`Self`] refers to a branch instruction, this fn returns the
+    /// immediate, which is the branch target relative to this instruction.
+    /// Returns `None` if [`Self`] does not refer to a (known) branch
+    /// instruction. Jump instructions are not considered branch instructions.
     pub fn branch_target(self) -> Option<i16> {
         match self {
             Self::c_beqz(d) => Some(d.imm),
@@ -144,10 +144,11 @@ impl Kind {
 
     /// Determine the inferable jump target
     ///
-    /// If [Self] refers to a jump instruction that in itself determines the
+    /// If [`Self`] refers to a jump instruction that in itself determines the
     /// jump target, this fn returns that target relative to this instruction.
-    /// Returns `None` if [Self] does not refer to a (known) jump instruction or
-    /// if the branch target cannot be inferred based on the instruction alone.
+    /// Returns `None` if [`Self`] does not refer to a (known) jump instruction
+    /// or if the branch target cannot be inferred based on the instruction
+    /// alone.
     ///
     /// For example, a `jalr` instruciton's target will never be considered
     /// inferable unless the source register is the `zero` register, even if it
@@ -167,11 +168,12 @@ impl Kind {
 
     /// Determine whether this instruction refers to an uninferable jump
     ///
-    /// If [Self] refers to a jump instruction that in itself does not determine
-    /// the (relative) jump target, this fn returns the information neccessary
-    /// to determine the target in the form of a register number (first tuple
-    /// element) and an offset (decond tuple element). The jump target is
-    /// computed by adding the offset to the contents of the denoted register.
+    /// If [`Self`] refers to a jump instruction that in itself does not
+    /// determine the (relative) jump target, this fn returns the information
+    /// neccessary to determine the target in the form of a register number
+    /// (first tuple element) and an offset (second tuple element). The jump
+    /// target is computed by adding the offset to the contents of the denoted
+    /// register.
     ///
     /// Note that a `jalr` instruciton's target will always be considered
     /// uninferable unless the source register is the `zero` register, even if
@@ -192,15 +194,15 @@ impl Kind {
 
     /// Determine whether this instruction returns from a trap
     ///
-    /// Returns true if [Self] refers to one of the (known) special instructions
-    /// that return from a trap.
+    /// Returns `true` if [`Self`] refers to one of the (known) special
+    /// instructions that return from a trap.
     pub fn is_return_from_trap(self) -> bool {
         matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
     }
 
     /// Determine whether this instruction causes an uninferable discontinuity
     ///
-    /// Returns true if [Self] refers to an instruction that causes a (PC)
+    /// Returns `true` if [`Self`] refers to an instruction that causes a (PC)
     /// discontinuity with a target that can not be inferred from the
     /// instruction alone. This is the case if the instruction is either
     /// * an [uninferable jump][Self::uninferable_jump],
@@ -212,7 +214,7 @@ impl Kind {
 
     /// Determine whether this instruction is an `ecall` or `ebreak`
     ///
-    /// Returns true if this refers to either an `ecall`, `ebreak` or
+    /// Returns `true` if this refers to either an `ecall`, `ebreak` or
     /// `c.ebreak`.
     pub fn is_ecall_or_ebreak(self) -> bool {
         matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
@@ -220,7 +222,7 @@ impl Kind {
 
     /// Determine whether this instruction can be considered a function call
     ///
-    /// Returns true if [Self] refers to an instruction that we consider a
+    /// Returns `true` if [`Self`] refers to an instruction that we consider a
     /// function call, that is a jump-and-link instruction with `ra` (the return
     /// address register) as `rd`.
     pub fn is_call(self) -> bool {
@@ -235,7 +237,7 @@ impl Kind {
 
     /// Determine whether this instruction can be considered a function return
     ///
-    /// Returns true if [Self] refers to an instruction that we consider a
+    /// Returns `true` if [`Self`] refers to an instruction that we consider a
     /// function return, that is a jump register instruction with `ra` (the
     /// return address register) as `rs1`.
     pub fn is_return(self) -> bool {
