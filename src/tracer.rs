@@ -231,11 +231,13 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
 }
 
 /// Builder for [Tracer]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct Builder<B: Binary = binary::Empty> {
-    config: config::Protocol,
     binary: B,
+    max_stack_depth: usize,
+    sequentially_inferred_jumps: bool,
     address_mode: AddressMode,
+    address_delta_width: core::num::NonZeroU8,
     version: Version,
 }
 
@@ -250,8 +252,23 @@ impl<B: Binary> Builder<B> {
     /// Build the [Tracer] for the given [config::Protocol]
     ///
     /// New builders carry a [Default] configuration.
-    pub fn with_config(self, config: config::Protocol) -> Self {
-        Self { config, ..self }
+    pub fn with_config(self, config: &config::Protocol) -> Self {
+        let max_stack_depth = if config.return_stack_size_p > 0 {
+            1 << config.return_stack_size_p
+        } else if config.call_counter_size_p > 0 {
+            1 << config.call_counter_size_p
+        } else {
+            0
+        };
+        Self {
+            max_stack_depth,
+            sequentially_inferred_jumps: config.sijump_p,
+            address_delta_width: config
+                .iaddress_width_p
+                .try_into()
+                .expect("Instruction address width must be non-zero"),
+            ..self
+        }
     }
 
     /// Build the [Tracer] with the given [Binary]
@@ -260,9 +277,11 @@ impl<B: Binary> Builder<B> {
     /// what you want.
     pub fn with_binary<C: Binary>(self, binary: C) -> Builder<C> {
         Builder {
-            config: self.config,
             binary,
+            max_stack_depth: self.max_stack_depth,
+            sequentially_inferred_jumps: self.sequentially_inferred_jumps,
             address_mode: self.address_mode,
+            address_delta_width: self.address_delta_width,
             version: self.version,
         }
     }
@@ -289,26 +308,33 @@ impl<B: Binary> Builder<B> {
     where
         S: ReturnStack,
     {
-        let max_stack_depth = if self.config.return_stack_size_p > 0 {
-            1 << self.config.return_stack_size_p
-        } else if self.config.call_counter_size_p > 0 {
-            1 << self.config.call_counter_size_p
-        } else {
-            0
-        };
-
         let state = state::State::new(
-            S::new(max_stack_depth).ok_or(Error::CannotConstructIrStack(max_stack_depth))?,
-            self.config.sijump_p,
+            S::new(self.max_stack_depth)
+                .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
+            self.sequentially_inferred_jumps,
         );
         Ok(Tracer {
             state,
             iter_state: Default::default(),
             binary: self.binary,
             address_mode: self.address_mode,
-            address_delta_width: self.config.iaddress_width_p,
+            address_delta_width: self.address_delta_width.into(),
             version: self.version,
         })
+    }
+}
+
+impl<B: Binary + Default> Default for Builder<B> {
+    fn default() -> Self {
+        Self {
+            binary: Default::default(),
+            max_stack_depth: Default::default(),
+            sequentially_inferred_jumps: Default::default(),
+            address_mode: Default::default(),
+            address_delta_width: core::num::NonZeroU8::MIN,
+            version: Default::default(),
+        }
+        .with_config(&Default::default())
     }
 }
 
