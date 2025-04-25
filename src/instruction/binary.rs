@@ -100,7 +100,7 @@ impl Binary for Empty {
     }
 }
 
-/// An error type expressing simple absence of an [Instruction]
+/// An error type expressing simple absence of an [`Instruction`]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
