@@ -150,7 +150,7 @@ fn extension_jti_1() {
     buffer[2] = 0b00000_101;
 
     let mut decoder = Builder::new()
-        .with_config(config::Protocol {
+        .with_config(&config::Protocol {
             cache_size_p: 10,
             ..protocol_config
         })
@@ -170,7 +170,7 @@ fn extension_jti_2() {
     buffer[0] = 0b11111111;
     buffer[1] = 0b00000011;
     let mut decoder = Builder::new()
-        .with_config(config::Protocol {
+        .with_config(&config::Protocol {
             cache_size_p: 10,
             ..protocol_config
         })
@@ -221,7 +221,7 @@ fn address_absolute() {
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b11_000000;
     let mut decoder = Builder::new()
-        .with_config(config::Protocol {
+        .with_config(&config::Protocol {
             // Changed address width and lsb, so that the entire
             // packet aligns with 64 bit
             iaddress_width_p: 64,
@@ -244,7 +244,7 @@ fn address_differential() {
     buffer[0] = 0b0000_0001;
     buffer[7] = 0b10_000000;
     let mut decoder = Builder::new()
-        .with_config(config::Protocol {
+        .with_config(&config::Protocol {
             // Changed address width and lsb, so that the entire
             // packet aligns with 64 bit
             iaddress_width_p: 64,
@@ -267,16 +267,16 @@ fn synchronization_start() {
 
     let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
     let mut decoder = Builder::new()
-        .with_config(config::Protocol {
+        .with_config(&config::Protocol {
             iaddress_width_p: 64,
-            iaddress_lsb_p: 0,
+            iaddress_lsb_p: 1,
             ..protocol_config
         })
         .build(&buffer);
     let sync_start = sync::Start::decode(&mut decoder).unwrap();
     assert!(sync_start.branch);
     assert_eq!(sync_start.ctx.privilege, Privilege::Machine);
-    assert_eq!(sync_start.address, u64::MAX);
+    assert_eq!(sync_start.address, 0xffff_ffff_ffff_fffe);
 }
 
 const DEFAULT_PACKET_BUFFER_LEN: usize = 32;

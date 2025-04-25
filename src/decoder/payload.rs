@@ -184,7 +184,7 @@ pub struct JumpTargetIndex {
 
 impl<U> Decode<U> for JumpTargetIndex {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        let index = decoder.read_bits(decoder.proto_conf.cache_size_p)?;
+        let index = decoder.read_bits(decoder.field_widths.cache_index)?;
         let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
         let irdepth = util::read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {

@@ -12,10 +12,9 @@ use super::{Decode, Decoder, Error};
 /// specified in the `decoder`'s protocol configuration. Since it is read as an
 /// `u64`, it is not sign extended.
 pub fn read_address<U>(decoder: &mut Decoder<U>) -> Result<u64, Error> {
-    let width = decoder.proto_conf.iaddress_width_p - decoder.proto_conf.iaddress_lsb_p;
-    decoder
-        .read_bits::<u64>(width)
-        .map(|v| v << decoder.proto_conf.iaddress_lsb_p)
+    let lsb = decoder.field_widths.iaddress_lsb.get();
+    let width = decoder.field_widths.iaddress.get().saturating_sub(lsb);
+    decoder.read_bits::<u64>(width).map(|v| v << lsb)
 }
 
 /// Read the `irreport` and `irdepth` fields
@@ -24,19 +23,19 @@ pub fn read_address<U>(decoder: &mut Decoder<U>) -> Result<u64, Error> {
 /// differentially, and if the result is `true` this fn returns `irdepth`.
 /// Otherwise, `None` is returned.
 pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>, Error> {
-    let depth_len = decoder.proto_conf.return_stack_size_p
-        + decoder.proto_conf.call_counter_size_p
-        + (if decoder.proto_conf.return_stack_size_p > 0 {
-            1
-        } else {
-            0
-        });
     // We intentionally read both the `irreport` and `irdepth` field
     // unconditionally in order to keep the overall width read constant.
     let report = decoder.read_differential_bit()?;
-    let depth = decoder.read_bits(depth_len)?;
-
-    Ok(report.then_some(depth))
+    let depth = decoder
+        .field_widths
+        .stack_depth
+        .map(|w| decoder.read_bits(w.get()))
+        .transpose()?;
+    if report {
+        Ok(depth)
+    } else {
+        Ok(None)
+    }
 }
 
 /// Utility for decoding branch maps
