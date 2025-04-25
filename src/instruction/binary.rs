@@ -69,7 +69,7 @@ impl<B: Binary, P: Binary> Binary for (B, P) {
     }
 }
 
-/// [Binary] moved by a fixed offset
+/// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
 /// The subtraction is done in a wrapping fashion, i.e. accesses to addresses
