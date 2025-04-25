@@ -88,7 +88,7 @@ impl<B: Binary> Binary for Offset<B> {
     }
 }
 
-/// A [Binary] that does not contain any [Instruction]s
+/// A [`Binary`] that does not contain any [`Instruction`]s
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Empty;
 
