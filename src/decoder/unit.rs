@@ -1,10 +1,16 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 //! Trace unit implementation specific definitions and utilities
+//!
+//! This module provides traits for capturing some specifics of trace unit
+//! implementations not captured by [`config::Parameters`], as well as
+//! implementations of those traits.
 
-use crate::config::AddressMode;
+use crate::config;
 
 use super::{Decode, Decoder, Error};
+
+use config::AddressMode;
 
 /// Specifics about a trace unit implementation
 pub trait Unit<U = Self> {
