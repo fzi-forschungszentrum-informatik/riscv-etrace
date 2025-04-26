@@ -74,7 +74,7 @@ pub trait IOptions {
     }
 }
 
-/// Reference trace [Unit]
+/// Reference trace [`Unit`]
 ///
 /// This unit is used in the reference flow (in the form of a model).
 #[derive(Copy, Clone, Debug, Default)]
