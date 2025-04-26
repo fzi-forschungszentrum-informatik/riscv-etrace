@@ -200,10 +200,10 @@ impl Builder<unit::Reference> {
 }
 
 impl<U> Builder<U> {
-    /// Set the [config::Protocol] of the [Decoder]s built
-    pub fn with_config(self, config: &config::Protocol) -> Self {
+    /// Set the [config::Parameters] of the [Decoder] built
+    pub fn with_params(self, params: &config::Parameters) -> Self {
         Self {
-            field_widths: config.into(),
+            field_widths: params.into(),
             ..self
         }
     }
@@ -265,24 +265,22 @@ struct Widths {
 
 impl Default for Widths {
     fn default() -> Self {
-        (&config::Protocol::default()).into()
+        (&config::Parameters::default()).into()
     }
 }
 
-impl From<&config::Protocol> for Widths {
-    fn from(params: &config::Protocol) -> Self {
+impl From<&config::Parameters> for Widths {
+    fn from(params: &config::Parameters) -> Self {
         let stack_depth = params.return_stack_size_p
             + params.call_counter_size_p
             + if params.return_stack_size_p > 0 { 1 } else { 0 };
         Self {
             cache_index: params.cache_size_p,
-            context: NonZeroU8::new(params.context_width_p),
-            time: NonZeroU8::new(params.time_width_p),
-            ecause: NonZeroU8::new(params.ecause_width_p).expect("ecause width must be non-zero"),
-            iaddress_lsb: NonZeroU8::new(params.iaddress_lsb_p)
-                .expect("iaddress LSB width must be non-zero"),
-            iaddress: NonZeroU8::new(params.iaddress_width_p)
-                .expect("iaddress width must be non-zero"),
+            context: (!params.nocontext_p).then_some(params.context_width_p),
+            time: (!params.notime_p).then_some(params.time_width_p),
+            ecause: params.ecause_width_p,
+            iaddress_lsb: params.iaddress_lsb_p,
+            iaddress: params.iaddress_width_p,
             stack_depth: NonZeroU8::new(stack_depth),
         }
     }

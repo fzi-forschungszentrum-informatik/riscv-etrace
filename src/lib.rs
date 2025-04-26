@@ -27,7 +27,7 @@
 //! # Example
 //!
 //! The following example demonstrates basic instruction tracing, with default
-//! [`config::Protocol`], a custom [`Binary`][instruction::binary::Binary] and
+//! [`config::Parameters`], a custom [`Binary`][instruction::binary::Binary] and
 //! tracing packets placed in a single buffer.
 //!
 //! ```
@@ -47,13 +47,13 @@
 //!         .ok_or(binary::NoInstruction)
 //! };
 //!
-//! let proto_conf = Default::default();
+//! let parameters = Default::default();
 //! let mut decoder = decoder::Builder::new()
-//!     .with_config(&proto_conf)
+//!     .with_params(&parameters)
 //!     .build(trace_data);
 //! let mut tracer: Tracer<_> = tracer::Builder::new()
-//!     .with_config(&proto_conf)
 //!     .with_binary(binary)
+//!     .with_params(&parameters)
 //!     .build()
 //!     .unwrap();
 //!

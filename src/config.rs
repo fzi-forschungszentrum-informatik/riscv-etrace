@@ -2,45 +2,65 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Configuration and utilities
 
-/// Protocol configuration
+#[cfg(feature = "serde")]
+mod serde_utils;
+
+use core::num::NonZeroU8;
+
+/// Encoder parameters
 ///
-/// A protocol configuration defines the bit widths, and in some cases the
-/// presence, of the protocols packet fields as well as some options that are
-/// relevant for the [tracer][crate::tracer::Tracer].
+/// These parameters to the encoder are defined in the specification. They
+/// define the widths, and in some cases the presence or absence, of various
+/// fields in packets decoded by the [decoder][crate::decoder] and sizes of
+/// state that needs to be preserved by the [tracer][crate::tracer].
+///
+/// # Serde
+///
+/// If the `serde` feature is enabled, this type supports (de)serialization.
+/// Note that flags of type `bool` such as [`notime_p`][Self::notime_p] are
+/// (de)serialized to/from the numerical values `0` and `1` to be in line with
+/// the specification.
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Protocol {
-    pub context_width_p: u8,
-    pub time_width_p: u8,
-    pub ecause_width_p: u8,
-    pub iaddress_lsb_p: u8,
-    pub iaddress_width_p: u8,
+pub struct Parameters {
     pub cache_size_p: u8,
-    pub privilege_width_p: u8,
-    pub sijump_p: bool,
     pub call_counter_size_p: u8,
+    pub context_width_p: NonZeroU8,
+    pub time_width_p: NonZeroU8,
+    pub ecause_width_p: NonZeroU8,
+    pub iaddress_lsb_p: NonZeroU8,
+    pub iaddress_width_p: NonZeroU8,
+    #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
+    pub nocontext_p: bool,
+    #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
+    pub notime_p: bool,
+    pub privilege_width_p: NonZeroU8,
     pub return_stack_size_p: u8,
+    #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
+    pub sijump_p: bool,
 }
 
-/// See [PROTOCOL] for default values of individual fields
-impl Default for Protocol {
+/// See [`PARAMETERS`] for default values of individual fields
+impl Default for Parameters {
     fn default() -> Self {
-        PROTOCOL
+        PARAMETERS
     }
 }
 
-/// Default [Protocol] configuration
-pub const PROTOCOL: Protocol = Protocol {
-    context_width_p: 0,
-    time_width_p: 0,
-    ecause_width_p: 6,
-    iaddress_lsb_p: 1,
-    iaddress_width_p: 32,
+/// Default [`Parameters`]
+pub const PARAMETERS: Parameters = Parameters {
     cache_size_p: 0,
-    privilege_width_p: 2,
-    sijump_p: false,
     call_counter_size_p: 0,
+    context_width_p: NonZeroU8::MIN,
+    time_width_p: NonZeroU8::MIN,
+    ecause_width_p: NonZeroU8::new(6).unwrap(),
+    iaddress_lsb_p: NonZeroU8::MIN,
+    iaddress_width_p: NonZeroU8::new(32).unwrap(),
+    nocontext_p: true,
+    notime_p: true,
+    privilege_width_p: NonZeroU8::new(2).unwrap(),
     return_stack_size_p: 0,
+    sijump_p: false,
 };
 
 /// Address mode

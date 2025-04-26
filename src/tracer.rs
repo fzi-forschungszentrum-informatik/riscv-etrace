@@ -257,10 +257,10 @@ impl Builder<binary::Empty> {
 }
 
 impl<B: Binary> Builder<B> {
-    /// Build the [Tracer] for the given [config::Protocol]
+    /// Build the [Tracer] for encoders with the given [config::Parameters]
     ///
     /// New builders carry a [Default] configuration.
-    pub fn with_config(self, config: &config::Protocol) -> Self {
+    pub fn with_params(self, config: &config::Parameters) -> Self {
         let max_stack_depth = if config.return_stack_size_p > 0 {
             1 << config.return_stack_size_p
         } else if config.call_counter_size_p > 0 {
@@ -271,10 +271,7 @@ impl<B: Binary> Builder<B> {
         Self {
             max_stack_depth,
             sequentially_inferred_jumps: config.sijump_p,
-            address_delta_width: config
-                .iaddress_width_p
-                .try_into()
-                .expect("Instruction address width must be non-zero"),
+            address_delta_width: config.iaddress_width_p,
             ..self
         }
     }
@@ -342,7 +339,7 @@ impl<B: Binary + Default> Default for Builder<B> {
             address_delta_width: core::num::NonZeroU8::MIN,
             version: Default::default(),
         }
-        .with_config(&Default::default())
+        .with_params(&Default::default())
     }
 }
 
