@@ -60,9 +60,10 @@ impl<U> Decode<U> for Header {
     }
 }
 
-/// Defines which trace type a packet has. Currently only instruction tracing is supported.
+/// Destination flow indicator, which we use for the trace type
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TraceType {
+    /// The packet contains an instruction trace payload
     Instruction,
 }
 
