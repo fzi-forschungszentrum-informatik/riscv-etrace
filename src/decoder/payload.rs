@@ -211,10 +211,13 @@ impl<U> Decode<U> for JumpTargetIndex {
     }
 }
 
-/// #### Format 1
-/// This packet includes branch information, and is used when either the branch information must be
-/// reported (for example because the branch map is full), or when the address of an instruction must
-/// be reported, and there has been at least one branch since the previous packet
+/// Branch payload
+///
+/// Represents a format 1 packet. This packet includes branch information. It is
+/// sent by the encoder when either the branch information must be reported (for
+/// example because the branch map is full), or when the address of an
+/// instruction must be reported, and there has been at least one branch since
+/// the previous packet
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Branch {
     pub branch_map: branch::Map,
