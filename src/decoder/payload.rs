@@ -6,16 +6,23 @@ use crate::types::branch;
 
 use super::{sync, unit, util, Decode, Decoder, Error};
 
-/// Determines the layout of [BranchCount].
+/// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchFmt {
-    /// Packet does not contain an address, and the branch following the last correct prediction
-    /// failed.
+    /// No address
+    ///
+    /// The packet does not contain an address, and the branch following the
+    /// last correct prediction failed.
     NoAddr = 0,
-    /// Packet contains an address. If this points to a branch instruction, then the
-    /// branch was predicted correctly
+    /// Address, success
+    ///
+    /// The packet contains an address. If this points to a branch instruction,
+    /// then the branch was predicted correctly.
     Addr = 2,
-    /// Packet contains an address that points to a branch which failed the prediction.
+    /// Address, failure
+    ///
+    /// The packet contains an address that points to a branch instruction. The
+    /// prediction for that branch failed.
     AddrFail = 3,
 }
 
