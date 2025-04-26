@@ -4,7 +4,7 @@
 //!
 //! This module contains definitions of the various synchronization packets as
 //! defined in section 7.1 Format 3 packets of the specification. This includes
-//! the [Synchronization] type which may hold any of the subformats.
+//! the [`Synchronization`] type which may hold any of the subformats.
 
 use crate::types::{trap, Privilege};
 
