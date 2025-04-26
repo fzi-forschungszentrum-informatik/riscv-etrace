@@ -92,7 +92,7 @@ impl<U> Unit<U> for Reference {
     }
 }
 
-/// IOptions for the [Reference] [Unit]
+/// [`IOptions`] for the [`Reference`] [`Unit`]
 #[derive(Copy, Clone, Debug)]
 pub struct ReferenceIOptions {
     pub implicit_return: bool,
