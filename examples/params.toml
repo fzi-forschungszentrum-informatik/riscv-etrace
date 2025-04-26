@@ -1,0 +1,15 @@
+arch_p=0
+bpred_size_p=0
+cache_size_p=0
+call_counter_size_p=0
+context_width_p=32
+time_width_p=1
+ecause_width_p=5
+f0s_width_p=0
+iaddress_lsb_p=1
+iaddress_width_p=32
+nocontext_p=0
+notime_p=1
+privilege_width_p=2
+return_stack_size_p=0
+sijump_p=0

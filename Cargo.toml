@@ -12,3 +12,10 @@ repository = "https://github.com/fzi-forschungszentrum-informatik/riscv-etrace"
 [dependencies]
 elf = { version = "0.7", optional = true }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+
+[dev-dependencies]
+toml = { version = "0.8", features = ["parse"], default-features = false }
+
+[[example]]
+name = "simple"
+required-features = ["elf", "serde"]
