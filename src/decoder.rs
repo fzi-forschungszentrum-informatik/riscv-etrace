@@ -25,12 +25,12 @@ use crate::config;
 use format::Format;
 use truncate::TruncateNum;
 
-/// A list of possible errors during decoding of a single packet.
+/// Decoder errors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// The trace type is not known to us
     UnknownTraceType(u8),
-    /// The branch format in [payload::BranchCount] is `0b01`.
+    /// The branch format in [`payload::BranchCount`] is `0b01`.
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
     InsufficientData(NonZeroUsize),
