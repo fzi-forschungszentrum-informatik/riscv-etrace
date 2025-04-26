@@ -246,10 +246,16 @@ impl<U> Decode<U> for Branch {
     }
 }
 
-/// #### Format 2
-/// This packet contains only an instruction address, and is used when the address of an instruction
-/// must be reported, and there is no unreported branch information. The address is in differential
-/// format unless full address mode is enabled.
+/// Address info payload
+///
+/// Represents a format 2 packet. This payload contains only an instruction
+/// address. It is sent by the encoder when the address of an instruction
+/// must be reported, and there is no unreported branch information. The
+/// address is differential (i.e. relative to the last reported address)
+/// unless full address mode is enabled, but _not_ sign extended.
+///
+/// Inaddition to being a payload on its own, it also is used as part of other
+/// payloads.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AddressInfo {
     /// Differential instruction address.
