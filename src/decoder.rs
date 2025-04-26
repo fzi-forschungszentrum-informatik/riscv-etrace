@@ -229,7 +229,12 @@ impl<U> Decoder<'_, U> {
     }
 }
 
-/// Biulder for [Decoder]s
+/// Biulder for [`Decoder`]s
+///
+/// A builder will build a single decoder for a specific slice of bytes. If the
+/// trace data is read in chunks, it may thus be neccessary to build
+/// [`Decoder`]s repeatedly. For this purpose, [`Builder`] implements [`Copy`]
+/// and [`Clone`] as long as the [`Unit`][unit::Unit] used does.
 #[derive(Copy, Clone, Default)]
 pub struct Builder<U = unit::Reference> {
     field_widths: Widths,
@@ -245,7 +250,7 @@ impl Builder<unit::Reference> {
 }
 
 impl<U> Builder<U> {
-    /// Set the [config::Parameters] of the [Decoder] built
+    /// Set the [`config::Parameters`] of the [`Decoder`] built
     pub fn with_params(self, params: &config::Parameters) -> Self {
         Self {
             field_widths: params.into(),
@@ -270,7 +275,7 @@ impl<U> Builder<U> {
         }
     }
 
-    /// Build a [Decoder] for the given data
+    /// Build a [`Decoder`] for the given data
     pub fn build(self, data: &[u8]) -> Decoder<U> {
         Decoder {
             data,
