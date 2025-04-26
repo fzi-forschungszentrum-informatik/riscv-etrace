@@ -1,6 +1,9 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Implements the instruction tracing algorithm.
+//! Tracing logic
+//!
+//! This module provides the [`Tracer`], which processes tracing packet
+//! [`Payload`]s and generates streams of tracing [`Item`]s.
 
 pub mod error;
 pub mod item;
