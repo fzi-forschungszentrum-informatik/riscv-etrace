@@ -147,7 +147,9 @@ impl<I> From<sync::Support<I>> for Payload<I> {
     }
 }
 
-/// #### Format 0
+/// Extension payload
+///
+/// Represents a format 0 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Extension {
     BranchCount(BranchCount),
