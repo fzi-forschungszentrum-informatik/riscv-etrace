@@ -38,7 +38,7 @@ impl<U> Decode<U> for BranchFmt {
     }
 }
 
-/// Top level enum for all possible payload formats.
+/// An instruction trace payload
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload<I = unit::ReferenceIOptions> {
     Extension(Extension),
@@ -48,6 +48,10 @@ pub enum Payload<I = unit::ReferenceIOptions> {
 }
 
 impl<I> Payload<I> {
+    /// Retrieve the [`AddressInfo`] in this payload
+    ///
+    /// Returns a reference to the [`AddressInfo`] contained in this payload or
+    /// [`None`] if it does not contain one.
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
         match self {
             Payload::Address(addr) => Some(addr),
@@ -71,7 +75,7 @@ impl<I> Payload<I> {
     ///   resync because it is necessary to report the current address stack
     ///   depth or nested call count.
     ///
-    /// Returns `None` otherwise.
+    /// Returns [`None`] otherwise.
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
             Payload::Address(a) => a.irdepth,
