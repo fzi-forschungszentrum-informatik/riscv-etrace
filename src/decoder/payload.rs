@@ -156,8 +156,10 @@ pub enum Extension {
     JumpTargetIndex(JumpTargetIndex),
 }
 
-/// #### Format 0, sub format 0
-/// Extension to report the number of correctly predicted branches.
+/// Branch count payload
+///
+/// Represents a format 0, subformat 0 packet. It informs about the number of
+/// correctly predicted branches.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct BranchCount {
     /// Count of the number of correctly predicted branches, minus 31.
