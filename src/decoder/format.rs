@@ -1,9 +1,11 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Utilties for decoding a payload's format and subformat
 
 use super::payload::{self, Payload};
 use super::{sync, unit, Decode, Decoder, Error};
 
+/// [`Payload`] format and subformat
 #[derive(Debug, Eq, PartialEq)]
 pub enum Format {
     Ext(Ext),
@@ -13,6 +15,7 @@ pub enum Format {
 }
 
 impl Format {
+    /// Decode a [`Payload`] appropriate for this format
     pub fn decode_payload<U: unit::Unit>(
         &self,
         decoder: &mut Decoder<U>,
@@ -44,6 +47,7 @@ impl<U> Decode<U> for Format {
     }
 }
 
+/// Extension subformats
 #[derive(Debug, Eq, PartialEq)]
 pub enum Ext {
     BranchCount,
@@ -60,6 +64,7 @@ impl<U> Decode<U> for Ext {
     }
 }
 
+/// Synchronization subformats
 #[derive(Debug, Eq, PartialEq)]
 pub enum Sync {
     Start,
