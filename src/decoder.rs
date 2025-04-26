@@ -1,6 +1,9 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Implements the packet decoder.
+//! Packet decoder and entities it can decode (packets and payloads)
+//!
+//! This module provides definitions for [payloads][payload] and packets as well
+//! as a [`Decoder`] for decoding them from raw trace data.
 
 mod format;
 pub mod payload;
