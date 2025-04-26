@@ -185,11 +185,12 @@ impl<U> Decode<U> for BranchCount {
     }
 }
 
-/// #### Format 0, sub format 1
-/// Extension to report the jump target index.
+/// Jump target index payload
+///
+/// Represents a format 0, subformat 1 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTargetIndex {
-    /// Jump target cache index of entry containing target address.
+    /// Index of entry containing the jump's target address
     pub index: usize,
     pub branch_map: branch::Map,
 
