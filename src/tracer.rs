@@ -26,8 +26,50 @@ use error::Error;
 use instruction::binary::{self, Binary};
 use stack::ReturnStack;
 
-/// Provides the state to execute the tracing algorithm
-/// and executes the user-defined report callbacks.
+/// Tracer
+///
+/// A tracer processes packet [`Payload`]s for a single RISC-V hart and
+/// generates [`Item`]s for that hart.
+///
+/// [`Payload`]s are fed through [`process_te_inst`][Self::process_te_inst].
+/// Alternatively, some specialized paylaods may be fed through more specialized
+/// fns. After a payload was fed to the tracer, [`Item`]s become availible via
+/// the tracer's [`Iterator`] implementation.
+///
+/// After all [`Item`]s were extracted, the next payload may be fed to the
+/// tracer. Feeding a payload while the items generated from the last payload
+/// are not exhaused results in an error.
+///
+/// # Example
+///
+/// The following example demonstrates feeding a [`Payload`] to a tracer and
+/// then iterating over the generated [`Item`]s.
+///
+/// ```
+/// use riscv_etrace::tracer;
+///
+/// # use riscv_etrace::instruction::COMPRESSED;
+/// # let code: &[(u64, _)] = &[(0x28, COMPRESSED)];
+/// let parameters = Default::default();
+/// let mut tracer: tracer::Tracer<_> = tracer::Builder::new()
+///     .with_binary(code)
+///     .with_params(&parameters)
+///     .build()
+///     .unwrap();
+///
+/// # use riscv_etrace::decoder;
+/// # use decoder::payload::Payload;
+/// # let payload: Payload = decoder::sync::Start {
+/// #   branch: false,
+/// #   ctx: Default::default(),
+/// #   address: 0x28,
+/// # }
+/// # .into();
+/// tracer.process_te_inst(&payload).unwrap();
+/// tracer.by_ref().for_each(|i| {
+///     println!("PC: {:0x}", i.unwrap().pc());
+/// });
+/// ```
 pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
@@ -38,6 +80,10 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
 }
 
 impl<B: Binary, S: ReturnStack> Tracer<B, S> {
+    /// Process a [`Payload`]
+    ///
+    /// The tracer will yield new trace [`Item`]s after receiving most types of
+    /// payloads via this fn.
     pub fn process_te_inst(
         &mut self,
         payload: &Payload<impl IOptions>,
@@ -77,7 +123,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         }
     }
 
-    /// Process a [sync::Synchronization]
+    /// Process a [`sync::Synchronization`]
+    ///
+    /// After a call to this fn, the tracer may yield new trace
+    /// [`Item`]s.
     pub fn process_sync(
         &mut self,
         sync: &sync::Synchronization<impl IOptions>,
@@ -139,7 +188,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         Ok(())
     }
 
-    /// Process a [sync::Support]
+    /// Process a [`sync::Support`]
+    ///
+    /// After a call to this fn, the tracer may yield new trace
+    /// [`Item`]s.
     pub fn process_support(
         &mut self,
         support: &sync::Support<impl IOptions>,
@@ -182,7 +234,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         Ok(())
     }
 
-    /// Create a [state::Initializer] for some [Synchronization] variants
+    /// Create a [`state::Initializer`] for [`sync::Synchronization`] variants
     fn sync_init(
         &mut self,
         address: u64,
