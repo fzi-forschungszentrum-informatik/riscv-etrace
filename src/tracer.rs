@@ -295,7 +295,13 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
     }
 }
 
-/// Builder for [Tracer]
+/// Builder for [`Tracer`]
+///
+/// A builder will build a single [`Tracer`] for a single RISC-V hart.
+///
+/// If multiple harts are to be traced, multiple [`Tracer`]s need to be built.
+/// For this purpose, [`Builder`] implements [`Copy`] and [`Clone`] as long as
+/// the [`Binary`] does.
 #[derive(Copy, Clone)]
 pub struct Builder<B: Binary = binary::Empty> {
     binary: B,
@@ -307,16 +313,16 @@ pub struct Builder<B: Binary = binary::Empty> {
 }
 
 impl Builder<binary::Empty> {
-    /// Create a new builder for a [Tracer]
+    /// Create a new builder for a [`Tracer`]
     pub fn new() -> Self {
         Default::default()
     }
 }
 
 impl<B: Binary> Builder<B> {
-    /// Build the [Tracer] for encoders with the given [config::Parameters]
+    /// Build the [`Tracer`] for encoders with the given [`config::Parameters`]
     ///
-    /// New builders carry a [Default] configuration.
+    /// New builders assume [`Default`] parameters.
     pub fn with_params(self, config: &config::Parameters) -> Self {
         let max_stack_depth = if config.return_stack_size_p > 0 {
             1 << config.return_stack_size_p
@@ -333,10 +339,10 @@ impl<B: Binary> Builder<B> {
         }
     }
 
-    /// Build the [Tracer] with the given [Binary]
+    /// Build the [`Tracer`] with the given [`Binary`]
     ///
-    /// New builders carry an empty or [Default] [Binary]. This is usually not
-    /// what you want.
+    /// New builders carry an empty or [`Default`] [`Binary`]. This is usually
+    /// not what you want.
     pub fn with_binary<C: Binary>(self, binary: C) -> Builder<C> {
         Builder {
             binary,
@@ -348,9 +354,9 @@ impl<B: Binary> Builder<B> {
         }
     }
 
-    /// Build a [Tracer] for the given [AddressMode]
+    /// Build a [`Tracer`] for the given [`AddressMode`]
     ///
-    /// New builders are configured for [AddressMode::Delta].
+    /// New builders are configured for [`AddressMode::Delta`].
     pub fn with_address_mode(self, mode: AddressMode) -> Self {
         Self {
             address_mode: mode,
@@ -358,14 +364,14 @@ impl<B: Binary> Builder<B> {
         }
     }
 
-    /// Build a [Tracer] for the given version of the tracing specification
+    /// Build a [`Tracer`] for the given version of the tracing specification
     ///
-    /// New builders are configured for [Version::V2].
+    /// New builders are configured for [`Version::V2`].
     pub fn with_version(self, version: Version) -> Self {
         Self { version, ..self }
     }
 
-    /// Build the [Tracer] with the given reporter
+    /// Build the [`Tracer`]
     pub fn build<S>(self) -> Result<Tracer<B, S>, Error<B::Error>>
     where
         S: ReturnStack,
