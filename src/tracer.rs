@@ -10,6 +10,8 @@ mod state;
 #[cfg(test)]
 mod tests;
 
+pub use item::Item;
+
 use crate::config::{self, AddressMode, Version};
 use crate::decoder::payload::Payload;
 use crate::decoder::sync;
@@ -216,7 +218,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
 }
 
 impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
-    type Item = Result<item::Item, Error<B::Error>>;
+    type Item = Result<Item, Error<B::Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter_state {
