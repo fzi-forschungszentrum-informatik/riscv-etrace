@@ -1,28 +1,58 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! # Rust implementation of Efficient Trace for RISC-V's instruction decoder and tracing algorithm
+//! # Decoder and tracer for RISC-V ETraces
 //!
-//! This project implements the instruction packet decoder and instruction tracing algorithm for
-//! [Efficient Trace for RISC-V](https://github.com/riscv-non-isa/riscv-trace-spec/).
-//! This crate is not concerned how the encoder signals a new packet or how the packet is
-//! transported to the decoder.
+//! This library provides a [decoder] and a [tracer] for the instruction tracing
+//! defined in the [Efficient Trace for RISC-V][etrace] specification. Given
+//! trace packets previously retrieved from an encoder and the traced program,
+//! these allow reconstruction of the execution path.
 //!
-//! See [decoder] for the implementation of the packet decoder and [tracer] for the tracing
-//! algorithm.
+//! This library also features a limited [instruction] database with decoding
+//! functionality. Currently, only decoding of RV32IC instructions is supported.
+//! However, tracing is not impacted by other instructions that do not influence
+//! the control flow ("control transfer instructions").
 //!
-//! # ETrace features
-//! - delta/full address mode
-//! - configurable bit width of packet fields
-//! - sign based decompression
-//! - optional context for instructions
-//! - optional timestamp in header
-//! - optional implicit return mode
+//! # Tracing flow
 //!
-//! Each feature is configurable independently of each other.
+//! Raw trace data needs to be decoded via [`Decoder`][decoder::Decoder]s,
+//! which are constructed via a [`decoder::Builder`]. A builder is usually
+//! configured for a trace [`Unit`][decoder::unit::Unit] implementation with
+//! specific [`config::Parameters`].
+//!
+//! A decoded packet or [`Payload`][decoder::payload::Payload] needs to be
+//! dispatched to the [`Tracer`][tracer::Tracer] for that RISC-V hart. It is the
+//! responsibility of the library user to do so.
+//!
+//! A [`Tracer`][tracer::Tracer] processes packets and generates a series of
+//! tracing [`Item`][tracer::item::Item]s. It is constructed via a
+//! [`tracer::Builder`], which is configured for the specific program
+//! being traced (in the form of a [`Binary`][instruction::binary::Binary]) and
+//! the same [`config::Parameters`] that the decoder was configured with.
+//!
+//! [`Binary`][instruction::binary::Binary] is a trait abstracting access to
+//! [`Instruction`][instruction::Instruction]s. This library provides a number
+//! of implementations and utilities for constructing one, including limited
+//! instruction decoding capabilities.
+//!
+//! # ETrace options
+//!
+//! The following [ETrace][etrace] options are supported:
+//! * delta/full address mode
+//! * sequentially inferred jumps
+//! * implicit return
+//!
+//! # Crate features
+//!
+//! Some functionality if controlled via crate features:
+//! * `elf`: enables the [`instruction::elf`] module providing a
+//!   [`Binary`][instruction::binary::Binary] for static ELF files using the
+//!   [`elf`] crate
+//! * `serde`: enables (de)serialization of configuration via [`serde`]
 //!
 //! # no_std
-//! This crate is not dependent on the standard library and only uses the Core Library. It can therefore even
-//! be used in bare metal environments.
+//!
+//! This crate does not dependent on `std` and is thus suitable for `no_std`
+//! environments.
 //!
 //! # Example
 //!
@@ -72,6 +102,8 @@
 //!     }
 //! }
 //! ```
+//!
+//! [etrace]: <https://github.com/riscv-non-isa/riscv-trace-spec/>
 #![no_std]
 
 pub mod config;
