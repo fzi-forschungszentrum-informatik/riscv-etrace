@@ -94,7 +94,7 @@ impl<U> Decoder<'_, U> {
             Error::InsufficientData(need)
         })?;
         self.data = payload;
-        let payload = Format::decode(self)?.decode_payload(self)?;
+        let payload = self.decode_payload()?;
 
         self.bit_pos = 0;
         self.data = remaining;
@@ -104,6 +104,20 @@ impl<U> Decoder<'_, U> {
             payload,
             len,
         })
+    }
+
+    /// Decode a single, stand-alone [`Payload`][payload::Payload]
+    ///
+    /// Decodes a single [`Payload`][payload::Payload], consuming the associated
+    /// data from the input and sign-extending the input if neccessary. After
+    /// successful operation, the decoder is left at the _bit_ boundary
+    /// following the payload. A failure may leave the decoder in an unspecified
+    /// state.
+    pub fn decode_payload(&mut self) -> Result<payload::Payload<U::IOptions>, Error>
+    where
+        U: unit::Unit,
+    {
+        Format::decode(self)?.decode_payload(self)
     }
 
     /// Advance the position to the next byte boundary
