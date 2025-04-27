@@ -6,16 +6,23 @@ use crate::types::branch;
 
 use super::{sync, unit, util, Decode, Decoder, Error};
 
-/// Determines the layout of [BranchCount].
+/// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchFmt {
-    /// Packet does not contain an address, and the branch following the last correct prediction
-    /// failed.
+    /// No address
+    ///
+    /// The packet does not contain an address, and the branch following the
+    /// last correct prediction failed.
     NoAddr = 0,
-    /// Packet contains an address. If this points to a branch instruction, then the
-    /// branch was predicted correctly
+    /// Address, success
+    ///
+    /// The packet contains an address. If this points to a branch instruction,
+    /// then the branch was predicted correctly.
     Addr = 2,
-    /// Packet contains an address that points to a branch which failed the prediction.
+    /// Address, failure
+    ///
+    /// The packet contains an address that points to a branch instruction. The
+    /// prediction for that branch failed.
     AddrFail = 3,
 }
 
@@ -31,7 +38,7 @@ impl<U> Decode<U> for BranchFmt {
     }
 }
 
-/// Top level enum for all possible payload formats.
+/// An instruction trace payload
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Payload<I = unit::ReferenceIOptions> {
     Extension(Extension),
@@ -41,6 +48,10 @@ pub enum Payload<I = unit::ReferenceIOptions> {
 }
 
 impl<I> Payload<I> {
+    /// Retrieve the [`AddressInfo`] in this payload
+    ///
+    /// Returns a reference to the [`AddressInfo`] contained in this payload or
+    /// [`None`] if it does not contain one.
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
         match self {
             Payload::Address(addr) => Some(addr),
@@ -64,7 +75,7 @@ impl<I> Payload<I> {
     ///   resync because it is necessary to report the current address stack
     ///   depth or nested call count.
     ///
-    /// Returns `None` otherwise.
+    /// Returns [`None`] otherwise.
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
             Payload::Address(a) => a.irdepth,
@@ -136,15 +147,19 @@ impl<I> From<sync::Support<I>> for Payload<I> {
     }
 }
 
-/// #### Format 0
+/// Extension payload
+///
+/// Represents a format 0 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Extension {
     BranchCount(BranchCount),
     JumpTargetIndex(JumpTargetIndex),
 }
 
-/// #### Format 0, sub format 0
-/// Extension to report the number of correctly predicted branches.
+/// Branch count payload
+///
+/// Represents a format 0, subformat 0 packet. It informs about the number of
+/// correctly predicted branches.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct BranchCount {
     /// Count of the number of correctly predicted branches, minus 31.
@@ -170,11 +185,12 @@ impl<U> Decode<U> for BranchCount {
     }
 }
 
-/// #### Format 0, sub format 1
-/// Extension to report the jump target index.
+/// Jump target index payload
+///
+/// Represents a format 0, subformat 1 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTargetIndex {
-    /// Jump target cache index of entry containing target address.
+    /// Index of entry containing the jump's target address
     pub index: usize,
     pub branch_map: branch::Map,
 
@@ -195,10 +211,13 @@ impl<U> Decode<U> for JumpTargetIndex {
     }
 }
 
-/// #### Format 1
-/// This packet includes branch information, and is used when either the branch information must be
-/// reported (for example because the branch map is full), or when the address of an instruction must
-/// be reported, and there has been at least one branch since the previous packet
+/// Branch payload
+///
+/// Represents a format 1 packet. This packet includes branch information. It is
+/// sent by the encoder when either the branch information must be reported (for
+/// example because the branch map is full), or when the address of an
+/// instruction must be reported, and there has been at least one branch since
+/// the previous packet
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Branch {
     pub branch_map: branch::Map,
@@ -227,10 +246,16 @@ impl<U> Decode<U> for Branch {
     }
 }
 
-/// #### Format 2
-/// This packet contains only an instruction address, and is used when the address of an instruction
-/// must be reported, and there is no unreported branch information. The address is in differential
-/// format unless full address mode is enabled.
+/// Address info payload
+///
+/// Represents a format 2 packet. This payload contains only an instruction
+/// address. It is sent by the encoder when the address of an instruction
+/// must be reported, and there is no unreported branch information. The
+/// address is differential (i.e. relative to the last reported address)
+/// unless full address mode is enabled, but _not_ sign extended.
+///
+/// Inaddition to being a payload on its own, it also is used as part of other
+/// payloads.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AddressInfo {
     /// Differential instruction address.

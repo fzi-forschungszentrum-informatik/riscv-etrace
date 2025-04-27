@@ -4,7 +4,7 @@
 //!
 //! This module contains definitions of the various synchronization packets as
 //! defined in section 7.1 Format 3 packets of the specification. This includes
-//! the [Synchronization] type which may hold any of the subformats.
+//! the [`Synchronization`] type which may hold any of the subformats.
 
 use crate::types::{trap, Privilege};
 
@@ -25,9 +25,9 @@ pub enum Synchronization<I = unit::ReferenceIOptions> {
 impl<I> Synchronization<I> {
     /// Check whether we got here without a branch being taken
     ///
-    /// Returns `false` if the address was a branch target and `true` if the
+    /// Returns [`false`] if the address was a branch target and [`true`] if the
     /// branch was not taken or the previous instruction was not a branch
-    /// instruction. Returns `None` if the packet doesn't carry any address
+    /// instruction. Returns [`None`] if the packet doesn't carry any address
     /// information.
     pub fn branch_not_taken(&self) -> Option<bool> {
         match self {
@@ -37,10 +37,10 @@ impl<I> Synchronization<I> {
         }
     }
 
-    /// Retrieve the [Context] from this payload
+    /// Retrieve the [`Context`] from this payload
     ///
-    /// Returns [None] if the payload does not contain a context. This is the
-    /// case for [Support][Self::Support] packets.
+    /// Returns [`None`] if the payload does not contain a context. This is the
+    /// case for [`Support`][Self::Support] payloads.
     pub fn as_context(&self) -> Option<&Context> {
         match self {
             Self::Start(start) => Some(&start.ctx),

@@ -20,14 +20,24 @@ pub struct Packet<I> {
     pub len: usize,
 }
 
-/// Each packet has a header specifying at least the payload length, trace type,
-/// whether a timestamp exists and the hart which produced the packet.
+/// Siemens Messaging Infrastructure Packet header
+///
+/// This type represents a decoded header of a Siemens Messaging Infrastructure
+/// (SMI) Packet as described in Chapter 7. Instruction Trace Encoder Output
+/// Packets of the specification.
 #[derive(Debug, Eq, PartialEq)]
 pub struct Header {
     /// [`Payload`][payload::Payload] length in bytes.
     pub payload_len: usize,
+    /// Destination flow indicator, which we use for the trace type
     pub trace_type: TraceType,
+    /// Partial time stamp
     pub time_tag: Option<u16>,
+    /// Index of the hart this packet is originating from
+    ///
+    /// The index specifies the address of the hart's trace unit within the
+    /// messaging infrastructure. It may not be identical to the value of the
+    /// `mhartid` CSR for that hart.
     pub hart_index: usize,
 }
 
@@ -50,9 +60,10 @@ impl<U> Decode<U> for Header {
     }
 }
 
-/// Defines which trace type a packet has. Currently only instruction tracing is supported.
+/// Destination flow indicator, which we use for the trace type
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TraceType {
+    /// The packet contains an instruction trace payload
     Instruction,
 }
 

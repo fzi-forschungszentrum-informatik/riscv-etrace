@@ -1,6 +1,9 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Implements the packet decoder.
+//! Packet decoder and entities it can decode (packets and payloads)
+//!
+//! This module provides definitions for [payloads][payload] and packets as well
+//! as a [`Decoder`] for decoding them from raw trace data.
 
 mod format;
 pub mod payload;
@@ -22,12 +25,12 @@ use crate::config;
 use format::Format;
 use truncate::TruncateNum;
 
-/// A list of possible errors during decoding of a single packet.
+/// Decoder errors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// The trace type is not known to us
     UnknownTraceType(u8),
-    /// The branch format in [payload::BranchCount] is `0b01`.
+    /// The branch format in [`payload::BranchCount`] is `0b01`.
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
     InsufficientData(NonZeroUsize),
@@ -51,10 +54,53 @@ impl fmt::Display for Error {
     }
 }
 
-/// A decoder for packets. The decoder is stateless in respect to a single packet parse.
-/// Multiple packets from different harts may be sequentially parsed by a single decoder
-/// instance as the decoder is stateless between [decode()](Decoder::decode_smi_packet())
-/// calls.
+/// A decoder for individual packets and/or [`Payload`][payload::Payload]s
+///
+/// Use this decoder to decode individual [`smi::Packet`]s.
+///
+/// A decoder is created and loaded with raw data via a [`Builder`]. From that
+/// data, the fn [`decode_smi_packet`][Self::decode_smi_packet] will decode one
+/// [`smi::Packet`]s containing a [`Payload`][payload::Payload]. Multiple
+/// packets from different harts may be sequentially decoded by a single decoder
+/// instance.
+///
+/// If a packet could not be decoded due to insufficient data, the decoder will
+/// report this by emitting an [`Error::InsufficientData`] error.
+/// Alternatively, the number of bytes left in the input can be queried via the
+/// fn [`bytes_left`][Self::bytes_left].
+///
+/// # Example
+///
+/// The follwing example demonstrates decoding of trace data in chunks with one
+/// decoder per input, including the recovery from attempting to decode an
+/// incomplete packet. We do not need to clone the [`Builder`] since it happens
+/// to be [`Copy`] in this case.
+///
+/// ```
+/// use riscv_etrace::decoder;
+///
+/// # let parameters = Default::default();
+/// # let trace_data = b"\x45\x73\x0a\x00";
+/// # let trace_data_next = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
+/// let builder = decoder::Builder::new()
+///     .with_params(&parameters);
+/// let mut decoder = builder.build(trace_data);
+/// loop {
+///     match decoder.decode_smi_packet() {
+///         Ok(packet) => eprintln!("{packet:?}", ),
+///         Err(decoder::Error::InsufficientData(_)) => break,
+///         Err(e) => panic!("{e:?}"),
+///     }
+/// }
+/// let mut decoder = builder.build(trace_data_next);
+/// loop {
+///     match decoder.decode_smi_packet() {
+///         Ok(packet) => eprintln!("{packet:?}", ),
+///         Err(decoder::Error::InsufficientData(_)) => break,
+///         Err(e) => panic!("{e:?}"),
+///     }
+/// }
+/// ```
 #[derive(Clone)]
 pub struct Decoder<'d, U> {
     data: &'d [u8],
@@ -136,8 +182,8 @@ impl<U> Decoder<'_, U> {
 
     /// Read a single differential bit
     ///
-    /// The bit's value is considered to be `true` if it differs from the
-    /// previous bit and `false` if it doesn't.
+    /// The bit's value is considered to be [`true`] if it differs from the
+    /// previous bit and [`false`] if it doesn't.
     fn read_differential_bit(&mut self) -> Result<bool, Error> {
         let reference_pos = self
             .bit_pos
@@ -197,7 +243,12 @@ impl<U> Decoder<'_, U> {
     }
 }
 
-/// Biulder for [Decoder]s
+/// Biulder for [`Decoder`]s
+///
+/// A builder will build a single decoder for a specific slice of bytes. If the
+/// trace data is read in chunks, it may thus be neccessary to build
+/// [`Decoder`]s repeatedly. For this purpose, [`Builder`] implements [`Copy`]
+/// and [`Clone`] as long as the [`Unit`][unit::Unit] used does.
 #[derive(Copy, Clone, Default)]
 pub struct Builder<U = unit::Reference> {
     field_widths: Widths,
@@ -213,7 +264,7 @@ impl Builder<unit::Reference> {
 }
 
 impl<U> Builder<U> {
-    /// Set the [config::Parameters] of the [Decoder] built
+    /// Set the [`config::Parameters`] of the [`Decoder`] built
     pub fn with_params(self, params: &config::Parameters) -> Self {
         Self {
             field_widths: params.into(),
@@ -238,7 +289,7 @@ impl<U> Builder<U> {
         }
     }
 
-    /// Build a [Decoder] for the given data
+    /// Build a [`Decoder`] for the given data
     pub fn build(self, data: &[u8]) -> Decoder<U> {
         Decoder {
             data,

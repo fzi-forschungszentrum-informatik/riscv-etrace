@@ -1,10 +1,16 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 //! Trace unit implementation specific definitions and utilities
+//!
+//! This module provides traits for capturing some specifics of trace unit
+//! implementations not captured by [`config::Parameters`], as well as
+//! implementations of those traits.
 
-use crate::config::AddressMode;
+use crate::config;
 
 use super::{Decode, Decoder, Error};
+
+use config::AddressMode;
 
 /// Specifics about a trace unit implementation
 pub trait Unit<U = Self> {
@@ -68,7 +74,7 @@ pub trait IOptions {
     }
 }
 
-/// Reference trace [Unit]
+/// Reference trace [`Unit`]
 ///
 /// This unit is used in the reference flow (in the form of a model).
 #[derive(Copy, Clone, Debug, Default)]
@@ -86,7 +92,7 @@ impl<U> Unit<U> for Reference {
     }
 }
 
-/// IOptions for the [Reference] [Unit]
+/// [`IOptions`] for the [`Reference`] [`Unit`]
 #[derive(Copy, Clone, Debug)]
 pub struct ReferenceIOptions {
     pub implicit_return: bool,
