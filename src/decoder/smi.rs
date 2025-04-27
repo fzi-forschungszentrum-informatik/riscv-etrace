@@ -1,16 +1,30 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Implements the header and its decoding.
+//! Siemens Messaging Infrastructure packet header
 
 use core::fmt;
 
-use super::{Decode, Decoder, Error};
+use super::{payload, Decode, Decoder, Error};
+
+/// A Siemens Messaging Infrastructure (SMI) Packet
+///
+/// This type represents a decoded Siemens Messaging Infrastructure (SMI) Packet
+/// as described in Chapter 7. Instruction Trace Encoder Output Packets of the
+/// specification. A packet consists of a single, SMI specific [`Header`] and a
+/// SMI-independent tracing [`Payload`][payload::Payload].
+#[derive(Debug)]
+pub struct Packet<I> {
+    pub header: Header,
+    pub payload: payload::Payload<I>,
+    /// Length of the packet in bytes.
+    pub len: usize,
+}
 
 /// Each packet has a header specifying at least the payload length, trace type,
 /// whether a timestamp exists and the hart which produced the packet.
 #[derive(Debug, Eq, PartialEq)]
 pub struct Header {
-    /// [Payload](crate::decoder::Payload) length in bytes.
+    /// [`Payload`][payload::Payload] length in bytes.
     pub payload_len: usize,
     pub trace_type: TraceType,
     pub time_tag: Option<u16>,

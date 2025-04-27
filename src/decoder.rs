@@ -3,8 +3,8 @@
 //! Implements the packet decoder.
 
 mod format;
-pub mod header;
 pub mod payload;
+pub mod smi;
 pub mod sync;
 pub mod truncate;
 pub mod unit;
@@ -20,8 +20,6 @@ use core::ops;
 use crate::config;
 
 use format::Format;
-use header::Header;
-use payload::Payload;
 use truncate::TruncateNum;
 
 /// A list of possible errors during decoding of a single packet.
@@ -55,7 +53,8 @@ impl fmt::Display for Error {
 
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
-/// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
+/// instance as the decoder is stateless between [decode()](Decoder::decode_smi_packet())
+/// calls.
 #[derive(Clone)]
 pub struct Decoder<'d, U> {
     data: &'d [u8],
@@ -71,18 +70,18 @@ impl<U> Decoder<'_, U> {
         self.data.len()
     }
 
-    /// Decode a single [Packet] consisting of header and payload
+    /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
-    /// Decodes a single [Packet], consuming the associated data from the input.
-    /// The returned packet's [Packet::len] will contain the number of bytes
-    /// consumed. After successful operation, the decoder is left at the byte
-    /// boundary following the packet, ready to decode the next one. A failure
-    /// may leave the decoder in an unspecified state.
-    pub fn decode_packet(&mut self) -> Result<Packet<U::IOptions>, Error>
+    /// Decodes a single [`smi::Packet`], consuming the associated data from the
+    /// input. The returned packet's [`len`][`smi::Packet::len`] will contain
+    /// the number of bytes consumed. After successful operation, the decoder is
+    /// left at the byte boundary following the packet, ready to decode the next
+    /// one. A failure may leave the decoder in an unspecified state.
+    pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<U::IOptions>, Error>
     where
         U: unit::Unit,
     {
-        let header = Header::decode(self)?;
+        let header = smi::Header::decode(self)?;
         self.advance_to_byte();
         let payload_start = self.bit_pos >> 3;
         let len = payload_start + header.payload_len;
@@ -100,7 +99,7 @@ impl<U> Decoder<'_, U> {
         self.bit_pos = 0;
         self.data = remaining;
 
-        Ok(Packet {
+        Ok(smi::Packet {
             header,
             payload,
             len,
@@ -239,16 +238,6 @@ impl<U> Builder<U> {
 
 trait Decode<U>: Sized {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error>;
-}
-
-/// A single protocol packet emitted by the encoder.
-/// Each packet consists of a single header and a payload.
-#[derive(Debug)]
-pub struct Packet<I> {
-    pub header: Header,
-    pub payload: Payload<I>,
-    /// Length of the packet in bytes.
-    pub len: usize,
 }
 
 /// Widths of various payload fields
