@@ -406,13 +406,13 @@ impl<B: Binary + Default> Default for Builder<B> {
     }
 }
 
-/// [Tracer] iteration states
+/// [`Tracer`] iteration states
 #[derive(Copy, Clone, Debug)]
 enum IterationState {
-    /// The [Tracer] reports a single item
+    /// The [`Tracer`] reports a single item
     ///
     /// We know about exactly one item we report, which may have an EPC and
-    /// [trap::Info] associated with it. We don't have any information beyond
+    /// [`trap::Info`] associated with it. We don't have any information beyond
     /// this item (yet).
     SingleItem(Option<(u64, trap::Info)>),
     /// We follow the execution path based on the current packet's data
@@ -428,6 +428,7 @@ impl Default for IterationState {
 }
 
 impl IterationState {
+    /// Check whether we are currently tracing, assuming we depleted all items
     pub fn is_tracing(&self) -> bool {
         !matches!(self, Self::Depleting)
     }
