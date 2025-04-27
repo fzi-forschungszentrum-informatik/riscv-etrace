@@ -3,8 +3,8 @@
 //! Implements the packet decoder.
 
 mod format;
-pub mod header;
 pub mod payload;
+pub mod smi;
 pub mod sync;
 pub mod truncate;
 pub mod unit;
@@ -20,7 +20,6 @@ use core::ops;
 use crate::config;
 
 use format::Format;
-use header::Header;
 use payload::Payload;
 use truncate::TruncateNum;
 
@@ -82,7 +81,7 @@ impl<U> Decoder<'_, U> {
     where
         U: unit::Unit,
     {
-        let header = Header::decode(self)?;
+        let header = smi::Header::decode(self)?;
         self.advance_to_byte();
         let payload_start = self.bit_pos >> 3;
         let len = payload_start + header.payload_len;
@@ -245,7 +244,7 @@ trait Decode<U>: Sized {
 /// Each packet consists of a single header and a payload.
 #[derive(Debug)]
 pub struct Packet<I> {
-    pub header: Header,
+    pub header: smi::Header,
     pub payload: Payload<I>,
     /// Length of the packet in bytes.
     pub len: usize,

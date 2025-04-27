@@ -1,6 +1,6 @@
 // Copyright (C) 2024 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Implements the header and its decoding.
+//! Siemens Messaging Infrastructure packet header
 
 use core::fmt;
 
