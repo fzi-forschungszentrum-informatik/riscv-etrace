@@ -6,6 +6,9 @@ use crate::instruction::Instruction;
 use crate::types::trap;
 
 /// Tracing item
+///
+/// A tracing item corresponds to a traced instruction. It contains that
+/// [`Instruction`], its address and other information.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Item {
     pc: u64,
@@ -14,7 +17,7 @@ pub struct Item {
 }
 
 impl Item {
-    /// Create a new item for the given [Instruction] at the given PC
+    /// Create a new item for the given [`Instruction`] at the given PC
     pub fn new(pc: u64, insn: Instruction) -> Self {
         Self {
             pc,
@@ -36,12 +39,12 @@ impl Item {
         self.pc
     }
 
-    /// Retrieve the [Instruction]
+    /// Retrieve the [`Instruction`]
     pub fn instruction(&self) -> Instruction {
         self.insn
     }
 
-    /// Retrieve the EPC and [trap::Info] of this item if present
+    /// Retrieve the EPC and [`trap::Info`] of this item if present
     ///
     /// Any trap information is present only for the first item after the trap.
     pub fn trap(&self) -> Option<&(u64, trap::Info)> {
