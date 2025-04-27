@@ -364,10 +364,11 @@ impl<S: ReturnStack> State<S> {
     }
 }
 
-/// [State] initializer
+/// [`State`] initializer
 ///
-/// Allows configuration of [State] and subsequent setting of a [StopCondition].
-/// It allows safe configuration as long as it is created for a fused [State].
+/// An initializer allows the configuration of a [`State`] and the subsequent
+/// setting of a [`StopCondition`]. It allows safe configuration as long as it
+/// is created for a fused [`State`].
 pub struct Initializer<'a, S: ReturnStack, B: Binary> {
     state: &'a mut State<S>,
     binary: &'a mut B,
@@ -402,7 +403,7 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
             .is_some()
     }
 
-    /// Get a mutable reference to the [State]'s [branch::Map]
+    /// Get a mutable reference to the [`State`]'s [`branch::Map`]
     pub fn get_branch_map_mut(&mut self) -> &mut branch::Map {
         &mut self.state.branch_map
     }
@@ -427,17 +428,17 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
         self.state.implicit_return = implicit_return;
     }
 
-    /// Set a [StopCondition]
+    /// Set a [`StopCondition`]
     ///
     /// This operation concludes the configuration.
     pub fn set_condition(self, condition: StopCondition) {
         self.state.stop_condition = condition;
     }
 
-    /// Reset the [State] to the current address
+    /// Reset the [`State`] to the current address
     ///
     /// The current PC is updated to the current address and the current
-    /// [Instruction] updated accordingly. Other values are adjusted such that
+    /// [`Instruction`] updated accordingly. Other values are adjusted such that
     /// e.g. sequential jumps are evalued correctly.
     ///
     /// This operation concludes the configuration.
