@@ -20,7 +20,6 @@ use core::ops;
 use crate::config;
 
 use format::Format;
-use payload::Payload;
 use truncate::TruncateNum;
 
 /// A list of possible errors during decoding of a single packet.
@@ -70,14 +69,14 @@ impl<U> Decoder<'_, U> {
         self.data.len()
     }
 
-    /// Decode a single [Packet] consisting of header and payload
+    /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
-    /// Decodes a single [Packet], consuming the associated data from the input.
-    /// The returned packet's [Packet::len] will contain the number of bytes
-    /// consumed. After successful operation, the decoder is left at the byte
-    /// boundary following the packet, ready to decode the next one. A failure
-    /// may leave the decoder in an unspecified state.
-    pub fn decode_packet(&mut self) -> Result<Packet<U::IOptions>, Error>
+    /// Decodes a single [`smi::Packet`], consuming the associated data from the
+    /// input. The returned packet's [`len`][`smi::Packet::len`] will contain
+    /// the number of bytes consumed. After successful operation, the decoder is
+    /// left at the byte boundary following the packet, ready to decode the next
+    /// one. A failure may leave the decoder in an unspecified state.
+    pub fn decode_packet(&mut self) -> Result<smi::Packet<U::IOptions>, Error>
     where
         U: unit::Unit,
     {
@@ -99,7 +98,7 @@ impl<U> Decoder<'_, U> {
         self.bit_pos = 0;
         self.data = remaining;
 
-        Ok(Packet {
+        Ok(smi::Packet {
             header,
             payload,
             len,
@@ -238,16 +237,6 @@ impl<U> Builder<U> {
 
 trait Decode<U>: Sized {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error>;
-}
-
-/// A single protocol packet emitted by the encoder.
-/// Each packet consists of a single header and a payload.
-#[derive(Debug)]
-pub struct Packet<I> {
-    pub header: smi::Header,
-    pub payload: Payload<I>,
-    /// Length of the packet in bytes.
-    pub len: usize,
 }
 
 /// Widths of various payload fields
