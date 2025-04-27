@@ -103,7 +103,9 @@ fn main() {
     let mut pcount = 0u64;
     while decoder.bytes_left() > 0 {
         // We decode a packet ...
-        let packet = decoder.decode_packet().expect("Could not decode packet");
+        let packet = decoder
+            .decode_smi_packet()
+            .expect("Could not decode packet");
         if debug {
             eprintln!(
                 "Decoded packet: {packet:?} ({} bytes left)",

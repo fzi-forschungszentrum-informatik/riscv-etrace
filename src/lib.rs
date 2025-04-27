@@ -58,7 +58,7 @@
 //!     .unwrap();
 //!
 //! while decoder.bytes_left() > 0 {
-//!     let packet = decoder.decode_packet().unwrap();
+//!     let packet = decoder.decode_smi_packet().unwrap();
 //!     eprintln!("{packet:?}");
 //!     if packet.header.hart_index == hart_to_trace {
 //!         tracer.process_te_inst(&packet.payload).unwrap();

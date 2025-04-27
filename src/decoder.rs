@@ -53,7 +53,8 @@ impl fmt::Display for Error {
 
 /// A decoder for packets. The decoder is stateless in respect to a single packet parse.
 /// Multiple packets from different harts may be sequentially parsed by a single decoder
-/// instance as the decoder is stateless between [decode()](Decoder::decode_packet()) calls.
+/// instance as the decoder is stateless between [decode()](Decoder::decode_smi_packet())
+/// calls.
 #[derive(Clone)]
 pub struct Decoder<'d, U> {
     data: &'d [u8],
@@ -76,7 +77,7 @@ impl<U> Decoder<'_, U> {
     /// the number of bytes consumed. After successful operation, the decoder is
     /// left at the byte boundary following the packet, ready to decode the next
     /// one. A failure may leave the decoder in an unspecified state.
-    pub fn decode_packet(&mut self) -> Result<smi::Packet<U::IOptions>, Error>
+    pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<U::IOptions>, Error>
     where
         U: unit::Unit,
     {
