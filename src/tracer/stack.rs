@@ -1,5 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Return stack utiltities for infering function returns
 
 /// Return stack
 ///
