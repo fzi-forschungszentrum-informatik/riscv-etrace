@@ -86,10 +86,10 @@ impl<const N: usize> ReturnStack for StaticStack<N> {
     }
 }
 
-/// Dummy [ReturnStack] with zero depth
+/// Dummy [`ReturnStack`] with zero depth
 ///
-/// This [ReturnStack] does not hold any data. It only supports a maximum depth
-/// of zero.
+/// This [`ReturnStack`] does not hold any data. It only supports a maximum
+/// depth of zero.
 pub struct NoStack;
 
 impl ReturnStack for NoStack {
