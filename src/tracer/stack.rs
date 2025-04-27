@@ -1,5 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Return stack utiltities for infering function returns
 
 /// Return stack
 ///
@@ -7,15 +8,15 @@
 pub trait ReturnStack: Sized {
     /// Create a new return stack with the given maximum depth
     ///
-    /// Returns `None` if `max_depth` is greater than the value supported by the
-    /// implementaiton, or if the stack could not be created due to some other
-    /// reason.
+    /// Returns [`None`] if `max_depth` is greater than the value supported by
+    /// the implementaiton, or if the stack could not be created due to some
+    /// other reason.
     fn new(max_depth: usize) -> Option<Self>;
 
     /// Push a new return address on the stack
     ///
     /// If the maximal depth is reached, the bottom address will be evicted from
-    /// the stack and thus no longer be obtainable via a [Self::pop].
+    /// the stack and thus no longer be obtainable via a [`pop`][Self::pop].
     fn push(&mut self, addr: u64);
 
     /// Retrieve and remove the topmost return address
@@ -28,9 +29,9 @@ pub trait ReturnStack: Sized {
     fn max_depth(&self) -> usize;
 }
 
-/// Statically allocated [ReturnStack]
+/// Statically allocated [`ReturnStack`]
 ///
-/// This [ReturnStack] keeps data in an array of size `N`. It supports maximum
+/// This [`ReturnStack`] keeps data in an array of size `N`. It supports maximum
 /// depths up to that size.
 #[derive(Clone, Debug)]
 pub struct StaticStack<const N: usize> {
@@ -85,10 +86,10 @@ impl<const N: usize> ReturnStack for StaticStack<N> {
     }
 }
 
-/// Dummy [ReturnStack] with zero depth
+/// Dummy [`ReturnStack`] with zero depth
 ///
-/// This [ReturnStack] does not hold any data. It only supports a maximum depth
-/// of zero.
+/// This [`ReturnStack`] does not hold any data. It only supports a maximum
+/// depth of zero.
 pub struct NoStack;
 
 impl ReturnStack for NoStack {

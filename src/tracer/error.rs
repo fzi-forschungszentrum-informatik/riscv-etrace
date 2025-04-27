@@ -1,5 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+//! Tracing specific errors
 
 use core::fmt;
 
@@ -12,6 +13,9 @@ pub enum Error<I> {
     StartOfTrace,
     /// Some (named) feature is not supported
     UnsupportedFeature(&'static str),
+    /// Some instructions were not yet processed
+    ///
+    /// The trace items need to be depleted before the operation.
     UnprocessedInstructions,
     /// Unprocessed branches left
     ///

@@ -38,7 +38,7 @@ pub struct State<S: ReturnStack> {
     /// Inferred address that was reported
     inferred_address: Option<u64>,
 
-    /// Current [Privilege] level the core is operating in
+    /// Current [`Privilege`] level the core is operating in
     privilege: Privilege,
 
     /// Stack of (regular) call return addresses
@@ -79,17 +79,17 @@ impl<S: ReturnStack> State<S> {
         self.stop_condition == StopCondition::Fused
     }
 
-    /// Retrieve the current [Item] without advancing the state
+    /// Retrieve the current [`Item`] without advancing the state
     pub fn current_item(&self) -> Item {
         Item::new(self.pc, self.insn)
     }
 
-    /// Determine next [Item]
+    /// Determine next [`Item`]
     ///
-    /// Returns the next tracing [Item] based on the given address as well as
+    /// Returns the next tracing [`Item`] based on the given address as well as
     /// information within the state if the state is not fused. After
-    /// determining the [Item], the stop condition is evaluated and the state is
-    /// fused if necessary.
+    /// determining the [`Item`], the stop condition is evaluated and the state
+    /// is fused if necessary.
     ///
     /// This roughly corresponds to the loop bodies in`follow_execution_path`
     /// and `process_support` of the reference implementation.
@@ -206,9 +206,9 @@ impl<S: ReturnStack> State<S> {
         }
     }
 
-    /// Create an [Initializer]
+    /// Create an [`Initializer`]
     ///
-    /// Returns an [Initializer] for this state if the state is fused.
+    /// Returns an [`Initializer`] for this state if the state is fused.
     pub fn initializer<'a, B: Binary>(
         &'a mut self,
         binary: &'a mut B,
@@ -224,7 +224,7 @@ impl<S: ReturnStack> State<S> {
     /// Determine the next PC
     ///
     /// Determines the next PC based on the given address as well as information
-    /// within the state. Returns the the next [Item] alongside a `bool`
+    /// within the state. Returns the the next [`Item`] alongside a [`bool`]
     /// indicating whether any instructions after the following one can be
     /// traced based on the given address and information present in the state
     /// (`false`) or not (`true`).
@@ -355,8 +355,8 @@ impl<S: ReturnStack> State<S> {
 
     /// Determine whether the stack's depth matches the current packet's value
     ///
-    /// Returns true if [Self::stack_depth] matches [Self::return_stack]'s
-    /// depth or if [Self::stack_depth] is `None`.
+    /// Returns `true` if [`stack_depth`][Self::stack_depth] either matches the
+    /// depth of [`return_stack`][Self::return_stack] or is [`None`].
     fn stack_depth_matches(&self) -> bool {
         self.stack_depth
             .map(|d| d == self.return_stack.depth())
@@ -364,10 +364,11 @@ impl<S: ReturnStack> State<S> {
     }
 }
 
-/// [State] initializer
+/// [`State`] initializer
 ///
-/// Allows configuration of [State] and subsequent setting of a [StopCondition].
-/// It allows safe configuration as long as it is created for a fused [State].
+/// An initializer allows the configuration of a [`State`] and the subsequent
+/// setting of a [`StopCondition`]. It allows safe configuration as long as it
+/// is created for a fused [`State`].
 pub struct Initializer<'a, S: ReturnStack, B: Binary> {
     state: &'a mut State<S>,
     binary: &'a mut B,
@@ -402,7 +403,7 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
             .is_some()
     }
 
-    /// Get a mutable reference to the [State]'s [branch::Map]
+    /// Get a mutable reference to the [`State`]'s [`branch::Map`]
     pub fn get_branch_map_mut(&mut self) -> &mut branch::Map {
         &mut self.state.branch_map
     }
@@ -427,17 +428,17 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
         self.state.implicit_return = implicit_return;
     }
 
-    /// Set a [StopCondition]
+    /// Set a [`StopCondition`]
     ///
     /// This operation concludes the configuration.
     pub fn set_condition(self, condition: StopCondition) {
         self.state.stop_condition = condition;
     }
 
-    /// Reset the [State] to the current address
+    /// Reset the [`State`] to the current address
     ///
     /// The current PC is updated to the current address and the current
-    /// [Instruction] updated accordingly. Other values are adjusted such that
+    /// [`Instruction`] updated accordingly. Other values are adjusted such that
     /// e.g. sequential jumps are evalued correctly.
     ///
     /// This operation concludes the configuration.
