@@ -1,10 +1,12 @@
-# Rust implementation of Efficient Trace for RISC-V’s instruction decoder and tracing algorithm
+# Decoder and tracer for RISC-V ETraces
 
-This library implements the instruction packet decoder and instruction tracing algorithm for
-[Efficient Trace for RISC-V](https://github.com/riscv-non-isa/riscv-trace-spec/).
-This crate is not concerned how the encoder signals a new packet or how the packet is  transported to the decoder.
-
-
-
-## Testing
-Run ``cargo test``.
+This library provides a decoder and a tracer for the instruction tracing
+defined in the [Efficient Trace for RISC-V](https://github.com/riscv-non-isa/riscv-trace-spec/)
+specification. It provides:
+* a decoder for instruction trace packets and the extraction from Siemens
+  Messaging Infrastructure (SMI) packets,
+* a tracer which processes these packets and generates a sequence of tracing
+  items, each corresponding to a single traced instruction,
+* a specialized instruction database with limited decoding capabilities
+  (currently only supporting 32bit RISC-V) and
+* various utilities, including types for handling trace encoder parameters.
