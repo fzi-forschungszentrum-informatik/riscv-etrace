@@ -29,9 +29,9 @@ pub trait ReturnStack: Sized {
     fn max_depth(&self) -> usize;
 }
 
-/// Statically allocated [ReturnStack]
+/// Statically allocated [`ReturnStack`]
 ///
-/// This [ReturnStack] keeps data in an array of size `N`. It supports maximum
+/// This [`ReturnStack`] keeps data in an array of size `N`. It supports maximum
 /// depths up to that size.
 #[derive(Clone, Debug)]
 pub struct StaticStack<const N: usize> {
