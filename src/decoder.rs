@@ -319,6 +319,7 @@ struct Widths {
     pub format0_subformat: u8,
     pub iaddress_lsb: NonZeroU8,
     pub iaddress: NonZeroU8,
+    pub privilege: NonZeroU8,
     pub stack_depth: Option<NonZeroU8>,
 }
 
@@ -341,6 +342,7 @@ impl From<&config::Parameters> for Widths {
             format0_subformat: params.f0s_width_p,
             iaddress_lsb: params.iaddress_lsb_p,
             iaddress: params.iaddress_width_p,
+            privilege: params.privilege_width_p,
             stack_depth: NonZeroU8::new(stack_depth),
         }
     }
