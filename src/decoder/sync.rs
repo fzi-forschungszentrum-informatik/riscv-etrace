@@ -159,7 +159,7 @@ pub struct Context {
 impl<U> Decode<U> for Context {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let privilege = decoder
-            .read_bits::<u8>(2)?
+            .read_bits::<u8>(decoder.field_widths.privilege.get())?
             .try_into()
             .map_err(Error::UnknownPrivilege)?;
         let time = decoder

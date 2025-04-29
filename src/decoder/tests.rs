@@ -116,7 +116,13 @@ fn extension() {
     use format::Ext;
 
     let buffer = [0b0010u8; 32];
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new()
+        .with_params(&config::Parameters {
+            f0s_width_p: 1,
+            ..Default::default()
+        })
+        .build(&buffer);
+
     assert_eq!(Ext::decode(&mut decoder), Ok(Ext::BranchCount));
     assert_eq!(Ext::decode(&mut decoder), Ok(Ext::JumpTargetIndex));
 }
@@ -128,7 +134,13 @@ fn format() {
     let mut buffer = [0u8; 32];
     buffer[0] = 0b1_10_01_100;
     buffer[1] = 0b00000_011;
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new()
+        .with_params(&config::Parameters {
+            f0s_width_p: 1,
+            ..Default::default()
+        })
+        .build(&buffer);
+
     assert_eq!(
         Format::decode(&mut decoder),
         Ok(Format::Ext(Ext::JumpTargetIndex)),

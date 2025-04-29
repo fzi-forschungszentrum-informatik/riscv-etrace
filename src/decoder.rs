@@ -30,6 +30,8 @@ use truncate::TruncateNum;
 pub enum Error {
     /// The trace type is not known to us
     UnknownTraceType(u8),
+    /// The format/subformat is unknown.
+    UnknownFmt(u8, Option<u8>),
     /// The branch format in [`payload::BranchCount`] is `0b01`.
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
@@ -46,6 +48,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnknownTraceType(t) => write!(f, "Unknown trace type {t}"),
+            Self::UnknownFmt(t, None) => write!(f, "Unknown format {t}"),
+            Self::UnknownFmt(t, Some(s)) => write!(f, "Unknown format,subformat {t},{s}"),
             Self::BadBranchFmt => write!(f, "Malformed branch format"),
             Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
@@ -312,8 +316,10 @@ struct Widths {
     pub context: Option<NonZeroU8>,
     pub time: Option<NonZeroU8>,
     pub ecause: NonZeroU8,
+    pub format0_subformat: u8,
     pub iaddress_lsb: NonZeroU8,
     pub iaddress: NonZeroU8,
+    pub privilege: NonZeroU8,
     pub stack_depth: Option<NonZeroU8>,
 }
 
@@ -333,8 +339,10 @@ impl From<&config::Parameters> for Widths {
             context: (!params.nocontext_p).then_some(params.context_width_p),
             time: (!params.notime_p).then_some(params.time_width_p),
             ecause: params.ecause_width_p,
+            format0_subformat: params.f0s_width_p,
             iaddress_lsb: params.iaddress_lsb_p,
             iaddress: params.iaddress_width_p,
+            privilege: params.privilege_width_p,
             stack_depth: NonZeroU8::new(stack_depth),
         }
     }
