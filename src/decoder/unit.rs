@@ -17,11 +17,17 @@ pub trait Unit<U = Self> {
     /// Instruction trace options
     type IOptions: IOptions;
 
+    /// Data trace options
+    type DOptions;
+
     /// Width of the encoder mode field
     fn encoder_mode_width(&self) -> u8;
 
     /// Decode instruction trace options
     fn decode_ioptions(decoder: &mut Decoder<U>) -> Result<Self::IOptions, Error>;
+
+    /// Decode data trace options
+    fn decode_doptions(decoder: &mut Decoder<U>) -> Result<Self::DOptions, Error>;
 }
 
 /// Instruction trace options that may be communicated via support packets
@@ -82,12 +88,17 @@ pub struct Reference;
 
 impl<U> Unit<U> for Reference {
     type IOptions = ReferenceIOptions;
+    type DOptions = ReferenceDOptions;
 
     fn encoder_mode_width(&self) -> u8 {
         1
     }
 
     fn decode_ioptions(decoder: &mut Decoder<U>) -> Result<Self::IOptions, Error> {
+        Decode::decode(decoder)
+    }
+
+    fn decode_doptions(decoder: &mut Decoder<U>) -> Result<Self::DOptions, Error> {
         Decode::decode(decoder)
     }
 }
@@ -138,5 +149,29 @@ impl IOptions for ReferenceIOptions {
 
     fn jump_target_cache(&self) -> Option<bool> {
         Some(self.jump_target_cache)
+    }
+}
+
+/// DOptions for the [`Reference`] [`Unit`]
+#[derive(Copy, Clone, Debug)]
+pub struct ReferenceDOptions {
+    pub no_address: bool,
+    pub no_data: bool,
+    pub full_address: bool,
+    pub full_data: bool,
+}
+
+impl<U> Decode<U> for ReferenceDOptions {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        let no_address = decoder.read_bit()?;
+        let no_data = decoder.read_bit()?;
+        let full_address = decoder.read_bit()?;
+        let full_data = decoder.read_bit()?;
+        Ok(Self {
+            no_address,
+            no_data,
+            full_address,
+            full_data,
+        })
     }
 }
