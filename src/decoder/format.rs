@@ -1,4 +1,4 @@
-// Copyright (C) 2024 FZI Forschungszentrum Informatik
+// Copyright (C) 2024, 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 //! Utilties for decoding a payload's format and subformat
 
