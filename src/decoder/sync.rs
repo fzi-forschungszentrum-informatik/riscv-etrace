@@ -15,14 +15,14 @@ use super::{util, Decode, Decoder, Error};
 ///
 /// Represents a format 3 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Synchronization<I = unit::ReferenceIOptions> {
+pub enum Synchronization<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     Start(Start),
     Trap(Trap),
     Context(Context),
-    Support(Support<I>),
+    Support(Support<I, D>),
 }
 
-impl<I> Synchronization<I> {
+impl<I, D> Synchronization<I, D> {
     /// Check whether we got here without a branch being taken
     ///
     /// Returns [`false`] if the address was a branch target and [`true`] if the
@@ -51,26 +51,26 @@ impl<I> Synchronization<I> {
     }
 }
 
-impl<I> From<Start> for Synchronization<I> {
+impl<I, D> From<Start> for Synchronization<I, D> {
     fn from(start: Start) -> Self {
         Self::Start(start)
     }
 }
 
-impl<I> From<Trap> for Synchronization<I> {
+impl<I, D> From<Trap> for Synchronization<I, D> {
     fn from(trap: Trap) -> Self {
         Self::Trap(trap)
     }
 }
 
-impl<I> From<Context> for Synchronization<I> {
+impl<I, D> From<Context> for Synchronization<I, D> {
     fn from(ctx: Context) -> Self {
         Self::Context(ctx)
     }
 }
 
-impl<I> From<Support<I>> for Synchronization<I> {
-    fn from(support: Support<I>) -> Self {
+impl<I, D> From<Support<I, D>> for Synchronization<I, D> {
+    fn from(support: Support<I, D>) -> Self {
         Self::Support(support)
     }
 }
@@ -184,17 +184,17 @@ impl<U> Decode<U> for Context {
 ///
 /// Represents a format 3, subformat 3 packet.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Support<I = unit::ReferenceIOptions> {
+pub struct Support<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     pub ienable: bool,
     pub encoder_mode: EncoderMode,
     pub qual_status: QualStatus,
     pub ioptions: I,
     pub denable: bool,
     pub dloss: bool,
-    pub doptions: u64,
+    pub doptions: D,
 }
 
-impl<U: Unit> Decode<U> for Support<U::IOptions> {
+impl<U: Unit> Decode<U> for Support<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
         let encoder_mode = decoder
@@ -205,7 +205,7 @@ impl<U: Unit> Decode<U> for Support<U::IOptions> {
         let ioptions = U::decode_ioptions(decoder)?;
         let denable = decoder.read_bit()?;
         let dloss = decoder.read_bit()?;
-        let doptions = decoder.read_bits(4)?;
+        let doptions = U::decode_doptions(decoder)?;
         Ok(Support {
             ienable,
             encoder_mode,

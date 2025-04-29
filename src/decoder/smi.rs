@@ -13,9 +13,9 @@ use super::{payload, Decode, Decoder, Error};
 /// specification. A packet consists of a single, SMI specific [`Header`] and a
 /// SMI-independent tracing [`Payload`][payload::Payload].
 #[derive(Debug)]
-pub struct Packet<I> {
+pub struct Packet<I, D> {
     pub header: Header,
-    pub payload: payload::Payload<I>,
+    pub payload: payload::Payload<I, D>,
     /// Length of the packet in bytes.
     pub len: usize,
 }

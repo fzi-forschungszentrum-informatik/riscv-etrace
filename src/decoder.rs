@@ -123,7 +123,7 @@ impl<U> Decoder<'_, U> {
     /// the number of bytes consumed. After successful operation, the decoder is
     /// left at the byte boundary following the packet, ready to decode the next
     /// one. A failure may leave the decoder in an unspecified state.
-    pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<U::IOptions>, Error>
+    pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<U::IOptions, U::DOptions>, Error>
     where
         U: unit::Unit,
     {
@@ -159,7 +159,7 @@ impl<U> Decoder<'_, U> {
     /// successful operation, the decoder is left at the _bit_ boundary
     /// following the payload. A failure may leave the decoder in an unspecified
     /// state.
-    pub fn decode_payload(&mut self) -> Result<payload::Payload<U::IOptions>, Error>
+    pub fn decode_payload(&mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error>
     where
         U: unit::Unit,
     {

@@ -19,7 +19,7 @@ impl Format {
     pub fn decode_payload<U: unit::Unit>(
         &self,
         decoder: &mut Decoder<U>,
-    ) -> Result<Payload<U::IOptions>, Error> {
+    ) -> Result<Payload<U::IOptions, U::DOptions>, Error> {
         match self {
             Self::Ext(Ext::BranchCount) => payload::BranchCount::decode(decoder).map(Into::into),
             Self::Ext(Ext::JumpTargetIndex) => {
