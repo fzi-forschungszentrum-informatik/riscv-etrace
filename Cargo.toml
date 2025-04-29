@@ -1,13 +1,11 @@
 [package]
 name = "riscv-etrace"
+description = "Decoder and tracer for RISC-V efficient instruction tracing"
+license = "Apache-2.0"
 version = "0.1.0"
 edition = "2021"
-license = "Apache-2.0"
-readme = "README.md"
-description = "An implementation of RISC-V's efficient instruction tracing"
-categories = ["embedded", "no-std", "parser-implementations"]
 keywords = ["riscv", "tracing"]
-repository = "https://github.com/fzi-forschungszentrum-informatik/riscv-etrace"
+categories = ["no-std", "parser-implementations"]
 
 [dependencies]
 elf = { version = "0.7", optional = true }
