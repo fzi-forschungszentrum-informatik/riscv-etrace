@@ -30,6 +30,8 @@ use truncate::TruncateNum;
 pub enum Error {
     /// The trace type is not known to us
     UnknownTraceType(u8),
+    /// The format/subformat is unknown.
+    UnknownFmt(u8, Option<u8>),
     /// The branch format in [`payload::BranchCount`] is `0b01`.
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
@@ -46,6 +48,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnknownTraceType(t) => write!(f, "Unknown trace type {t}"),
+            Self::UnknownFmt(t, None) => write!(f, "Unknown format {t}"),
+            Self::UnknownFmt(t, Some(s)) => write!(f, "Unknown format,subformat {t},{s}"),
             Self::BadBranchFmt => write!(f, "Malformed branch format"),
             Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
