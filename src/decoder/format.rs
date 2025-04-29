@@ -56,11 +56,11 @@ pub enum Ext {
 
 impl<U> Decode<U> for Ext {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        Ok(if decoder.read_bit()? {
-            Self::JumpTargetIndex
-        } else {
-            Self::BranchCount
-        })
+        match decoder.read_bits(decoder.field_widths.format0_subformat)? {
+            0 => Ok(Self::BranchCount),
+            1 => Ok(Self::JumpTargetIndex),
+            s => Err(Error::UnknownFmt(0, Some(s))),
+        }
     }
 }
 
