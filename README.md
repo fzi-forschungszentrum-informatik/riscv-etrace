@@ -10,3 +10,7 @@ specification. It provides:
 * a specialized instruction database with limited decoding capabilities
   (currently only supporting 32bit RISC-V) and
 * various utilities, including types for handling trace encoder parameters.
+
+## License
+
+This library is licensed under the [Apache License 2.0](./LICENSE).
