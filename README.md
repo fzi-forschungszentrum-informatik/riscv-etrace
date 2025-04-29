@@ -14,3 +14,11 @@ specification. It provides:
 ## License
 
 This library is licensed under the [Apache License 2.0](./LICENSE).
+
+## Acknowledgment
+
+<img src="./doc/BMBF_sponsored.jpg" alt="drawing" height="75" align="left">
+
+Development of this library was partially funded by the German Federal Ministry
+of Education and Research (BMBF) within the project Scale4Edge (grant number
+16ME0126).
