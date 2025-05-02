@@ -247,6 +247,11 @@ impl<U> Decoder<'_, U> {
     }
 }
 
+/// Create a new [`Builder`] for [`Decoder`]s
+pub fn builder() -> Builder<unit::Reference> {
+    Default::default()
+}
+
 /// Biulder for [`Decoder`]s
 ///
 /// A builder will build a single decoder for a specific slice of bytes. If the
