@@ -86,8 +86,7 @@ impl fmt::Display for Error {
 /// # let parameters = Default::default();
 /// # let trace_data = b"\x45\x73\x0a\x00";
 /// # let trace_data_next = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
-/// let builder = decoder::Builder::new()
-///     .with_params(&parameters);
+/// let builder = decoder::builder().with_params(&parameters);
 /// let mut decoder = builder.build(trace_data);
 /// loop {
 ///     match decoder.decode_smi_packet() {
