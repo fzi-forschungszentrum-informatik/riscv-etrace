@@ -295,6 +295,11 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
     }
 }
 
+/// Create a new [`Builder`] for [`Tracer`]s
+pub fn builder() -> Builder<binary::Empty> {
+    Default::default()
+}
+
 /// Builder for [`Tracer`]
 ///
 /// A builder will build a single [`Tracer`] for a single RISC-V hart.
