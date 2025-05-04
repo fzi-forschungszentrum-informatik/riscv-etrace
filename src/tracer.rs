@@ -51,7 +51,7 @@ use stack::ReturnStack;
 /// # use riscv_etrace::instruction::COMPRESSED;
 /// # let code: &[(u64, _)] = &[(0x28, COMPRESSED)];
 /// let parameters = Default::default();
-/// let mut tracer: tracer::Tracer<_> = tracer::Builder::new()
+/// let mut tracer: tracer::Tracer<_> = tracer::builder()
 ///     .with_binary(code)
 ///     .with_params(&parameters)
 ///     .build()
@@ -293,6 +293,11 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
             }
         }
     }
+}
+
+/// Create a new [`Builder`] for [`Tracer`]s
+pub fn builder() -> Builder<binary::Empty> {
+    Default::default()
 }
 
 /// Builder for [`Tracer`]

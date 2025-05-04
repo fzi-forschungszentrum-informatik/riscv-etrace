@@ -78,10 +78,10 @@
 //! };
 //!
 //! let parameters = Default::default();
-//! let mut decoder = decoder::Builder::new()
+//! let mut decoder = decoder::builder()
 //!     .with_params(&parameters)
 //!     .build(trace_data);
-//! let mut tracer: Tracer<_> = tracer::Builder::new()
+//! let mut tracer: Tracer<_> = tracer::builder()
 //!     .with_binary(binary)
 //!     .with_params(&parameters)
 //!     .build()

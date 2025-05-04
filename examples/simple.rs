@@ -89,10 +89,10 @@ fn main() {
     ];
 
     // Finally, construct decoder and tracer...
-    let mut decoder = decoder::Builder::new()
+    let mut decoder = decoder::builder()
         .with_params(&params)
         .build(trace_data.as_ref());
-    let mut tracer: Tracer<_> = tracer::Builder::new()
+    let mut tracer: Tracer<_> = tracer::builder()
         .with_binary((elf, bootrom.as_slice()))
         .with_params(&params)
         .build()
