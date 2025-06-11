@@ -123,6 +123,108 @@ pub enum Kind {
     jalr(format::TypeI),
 }
 
+/// Construction
+impl Kind {
+    /// Create a `beq` instruction
+    pub fn new_beq(rs1: Register, rs2: Register, imm: i16) -> Self {
+        Self::beq(format::TypeB { rs1, rs2, imm })
+    }
+
+    /// Create a `bne` instruction
+    pub fn new_bne(rs1: Register, rs2: Register, imm: i16) -> Self {
+        Self::bne(format::TypeB { rs1, rs2, imm })
+    }
+
+    /// Create a `blt` instruction
+    pub fn new_blt(rs1: Register, rs2: Register, imm: i16) -> Self {
+        Self::blt(format::TypeB { rs1, rs2, imm })
+    }
+
+    /// Create a `bge` instruction
+    pub fn new_bge(rs1: Register, rs2: Register, imm: i16) -> Self {
+        Self::bge(format::TypeB { rs1, rs2, imm })
+    }
+
+    /// Create a `bltu` instruction
+    pub fn new_bltu(rs1: Register, rs2: Register, imm: i16) -> Self {
+        Self::bltu(format::TypeB { rs1, rs2, imm })
+    }
+
+    /// Create a `bgeu` instruction
+    pub fn new_bgeu(rs1: Register, rs2: Register, imm: i16) -> Self {
+        Self::bgeu(format::TypeB { rs1, rs2, imm })
+    }
+
+    /// Create an `auipc` instruction
+    pub fn new_auipc(rd: Register, imm: i32) -> Self {
+        Self::auipc(format::TypeU { rd, imm })
+    }
+
+    /// Create a `lui` instruction
+    pub fn new_lui(rd: Register, imm: i32) -> Self {
+        Self::lui(format::TypeU { rd, imm })
+    }
+
+    /// Create a `c.beqz` instruction
+    pub fn new_c_beqz(rs1: Register, imm: i16) -> Self {
+        Self::c_beqz(format::TypeB { rs1, rs2: 0, imm })
+    }
+
+    /// Create a `c.bnez` instruction
+    pub fn new_c_bnez(rs1: Register, imm: i16) -> Self {
+        Self::c_bnez(format::TypeB { rs1, rs2: 0, imm })
+    }
+
+    /// Create a `jal` instruction
+    pub fn new_jal(rd: Register, imm: i32) -> Self {
+        Self::jal(format::TypeJ { rd, imm })
+    }
+
+    /// Create a `c.j` instruction
+    pub fn new_c_j(rd: Register, imm: i16) -> Self {
+        Self::c_j(format::TypeJ {
+            rd,
+            imm: imm.into(),
+        })
+    }
+
+    /// Create a `c.jal` instruction
+    pub fn new_c_jal(rd: Register, imm: i16) -> Self {
+        Self::c_jal(format::TypeJ {
+            rd,
+            imm: imm.into(),
+        })
+    }
+
+    /// Create a `c.lui` instruction
+    pub fn new_c_lui(rd: Register, imm: i32) -> Self {
+        Self::c_lui(format::TypeU { rd, imm })
+    }
+
+    /// Create a `c.jr` instruction
+    pub fn new_c_jr(rd: Register) -> Self {
+        Self::c_jr(format::TypeR {
+            rd,
+            rs1: rd,
+            rs2: 0,
+        })
+    }
+
+    /// Create a `c.jalr` instruction
+    pub fn new_c_jalr(rd: Register) -> Self {
+        Self::c_jalr(format::TypeR {
+            rd,
+            rs1: rd,
+            rs2: 0,
+        })
+    }
+
+    /// Create a `jalr` instruction
+    pub fn new_jalr(rd: Register, rs1: Register, imm: i16) -> Self {
+        Self::jalr(format::TypeI { rd, rs1, imm })
+    }
+}
+
 /// Queries
 impl Kind {
     /// Determine the branch target
