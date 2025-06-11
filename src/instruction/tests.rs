@@ -5,6 +5,60 @@ use super::*;
 
 use base::Set::Rv32I;
 
+macro_rules! decode_test {
+    ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
+        #[test]
+        fn $n() {
+            let insn = DecodeForTest::decode($l, $s);
+            assert_eq!(insn, $k);
+            assert_eq!(insn.branch_target(), $bt);
+            assert_eq!(insn.inferable_jump_target(), $jt);
+            assert_eq!(insn.uninferable_jump(), $uj);
+        }
+    };
+    ($s:ident, $n:ident, $l:literal, $k:expr, b, $t:expr) => {
+        decode_test!($s, $n, $l, $k, Some($t), None, None);
+    };
+    ($s:ident, $n:ident, $l:literal, $k:expr, j, $t:expr) => {
+        decode_test!($s, $n, $l, $k, None, Some($t), None);
+    };
+    ($s:ident, $n:ident, $l:literal, $k:expr, u, $t:expr) => {
+        decode_test!($s, $n, $l, $k, None, None, Some($t));
+    };
+    ($s:ident, $n:ident, $l:literal, $k:expr) => {
+        decode_test!($s, $n, $l, $k, None, None, None);
+    };
+    ($n:ident, $l:literal, $k:expr, $tt:ident, $t:expr) => {
+        mod $n {
+            use super::*;
+            decode_test!(Rv32I, rv32i, $l, $k, $tt, $t);
+        }
+    };
+    ($n:ident, $l:literal, $k:expr) => {
+        mod $n {
+            use super::*;
+            decode_test!(Rv32I, rv32i, $l, $k);
+        }
+    };
+}
+
+/// Helper trait for using the correct decoding fn depending on a literal's type
+trait DecodeForTest {
+    fn decode(self, base: base::Set) -> Kind;
+}
+
+impl DecodeForTest for u16 {
+    fn decode(self, base: base::Set) -> Kind {
+        base.decode_16(self).expect("Could not decode")
+    }
+}
+
+impl DecodeForTest for u32 {
+    fn decode(self, base: base::Set) -> Kind {
+        base.decode_32(self).expect("Could not decode")
+    }
+}
+
 #[test]
 fn mret() {
     let insn = Rv32I.decode_32(0x30200073).expect("Could not decode");
