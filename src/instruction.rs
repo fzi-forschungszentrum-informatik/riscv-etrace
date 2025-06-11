@@ -14,6 +14,8 @@ pub mod elf;
 #[cfg(test)]
 mod tests;
 
+use format::Register;
+
 /// Bits from which [`Instruction`]s can be disassembled
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
@@ -183,7 +185,7 @@ impl Kind {
     /// target in such situations using statically determined register values.
     ///
     /// Branch instructions are not considered jump instructions.
-    pub fn uninferable_jump(self) -> Option<(format::Register, i16)> {
+    pub fn uninferable_jump(self) -> Option<(Register, i16)> {
         match self {
             Self::c_jalr(d) => Some((d.rs1, 0)),
             Self::c_jr(d) => Some((d.rs1, 0)),
