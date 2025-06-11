@@ -59,248 +59,45 @@ impl DecodeForTest for u32 {
     }
 }
 
-#[test]
-fn mret() {
-    let insn = Rv32I.decode_32(0x30200073).expect("Could not decode");
-    assert_eq!(insn, Kind::mret);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn sret() {
-    let insn = Rv32I.decode_32(0x10200073).expect("Could not decode");
-    assert_eq!(insn, Kind::sret);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn fence() {
-    let insn = Rv32I.decode_32(0x0ff0000f).expect("Could not decode");
-    assert_eq!(insn, Kind::fence);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn sfence_vma() {
-    let insn = Rv32I.decode_32(0x12010073).expect("Could not decode");
-    assert_eq!(insn, Kind::sfence_vma);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn wfi() {
-    let insn = Rv32I.decode_32(0x10500073).expect("Could not decode");
-    assert_eq!(insn, Kind::wfi);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn ecall() {
-    let insn = Rv32I.decode_32(0x00000073).expect("Could not decode");
-    assert_eq!(insn, Kind::ecall);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn ebreak() {
-    let insn = Rv32I.decode_32(0x00100073).expect("Could not decode");
-    assert_eq!(insn, Kind::ebreak);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn fence_i() {
-    let insn = Rv32I.decode_32(0x0000100f).expect("Could not decode");
-    assert_eq!(insn, Kind::fence_i);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn beq() {
-    let insn = Rv32I.decode_32(0xaa360b63).expect("Could not decode");
-    assert_eq!(insn, Kind::new_beq(12, 3, -3402));
-    assert_eq!(insn.branch_target(), Some(-3402));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn bne() {
-    let insn = Rv32I.decode_32(0xf4361963).expect("Could not decode");
-    assert_eq!(insn, Kind::new_bne(12, 3, -2222));
-    assert_eq!(insn.branch_target(), Some(-2222));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn blt() {
-    let insn = Rv32I.decode_32(0x00004663).expect("Could not decode");
-    assert_eq!(insn, Kind::new_blt(0, 0, 12));
-    assert_eq!(insn.branch_target(), Some(12));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn bge() {
-    let insn = Rv32I.decode_32(0x845f5fe3).expect("Could not decode");
-    assert_eq!(insn, Kind::new_bge(30, 5, -1954));
-    assert_eq!(insn.branch_target(), Some(-1954));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn bltu() {
-    let insn = Rv32I.decode_32(0x7f406fe3).expect("Could not decode");
-    assert_eq!(insn, Kind::new_bltu(0, 20, 4094));
-    assert_eq!(insn.branch_target(), Some(4094));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn bgeu() {
-    let insn = Rv32I.decode_32(0x01467063).expect("Could not decode");
-    assert_eq!(insn, Kind::new_bgeu(12, 20, 0));
-    assert_eq!(insn.branch_target(), Some(0));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn c_beqz() {
-    let insn = Rv32I.decode_16(0xca4d).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_beqz(12, 178));
-    assert_eq!(insn.branch_target(), Some(178));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn c_benz() {
-    let insn = Rv32I.decode_16(0xe6cd).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_bnez(13, 170));
-    assert_eq!(insn.branch_target(), Some(170));
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn auipc() {
-    let insn = Rv32I.decode_32(0xf2ab3697).expect("Could not decode");
-    assert_eq!(insn, Kind::new_auipc(13, -223662080));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn lui() {
-    let insn = Rv32I.decode_32(0xfff0f8b7).expect("Could not decode");
-    assert_eq!(insn, Kind::new_lui(17, -987136));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn c_lui() {
-    let insn = Rv32I.decode_16(0x7255).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_lui(4, -45056));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn jal() {
-    let insn = Rv32I.decode_32(0x1030d66f).expect("Could not decode");
-    assert_eq!(insn, Kind::new_jal(12, 55554));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), Some(55554));
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn c_j() {
-    let insn = Rv32I.decode_16(0xab91).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_j(0, 1364));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), Some(1364));
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn c_jal() {
-    let insn = Rv32I.decode_16(0x39f5).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_jal(0, -772));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), Some(-772));
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn c_jr() {
-    let insn = Rv32I.decode_16(0x8602).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_jr(12));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), Some((12, 0)));
-}
-
-#[test]
-fn c_jalr() {
-    let insn = Rv32I.decode_16(0x9f82).expect("Could not decode");
-    assert_eq!(insn, Kind::new_c_jalr(31));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), Some((31, 0)));
-}
-
-#[test]
-fn c_ebreak() {
-    let insn = Rv32I.decode_16(0x9002).expect("Could not decode");
-    assert_eq!(insn, Kind::c_ebreak);
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), None);
-}
-
-#[test]
-fn jalr() {
-    let insn = Rv32I.decode_32(0x66168867).expect("Could not decode");
-    assert_eq!(insn, Kind::new_jalr(16, 13, 0x661));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), None);
-    assert_eq!(insn.uninferable_jump(), Some((13, 0x661)));
-}
-
-#[test]
-fn jalr_rs1_zero() {
-    let insn = Rv32I.decode_32(0x66100fe7).expect("Could not decode");
-    assert_eq!(insn, Kind::new_jalr(31, 0, 1633));
-    assert_eq!(insn.branch_target(), None);
-    assert_eq!(insn.inferable_jump_target(), Some(1633));
-    assert_eq!(insn.uninferable_jump(), None);
-}
+decode_test!(mret, 0x30200073u32, Kind::mret);
+decode_test!(sret, 0x10200073u32, Kind::sret);
+decode_test!(fence, 0x0ff0000fu32, Kind::fence);
+decode_test!(sfence_vma, 0x12010073u32, Kind::sfence_vma);
+decode_test!(wfi, 0x10500073u32, Kind::wfi);
+decode_test!(ecall, 0x00000073u32, Kind::ecall);
+decode_test!(ebreak, 0x00100073u32, Kind::ebreak);
+decode_test!(fence_i, 0x0000100fu32, Kind::fence_i);
+decode_test!(beq, 0xaa360b63u32, Kind::new_beq(12, 3, -3402), b, -3402);
+decode_test!(bne, 0xf4361963u32, Kind::new_bne(12, 3, -2222), b, -2222);
+decode_test!(blt, 0x00004663u32, Kind::new_blt(0, 0, 12), b, 12);
+decode_test!(bge, 0x845f5fe3u32, Kind::new_bge(30, 5, -1954), b, -1954);
+decode_test!(bltu, 0x7f406fe3u32, Kind::new_bltu(0, 20, 4094), b, 4094);
+decode_test!(bgeu, 0x01467063u32, Kind::new_bgeu(12, 20, 0), b, 0);
+decode_test!(c_beqz, 0xca4du16, Kind::new_c_beqz(12, 178), b, 178);
+decode_test!(c_benz, 0xe6cdu16, Kind::new_c_bnez(13, 170), b, 170);
+decode_test!(auipc, 0xf2ab3697u32, Kind::new_auipc(13, -223662080));
+decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));
+decode_test!(c_lui, 0x7255u16, Kind::new_c_lui(4, -45056));
+decode_test!(jal, 0x1030d66fu32, Kind::new_jal(12, 55554), j, 55554);
+decode_test!(c_j, 0xab91u16, Kind::new_c_j(0, 1364), j, 1364);
+decode_test!(c_jal, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
+decode_test!(c_jr, 0x8602u16, Kind::new_c_jr(12), u, (12, 0));
+decode_test!(c_jalr, 0x9f82u16, Kind::new_c_jalr(31), u, (31, 0));
+decode_test!(c_ebreak, 0x9002u16, Kind::c_ebreak);
+decode_test!(
+    jalr,
+    0x66168867u32,
+    Kind::new_jalr(16, 13, 0x661),
+    u,
+    (13, 0x661)
+);
+decode_test!(
+    jalr_rs1_zero,
+    0x66100fe7u32,
+    Kind::new_jalr(31, 0, 1633),
+    j,
+    1633
+);
 
 // Instruction type related tests
 
