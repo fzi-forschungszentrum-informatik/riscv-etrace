@@ -121,6 +121,7 @@ pub enum Kind {
     jalr(format::TypeI),
 }
 
+/// Queries
 impl Kind {
     /// Determine the branch target
     ///
@@ -247,7 +248,10 @@ impl Kind {
                 | Self::c_jr(format::TypeR { rs1: 1, .. })
         )
     }
+}
 
+/// Instruction decoding
+impl Kind {
     /// Decode a 32bit ("normal") instruction
     ///
     /// Returns an instruction if it can be decoded, that is if that instruction
