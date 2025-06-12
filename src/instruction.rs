@@ -380,21 +380,6 @@ impl Instruction {
     }
 }
 
-impl From<Bits> for Instruction {
-    fn from(bits: Bits) -> Self {
-        match bits {
-            Bits::Bit32(bits) => Self {
-                size: Size::Normal,
-                kind: base::Set::Rv32I.decode_32(bits),
-            },
-            Bits::Bit16(bits) => Self {
-                size: Size::Compressed,
-                kind: base::Set::Rv32I.decode_16(bits),
-            },
-        }
-    }
-}
-
 impl From<Kind> for Instruction {
     fn from(kind: Kind) -> Self {
         let size = match kind {
