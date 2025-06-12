@@ -6,7 +6,6 @@ use crate::decoder::payload;
 use crate::instruction;
 use crate::types::branch;
 
-use instruction::format::{TypeB, TypeJ, TypeR};
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use item::Item;
 
@@ -19,19 +18,11 @@ fn debug_printf() {
         (0x8000117a, COMPRESSED),
         (0x8000117c, COMPRESSED),
         (0x8000117e, COMPRESSED),
-        (
-            0x80001180,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into(),
-        ),
+        (0x80001180, Kind::new_c_jr(1).into()),
         // main:
         (0x80001a80, UNCOMPRESSED),
         // Call debug_printf
-        (0x80001a84, Kind::jal(TypeJ { rd: 1, imm: -0x90c }).into()),
+        (0x80001a84, Kind::new_jal(1, -0x90c).into()),
         (0x80001a88, UNCOMPRESSED),
     ];
 
@@ -58,10 +49,7 @@ fn debug_printf() {
         .expect("Could not process packet");
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x80001a84,
-            Kind::jal(TypeJ { rd: 1, imm: -2316 }).into()
-        )))
+        Some(Ok(Item::new(0x80001a84, Kind::new_jal(1, -2316).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001178, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000117a, COMPRESSED))));
@@ -69,15 +57,7 @@ fn debug_printf() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000117e, COMPRESSED))));
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x80001180,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into()
-        )))
+        Some(Ok(Item::new(0x80001180, Kind::new_c_jr(1).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001a88, UNCOMPRESSED))));
     assert_eq!(tracer.next(), None);
@@ -89,28 +69,12 @@ fn exitting_from_func_2() {
     let code: &[(u64, _)] = &[
         // Func_2:
         (0x800010da, COMPRESSED),
-        (
-            0x800010dc,
-            Kind::bge(TypeB {
-                rs1: 0,
-                rs2: 10,
-                imm: 0x008,
-            })
-            .into(),
-        ),
+        (0x800010dc, Kind::new_bge(0, 10, 0x008).into()),
         (0x800010e0, COMPRESSED),
         (0x800010e2, COMPRESSED),
         (0x800010e4, COMPRESSED),
         (0x800010e6, COMPRESSED),
-        (
-            0x800010e8,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into(),
-        ),
+        (0x800010e8, Kind::new_c_jr(1).into()),
         // main:
         (0x80001b8a, UNCOMPRESSED),
     ];
@@ -143,27 +107,14 @@ fn exitting_from_func_2() {
         tracer.next(),
         Some(Ok(Item::new(
             0x800010dc,
-            Kind::bge(TypeB {
-                rs1: 0,
-                rs2: 10,
-                imm: 0x008,
-            })
-            .into()
+            Kind::new_bge(0, 10, 0x008).into(),
         )))
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010e4, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010e6, COMPRESSED))));
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x800010e8,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into()
-        )))
+        Some(Ok(Item::new(0x800010e8, Kind::new_c_jr(1).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001b8a, UNCOMPRESSED))));
     assert_eq!(tracer.next(), None);
@@ -177,45 +128,13 @@ fn three_branches() {
         (0x80001110, COMPRESSED),
         (0x80001112, COMPRESSED),
         (0x80001114, COMPRESSED),
-        (
-            0x80001116,
-            Kind::beq(TypeB {
-                rs1: 8,
-                rs2: 15,
-                imm: 0x028,
-            })
-            .into(),
-        ),
-        (
-            0x8000111a,
-            Kind::c_beqz(TypeB {
-                rs1: 8,
-                rs2: 0,
-                imm: 0x036,
-            })
-            .into(),
-        ),
+        (0x80001116, Kind::new_beq(8, 15, 0x028).into()),
+        (0x8000111a, Kind::new_c_beqz(8, 0x036).into()),
         (0x8000111c, COMPRESSED),
-        (
-            0x8000111e,
-            Kind::beq(TypeB {
-                rs1: 8,
-                rs2: 14,
-                imm: 0x040,
-            })
-            .into(),
-        ),
+        (0x8000111e, Kind::new_beq(8, 14, 0x040).into()),
         (0x8000115e, COMPRESSED),
         (0x80001160, COMPRESSED),
-        (
-            0x80001162,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into(),
-        ),
+        (0x80001162, Kind::new_c_jr(1).into()),
         // Proc_1:
         (0x80001258, UNCOMPRESSED),
     ];
@@ -250,52 +169,26 @@ fn three_branches() {
         tracer.next(),
         Some(Ok(Item::new(
             0x80001116,
-            Kind::beq(TypeB {
-                rs1: 8,
-                rs2: 15,
-                imm: 0x028,
-            })
-            .into()
-        )))
+            Kind::new_beq(8, 15, 0x028).into(),
+        ))),
     );
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x8000111a,
-            Kind::c_beqz(TypeB {
-                rs1: 8,
-                rs2: 0,
-                imm: 0x036,
-            })
-            .into()
-        )))
+        Some(Ok(Item::new(0x8000111a, Kind::new_c_beqz(8, 0x036).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000111c, COMPRESSED))));
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(
             0x8000111e,
-            Kind::beq(TypeB {
-                rs1: 8,
-                rs2: 14,
-                imm: 0x040,
-            })
-            .into()
-        )))
+            Kind::new_beq(8, 14, 0x040).into(),
+        ))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000115e, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001160, COMPRESSED))));
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x80001162,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into()
-        )))
+        Some(Ok(Item::new(0x80001162, Kind::new_c_jr(1).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001258, UNCOMPRESSED))));
     assert_eq!(tracer.next(), None);
@@ -307,15 +200,7 @@ fn complex() {
         // Func_3:
         (0x800010f8, COMPRESSED),
         (0x800010fa, UNCOMPRESSED),
-        (
-            0x800010fe,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into(),
-        ),
+        (0x800010fe, Kind::new_c_jr(1).into()),
         // Proc_6:
         (0x80001100, COMPRESSED),
         (0x80001102, COMPRESSED),
@@ -324,34 +209,18 @@ fn complex() {
         (0x80001108, COMPRESSED),
         (0x8000110a, COMPRESSED),
         // Call Func_3
-        (0x8000110c, Kind::jal(TypeJ { rd: 1, imm: -0x014 }).into()),
-        (
-            0x80001110,
-            Kind::c_beqz(TypeB {
-                rs1: 10,
-                rs2: 0,
-                imm: 0x024,
-            })
-            .into(),
-        ),
+        (0x8000110c, Kind::new_jal(1, -0x014).into()),
+        (0x80001110, Kind::new_c_beqz(10, 0x024).into()),
         (0x80001112, COMPRESSED),
         // Proc_1:
         (0x8000121c, COMPRESSED),
-        (
-            0x8000121e,
-            Kind::c_beqz(TypeB {
-                rs1: 15,
-                rs2: 0,
-                imm: 0x02c,
-            })
-            .into(),
-        ),
+        (0x8000121e, Kind::new_c_beqz(15, 0x02c).into()),
         (0x8000124a, COMPRESSED),
         (0x8000124c, COMPRESSED),
         (0x8000124e, UNCOMPRESSED),
         (0x80001252, COMPRESSED),
         // Call Proc_6
-        (0x80001254, Kind::jal(TypeJ { rd: 1, imm: -0x154 }).into()),
+        (0x80001254, Kind::new_jal(1, -0x154).into()),
     ];
 
     let mut tracer: Tracer<_> = Builder::new()
@@ -382,13 +251,8 @@ fn complex() {
         tracer.next(),
         Some(Ok(Item::new(
             0x8000121e,
-            Kind::c_beqz(TypeB {
-                rs1: 15,
-                rs2: 0,
-                imm: 0x02c,
-            })
-            .into(),
-        )))
+            Kind::new_c_beqz(15, 0x02c).into(),
+        ))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000124a, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000124c, COMPRESSED))));
@@ -396,10 +260,7 @@ fn complex() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001252, COMPRESSED))));
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x80001254,
-            Kind::jal(TypeJ { rd: 1, imm: -0x154 }).into()
-        )))
+        Some(Ok(Item::new(0x80001254, Kind::new_jal(1, -0x154).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001100, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001102, COMPRESSED))));
@@ -409,36 +270,20 @@ fn complex() {
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000110a, COMPRESSED))));
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x8000110c,
-            Kind::jal(TypeJ { rd: 1, imm: -0x014 }).into()
-        )))
+        Some(Ok(Item::new(0x8000110c, Kind::new_jal(1, -0x014).into()))),
     );
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010f8, COMPRESSED))));
     assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010fa, UNCOMPRESSED))));
     assert_eq!(
         tracer.next(),
-        Some(Ok(Item::new(
-            0x800010fe,
-            Kind::c_jr(TypeR {
-                rd: 0,
-                rs1: 1,
-                rs2: 0,
-            })
-            .into(),
-        )))
+        Some(Ok(Item::new(0x800010fe, Kind::new_c_jr(1).into()))),
     );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(
             0x80001110,
-            Kind::c_beqz(TypeB {
-                rs1: 10,
-                rs2: 0,
-                imm: 0x024,
-            })
-            .into()
-        )))
+            Kind::new_c_beqz(10, 0x024).into(),
+        ))),
     );
     assert_eq!(tracer.next(), None);
 }
@@ -448,15 +293,7 @@ fn full_branch_map() {
     let code: &[(u64, _)] = &[
         (0x80000028, COMPRESSED),
         (0x8000002a, COMPRESSED),
-        (
-            0x8000002c,
-            Kind::c_beqz(TypeB {
-                rs1: 10,
-                rs2: 0,
-                imm: -0x004,
-            })
-            .into(),
-        ),
+        (0x8000002c, Kind::new_c_beqz(10, -0x004).into()),
         (0x8000002e, COMPRESSED),
     ];
 
@@ -484,13 +321,8 @@ fn full_branch_map() {
         tracer.next(),
         Some(Ok(Item::new(
             0x8000002c,
-            Kind::c_beqz(TypeB {
-                rs1: 10,
-                rs2: 0,
-                imm: -0x004,
-            })
-            .into()
-        )))
+            Kind::new_c_beqz(10, -0x004).into(),
+        ))),
     );
     (2..=31).for_each(|_| {
         assert_eq!(tracer.next(), Some(Ok(Item::new(0x80000028, COMPRESSED))));
@@ -499,13 +331,8 @@ fn full_branch_map() {
             tracer.next(),
             Some(Ok(Item::new(
                 0x8000002c,
-                Kind::c_beqz(TypeB {
-                    rs1: 10,
-                    rs2: 0,
-                    imm: -0x004,
-                })
-                .into()
-            )))
+                Kind::new_c_beqz(10, -0x004).into(),
+            ))),
         );
     });
     assert_eq!(tracer.next(), None);

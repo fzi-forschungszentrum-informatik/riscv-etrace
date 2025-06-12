@@ -70,22 +70,11 @@ fn main() {
     // results in instruction fetch errors while tracing. This is a
     // representation of spike's bootrom.
     let bootrom = vec![
-        (
-            0x1000,
-            instruction::Kind::auipc(instruction::format::TypeU { rd: 5, imm: 0 }).into(),
-        ),
+        (0x1000, instruction::Kind::new_auipc(5, 0).into()),
         (0x1004, instruction::UNCOMPRESSED),
         (0x1008, instruction::UNCOMPRESSED),
         (0x100c, instruction::UNCOMPRESSED),
-        (
-            0x1010,
-            instruction::Kind::c_jr(instruction::format::TypeR {
-                rd: 0,
-                rs1: 5,
-                rs2: 0,
-            })
-            .into(),
-        ),
+        (0x1010, instruction::Kind::new_c_jr(5).into()),
     ];
 
     // Finally, construct decoder and tracer...
