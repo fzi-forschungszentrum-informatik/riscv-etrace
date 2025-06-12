@@ -5,6 +5,7 @@
 //! This module provides utilities for decoding [`Instruction`]s and for
 //! extracting information relevant for tracing.
 
+pub mod base;
 pub mod binary;
 pub mod format;
 
@@ -45,35 +46,21 @@ impl Bits {
             _ => None,
         }
     }
-}
 
-#[repr(u32)]
-#[derive(Eq, PartialEq)]
-enum OpCode {
-    MiscMem = 0b0001111,
-    Lui = 0b0110111,
-    Auipc = 0b0010111,
-    Branch = 0b1100011,
-    Jalr = 0b1100111,
-    Jal = 0b1101111,
-    System = 0b1110011,
-    Ignored,
-}
-
-impl From<u32> for OpCode {
-    fn from(value: u32) -> Self {
-        use OpCode::*;
-
-        const MASK: u32 = 0x7F;
-        match value & MASK {
-            x if x == Auipc as u32 => Auipc,
-            x if x == Lui as u32 => Lui,
-            x if x == MiscMem as u32 => MiscMem,
-            x if x == Branch as u32 => Branch,
-            x if x == Jalr as u32 => Jalr,
-            x if x == Jal as u32 => Jal,
-            x if x == System as u32 => System,
-            _ => Ignored,
+    /// Decode this "raw" instruction to an [`Instruction`]
+    ///
+    /// Decodes an [`Instruction`], including the instruction [`Kind`] if it is
+    /// known.
+    pub fn decode(self, base: base::Set) -> Instruction {
+        match self {
+            Self::Bit32(bits) => Instruction {
+                size: Size::Normal,
+                kind: base.decode_32(bits),
+            },
+            Self::Bit16(bits) => Instruction {
+                size: Size::Compressed,
+                kind: base.decode_16(bits),
+            },
         }
     }
 }
@@ -354,85 +341,6 @@ impl Kind {
     }
 }
 
-/// Instruction decoding
-impl Kind {
-    /// Decode a 32bit ("normal") instruction
-    ///
-    /// Returns an instruction if it can be decoded, that is if that instruction
-    /// is known. As only a small part of all RISC-V instruction is relevant, we
-    /// don't consider unknown instructions an error.
-    #[allow(clippy::unusual_byte_groupings)]
-    pub fn decode_32(insn: u32) -> Option<Self> {
-        let funct3 = (insn >> 12) & 0x7;
-
-        match OpCode::from(insn) {
-            OpCode::MiscMem => match funct3 {
-                0b000 => Some(Self::fence),
-                0b001 => Some(Self::fence_i),
-                _ => None,
-            },
-            OpCode::Lui => Some(Self::lui(insn.into())),
-            OpCode::Auipc => Some(Self::auipc(insn.into())),
-            OpCode::Branch => match funct3 {
-                0b000 => Some(Self::beq(insn.into())),
-                0b001 => Some(Self::bne(insn.into())),
-                0b100 => Some(Self::blt(insn.into())),
-                0b101 => Some(Self::bge(insn.into())),
-                0b110 => Some(Self::bltu(insn.into())),
-                0b111 => Some(Self::bgeu(insn.into())),
-                _ => None,
-            },
-            OpCode::Jalr => Some(Self::jalr(insn.into())),
-            OpCode::Jal => Some(Self::jal(insn.into())),
-            OpCode::System => match insn >> 7 {
-                0b000000000000_00000_000_00000 => Some(Self::ecall),
-                0b000000000001_00000_000_00000 => Some(Self::ebreak),
-                0b000100000010_00000_000_00000 => Some(Self::sret),
-                0b001100000010_00000_000_00000 => Some(Self::mret),
-                0b000100000101_00000_000_00000 => Some(Self::wfi),
-                _ if (insn >> 25) == 0b0001001 => Some(Self::sfence_vma),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
-    /// Decode a 16bit ("compressed") instruction
-    ///
-    /// Returns an instruction if it can be decoded, that is if that instruction
-    /// is known. As only a small part of all RISC-V instruction is relevant, we
-    /// don't consider unknown instructions an error.
-    pub fn decode_16(insn: u16) -> Option<Self> {
-        let op = insn & 0x3;
-        let func3 = insn >> 13;
-        match (op, func3) {
-            (0b01, 0b001) => Some(Self::c_jal(insn.into())),
-            (0b01, 0b011) => {
-                let data = format::TypeU::from(insn);
-                if data.rd != 0 || data.rd != 2 {
-                    Some(Self::c_lui(data))
-                } else {
-                    None
-                }
-            }
-            (0x01, 0b101) => Some(Self::c_j(insn.into())),
-            (0x01, 0b110) => Some(Self::c_beqz(insn.into())),
-            (0x01, 0b111) => Some(Self::c_bnez(insn.into())),
-            (0b10, 0b100) => {
-                let data = format::TypeR::from(insn);
-                let bit12 = (insn >> 12) & 0x1;
-                match (bit12, data.rs1, data.rs2) {
-                    (0, r, 0) if r != 0 => Some(Self::c_jr(data)),
-                    (1, r, 0) if r != 0 => Some(Self::c_jalr(data)),
-                    (1, 0, 0) => Some(Self::c_ebreak),
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
-    }
-}
-
 /// Length of single RISC-V [`Instruction`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Size {
@@ -465,24 +373,10 @@ impl Instruction {
     /// Extract an instruction from a raw byte slice
     ///
     /// Try to extract [`Bits`] from the beginning of the given slice, then
-    /// decode them into an [`Instruction`]. See [`Bits::extract`] for details.
-    pub fn extract(data: &[u8]) -> Option<(Self, &[u8])> {
-        Bits::extract(data).map(|(b, r)| (b.into(), r))
-    }
-}
-
-impl From<Bits> for Instruction {
-    fn from(bits: Bits) -> Self {
-        match bits {
-            Bits::Bit32(bits) => Self {
-                size: Size::Normal,
-                kind: Kind::decode_32(bits),
-            },
-            Bits::Bit16(bits) => Self {
-                size: Size::Compressed,
-                kind: Kind::decode_16(bits),
-            },
-        }
+    /// decode them into an [`Instruction`]. See [`Bits::extract`] and
+    /// [`Bits::decode`] for details.
+    pub fn extract(data: &[u8], base: base::Set) -> Option<(Self, &[u8])> {
+        Bits::extract(data).map(|(b, r)| (b.decode(base), r))
     }
 }
 

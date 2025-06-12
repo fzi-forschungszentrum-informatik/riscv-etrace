@@ -9,7 +9,7 @@ use elf::endian::EndianParse;
 use elf::ElfBytes;
 
 use super::binary::Binary;
-use super::Instruction;
+use super::{base, Instruction};
 
 /// Static ELF [`Binary`]
 ///
@@ -24,6 +24,7 @@ where
 {
     elf: E,
     last_segment: Option<(u64, &'d [u8])>,
+    base: base::Set,
     phantom: core::marker::PhantomData<P>,
 }
 
@@ -37,14 +38,20 @@ where
         use elf::abi;
 
         let hdr = &elf.borrow().ehdr;
-        if hdr.e_machine != abi::EM_RISCV || hdr.class == elf::file::Class::ELF64 {
+        if hdr.e_machine != abi::EM_RISCV {
             Err(Error::UnsupportedArchitecture)
         } else if !hdr.endianness.is_little() {
             Err(Error::UnsupportedEndianess)
         } else {
+            let base = match hdr.class {
+                elf::file::Class::ELF32 => base::Set::Rv32I,
+                _ => return Err(Error::UnsupportedArchitecture),
+            };
+
             Ok(Self {
                 elf,
                 last_segment: None,
+                base,
                 phantom: Default::default(),
             })
         }
@@ -106,7 +113,7 @@ where
             .ok_or(Error::NoSegmentFound)??;
 
         self.last_segment = Some(segment);
-        Instruction::extract(insn_data)
+        Instruction::extract(insn_data, self.base)
             .map(|(i, _)| i)
             .ok_or(Error::InvalidInstruction)
     }
