@@ -5,6 +5,7 @@
 //! This module provides utilities for decoding [`Instruction`]s and for
 //! extracting information relevant for tracing.
 
+pub mod base;
 pub mod binary;
 pub mod format;
 
