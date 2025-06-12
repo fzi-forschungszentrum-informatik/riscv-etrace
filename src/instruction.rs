@@ -46,6 +46,23 @@ impl Bits {
             _ => None,
         }
     }
+
+    /// Decode this "raw" instruction to an [`Instruction`]
+    ///
+    /// Decodes an [`Instruction`], including the instruction [`Kind`] if it is
+    /// known.
+    pub fn decode(self, base: base::Set) -> Instruction {
+        match self {
+            Self::Bit32(bits) => Instruction {
+                size: Size::Normal,
+                kind: base.decode_32(bits),
+            },
+            Self::Bit16(bits) => Instruction {
+                size: Size::Compressed,
+                kind: base.decode_16(bits),
+            },
+        }
+    }
 }
 
 /// Specific [`Instruction`] kinds relevant for tracing
