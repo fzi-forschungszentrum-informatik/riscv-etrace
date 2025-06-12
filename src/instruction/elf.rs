@@ -9,7 +9,7 @@ use elf::endian::EndianParse;
 use elf::ElfBytes;
 
 use super::binary::Binary;
-use super::Instruction;
+use super::{base, Instruction};
 
 /// Static ELF [`Binary`]
 ///
@@ -106,7 +106,7 @@ where
             .ok_or(Error::NoSegmentFound)??;
 
         self.last_segment = Some(segment);
-        Instruction::extract(insn_data)
+        Instruction::extract(insn_data, base::Set::Rv32I)
             .map(|(i, _)| i)
             .ok_or(Error::InvalidInstruction)
     }
