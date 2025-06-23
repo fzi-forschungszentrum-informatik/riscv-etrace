@@ -3,7 +3,7 @@
 
 use super::*;
 
-use base::Set::Rv32I;
+use base::Set::{Rv32I, Rv64I};
 
 macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
@@ -32,12 +32,14 @@ macro_rules! decode_test {
         mod $n {
             use super::*;
             decode_test!(Rv32I, rv32i, $l, $k, $tt, $t);
+            decode_test!(Rv64I, rv64i, $l, $k, $tt, $t);
         }
     };
     ($n:ident, $l:literal, $k:expr) => {
         mod $n {
             use super::*;
             decode_test!(Rv32I, rv32i, $l, $k);
+            decode_test!(Rv64I, rv64i, $l, $k);
         }
     };
 }
