@@ -13,7 +13,7 @@ use super::{format, Kind};
 /// such as `RV32I`, and various extensions (such as `M` or `C`). An encoding
 /// of any given instruction does not differ between sets of extensions
 /// supported, but it may differ between base instruction sets.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Set {
     Rv32I,
 }
