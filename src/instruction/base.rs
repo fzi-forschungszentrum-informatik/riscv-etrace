@@ -16,6 +16,7 @@ use super::{format, Kind};
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Set {
     Rv32I,
+    Rv64I,
 }
 
 impl Set {
@@ -69,7 +70,7 @@ impl Set {
         let op = insn & 0x3;
         let func3 = insn >> 13;
         match (op, func3) {
-            (0b01, 0b001) => Some(Kind::c_jal(insn.into())),
+            (0b01, 0b001) if self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);
                 if data.rd != 0 || data.rd != 2 {
