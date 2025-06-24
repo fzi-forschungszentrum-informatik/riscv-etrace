@@ -153,7 +153,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     initer.set_condition(state::StopCondition::Sync { privilege });
                 } else {
                     initer.reset_to_address()?;
-                    self.iter_state = IterationState::SingleItem(None);
+                    self.iter_state = IterationState::SingleItem;
                 }
             }
             Synchronization::Trap(trap) => {
@@ -170,8 +170,12 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 } else {
                     self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?
                         .reset_to_address()?;
-                    self.iter_state = IterationState::SingleItem(Some((epc, trap.info)));
                 }
+                self.iter_state = IterationState::TrapItem {
+                    epc,
+                    info: trap.info,
+                    follow_up: trap.thaddr,
+                };
             }
             Synchronization::Context(ctx) => {
                 let mut initer = self.state.initializer(&mut self.binary)?;
@@ -277,16 +281,31 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter_state {
-            IterationState::SingleItem(trap) => {
+            IterationState::SingleItem => {
                 self.iter_state = IterationState::FollowExec;
 
-                let item = Item::new(self.state.current_pc(), self.state.current_insn());
-                let item = if let Some((epc, info)) = trap {
-                    item.with_trap(epc, info)
+                Some(Ok(Item::new(
+                    self.state.current_pc(),
+                    self.state.current_insn(),
+                )))
+            }
+            IterationState::TrapItem {
+                epc,
+                info,
+                follow_up,
+            } => {
+                self.iter_state = if follow_up {
+                    IterationState::SingleItem
                 } else {
-                    item
+                    IterationState::FollowExec
                 };
-                Some(Ok(item))
+
+                let item = self
+                    .binary
+                    .get_insn(epc)
+                    .map_err(|e| Error::CannotGetInstruction(e, epc))
+                    .map(|i| Item::new(epc, i).with_trap(epc, info));
+                Some(item)
             }
             IterationState::FollowExec | IterationState::Depleting => {
                 let res = self
@@ -419,12 +438,14 @@ impl<B: Binary + Default> Default for Builder<B> {
 /// [`Tracer`] iteration states
 #[derive(Copy, Clone, Debug)]
 enum IterationState {
-    /// The [`Tracer`] reports a single item
-    ///
-    /// We know about exactly one item we report, which may have an EPC and
-    /// [`trap::Info`] associated with it. We don't have any information beyond
-    /// this item (yet).
-    SingleItem(Option<(u64, trap::Info)>),
+    /// The [`Tracer`] reports a single item (the current one)
+    SingleItem,
+    /// We report a trap item and optionally a follow-up single item
+    TrapItem {
+        epc: u64,
+        info: trap::Info,
+        follow_up: bool,
+    },
     /// We follow the execution path based on the current packet's data
     FollowExec,
     /// We follow the execution path as long as it's inferable
