@@ -3,7 +3,7 @@
 
 use super::*;
 
-use base::Set::Rv32I;
+use base::Set::{Rv32I, Rv64I};
 
 macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
@@ -32,12 +32,14 @@ macro_rules! decode_test {
         mod $n {
             use super::*;
             decode_test!(Rv32I, rv32i, $l, $k, $tt, $t);
+            decode_test!(Rv64I, rv64i, $l, $k, $tt, $t);
         }
     };
     ($n:ident, $l:literal, $k:expr) => {
         mod $n {
             use super::*;
             decode_test!(Rv32I, rv32i, $l, $k);
+            decode_test!(Rv64I, rv64i, $l, $k);
         }
     };
 }
@@ -80,7 +82,7 @@ decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));
 decode_test!(c_lui, 0x7255u16, Kind::new_c_lui(4, -45056));
 decode_test!(jal, 0x1030d66fu32, Kind::new_jal(12, 55554), j, 55554);
 decode_test!(c_j, 0xab91u16, Kind::new_c_j(0, 1364), j, 1364);
-decode_test!(c_jal, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
+decode_test!(Rv32I, c_jal, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
 decode_test!(c_jr, 0x8602u16, Kind::new_c_jr(12), u, (12, 0));
 decode_test!(c_jalr, 0x9f82u16, Kind::new_c_jalr(31), u, (31, 0));
 decode_test!(c_ebreak, 0x9002u16, Kind::c_ebreak);

@@ -8,6 +8,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 ### Added
 
 - Convenience construction methods for `instruction::Kind`.
+- Support for decoding RV64I instructions.
+- Support for 64bit ELF files (as RV64I).
 - Type `instruction::base::Set` for specifying a base instruction set (e.g.
   RV32I).
 - A fn `instruction::Bits::decode` for instruction base set aware decoding

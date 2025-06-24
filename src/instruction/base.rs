@@ -13,9 +13,10 @@ use super::{format, Kind};
 /// such as `RV32I`, and various extensions (such as `M` or `C`). An encoding
 /// of any given instruction does not differ between sets of extensions
 /// supported, but it may differ between base instruction sets.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Set {
     Rv32I,
+    Rv64I,
 }
 
 impl Set {
@@ -69,7 +70,7 @@ impl Set {
         let op = insn & 0x3;
         let func3 = insn >> 13;
         match (op, func3) {
-            (0b01, 0b001) => Some(Kind::c_jal(insn.into())),
+            (0b01, 0b001) if self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);
                 if data.rd != 0 || data.rd != 2 {

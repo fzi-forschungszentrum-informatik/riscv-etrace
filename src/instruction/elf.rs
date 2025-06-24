@@ -45,7 +45,7 @@ where
         } else {
             let base = match hdr.class {
                 elf::file::Class::ELF32 => base::Set::Rv32I,
-                _ => return Err(Error::UnsupportedArchitecture),
+                elf::file::Class::ELF64 => base::Set::Rv64I,
             };
 
             Ok(Self {
