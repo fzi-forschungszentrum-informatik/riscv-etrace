@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Fixed
+
+- Correct EPC calculation which may have been incorrect under some
+  circumstances.
+
 ## 0.1.0 - 2025-05-19
 
 ### Added
