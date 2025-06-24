@@ -190,11 +190,11 @@ fn reference_iter(
             .expect("Could not extract \"exception\" field")
             .parse()
             .expect("Could not parse \"exception\" field");
-        let ecause: u64 = fields
-            .next()
-            .expect("Could not extract \"ecause\" field")
-            .parse()
-            .expect("Could not parse \"ecause\" field");
+        let ecause: u64 = u64::from_str_radix(
+            fields.next().expect("Could not extract \"ecause\" field"),
+            16,
+        )
+        .expect("Could not parse \"ecause\" field");
         let tval =
             u64::from_str_radix(fields.next().expect("Could not extract \"tval\" field"), 16)
                 .expect("Could not parse \"tval\" field");

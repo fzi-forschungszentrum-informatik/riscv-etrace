@@ -24,6 +24,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `From<instruction::Bits>` impl for `instruction::Instruction`.
 
+### Fixed
+
+- Read `ecause` field in spike traces as hex values in simple example.
+
 ## 0.1.0 - 2025-05-19
 
 ### Added
