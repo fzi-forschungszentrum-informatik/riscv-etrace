@@ -198,7 +198,7 @@ impl<S: ReturnStack> State<S> {
         } else {
             self.next_pc(binary, self.pc).map(|(i, e)| {
                 if e {
-                    i.pc().wrapping_add(insn.size.into())
+                    i.pc().wrapping_add(i.instruction().size.into())
                 } else {
                     i.pc()
                 }
