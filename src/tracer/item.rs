@@ -39,9 +39,9 @@ impl Item {
         self.pc
     }
 
-    /// Retrieve the [`Instruction`]
-    pub fn instruction(&self) -> Instruction {
-        self.insn
+    /// Retrieve the (retired) [`Instruction`]
+    pub fn instruction(&self) -> Option<Instruction> {
+        Some(self.insn)
     }
 
     /// Retrieve the EPC and [`trap::Info`] of this item if present
