@@ -94,11 +94,11 @@ impl<S: ReturnStack> State<S> {
         self.insn
     }
 
-    /// Determine next [`Item`]
+    /// Determine next (regular) tracing item
     ///
-    /// Returns the next tracing [`Item`] based on the given address as well as
-    /// information within the state if the state is not fused. After
-    /// determining the [`Item`], the stop condition is evaluated and the state
+    /// Returns the next PC and [`Instruction`] based on the given address as
+    /// well as information within the state if the state is not fused. After
+    /// determining the next pair, the stop condition is evaluated and the state
     /// is fused if necessary.
     ///
     /// This roughly corresponds to the loop bodies in `follow_execution_path`
@@ -106,7 +106,7 @@ impl<S: ReturnStack> State<S> {
     pub fn next_item<B: Binary>(
         &mut self,
         binary: &mut B,
-    ) -> Result<Option<Item>, Error<B::Error>> {
+    ) -> Result<Option<(u64, Instruction)>, Error<B::Error>> {
         use instruction::Kind;
 
         if self.is_fused() {
@@ -122,7 +122,7 @@ impl<S: ReturnStack> State<S> {
                 }
             }
 
-            Ok(Some(Item::new(pc, insn)))
+            Ok(Some((pc, insn)))
         } else {
             let (pc, insn, end) = self.next_pc(binary, self.address)?;
 
@@ -180,7 +180,7 @@ impl<S: ReturnStack> State<S> {
                 _ => (),
             }
 
-            Ok(Some(Item::new(pc, insn)))
+            Ok(Some((pc, insn)))
         }
     }
 

@@ -289,7 +289,12 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
                 Some(Ok(item))
             }
             IterationState::FollowExec | IterationState::Depleting => {
-                self.state.next_item(&mut self.binary).transpose()
+                let res = self
+                    .state
+                    .next_item(&mut self.binary)
+                    .transpose()?
+                    .map(|(p, i)| Item::new(p, i));
+                Some(res)
             }
         }
     }
