@@ -91,7 +91,7 @@ impl<S: ReturnStack> State<S> {
     /// determining the [`Item`], the stop condition is evaluated and the state
     /// is fused if necessary.
     ///
-    /// This roughly corresponds to the loop bodies in`follow_execution_path`
+    /// This roughly corresponds to the loop bodies in `follow_execution_path`
     /// and `process_support` of the reference implementation.
     pub fn next_item<B: Binary>(
         &mut self,
