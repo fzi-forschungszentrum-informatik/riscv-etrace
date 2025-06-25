@@ -104,7 +104,7 @@ impl<S: ReturnStack> State<S> {
         }
 
         if let Some(address) = self.inferred_address {
-            let (item, end) = self.next_pc(binary, address)?;
+            let (pc, insn, end) = self.next_pc(binary, address)?;
             if end {
                 self.inferred_address = None;
                 if self.stop_condition == StopCondition::NotInferred {
@@ -112,9 +112,9 @@ impl<S: ReturnStack> State<S> {
                 }
             }
 
-            Ok(Some(item))
+            Ok(Some(Item::new(pc, insn)))
         } else {
-            let (item, end) = self.next_pc(binary, self.address)?;
+            let (pc, insn, end) = self.next_pc(binary, self.address)?;
 
             let is_branch = self.insn.kind.and_then(Kind::branch_target).is_some();
             let branch_limit = if is_branch { 1 } else { 0 };
@@ -170,7 +170,7 @@ impl<S: ReturnStack> State<S> {
                 _ => (),
             }
 
-            Ok(Some(item))
+            Ok(Some(Item::new(pc, insn)))
         }
     }
 
@@ -196,13 +196,12 @@ impl<S: ReturnStack> State<S> {
         if insn.kind.map(Kind::is_ecall_or_ebreak).unwrap_or(false) {
             Ok(self.pc)
         } else {
-            self.next_pc(binary, self.pc).map(|(i, e)| {
-                if e {
-                    i.pc().wrapping_add(i.instruction().size.into())
-                } else {
-                    i.pc()
-                }
-            })
+            let (pc, insn, end) = self.next_pc(binary, self.pc)?;
+            if end {
+                Ok(pc.wrapping_add(insn.size.into()))
+            } else {
+                Ok(pc)
+            }
         }
     }
 
@@ -224,17 +223,17 @@ impl<S: ReturnStack> State<S> {
     /// Determine the next PC
     ///
     /// Determines the next PC based on the given address as well as information
-    /// within the state. Returns the the next [`Item`] alongside a [`bool`]
-    /// indicating whether any instructions after the following one can be
-    /// traced based on the given address and information present in the state
-    /// (`false`) or not (`true`).
+    /// within the state. Returns the the next PC and [`Instruction`] alongside
+    /// a [`bool`] indicating whether any instructions after the following one
+    /// can be traced based on the given address and information present in the
+    /// state (`false`) or not (`true`).
     ///
     /// This roughly corresponds to `next_pc` of the reference implementation.
     fn next_pc<B: Binary>(
         &mut self,
         binary: &mut B,
         address: u64,
-    ) -> Result<(Item, bool), Error<B::Error>> {
+    ) -> Result<(u64, Instruction, bool), Error<B::Error>> {
         // The PC right after the current instruction
         let after_pc = self.pc.wrapping_add(self.insn.size.into());
 
@@ -271,12 +270,13 @@ impl<S: ReturnStack> State<S> {
         self.last_pc = self.pc;
         self.last_insn = self.insn;
 
-        self.pc = next_pc;
-        self.insn = binary
+        let insn = binary
             .get_insn(next_pc)
             .map_err(|e| Error::CannotGetInstruction(e, next_pc))?;
+        self.pc = next_pc;
+        self.insn = insn;
 
-        Ok((Item::new(next_pc, self.insn), end))
+        Ok((next_pc, insn, end))
     }
 
     /// If the given instruction is an inferable jump, return its target
