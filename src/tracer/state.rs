@@ -6,7 +6,6 @@ use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 
 use super::error::Error;
-use super::item::Item;
 use super::stack::ReturnStack;
 
 use instruction::binary::Binary;
