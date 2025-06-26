@@ -34,7 +34,10 @@ fn debug_printf() {
     tracer
         .process_te_inst(&start_packet(0x80001a80))
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001a80, UNCOMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001a80, UNCOMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 
     let payload: Payload = payload::AddressInfo {
@@ -51,15 +54,30 @@ fn debug_printf() {
         tracer.next(),
         Some(Ok(Item::new(0x80001a84, Kind::new_jal(1, -2316).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001178, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000117a, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000117c, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000117e, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001178, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000117a, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000117c, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000117e, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x80001180, Kind::new_c_jr(1).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001a88, UNCOMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001a88, UNCOMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 }
 
@@ -87,7 +105,10 @@ fn exitting_from_func_2() {
     tracer
         .process_te_inst(&start_packet(0x800010da))
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010da, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x800010da, COMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 
     let payload: Payload = payload::Branch {
@@ -110,13 +131,22 @@ fn exitting_from_func_2() {
             Kind::new_bge(0, 10, 0x008).into(),
         )))
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010e4, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010e6, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x800010e4, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x800010e6, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x800010e8, Kind::new_c_jr(1).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001b8a, UNCOMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001b8a, UNCOMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 }
 
@@ -147,7 +177,10 @@ fn three_branches() {
     tracer
         .process_te_inst(&start_packet(0x80001110))
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001110, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001110, COMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 
     let payload: Payload = payload::Branch {
@@ -163,8 +196,14 @@ fn three_branches() {
     tracer
         .process_te_inst(&payload)
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001112, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001114, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001112, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001114, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(
@@ -176,7 +215,10 @@ fn three_branches() {
         tracer.next(),
         Some(Ok(Item::new(0x8000111a, Kind::new_c_beqz(8, 0x036).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000111c, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000111c, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(
@@ -184,13 +226,22 @@ fn three_branches() {
             Kind::new_beq(8, 14, 0x040).into(),
         ))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000115e, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001160, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000115e, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001160, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x80001162, Kind::new_c_jr(1).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001258, UNCOMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001258, UNCOMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 }
 
@@ -231,7 +282,10 @@ fn complex() {
     tracer
         .process_te_inst(&start_packet(0x8000121c))
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000121c, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000121c, COMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 
     let payload: Payload = payload::Branch {
@@ -254,26 +308,62 @@ fn complex() {
             Kind::new_c_beqz(15, 0x02c).into(),
         ))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000124a, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000124c, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000124e, UNCOMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001252, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000124a, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000124c, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000124e, UNCOMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001252, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x80001254, Kind::new_jal(1, -0x154).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001100, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001102, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001104, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001106, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80001108, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000110a, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001100, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001102, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001104, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001106, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001108, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000110a, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x8000110c, Kind::new_jal(1, -0x014).into()))),
     );
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010f8, COMPRESSED))));
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x800010fa, UNCOMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x800010f8, COMPRESSED.into())))
+    );
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x800010fa, UNCOMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x800010fe, Kind::new_c_jr(1).into()))),
@@ -305,7 +395,10 @@ fn full_branch_map() {
     tracer
         .process_te_inst(&start_packet(0x80000028))
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x80000028, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80000028, COMPRESSED.into())))
+    );
     assert_eq!(tracer.next(), None);
 
     let payload: Payload = payload::Branch {
@@ -316,7 +409,10 @@ fn full_branch_map() {
     tracer
         .process_te_inst(&payload)
         .expect("Could not process packet");
-    assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000002a, COMPRESSED))));
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000002a, COMPRESSED.into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(
@@ -325,8 +421,14 @@ fn full_branch_map() {
         ))),
     );
     (2..=31).for_each(|_| {
-        assert_eq!(tracer.next(), Some(Ok(Item::new(0x80000028, COMPRESSED))));
-        assert_eq!(tracer.next(), Some(Ok(Item::new(0x8000002a, COMPRESSED))));
+        assert_eq!(
+            tracer.next(),
+            Some(Ok(Item::new(0x80000028, COMPRESSED.into())))
+        );
+        assert_eq!(
+            tracer.next(),
+            Some(Ok(Item::new(0x8000002a, COMPRESSED.into())))
+        );
         assert_eq!(
             tracer.next(),
             Some(Ok(Item::new(

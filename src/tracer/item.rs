@@ -7,41 +7,40 @@ use crate::types::trap;
 
 /// Tracing item
 ///
-/// A tracing item corresponds to a traced instruction. It contains that
-/// [`Instruction`], its address and other information.
+/// A tracing item corresponds to either a traced, retired [`Instruction`] or
+/// some other noteworthy event such as a trap.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Item {
     pc: u64,
-    insn: Instruction,
-    trap: Option<(u64, trap::Info)>,
+    kind: Kind,
 }
 
 impl Item {
-    /// Create a new item for the given [`Instruction`] at the given PC
-    pub fn new(pc: u64, insn: Instruction) -> Self {
-        Self {
-            pc,
-            insn,
-            trap: None,
-        }
-    }
-
-    /// Add trap information to this item
-    pub fn with_trap(self, epc: u64, info: trap::Info) -> Self {
-        Self {
-            trap: Some((epc, info)),
-            ..self
-        }
+    /// Create a new item
+    pub fn new(pc: u64, kind: Kind) -> Self {
+        Self { pc, kind }
     }
 
     /// Retrieve the PC
+    ///
+    /// For items signalling a retired [`Instruction`], this fn will return its
+    /// address. For exceptions, it will return the EPC. For interrupts, it will
+    /// return the PC of the address of the last retired [`Instruction`].
     pub fn pc(&self) -> u64 {
         self.pc
     }
 
+    /// Retrieve the item's [`Kind`]
+    pub fn kind(&self) -> &Kind {
+        &self.kind
+    }
+
     /// Retrieve the (retired) [`Instruction`]
     pub fn instruction(&self) -> Option<Instruction> {
-        Some(self.insn)
+        match self.kind {
+            Kind::Regular(insn) => Some(insn),
+            _ => None,
+        }
     }
 
     /// Retrieve the [`trap::Info`] assocaited to this item
@@ -49,7 +48,10 @@ impl Item {
     /// If this item signals a trap, this fn returns the associated
     /// [`trap::Info`]. Otherwise, `None` is returned.
     pub fn trap(&self) -> Option<&trap::Info> {
-        self.trap.as_ref().map(|(_, i)| i)
+        match &self.kind {
+            Kind::Trap(info) => Some(info),
+            _ => None,
+        }
     }
 }
 

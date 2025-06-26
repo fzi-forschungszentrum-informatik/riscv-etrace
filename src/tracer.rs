@@ -286,7 +286,7 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
 
                 Some(Ok(Item::new(
                     self.state.current_pc(),
-                    self.state.current_insn(),
+                    self.state.current_insn().into(),
                 )))
             }
             IterationState::TrapItem {
@@ -300,19 +300,14 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
                     IterationState::FollowExec
                 };
 
-                let item = self
-                    .binary
-                    .get_insn(epc)
-                    .map_err(|e| Error::CannotGetInstruction(e, epc))
-                    .map(|i| Item::new(epc, i).with_trap(epc, info));
-                Some(item)
+                Some(Ok(Item::new(epc, info.into())))
             }
             IterationState::FollowExec | IterationState::Depleting => {
                 let res = self
                     .state
                     .next_item(&mut self.binary)
                     .transpose()?
-                    .map(|(p, i)| Item::new(p, i));
+                    .map(|(p, i)| Item::new(p, i.into()));
                 Some(res)
             }
         }
