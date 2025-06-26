@@ -44,11 +44,12 @@ impl Item {
         Some(self.insn)
     }
 
-    /// Retrieve the EPC and [`trap::Info`] of this item if present
+    /// Retrieve the [`trap::Info`] assocaited to this item
     ///
-    /// Any trap information is present only for the first item after the trap.
-    pub fn trap(&self) -> Option<&(u64, trap::Info)> {
-        self.trap.as_ref()
+    /// If this item signals a trap, this fn returns the associated
+    /// [`trap::Info`]. Otherwise, `None` is returned.
+    pub fn trap(&self) -> Option<&trap::Info> {
+        self.trap.as_ref().map(|(_, i)| i)
     }
 }
 

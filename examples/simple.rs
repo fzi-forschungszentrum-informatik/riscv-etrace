@@ -115,16 +115,16 @@ fn main() {
                 let item = i.expect("Error while tracing");
 
                 if debug {
-                    if let Some((epc, info)) = item.trap() {
+                    if let Some(info) = item.trap() {
                         if let Some(tval) = info.tval {
                             println!("  TRAP: ecause: {} tval: 0x{tval:0x}", info.ecause);
-                            println!("  EPC: 0x{epc:0x}");
+                            println!("  EPC: 0x{:0x}", item.pc());
                         } else {
                             println!("  TRAP(interrupt): ecause: {}", info.ecause);
                         }
+                    } else {
+                        println!("report_pc[{icount}] --------------> 0x{:0x}", item.pc());
                     }
-
-                    println!("report_pc[{icount}] --------------> 0x{:0x}", item.pc());
                 } else {
                     println!("{:0x}", item.pc());
                 }
@@ -213,7 +213,7 @@ fn cmp_reference(
     item: &riscv_etrace::tracer::item::Item,
 ) {
     assert_eq!(item.pc(), address);
-    if let Some((_, trap)) = item.trap() {
+    if let Some(trap) = item.trap() {
         assert_eq!(exception, trap.is_exception() as u8);
         assert_eq!(interrupt, trap.is_interrupt() as u8);
         assert_eq!(ecause, trap.ecause);
