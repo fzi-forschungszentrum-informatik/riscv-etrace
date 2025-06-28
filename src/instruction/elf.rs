@@ -61,6 +61,11 @@ where
     pub fn inner(&self) -> &ElfBytes<'d, P> {
         self.elf.borrow()
     }
+
+    /// Retrieve the [`base::Set`] of the instruction in this ELF
+    pub fn base_set(&self) -> base::Set {
+        self.base
+    }
 }
 
 impl<'d, E, P> Binary for Elf<'d, E, P>

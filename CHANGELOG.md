@@ -7,6 +7,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- `instruction::elf::Elf` fn for querying its `instruction::base::Set`.
 - Convenience construction methods for `instruction::Kind`.
 - Support for decoding RV64I instructions.
 - Support for 64bit ELF files (as RV64I).
