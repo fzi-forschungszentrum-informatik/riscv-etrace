@@ -18,6 +18,8 @@
 //! trace information in a format similar to the debug output of the reference
 //! flow's decoder model, allowing for easy comparison (after some filtering).
 
+mod spike;
+
 const TARGET_HART: usize = 0;
 
 fn main() {
@@ -52,19 +54,21 @@ fn main() {
         eprintln!("Parameters: {params:?}");
     }
 
-    // Given a reference trace, we can check whether our trace is correct.
-    let mut reference = args
-        .next()
-        .map(|p| reference_iter(std::fs::File::open(p).expect("Could open reference trace")));
-
     // We need to construct a `Binary`. For PIE executables, we simply assume
     // that they are placed at a known offset.
     let elf = instruction::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
+    let base_set = elf.base_set();
     let elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
         elf.with_offset(0x8000_0000)
     } else {
         elf.with_offset(0)
     };
+
+    // Given a reference trace, we can check whether our trace is correct.
+    let mut reference = args.next().map(|p| {
+        let csv = std::fs::File::open(p).expect("Could open reference trace");
+        spike::CSVTrace::new(std::io::BufReader::new(csv), base_set)
+    });
 
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
@@ -130,7 +134,7 @@ fn main() {
                 }
 
                 if let Some(reference) = reference.as_mut() {
-                    cmp_reference(reference.next().expect("Reference trace ended"), &item);
+                    assert_eq!(item, reference.next().expect("Reference trace ended"));
                 }
 
                 icount += 1;
