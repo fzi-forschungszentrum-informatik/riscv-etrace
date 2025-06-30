@@ -74,7 +74,7 @@ fn main() {
         (0x1004, instruction::UNCOMPRESSED),
         (0x1008, instruction::UNCOMPRESSED),
         (0x100c, instruction::UNCOMPRESSED),
-        (0x1010, instruction::Kind::new_c_jr(5).into()),
+        (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
     ];
 
     // Finally, construct decoder and tracer...

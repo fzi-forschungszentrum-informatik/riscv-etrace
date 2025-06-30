@@ -18,6 +18,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Adapted final `instruction::Instruction` of bootrom in simple example to
+  reflect the bootrom used by reference flow's spike version.
 - Make `instruction::Instruction::extract` take an `instruction::base::Set`
   parameter.
 - Moved decoding fns `instruction::Kind::decode_16` and `decode_32` to
