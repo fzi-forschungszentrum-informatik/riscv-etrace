@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tracing item
 
-use crate::instruction::Instruction;
+use crate::instruction::{self, Instruction};
 use crate::types::trap;
 
 /// Tracing item
@@ -68,6 +68,12 @@ pub enum Kind {
 impl From<Instruction> for Kind {
     fn from(insn: Instruction) -> Self {
         Self::Regular(insn)
+    }
+}
+
+impl From<instruction::Kind> for Kind {
+    fn from(insn: instruction::Kind) -> Self {
+        Self::Regular(insn.into())
     }
 }
 
