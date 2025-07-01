@@ -51,3 +51,28 @@ impl Item {
         self.trap.as_ref()
     }
 }
+
+/// Kind of a tracing [`Item`]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Kind {
+    /// Signals the retiring of the [`Instruction`] at the [`Item`]'s PC
+    Regular(Instruction),
+    /// Signals a trap
+    ///
+    /// In the case of an exception, the [`Item`]'s PC indicated the EPC. In the
+    /// case of an interrupt, the PC will point at the last [`Instruction`]
+    /// retired before the interrut.
+    Trap(trap::Info),
+}
+
+impl From<Instruction> for Kind {
+    fn from(insn: Instruction) -> Self {
+        Self::Regular(insn)
+    }
+}
+
+impl From<trap::Info> for Kind {
+    fn from(info: trap::Info) -> Self {
+        Self::Trap(info)
+    }
+}
