@@ -187,25 +187,23 @@ impl<S: ReturnStack> State<S> {
         binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
-        use instruction::Kind;
+        if let Some(kind) = self.insn.kind {
+            if kind.is_uninferable_discon() {
+                if let Some(epc) = packet_epc {
+                    return Ok(epc);
+                }
+            }
 
-        let insn = self.insn;
-
-        if insn.kind.map(Kind::is_uninferable_discon).unwrap_or(false) {
-            if let Some(epc) = packet_epc {
-                return Ok(epc);
+            if kind.is_ecall_or_ebreak() {
+                return Ok(self.pc);
             }
         }
 
-        if insn.kind.map(Kind::is_ecall_or_ebreak).unwrap_or(false) {
-            Ok(self.pc)
+        let (pc, insn, end) = self.next_pc(binary, self.pc)?;
+        if end {
+            Ok(pc.wrapping_add(insn.size.into()))
         } else {
-            let (pc, insn, end) = self.next_pc(binary, self.pc)?;
-            if end {
-                Ok(pc.wrapping_add(insn.size.into()))
-            } else {
-                Ok(pc)
-            }
+            Ok(pc)
         }
     }
 
