@@ -280,7 +280,7 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
             IterationState::SingleItem(trap) => {
                 self.iter_state = IterationState::FollowExec;
 
-                let item = self.state.current_item();
+                let item = Item::new(self.state.current_pc(), self.state.current_insn());
                 let item = if let Some((epc, info)) = trap {
                     item.with_trap(epc, info)
                 } else {
