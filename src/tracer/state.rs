@@ -84,6 +84,16 @@ impl<S: ReturnStack> State<S> {
         Item::new(self.pc, self.insn)
     }
 
+    /// Retrieve the current PC without advancing the state
+    pub fn current_pc(&self) -> u64 {
+        self.pc
+    }
+
+    /// Retrieve the current [`Instruction`] without advancing the state
+    pub fn current_insn(&self) -> Instruction {
+        self.insn
+    }
+
     /// Determine next [`Item`]
     ///
     /// Returns the next tracing [`Item`] based on the given address as well as
