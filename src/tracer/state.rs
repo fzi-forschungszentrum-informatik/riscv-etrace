@@ -79,11 +79,6 @@ impl<S: ReturnStack> State<S> {
         self.stop_condition == StopCondition::Fused
     }
 
-    /// Retrieve the current [`Item`] without advancing the state
-    pub fn current_item(&self) -> Item {
-        Item::new(self.pc, self.insn)
-    }
-
     /// Retrieve the current PC without advancing the state
     pub fn current_pc(&self) -> u64 {
         self.pc
