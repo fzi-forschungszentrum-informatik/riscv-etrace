@@ -161,7 +161,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     let epc = (!trap.thaddr).then_some(trap.address);
                     self.state.exception_address(&mut self.binary, epc)?
                 } else {
-                    self.state.current_item().pc()
+                    self.state.current_pc()
                 };
                 if !trap.thaddr {
                     self.state
