@@ -94,10 +94,11 @@
 //!         tracer.process_te_inst(&packet.payload).unwrap();
 //!         tracer.by_ref().for_each(|i| {
 //!             let item = i.unwrap();
-//!             if let Some((epc, info)) = item.trap() {
-//!                 println!("Trap! EPC={epc:0x}, interrupt={}", info.is_interrupt());
+//!             if let Some(info) = item.trap() {
+//!                 println!("Trap! EPC={:0x}, interrupt={}", item.pc(), info.is_interrupt());
+//!             } else {
+//!                 println!("PC: {:0x}", item.pc());
 //!             }
-//!             println!("PC: {:0x}", item.pc());
 //!         });
 //!     }
 //! }

@@ -18,6 +18,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Redefined `tracer::Item`s, which now distinguish between instruction
+  retirement and traps.
+- Made `tracer::Tracer` yield special `Item`s for traps.
 - Adapted final `instruction::Instruction` of bootrom in simple example to
   reflect the bootrom used by reference flow's spike version.
 - Make `instruction::Instruction::extract` take an `instruction::base::Set`
