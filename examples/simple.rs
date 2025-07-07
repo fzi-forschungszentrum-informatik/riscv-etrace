@@ -18,6 +18,8 @@
 //! trace information in a format similar to the debug output of the reference
 //! flow's decoder model, allowing for easy comparison (after some filtering).
 
+mod spike;
+
 const TARGET_HART: usize = 0;
 
 fn main() {
@@ -52,19 +54,21 @@ fn main() {
         eprintln!("Parameters: {params:?}");
     }
 
-    // Given a reference trace, we can check whether our trace is correct.
-    let mut reference = args
-        .next()
-        .map(|p| reference_iter(std::fs::File::open(p).expect("Could open reference trace")));
-
     // We need to construct a `Binary`. For PIE executables, we simply assume
     // that they are placed at a known offset.
     let elf = instruction::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
+    let base_set = elf.base_set();
     let elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
         elf.with_offset(0x8000_0000)
     } else {
         elf.with_offset(0)
     };
+
+    // Given a reference trace, we can check whether our trace is correct.
+    let mut reference = args.next().map(|p| {
+        let csv = std::fs::File::open(p).expect("Could open reference trace");
+        spike::CSVTrace::new(std::io::BufReader::new(csv), base_set)
+    });
 
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
@@ -130,7 +134,7 @@ fn main() {
                 }
 
                 if let Some(reference) = reference.as_mut() {
-                    cmp_reference(reference.next().expect("Reference trace ended"), &item);
+                    assert_eq!(item, reference.next().expect("Reference trace ended"));
                 }
 
                 icount += 1;
@@ -144,84 +148,5 @@ fn main() {
 
     if debug {
         println!("npackets {pcount}");
-    }
-}
-
-/// Make an iterator over discrete trace items from a reference trace
-fn reference_iter(
-    reference: impl std::io::Read,
-) -> impl Iterator<Item = (u64, u8, u8, u64, u64, u8)> {
-    use std::io::BufRead;
-
-    let mut lines = std::io::BufReader::new(reference).lines();
-    let header = lines
-        .next()
-        .expect("No header in reference trace")
-        .expect("Could not extract header from reference trace");
-    assert_eq!(
-        header.trim_end(),
-        "VALID,ADDRESS,INSN,PRIVILEGE,EXCEPTION,ECAUSE,TVAL,INTERRUPT"
-    );
-    lines.filter_map(|l| {
-        let line = l.expect("Could not read next reference item");
-        let mut fields = line.trim_end().split(',');
-        let valid: u8 = fields
-            .next()
-            .expect("Could not extract \"valid\" field")
-            .parse()
-            .expect("Could not parse \"valid\" field");
-        if valid != 1 {
-            return None;
-        }
-
-        let address = u64::from_str_radix(
-            fields.next().expect("Could not extract \"address\" field"),
-            16,
-        )
-        .expect("Could not parse \"address\" field");
-        let _ = fields.next().expect("Could not extract \"insn\" field");
-        let privilege: u8 = fields
-            .next()
-            .expect("Could not extract \"privilege\" field")
-            .parse()
-            .expect("Could not parse \"privilege\" field");
-        let exception: u8 = fields
-            .next()
-            .expect("Could not extract \"exception\" field")
-            .parse()
-            .expect("Could not parse \"exception\" field");
-        let ecause: u64 = u64::from_str_radix(
-            fields.next().expect("Could not extract \"ecause\" field"),
-            16,
-        )
-        .expect("Could not parse \"ecause\" field");
-        let tval =
-            u64::from_str_radix(fields.next().expect("Could not extract \"tval\" field"), 16)
-                .expect("Could not parse \"tval\" field");
-        let interrupt: u8 = fields
-            .next()
-            .expect("Could not extract \"interrupt\" field")
-            .parse()
-            .expect("Could not parse \"interrupt\" field");
-        Some((address, privilege, exception, ecause, tval, interrupt))
-    })
-}
-
-/// Compare a reference trace item against a generated trace item
-fn cmp_reference(
-    (address, _, exception, ecause, tval, interrupt): (u64, u8, u8, u64, u64, u8),
-    item: &riscv_etrace::tracer::item::Item,
-) {
-    assert_eq!(item.pc(), address);
-    if let Some(trap) = item.trap() {
-        assert_eq!(exception, trap.is_exception() as u8);
-        assert_eq!(interrupt, trap.is_interrupt() as u8);
-        assert_eq!(ecause, trap.ecause);
-        if let Some(t) = trap.tval {
-            assert_eq!(tval, t);
-        }
-    } else {
-        assert_eq!(exception, 0);
-        assert_eq!(interrupt, 0);
     }
 }
