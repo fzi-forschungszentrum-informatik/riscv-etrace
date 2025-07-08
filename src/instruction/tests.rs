@@ -16,6 +16,12 @@ macro_rules! decode_test {
             assert_eq!(insn.uninferable_jump(), $uj);
         }
     };
+    ($s:ident, $n:ident, $l:literal, None) => {
+        #[test]
+        fn $n() {
+            assert_eq!(DecodeForTest::try_decode($l, $s), None);
+        }
+    };
     ($s:ident, $n:ident, $l:literal, $k:expr, b, $t:expr) => {
         decode_test!($s, $n, $l, $k, Some($t), None, None);
     };
