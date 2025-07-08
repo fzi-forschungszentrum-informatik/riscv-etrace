@@ -17,3 +17,7 @@ toml = { version = "0.8", features = ["parse"], default-features = false }
 [[example]]
 name = "simple"
 required-features = ["elf", "serde"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

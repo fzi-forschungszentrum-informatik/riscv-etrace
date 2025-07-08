@@ -106,6 +106,7 @@
 //!
 //! [etrace]: <https://github.com/riscv-non-isa/riscv-trace-spec/>
 #![no_std]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 pub mod config;
 pub mod decoder;
