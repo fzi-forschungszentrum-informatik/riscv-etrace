@@ -146,7 +146,5 @@ fn main() {
         assert_eq!(reference.next(), None);
     }
 
-    if debug {
-        println!("npackets {pcount}");
-    }
+    eprintln!("Decoded {pcount} packets, traced {icount} items");
 }
