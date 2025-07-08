@@ -18,6 +18,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Cleaned up the "simple" example, making its output both more human firendly
+  and compact.
 - Redefined `tracer::Item`s, which now distinguish between instruction
   retirement and traps.
 - Made `tracer::Tracer` yield special `Item`s for traps.

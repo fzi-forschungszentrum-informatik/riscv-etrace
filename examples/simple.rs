@@ -25,7 +25,7 @@ const TARGET_HART: usize = 0;
 fn main() {
     use riscv_etrace::decoder;
     use riscv_etrace::instruction;
-    use riscv_etrace::tracer::{self, Tracer};
+    use riscv_etrace::tracer::{self, item, Tracer};
 
     use instruction::binary::Binary;
 
@@ -118,19 +118,19 @@ fn main() {
             tracer.by_ref().for_each(|i| {
                 let item = i.expect("Error while tracing");
 
-                if debug {
-                    if let Some(info) = item.trap() {
+                let pc = item.pc();
+                match item.kind() {
+                    item::Kind::Regular(_) => println!("{pc:0x}"),
+                    item::Kind::Trap(info) => {
                         if let Some(tval) = info.tval {
-                            println!("  TRAP: ecause: {} tval: 0x{tval:0x}", info.ecause);
-                            println!("  EPC: 0x{:0x}", item.pc());
+                            println!(
+                                "Exception! epc: 0x{pc:0x}, ecause: {}, tval: 0x{tval:0x}",
+                                info.ecause,
+                            );
                         } else {
-                            println!("  TRAP(interrupt): ecause: {}", info.ecause);
+                            println!("Interrupt! ecause: {}", info.ecause);
                         }
-                    } else {
-                        println!("report_pc[{icount}] --------------> 0x{:0x}", item.pc());
                     }
-                } else {
-                    println!("{:0x}", item.pc());
                 }
 
                 if let Some(reference) = reference.as_mut() {
@@ -146,7 +146,5 @@ fn main() {
         assert_eq!(reference.next(), None);
     }
 
-    if debug {
-        println!("npackets {pcount}");
-    }
+    eprintln!("Decoded {pcount} packets, traced {icount} items");
 }
