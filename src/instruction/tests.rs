@@ -16,6 +16,12 @@ macro_rules! decode_test {
             assert_eq!(insn.uninferable_jump(), $uj);
         }
     };
+    ($s:ident, $n:ident, $l:literal, None) => {
+        #[test]
+        fn $n() {
+            assert_eq!(DecodeForTest::try_decode($l, $s), None);
+        }
+    };
     ($s:ident, $n:ident, $l:literal, $k:expr, b, $t:expr) => {
         decode_test!($s, $n, $l, $k, Some($t), None, None);
     };
@@ -45,19 +51,23 @@ macro_rules! decode_test {
 }
 
 /// Helper trait for using the correct decoding fn depending on a literal's type
-trait DecodeForTest {
-    fn decode(self, base: base::Set) -> Kind;
+trait DecodeForTest: Sized {
+    fn decode(self, base: base::Set) -> Kind {
+        self.try_decode(base).expect("Could not decode")
+    }
+
+    fn try_decode(self, base: base::Set) -> Option<Kind>;
 }
 
 impl DecodeForTest for u16 {
-    fn decode(self, base: base::Set) -> Kind {
-        base.decode_16(self).expect("Could not decode")
+    fn try_decode(self, base: base::Set) -> Option<Kind> {
+        base.decode_16(self)
     }
 }
 
 impl DecodeForTest for u32 {
-    fn decode(self, base: base::Set) -> Kind {
-        base.decode_32(self).expect("Could not decode")
+    fn try_decode(self, base: base::Set) -> Option<Kind> {
+        base.decode_32(self)
     }
 }
 
@@ -82,7 +92,6 @@ decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));
 decode_test!(c_lui, 0x7255u16, Kind::new_c_lui(4, -45056));
 decode_test!(jal, 0x1030d66fu32, Kind::new_jal(12, 55554), j, 55554);
 decode_test!(c_j, 0xab91u16, Kind::new_c_j(0, 1364), j, 1364);
-decode_test!(Rv32I, c_jal, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
 decode_test!(c_jr, 0x8602u16, Kind::new_c_jr(12), u, (12, 0));
 decode_test!(c_jalr, 0x9f82u16, Kind::new_c_jalr(31), u, (31, 0));
 decode_test!(c_ebreak, 0x9002u16, Kind::c_ebreak);
@@ -100,6 +109,12 @@ decode_test!(
     j,
     1633
 );
+
+mod c_jal {
+    use super::*;
+    decode_test!(Rv32I, rv32i, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
+    decode_test!(Rv64I, rv64i, 0x39f5u16, None);
+}
 
 // Instruction type related tests
 
