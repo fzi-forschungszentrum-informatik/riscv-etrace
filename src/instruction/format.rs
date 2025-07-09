@@ -24,6 +24,8 @@
 //! [^spec]: found here: <https://riscv.org/specifications/ratified/>
 
 /// Variable fields in R-type and CR-type instructions
+use core::fmt;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TypeR {
     /// Destination register
@@ -55,6 +57,12 @@ impl From<u16> for TypeR {
     }
 }
 
+impl fmt::Display for TypeR {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}, {}", self.rd, self.rs1, self.rs2)
+    }
+}
+
 /// Variable fields in I-type instructions
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TypeI {
@@ -78,6 +86,12 @@ impl From<u32> for TypeI {
             rs1: rs1_from(insn),
             imm,
         }
+    }
+}
+
+impl fmt::Display for TypeI {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}, {}", self.rd, self.rs1, self.imm)
     }
 }
 
@@ -105,6 +119,12 @@ impl From<u32> for TypeS {
             rs2: rs2_from(insn),
             imm: sign_extend_u16(imm as u16, 11),
         }
+    }
+}
+
+impl fmt::Display for TypeS {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}, {}", self.rs1, self.rs2, self.imm)
     }
 }
 
@@ -155,6 +175,12 @@ impl From<u16> for TypeB {
     }
 }
 
+impl fmt::Display for TypeB {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}, {}", self.rs1, self.rs2, self.imm)
+    }
+}
+
 /// Variable fields in U-type instructions
 ///
 /// This type also allows extracting the destination register and immediate from
@@ -195,6 +221,11 @@ impl From<u16> for TypeU {
     }
 }
 
+impl fmt::Display for TypeU {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}", self.rd, self.imm)
+    }
+}
 /// Variable fields in J-type instructions
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TypeJ {
@@ -238,6 +269,12 @@ impl From<u16> for TypeJ {
             rd: 0,
             imm: sign_extend_u32(imm as u32, 11),
         }
+    }
+}
+
+impl fmt::Display for TypeJ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}", self.rd, self.imm)
     }
 }
 
