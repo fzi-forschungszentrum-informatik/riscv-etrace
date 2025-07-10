@@ -96,11 +96,11 @@ where
                     return Ok(None);
                 };
                 let offset = offset.try_into().map_err(Error::ExceededHostUSize)?;
-                let Some((_, insn_data)) = data.split_at_checked(offset) else {
-                    // `address` >= segment end
-                    return Ok(None);
-                };
-                Ok(Some((insn_data, (base, data))))
+                let res = data
+                    .split_at_checked(offset)
+                    .filter(|(_, insn_data)| !insn_data.is_empty())
+                    .map(|(_, insn_data)| (insn_data, (base, data)));
+                Ok(res)
             })
             .find_map(Result::transpose)
             .ok_or(Error::NoSegmentFound)??;
