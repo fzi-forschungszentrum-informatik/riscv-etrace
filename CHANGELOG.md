@@ -36,6 +36,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Fixed
 
+- Corrected segment selection in `elf::Elf::get_insn` for addresses at the
+  border of two consecutive segments.
 - Correct EPC calculation which may have been incorrect under some
   circumstances.
 - Read `ecause` field in spike traces as hex values in simple example.
