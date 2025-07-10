@@ -23,7 +23,7 @@ where
     P: EndianParse,
 {
     elf: E,
-    last_segment: Option<(u64, &'d [u8])>,
+    last_segment: (u64, &'d [u8]),
     base: base::Set,
     phantom: core::marker::PhantomData<P>,
 }
@@ -50,7 +50,7 @@ where
 
             Ok(Self {
                 elf,
-                last_segment: None,
+                last_segment: (u64::MAX, &[]),
                 base,
                 phantom: Default::default(),
             })
@@ -96,10 +96,7 @@ where
         // used since that's most likely to be the relevant one. We accept that
         // we may fail if we could not retrieve data for a segment known to not
         // contain the address.
-        let (insn_data, segment) = self
-            .last_segment
-            .into_iter()
-            .map(Ok)
+        let (insn_data, segment) = core::iter::once(Ok(self.last_segment))
             .chain(segments)
             .map(|s| {
                 let (base, data) = s?;
@@ -117,7 +114,7 @@ where
             .find_map(Result::transpose)
             .ok_or(Error::NoSegmentFound)??;
 
-        self.last_segment = Some(segment);
+        self.last_segment = segment;
         Instruction::extract(insn_data, self.base)
             .map(|(i, _)| i)
             .ok_or(Error::InvalidInstruction)
