@@ -100,6 +100,39 @@ impl Binary for Empty {
     }
 }
 
+/// An error that may indicate that an address is not covered by a [`Binary`]
+///
+/// A [`Binary`] usually only provides [`Instruction`]s for a subset of all
+/// possible addresses, e.g. a memory area on the target device. Requesting
+/// [`Instruction`]s at addresses outside that area will naturally yield an
+/// error. This trait allows identifying these particular errors.
+pub trait MaybeMiss {
+    /// Construct a value indicating a miss
+    ///
+    /// This error value indicates that the [`Binary`] does not cover the
+    /// given `address`.
+    fn miss(address: u64) -> Self;
+
+    /// Check whether this value indicates a miss
+    ///
+    /// This error value indicates that the [`Binary`] does not cover the
+    /// address for which an [`Instruction`] was requested.
+    fn is_miss(&self) -> bool;
+}
+
+impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
+    fn miss(address: u64) -> Self {
+        Err(E::miss(address))
+    }
+
+    fn is_miss(&self) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => e.is_miss(),
+        }
+    }
+}
+
 /// An error type expressing simple absence of an [`Instruction`]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
