@@ -15,6 +15,8 @@ pub mod elf;
 #[cfg(test)]
 mod tests;
 
+use core::fmt;
+
 use format::Register;
 
 /// Bits from which [`Instruction`]s can be disassembled
@@ -338,6 +340,52 @@ impl Kind {
             Self::jalr(format::TypeI { rd: 0, rs1: 1, .. })
                 | Self::c_jr(format::TypeR { rs1: 1, .. })
         )
+    }
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            // TypeR
+            Self::c_jr(d) => write!(f, "c.jr {}", d),
+            Self::c_jalr(d) => write!(f, "c.jalr {}", d),
+
+            // TypeJ
+            Self::c_jal(d) => write!(f, "c.jal {}", d),
+            Self::c_j(d) => write!(f, "c.j {}", d),
+            Self::jal(d) => write!(f, "jal {}", d),
+
+            // TypeU
+            Self::c_lui(d) => write!(f, "c.lui {}", d),
+            Self::auipc(d) => write!(f, "auipc {}", d),
+            Self::lui(d) => write!(f, "lui {}", d),
+
+            // TypeI
+            Self::jalr(d) => write!(f, "jalr {}", d),
+
+            // TypeB
+            Self::c_beqz(d) => write!(f, "c.beqz {}", d),
+            Self::c_bnez(d) => write!(f, "c.bnez {}", d),
+            Self::beq(d) => write!(f, "beq {}", d),
+            Self::bne(d) => write!(f, "bne {}", d),
+            Self::blt(d) => write!(f, "blt {}", d),
+            Self::bge(d) => write!(f, "bge {}", d),
+            Self::bltu(d) => write!(f, "bltu {}", d),
+            Self::bgeu(d) => write!(f, "bgeu {}", d),
+
+            // No type implemented instructions
+            Self::c_ebreak => write!(f, "c.ebreak"),
+            Self::ebreak => write!(f, "ebreak"),
+            Self::fence_i => write!(f, "fence.i"),
+            Self::ecall => write!(f, "ecall"),
+            Self::wfi => write!(f, "wfi"),
+            Self::sfence_vma => write!(f, "sfence.vma"),
+            Self::fence => write!(f, "fence"),
+            Self::mret => write!(f, "mret"),
+            Self::sret => write!(f, "sret"),
+            Self::uret => write!(f, "uret"),
+            Self::dret => write!(f, "dret"),
+        }
     }
 }
 
