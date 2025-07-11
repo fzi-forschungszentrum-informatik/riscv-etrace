@@ -137,6 +137,16 @@ impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
+impl MaybeMiss for NoInstruction {
+    fn miss(_: u64) -> Self {
+        NoInstruction
+    }
+
+    fn is_miss(&self) -> bool {
+        true
+    }
+}
+
 impl core::error::Error for NoInstruction {}
 
 impl fmt::Display for NoInstruction {
