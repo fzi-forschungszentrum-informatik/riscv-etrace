@@ -130,7 +130,7 @@ pub enum Error {
     CouldNotRetrieveData(elf::parse::ParseError),
     /// Could not use an address or offset because it is too big for the host
     ExceededHostUSize(core::num::TryFromIntError),
-    /// An [Instruction] could not be extracted from the data
+    /// An [`Instruction`] could not be extracted from the data
     InvalidInstruction,
     /// The ELF file is not an RV32 ELF file
     UnsupportedArchitecture,
