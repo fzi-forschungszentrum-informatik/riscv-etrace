@@ -69,6 +69,20 @@ impl<B: Binary, P: Binary> Binary for (B, P) {
     }
 }
 
+impl<B> Binary for Option<B>
+where
+    B: Binary,
+    B::Error: MaybeMiss,
+{
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        self.as_mut()
+            .map(|b| b.get_insn(address))
+            .unwrap_or_else(|| MaybeMiss::miss(address))
+    }
+}
+
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
