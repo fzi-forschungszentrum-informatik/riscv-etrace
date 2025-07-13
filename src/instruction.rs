@@ -450,6 +450,15 @@ impl From<Kind> for Instruction {
     }
 }
 
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            Some(kind) => write!(f, "{}", kind),
+            None => write!(f, "None"),
+        }
+    }
+}
+
 /// An unknown 16bit [`Instruction`]
 pub const COMPRESSED: Instruction = Instruction {
     kind: None,
