@@ -42,7 +42,8 @@ else
     die "64bit Parameter file does not exist"
 fi
 
-for elf in "${suite}/../../tests/test_files/"*.riscv; do
+test_files_dir="${suite}/../../tests/test_files/"
+for elf in "${test_files_dir}"*.riscv "${test_files_dir}"*.pk; do
     if file ${elf} | grep 'ELF 64-bit' >> /dev/null; then
         params="params_64.toml"
     elif file ${elf} | grep 'ELF 32-bit' >> /dev/null; then
@@ -52,6 +53,7 @@ for elf in "${suite}/../../tests/test_files/"*.riscv; do
         continue;
     fi
     test_name=`basename -s.riscv ${elf}`
+    test_name=`basename -s.pk ${test_name}`
     spike_trace=${spike}/${test_name}.spike_pc_trace
     trace_file=${suite}/${test_name}.te_inst_raw
     if [ ! -e "$trace_file" ]; then
