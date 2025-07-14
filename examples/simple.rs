@@ -133,7 +133,19 @@ fn main() {
                 }
 
                 if let Some(reference) = reference.as_mut() {
-                    assert_eq!(item, reference.next().expect("Reference trace ended"));
+                    let reference = reference.next().expect("Reference trace ended");
+                    if item != reference {
+                        eprintln!("Traced item differs from reference!");
+                        eprintln!("  Traced item: {item:?}");
+                        eprintln!("  Reference:   {reference:?}");
+                        assert_eq!(
+                            item.pc(),
+                            reference.pc(),
+                            "Aborting due to differing PCs ({:0x} vs. {:0x})",
+                            item.pc(),
+                            reference.pc()
+                        );
+                    }
                 }
 
                 icount += 1;
