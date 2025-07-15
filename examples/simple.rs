@@ -13,10 +13,9 @@
 //!
 //! Only a single hart (hart `0`) is traced.
 //!
-//! By default, the program prints every traced PC as a hex value to stdout. If
-//! run with the environment variable `DEBUG` set to `1`, the program prints
-//! trace information in a format similar to the debug output of the reference
-//! flow's decoder model, allowing for easy comparison (after some filtering).
+//! By default, the program prints a single line for every trace item to stdout.
+//! If run with the environment variable `DEBUG` set to `1`, the configuration
+//! and every packet decoded are printed to stderr.
 
 mod spike;
 
