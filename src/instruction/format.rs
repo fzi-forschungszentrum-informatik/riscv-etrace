@@ -59,7 +59,7 @@ impl From<u16> for TypeR {
 
 impl fmt::Display for TypeR {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}, {}", self.rd, self.rs1, self.rs2)
+        write!(f, "x{}, x{}, x{}", self.rd, self.rs1, self.rs2)
     }
 }
 
@@ -91,7 +91,7 @@ impl From<u32> for TypeI {
 
 impl fmt::Display for TypeI {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}, {}", self.rd, self.rs1, self.imm)
+        write!(f, "x{}, x{}, 0x{:x}", self.rd, self.rs1, self.imm)
     }
 }
 
@@ -124,7 +124,7 @@ impl From<u32> for TypeS {
 
 impl fmt::Display for TypeS {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}, {}", self.rs1, self.rs2, self.imm)
+        write!(f, "x{}, x{}, 0x{:x}", self.rs1, self.rs2, self.imm)
     }
 }
 
@@ -177,7 +177,7 @@ impl From<u16> for TypeB {
 
 impl fmt::Display for TypeB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}, {}", self.rs1, self.rs2, self.imm)
+        write!(f, "x{}, x{}, 0x{:x}", self.rs1, self.rs2, self.imm)
     }
 }
 
@@ -223,7 +223,7 @@ impl From<u16> for TypeU {
 
 impl fmt::Display for TypeU {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.rd, self.imm)
+        write!(f, "x{}, 0x{:x}", self.rd, self.imm)
     }
 }
 /// Variable fields in J-type instructions
@@ -274,7 +274,7 @@ impl From<u16> for TypeJ {
 
 impl fmt::Display for TypeJ {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.rd, self.imm)
+        write!(f, "x{}, 0x{:x}", self.rd, self.imm)
     }
 }
 
