@@ -23,6 +23,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Made `ecause` field in `types::trap::Info` an `u16`.
 - The "simple" example now automatically loads `pk.riscv` if the ELF file
   provided has a `pk` file extension.
 - When comparing against a reference, the "simple" example now only aborts in PC

@@ -6,7 +6,7 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Info {
     /// Cause of the trap or interrupt
-    pub ecause: u64,
+    pub ecause: u16,
     /// Appropriate `utval`/`stval`/`vstval`/`mtval`
     ///
     /// This field also indicates whether the trap is an interrupt (`None`) or

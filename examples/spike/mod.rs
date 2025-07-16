@@ -95,6 +95,7 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
         )
         .expect("Could not parse \"ecause\" field")
             & 0x7fffffff;
+        let ecause = ecause.try_into().expect("Unexpectedly large ecause value");
         let tval =
             u64::from_str_radix(fields.next().expect("Could not extract \"tval\" field"), 16)
                 .expect("Could not parse \"tval\" field");
