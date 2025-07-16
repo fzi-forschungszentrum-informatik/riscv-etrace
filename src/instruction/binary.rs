@@ -5,6 +5,7 @@
 //! This module defines the [`Binary`] trait for programs that may be traced as
 //! well as a number of types that may serve as a [`Binary`].
 
+use core::borrow::BorrowMut;
 use core::fmt;
 
 use super::Instruction;
@@ -69,6 +70,93 @@ impl<B: Binary, P: Binary> Binary for (B, P) {
     }
 }
 
+impl<B> Binary for Option<B>
+where
+    B: Binary,
+    B::Error: MaybeMiss,
+{
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        self.as_mut()
+            .map(|b| b.get_insn(address))
+            .unwrap_or_else(|| MaybeMiss::miss(address))
+    }
+}
+
+/// Set of [`Binary`] acting as a single [`Binary`]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Multi<C, B>
+where
+    C: BorrowMut<[B]>,
+    B: Binary,
+    B::Error: MaybeMiss,
+{
+    bins: C,
+    last: usize,
+    phantom: core::marker::PhantomData<B>,
+}
+
+impl<C, B> Multi<C, B>
+where
+    C: BorrowMut<[B]>,
+    B: Binary,
+    B::Error: MaybeMiss,
+{
+    /// Create a new [`Binary`] combining all `bins`
+    pub fn new(bins: C) -> Self {
+        Self {
+            bins,
+            last: 0,
+            phantom: Default::default(),
+        }
+    }
+}
+
+impl<C, B> From<C> for Multi<C, B>
+where
+    C: BorrowMut<[B]>,
+    B: Binary,
+    B::Error: MaybeMiss,
+{
+    fn from(bins: C) -> Self {
+        Self::new(bins)
+    }
+}
+
+impl<C, B> Binary for Multi<C, B>
+where
+    C: BorrowMut<[B]>,
+    B: Binary,
+    B::Error: MaybeMiss,
+{
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        let bins = self.bins.borrow_mut();
+        let res = bins
+            .get_mut(self.last)
+            .map(|b| b.get_insn(address))
+            .filter(|r| !r.is_miss());
+        if let Some(res) = res {
+            return res;
+        }
+
+        let res = bins
+            .iter_mut()
+            .enumerate()
+            .filter(|(n, _)| *n != self.last)
+            .map(|(n, b)| (n, b.get_insn(address)))
+            .find(|(_, r)| !r.is_miss());
+        if let Some((current, res)) = res {
+            self.last = current;
+            res
+        } else {
+            MaybeMiss::miss(address)
+        }
+    }
+}
+
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
@@ -100,9 +188,52 @@ impl Binary for Empty {
     }
 }
 
+/// An error that may indicate that an address is not covered by a [`Binary`]
+///
+/// A [`Binary`] usually only provides [`Instruction`]s for a subset of all
+/// possible addresses, e.g. a memory area on the target device. Requesting
+/// [`Instruction`]s at addresses outside that area will naturally yield an
+/// error. This trait allows identifying these particular errors.
+pub trait MaybeMiss {
+    /// Construct a value indicating a miss
+    ///
+    /// This error value indicates that the [`Binary`] does not cover the
+    /// given `address`.
+    fn miss(address: u64) -> Self;
+
+    /// Check whether this value indicates a miss
+    ///
+    /// This error value indicates that the [`Binary`] does not cover the
+    /// address for which an [`Instruction`] was requested.
+    fn is_miss(&self) -> bool;
+}
+
+impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
+    fn miss(address: u64) -> Self {
+        Err(E::miss(address))
+    }
+
+    fn is_miss(&self) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => e.is_miss(),
+        }
+    }
+}
+
 /// An error type expressing simple absence of an [`Instruction`]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
+
+impl MaybeMiss for NoInstruction {
+    fn miss(_: u64) -> Self {
+        NoInstruction
+    }
+
+    fn is_miss(&self) -> bool {
+        true
+    }
+}
 
 impl core::error::Error for NoInstruction {}
 

@@ -7,6 +7,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- Trait `instruction::binary::MaybeMiss` for identifying and creating errors
+  indicating that an `instruction::binary::Binary` does not cover an address.
+- Type `istruction::binary::Multi` for combining a slice of items implementing
+  `instruction::binary::Binary` into one.
+- An `instruction::binary::Binary` impl for `Option<Binary>`.
 - `instruction::elf::Elf` fn for querying its `instruction::base::Set`.
 - Convenience construction methods for `instruction::Kind`.
 - Support for decoding RV64I instructions.

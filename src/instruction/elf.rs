@@ -8,7 +8,7 @@ use core::fmt;
 use elf::endian::EndianParse;
 use elf::ElfBytes;
 
-use super::binary::Binary;
+use super::binary::{self, Binary};
 use super::{base, Instruction};
 
 /// Static ELF [`Binary`]
@@ -136,6 +136,16 @@ pub enum Error {
     UnsupportedArchitecture,
     /// The ELF file is not little endian
     UnsupportedEndianess,
+}
+
+impl binary::MaybeMiss for Error {
+    fn miss(_: u64) -> Self {
+        Self::NoSegmentFound
+    }
+
+    fn is_miss(&self) -> bool {
+        matches!(self, Self::NoSegmentFound)
+    }
 }
 
 impl core::error::Error for Error {
