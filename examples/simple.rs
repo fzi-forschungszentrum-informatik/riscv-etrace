@@ -13,10 +13,9 @@
 //!
 //! Only a single hart (hart `0`) is traced.
 //!
-//! By default, the program prints every traced PC as a hex value to stdout. If
-//! run with the environment variable `DEBUG` set to `1`, the program prints
-//! trace information in a format similar to the debug output of the reference
-//! flow's decoder model, allowing for easy comparison (after some filtering).
+//! By default, the program prints a single line for every trace item to stdout.
+//! If run with the environment variable `DEBUG` set to `1`, the configuration
+//! and every packet decoded are printed to stderr.
 
 mod spike;
 
@@ -33,10 +32,24 @@ fn main() {
     let mut args = std::env::args_os().skip(1);
 
     // For tracing, we need the program to trace ...
-    let elf_data = std::fs::read(args.next().expect("No ELF file specified"))
-        .expect("Could not load ELF file");
+    let mut elf_path: std::path::PathBuf = args.next().expect("No ELF file specified").into();
+    let elf_data = std::fs::read(&elf_path).expect("Could not load ELF file");
     let elf = elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_data.as_ref())
         .expect("Coult not parse ELF file");
+
+    // ... the proxy kernel for non-bare-metal applications ...
+    let pk_data = elf_path.extension().is_some_and(|e| e == "pk").then(|| {
+        elf_path.set_file_name("pk.riscv");
+        eprintln!(
+            "Loading additional proxy kernel '{}' due to 'pk' extension...",
+            elf_path.display()
+        );
+        std::fs::read(&elf_path).expect("Could not load pk")
+    });
+    let pk = pk_data.as_ref().map(|d| {
+        elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(d.as_ref())
+            .expect("Coult not parse pk ELF file")
+    });
 
     // ... and the trace file.
     let trace_data = std::fs::read(args.next().expect("No trace file specified"))
@@ -58,11 +71,18 @@ fn main() {
     // that they are placed at a known offset.
     let elf = instruction::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
     let base_set = elf.base_set();
-    let elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
-        elf.with_offset(0x8000_0000)
+    let mut elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
+        vec![elf.with_offset(0x8000_0000)]
     } else {
-        elf.with_offset(0)
+        vec![elf.with_offset(0)]
     };
+
+    elf.extend(pk.map(|e| {
+        instruction::elf::Elf::new(e)
+            .expect("Could not construct binary from ELF file")
+            .with_offset(0)
+    }));
+    let elf = instruction::binary::Multi::from(elf);
 
     // Given a reference trace, we can check whether our trace is correct.
     let mut reference = args.next().map(|p| {
@@ -134,7 +154,19 @@ fn main() {
                 }
 
                 if let Some(reference) = reference.as_mut() {
-                    assert_eq!(item, reference.next().expect("Reference trace ended"));
+                    let reference = reference.next().expect("Reference trace ended");
+                    if item != reference {
+                        eprintln!("Traced item differs from reference!");
+                        eprintln!("  Traced item: {item:?}");
+                        eprintln!("  Reference:   {reference:?}");
+                        assert_eq!(
+                            item.pc(),
+                            reference.pc(),
+                            "Aborting due to differing PCs ({:0x} vs. {:0x})",
+                            item.pc(),
+                            reference.pc()
+                        );
+                    }
                 }
 
                 icount += 1;

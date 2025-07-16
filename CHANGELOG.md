@@ -23,6 +23,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The "simple" example now automatically loads `pk.riscv` if the ELF file
+  provided has a `pk` file extension.
+- When comparing against a reference, the "simple" example now only aborts in PC
+  mismatches. Other mismatches are only reported to stderr.
 - Cleaned up the "simple" example, making its output both more human firendly
   and compact.
 - Redefined `tracer::Item`s, which now distinguish between instruction
