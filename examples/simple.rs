@@ -156,7 +156,7 @@ fn main() {
                 if let Some(reference) = reference.as_mut() {
                     let reference = reference.next().expect("Reference trace ended");
                     if item != reference {
-                        eprintln!("Traced item differs from reference!");
+                        eprintln!("Traced item {icount} differs from reference!");
                         eprintln!("  Traced item: {item:?}");
                         eprintln!("  Reference:   {reference:?}");
                         assert_eq!(
