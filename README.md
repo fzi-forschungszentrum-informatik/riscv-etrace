@@ -7,8 +7,7 @@ specification. It provides:
   Messaging Infrastructure (SMI) packets,
 * a tracer which processes these packets and generates a sequence of tracing
   items, each corresponding to a single traced instruction,
-* a specialized instruction database with limited decoding capabilities
-  (currently only supporting 32bit RISC-V) and
+* a specialized instruction database with limited decoding capabilities and
 * various utilities, including types for handling trace encoder parameters.
 
 ## License
