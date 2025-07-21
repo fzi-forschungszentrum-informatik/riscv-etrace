@@ -347,16 +347,18 @@ impl fmt::Display for Kind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             // TypeR
-            Self::c_jr(d) => write!(f, "c.jr {}", d),
-            Self::c_jalr(d) => write!(f, "c.jalr {}", d),
+            Self::c_jr(d) => write!(f, "c.jr x{}", d.rd),
+            Self::c_jalr(d) => write!(f, "c.jalr x{}", d.rd),
 
             // TypeJ
-            Self::c_jal(d) => write!(f, "c.jal {}", d),
-            Self::c_j(d) => write!(f, "c.j {}", d),
+            Self::c_jal(d) => write!(f, "c.jal 0x{:x}", d.imm),
+            Self::c_j(d) => write!(f, "c.j 0x{:x}", d.imm),
+
+            // No change
             Self::jal(d) => write!(f, "jal {}", d),
 
             // TypeU
-            Self::c_lui(d) => write!(f, "c.lui {}", d),
+            Self::c_lui(d) => write!(f, "c.lui x{}, 0x{:x}", d.rd, d.imm),
             Self::auipc(d) => write!(f, "auipc {}", d),
             Self::lui(d) => write!(f, "lui {}", d),
 
@@ -364,8 +366,8 @@ impl fmt::Display for Kind {
             Self::jalr(d) => write!(f, "jalr {}", d),
 
             // TypeB
-            Self::c_beqz(d) => write!(f, "c.beqz {}", d),
-            Self::c_bnez(d) => write!(f, "c.bnez {}", d),
+            Self::c_beqz(d) => write!(f, "c.beqz x{}, 0x{:x}", d.rs1, d.imm),
+            Self::c_bnez(d) => write!(f, "c.bnez x{}, 0x{:x}", d.rs1, d.imm),
             Self::beq(d) => write!(f, "beq {}", d),
             Self::bne(d) => write!(f, "bne {}", d),
             Self::blt(d) => write!(f, "blt {}", d),
