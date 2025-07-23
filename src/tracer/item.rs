@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tracing item
 
+use crate::decoder::sync;
 use crate::instruction::{self, Instruction};
-use crate::types::trap;
+use crate::types::{trap, Privilege};
 
 /// Tracing item
 ///
@@ -83,5 +84,29 @@ impl From<instruction::Kind> for Kind {
 impl From<trap::Info> for Kind {
     fn from(info: trap::Info) -> Self {
         Self::Trap(info)
+    }
+}
+
+/// Execution context
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct Context {
+    /// The privilege level under which code is executed
+    pub privilege: Privilege,
+    /// The context of the execution
+    pub context: u64,
+}
+
+impl From<&sync::Context> for Context {
+    fn from(ctx: &sync::Context) -> Self {
+        Self {
+            privilege: ctx.privilege,
+            context: ctx.context.unwrap_or_default(),
+        }
+    }
+}
+
+impl From<sync::Context> for Context {
+    fn from(ctx: sync::Context) -> Self {
+        (&ctx).into()
     }
 }
