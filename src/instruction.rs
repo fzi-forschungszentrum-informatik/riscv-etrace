@@ -456,7 +456,7 @@ impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             Some(kind) => write!(f, "{}", kind),
-            None => write!(f, "None"),
+            None => write!(f, ""),
         }
     }
 }
