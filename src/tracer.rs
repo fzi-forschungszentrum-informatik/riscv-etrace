@@ -138,8 +138,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let is_tracing = self.iter_state.is_tracing();
                 let version = self.version;
 
-                let initer =
-                    self.sync_init(start.address, !is_tracing, !start.branch, &start.ctx)?;
+                let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
                 if is_tracing {
                     let action = match version {
                         Version::V1 => state::SyncAction::Compare,
@@ -150,6 +149,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         action,
                     });
                 } else {
+                    if version != Version::V1 {
+                        initer.set_context(start.ctx.into());
+                    }
                     initer.reset_to_address()?;
                     self.iter_state = IterationState::ContextItem {
                         context: start.ctx.into(),
@@ -169,8 +171,12 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         .initializer(&mut self.binary)?
                         .set_stack_depth(None);
                 } else {
-                    self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?
-                        .reset_to_address()?;
+                    let version = self.version;
+                    let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
+                    if version != Version::V1 {
+                        initer.set_context(trap.ctx.into());
+                    }
+                    initer.reset_to_address()?;
                 }
                 self.iter_state = IterationState::TrapItem {
                     epc,
@@ -250,7 +256,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
-        ctx: &sync::Context,
     ) -> Result<state::Initializer<'_, S, B>, Error<B::Error>> {
         let insn = self
             .binary
@@ -270,10 +275,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             .is_some()
         {
             branch_map.push_branch_taken(branch_taken);
-        }
-
-        if self.version != Version::V1 {
-            initer.set_context(ctx.into());
         }
 
         initer.set_stack_depth(None);
