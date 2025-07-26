@@ -141,11 +141,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let initer =
                     self.sync_init(start.address, !is_tracing, !start.branch, &start.ctx)?;
                 if is_tracing {
-                    let privilege = match version {
-                        Version::V1 => Some(start.ctx.privilege),
-                        _ => None,
+                    let action = match version {
+                        Version::V1 => state::SyncAction::Compare,
+                        _ => state::SyncAction::Update,
                     };
-                    initer.set_condition(state::StopCondition::Sync { privilege });
+                    initer.set_condition(state::StopCondition::Sync {
+                        context: start.ctx.into(),
+                        action,
+                    });
                 } else {
                     initer.reset_to_address()?;
                     self.iter_state = IterationState::ContextItem {

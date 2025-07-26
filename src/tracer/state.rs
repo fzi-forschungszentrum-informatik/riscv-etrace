@@ -146,9 +146,10 @@ impl<S: ReturnStack> State<S> {
                     self.stop_condition = StopCondition::Fused;
                 }
                 StopCondition::Sync {
-                    privilege: Some(privilege),
+                    context,
+                    action: SyncAction::Compare,
                 } if hit_address_and_branch
-                    && privilege == self.privilege
+                    && context.privilege == self.privilege
                     && self
                         .last_insn
                         .kind
@@ -157,7 +158,11 @@ impl<S: ReturnStack> State<S> {
                 {
                     self.stop_condition = StopCondition::Fused;
                 }
-                StopCondition::Sync { privilege: None } if hit_address_and_branch => {
+                StopCondition::Sync {
+                    context,
+                    action: SyncAction::Update,
+                } if hit_address_and_branch => {
+                    self.privilege = context.privilege;
                     self.stop_condition = StopCondition::Fused;
                 }
                 _ if end => {
@@ -470,10 +475,24 @@ pub enum StopCondition {
     LastBranch,
     /// Stop when reaching a condition provided by an address packet
     Address { notify: bool, not_updiscon: bool },
-    /// Stop when reaching a condition provided by a sync packet
-    Sync { privilege: Option<Privilege> },
+    /// Stop at synchonization point (defined in sync packet)
+    Sync {
+        /// Context given in the sync packet
+        context: Context,
+        /// Action to perform at the synchronization point
+        action: SyncAction,
+    },
     /// The state is already fused and shall not be advanced
     Fused,
+}
+
+/// Synchronization action
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SyncAction {
+    /// Stop only if the sync context matches the [`State`]'s context
+    Compare,
+    /// Update the [`State`]'s context from the sync context
+    Update,
 }
 
 impl Default for StopCondition {
