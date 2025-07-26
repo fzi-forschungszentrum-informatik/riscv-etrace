@@ -6,6 +6,7 @@ use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 
 use super::error::Error;
+use super::item::Context;
 use super::stack::ReturnStack;
 
 use instruction::binary::Binary;
@@ -407,9 +408,9 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
         &mut self.state.branch_map
     }
 
-    /// Set the privilege
-    pub fn set_privilege(&mut self, privilege: Privilege) {
-        self.state.privilege = privilege;
+    /// Set the execution context
+    pub fn set_context(&mut self, context: Context) {
+        self.state.privilege = context.privilege;
     }
 
     /// Set the stack depth
