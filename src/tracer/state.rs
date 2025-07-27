@@ -88,19 +88,19 @@ impl<S: ReturnStack> State<S> {
         self.insn
     }
 
-    /// Determine next (regular) tracing item
+    /// Determine next [`ProtoItem`]
     ///
-    /// Returns the next PC and [`Instruction`] based on the given address as
-    /// well as information within the state if the state is not fused. After
-    /// determining the next pair, the stop condition is evaluated and the state
-    /// is fused if necessary.
+    /// Returns the next [`ProtoItem`] based on the given address as well as
+    /// information within the state if the state is not fused. After
+    /// determining the next PC and address, the stop condition is evaluated and
+    /// the state is fused if necessary.
     ///
     /// This roughly corresponds to the loop bodies in `follow_execution_path`
     /// and `process_support` of the reference implementation.
     pub fn next_item<B: Binary>(
         &mut self,
         binary: &mut B,
-    ) -> Result<Option<(u64, Instruction)>, Error<B::Error>> {
+    ) -> Result<Option<ProtoItem>, Error<B::Error>> {
         use instruction::Kind;
 
         if self.is_fused() {
@@ -116,7 +116,7 @@ impl<S: ReturnStack> State<S> {
                 }
             }
 
-            Ok(Some((pc, insn)))
+            Ok(Some((pc, insn, None)))
         } else {
             let (pc, insn, end) = self.next_pc(binary, self.address)?;
 
@@ -124,12 +124,14 @@ impl<S: ReturnStack> State<S> {
             let branch_limit = if is_branch { 1 } else { 0 };
             let hit_address_and_branch =
                 self.pc == self.address && self.branch_map.count() == branch_limit;
-            match self.stop_condition {
+            let ctx = match self.stop_condition {
                 StopCondition::LastBranch if self.branch_map.count() == 1 && is_branch => {
                     self.stop_condition = StopCondition::Fused;
+                    None
                 }
                 StopCondition::Address { notify: true, .. } if hit_address_and_branch => {
                     self.stop_condition = StopCondition::Fused;
+                    None
                 }
                 StopCondition::Address {
                     notify: false,
@@ -144,6 +146,7 @@ impl<S: ReturnStack> State<S> {
                 {
                     self.inferred_address = Some(self.pc);
                     self.stop_condition = StopCondition::Fused;
+                    None
                 }
                 StopCondition::Sync {
                     context,
@@ -157,6 +160,7 @@ impl<S: ReturnStack> State<S> {
                         .unwrap_or(false) =>
                 {
                     self.stop_condition = StopCondition::Fused;
+                    None
                 }
                 StopCondition::Sync {
                     context,
@@ -164,6 +168,7 @@ impl<S: ReturnStack> State<S> {
                 } if hit_address_and_branch => {
                     self.privilege = context.privilege;
                     self.stop_condition = StopCondition::Fused;
+                    Some(context)
                 }
                 _ if end => {
                     self.stop_condition = StopCondition::Fused;
@@ -172,11 +177,12 @@ impl<S: ReturnStack> State<S> {
                     {
                         return Err(Error::UnprocessedBranches(n));
                     }
+                    None
                 }
-                _ => (),
-            }
+                _ => None,
+            };
 
-            Ok(Some((pc, insn)))
+            Ok(Some((pc, insn, ctx)))
         }
     }
 
@@ -367,6 +373,12 @@ impl<S: ReturnStack> State<S> {
             .unwrap_or(true)
     }
 }
+
+/// A precursor to a tracer item
+///
+/// This expands to a regular tracer item, optionally preceeded by a context
+/// item.
+type ProtoItem = (u64, Instruction, Option<Context>);
 
 /// [`State`] initializer
 ///

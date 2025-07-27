@@ -320,7 +320,14 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
                     .state
                     .next_item(&mut self.binary)
                     .transpose()?
-                    .map(|(p, i)| Item::new(p, i.into()));
+                    .map(|(p, i, c)| {
+                        if let Some(ctx) = c {
+                            self.iter_state = IterationState::SingleItem;
+                            Item::new(p, ctx.into())
+                        } else {
+                            Item::new(p, i.into())
+                        }
+                    });
                 Some(res)
             }
         }
