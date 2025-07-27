@@ -151,6 +151,7 @@ fn main() {
                             println!("Interrupt! ecause: {}", info.ecause);
                         }
                     }
+                    item::Kind::Context(ctx) => println!("Context! priv: {:?}", ctx.privilege),
                 }
 
                 if let Some(reference) = reference.as_mut() {
