@@ -297,6 +297,15 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
 
                 Some(Ok(Item::new(epc, info.into())))
             }
+            IterationState::ContextItem { context, follow_up } => {
+                self.iter_state = if follow_up {
+                    IterationState::SingleItem
+                } else {
+                    IterationState::FollowExec
+                };
+
+                Some(Ok(Item::new(self.state.current_pc(), context.into())))
+            }
             IterationState::FollowExec | IterationState::Depleting => {
                 let res = self
                     .state
@@ -434,6 +443,11 @@ enum IterationState {
     TrapItem {
         epc: u64,
         info: trap::Info,
+        follow_up: bool,
+    },
+    /// We report a context update and optionally a single follow-up item
+    ContextItem {
+        context: item::Context,
         follow_up: bool,
     },
     /// We follow the execution path based on the current packet's data
