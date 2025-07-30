@@ -5,7 +5,8 @@
 use std::io::BufRead;
 
 use riscv_etrace::instruction;
-use riscv_etrace::tracer::Item;
+use riscv_etrace::tracer::item::{self, Item};
+use riscv_etrace::types::Privilege;
 
 use instruction::base;
 
@@ -18,6 +19,7 @@ pub struct CSVTrace<R: BufRead> {
     base: base::Set,
     intermediate: Option<Item>,
     last_address: u64,
+    last_priv: Option<Privilege>,
 }
 
 impl<R: BufRead> CSVTrace<R> {
@@ -42,6 +44,7 @@ impl<R: BufRead> CSVTrace<R> {
             base,
             intermediate: None,
             last_address: 0,
+            last_priv: None,
         }
     }
 }
@@ -79,11 +82,13 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
         .to_le_bytes();
         let (insn, _) =
             Instruction::extract(&insn, self.base).expect("Could not decode instruction");
-        let _: u8 = fields
+        let privilege = fields
             .next()
             .expect("Could not extract \"privilege\" field")
-            .parse()
-            .expect("Could not parse \"privilege\" field");
+            .parse::<u8>()
+            .expect("Could not parse \"privilege\" field")
+            .try_into()
+            .expect("Invalid value for privilege");
         let exception: u8 = fields
             .next()
             .expect("Could not extract \"exception\" field")
@@ -107,9 +112,21 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
 
         let item = if exception == 0 {
             // Regular execution
-            Item::new(address, insn.into())
+            let item = Item::new(address, insn.into());
+            if self.last_priv != Some(privilege) {
+                self.last_priv = Some(privilege);
+                self.intermediate = Some(item);
+                let ctx = item::Context {
+                    privilege,
+                    context: Default::default(),
+                };
+                Item::new(address, ctx.into())
+            } else {
+                item
+            }
         } else if interrupt != 0 {
             // Interrupt
+            self.last_priv = None;
             Item::new(self.last_address, trap::Info { ecause, tval: None }.into())
         } else if insn
             .kind
@@ -117,6 +134,7 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
             .unwrap_or(false)
         {
             // ECALL or EBREAK
+            self.last_priv = None;
             self.intermediate = Some(Item::new(
                 address,
                 trap::Info {
@@ -128,6 +146,7 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
             Item::new(address, insn.into())
         } else {
             // Exception
+            self.last_priv = None;
             Item::new(
                 address,
                 trap::Info {
