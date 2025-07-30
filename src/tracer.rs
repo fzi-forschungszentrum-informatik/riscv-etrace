@@ -148,7 +148,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     initer.set_condition(state::StopCondition::Sync { privilege });
                 } else {
                     initer.reset_to_address()?;
-                    self.iter_state = IterationState::SingleItem;
+                    self.iter_state = IterationState::ContextItem {
+                        context: start.ctx.into(),
+                        follow_up: true,
+                    };
                 }
             }
             Synchronization::Trap(trap) => {
@@ -169,6 +172,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 self.iter_state = IterationState::TrapItem {
                     epc,
                     info: trap.info,
+                    context: trap.ctx.into(),
                     follow_up: trap.thaddr,
                 };
             }
@@ -178,6 +182,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 if self.version != Version::V1 {
                     initer.set_context(ctx.into());
                 }
+                self.iter_state = IterationState::ContextItem {
+                    context: ctx.into(),
+                    follow_up: false,
+                };
             }
             Synchronization::Support(sup) => {
                 self.process_support(sup)?;
@@ -287,13 +295,10 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
             IterationState::TrapItem {
                 epc,
                 info,
+                context,
                 follow_up,
             } => {
-                self.iter_state = if follow_up {
-                    IterationState::SingleItem
-                } else {
-                    IterationState::FollowExec
-                };
+                self.iter_state = IterationState::ContextItem { context, follow_up };
 
                 Some(Ok(Item::new(epc, info.into())))
             }
@@ -443,6 +448,7 @@ enum IterationState {
     TrapItem {
         epc: u64,
         info: trap::Info,
+        context: item::Context,
         follow_up: bool,
     },
     /// We report a context update and optionally a single follow-up item
