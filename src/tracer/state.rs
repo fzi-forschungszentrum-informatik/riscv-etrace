@@ -128,23 +128,22 @@ impl<S: ReturnStack> State<S> {
                 StopCondition::LastBranch if self.branch_map.count() == 1 && is_branch => {
                     self.stop_condition = StopCondition::Fused;
                 }
+                StopCondition::Address { notify: true, .. } if hit_address_and_branch => {
+                    self.stop_condition = StopCondition::Fused;
+                }
                 StopCondition::Address {
-                    notify,
-                    not_updiscon,
-                } if hit_address_and_branch => {
-                    if notify {
-                        self.stop_condition = StopCondition::Fused;
-                    } else if not_updiscon
-                        && !self
-                            .last_insn
-                            .kind
-                            .map(Kind::is_uninferable_discon)
-                            .unwrap_or(false)
-                        && self.stack_depth_matches()
-                    {
-                        self.inferred_address = Some(self.pc);
-                        self.stop_condition = StopCondition::Fused;
-                    }
+                    notify: false,
+                    not_updiscon: true,
+                } if hit_address_and_branch
+                    && !self
+                        .last_insn
+                        .kind
+                        .map(Kind::is_uninferable_discon)
+                        .unwrap_or(false)
+                    && self.stack_depth_matches() =>
+                {
+                    self.inferred_address = Some(self.pc);
+                    self.stop_condition = StopCondition::Fused;
                 }
                 StopCondition::Sync {
                     privilege: Some(privilege),
