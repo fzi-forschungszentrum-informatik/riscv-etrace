@@ -138,13 +138,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let is_tracing = self.iter_state.is_tracing();
                 let version = self.version;
 
-                let initer = self.sync_init(
-                    start.address,
-                    !self.iter_state.is_tracing(),
-                    !start.branch,
-                    &start.ctx,
-                )?;
-
+                let initer =
+                    self.sync_init(start.address, !is_tracing, !start.branch, &start.ctx)?;
                 if is_tracing {
                     let privilege = match version {
                         Version::V1 => Some(start.ctx.privilege),
