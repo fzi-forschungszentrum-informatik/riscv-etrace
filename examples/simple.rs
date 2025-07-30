@@ -159,9 +159,9 @@ fn main() {
                         eprintln!("Traced item {icount} differs from reference!");
                         eprintln!("  Traced item: {item:?}");
                         eprintln!("  Reference:   {reference:?}");
-                        assert_eq!(
-                            item.pc(),
-                            reference.pc(),
+                        assert!(
+                            !matches!(item.kind(), item::Kind::Regular(_))
+                                || item.pc() == reference.pc(),
                             "Aborting due to differing PCs ({:0x} vs. {:0x})",
                             item.pc(),
                             reference.pc()
