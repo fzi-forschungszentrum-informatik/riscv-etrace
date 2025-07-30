@@ -355,25 +355,25 @@ impl fmt::Display for Kind {
             Self::c_j(d) => write!(f, "c.j 0x{:X}", d.imm),
 
             // No change
-            Self::jal(d) => write!(f, "jal {}", d),
+            Self::jal(d) => write!(f, "jal {d}"),
 
             // TypeU
-            Self::c_lui(d) => write!(f, "c.lui {}", d),
-            Self::auipc(d) => write!(f, "auipc {}", d),
-            Self::lui(d) => write!(f, "lui {}", d),
+            Self::c_lui(d) => write!(f, "c.lui {d}"),
+            Self::auipc(d) => write!(f, "auipc {d}"),
+            Self::lui(d) => write!(f, "lui {d}"),
 
             // TypeI
-            Self::jalr(d) => write!(f, "jalr {}", d),
+            Self::jalr(d) => write!(f, "jalr {d}"),
 
             // TypeB
             Self::c_beqz(d) => write!(f, "c.beqz x{}, 0x{:X}", d.rs1, d.imm),
             Self::c_bnez(d) => write!(f, "c.bnez x{}, 0x{:X}", d.rs1, d.imm),
-            Self::beq(d) => write!(f, "beq {}", d),
-            Self::bne(d) => write!(f, "bne {}", d),
-            Self::blt(d) => write!(f, "blt {}", d),
-            Self::bge(d) => write!(f, "bge {}", d),
-            Self::bltu(d) => write!(f, "bltu {}", d),
-            Self::bgeu(d) => write!(f, "bgeu {}", d),
+            Self::beq(d) => write!(f, "beq {d}"),
+            Self::bne(d) => write!(f, "bne {d}"),
+            Self::blt(d) => write!(f, "blt {d}"),
+            Self::bge(d) => write!(f, "bge {d}"),
+            Self::bltu(d) => write!(f, "bltu {d}"),
+            Self::bgeu(d) => write!(f, "bgeu {d}"),
 
             // No type implemented instructions
             Self::c_ebreak => write!(f, "c.ebreak"),
@@ -455,7 +455,7 @@ impl From<Kind> for Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            Some(kind) => write!(f, "{}", kind),
+            Some(kind) => write!(f, "{kind}"),
             None => write!(f, ""),
         }
     }
