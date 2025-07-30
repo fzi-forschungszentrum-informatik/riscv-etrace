@@ -110,6 +110,43 @@ decode_test!(
     1633
 );
 
+extern crate alloc;
+use alloc::format;
+use alloc::vec;
+#[test]
+fn display_formats_correctly() {
+    let cases = vec![
+        (Kind::new_c_jr(12), "c.jr x12"),
+        (Kind::new_c_jalr(31), "c.jalr x31"),
+        (Kind::new_c_jal(3, 0x5), "c.jal 0x5"),
+        (Kind::new_c_j(3, 0x15), "c.j 0x15"),
+        (Kind::new_jal(5, 0x12), "jal x5, 0x12"),
+        // Right shift displayed immediate by 12 bit
+        (Kind::new_c_lui(3, 0x5000), "c.lui x3, 0x5"),
+        (Kind::new_auipc(5, 0x12000), "auipc x5, 0x12"),
+        (Kind::new_lui(8, 0x135000), "lui x8, 0x135"),
+        (Kind::new_jalr(7, 5, 0x3057), "jalr x7, x5, 0x3057"),
+        (Kind::new_c_beqz(8, 0x333), "c.beqz x8, 0x333"),
+        (Kind::new_c_bnez(10, 0x812), "c.bnez x10, 0x812"),
+        (Kind::new_beq(9, 11, 0x111), "beq x9, x11, 0x111"),
+        (Kind::new_bne(12, 13, 0x555), "bne x12, x13, 0x555"),
+        (Kind::new_blt(15, 12, 0x723), "blt x15, x12, 0x723"),
+        (Kind::new_bge(10, 13, 0x444), "bge x10, x13, 0x444"),
+        (Kind::new_bltu(7, 11, 0x487), "bltu x7, x11, 0x487"),
+        (Kind::new_bgeu(6, 14, 0x777), "bgeu x6, x14, 0x777"),
+        (Kind::c_ebreak, "c.ebreak"),
+    ];
+
+    for (kind, expected) in cases {
+        assert_eq!(
+            format!("{}", kind),
+            expected,
+            "Failed for instruction: {:?}",
+            kind
+        );
+    }
+}
+
 mod c_jal {
     use super::*;
     decode_test!(Rv32I, rv32i, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);

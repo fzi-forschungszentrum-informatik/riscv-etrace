@@ -15,6 +15,8 @@ pub mod elf;
 #[cfg(test)]
 mod tests;
 
+use core::fmt;
+
 use format::Register;
 
 /// Bits from which [`Instruction`]s can be disassembled
@@ -341,6 +343,54 @@ impl Kind {
     }
 }
 
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            // TypeR
+            Self::c_jr(d) => write!(f, "c.jr x{}", d.rs1),
+            Self::c_jalr(d) => write!(f, "c.jalr x{}", d.rs1),
+
+            // TypeJ
+            Self::c_jal(d) => write!(f, "c.jal 0x{:X}", d.imm),
+            Self::c_j(d) => write!(f, "c.j 0x{:X}", d.imm),
+
+            // No change
+            Self::jal(d) => write!(f, "jal {d}"),
+
+            // TypeU
+            Self::c_lui(d) => write!(f, "c.lui {d}"),
+            Self::auipc(d) => write!(f, "auipc {d}"),
+            Self::lui(d) => write!(f, "lui {d}"),
+
+            // TypeI
+            Self::jalr(d) => write!(f, "jalr {d}"),
+
+            // TypeB
+            Self::c_beqz(d) => write!(f, "c.beqz x{}, 0x{:X}", d.rs1, d.imm),
+            Self::c_bnez(d) => write!(f, "c.bnez x{}, 0x{:X}", d.rs1, d.imm),
+            Self::beq(d) => write!(f, "beq {d}"),
+            Self::bne(d) => write!(f, "bne {d}"),
+            Self::blt(d) => write!(f, "blt {d}"),
+            Self::bge(d) => write!(f, "bge {d}"),
+            Self::bltu(d) => write!(f, "bltu {d}"),
+            Self::bgeu(d) => write!(f, "bgeu {d}"),
+
+            // No type implemented instructions
+            Self::c_ebreak => write!(f, "c.ebreak"),
+            Self::ebreak => write!(f, "ebreak"),
+            Self::fence_i => write!(f, "fence.i"),
+            Self::ecall => write!(f, "ecall"),
+            Self::wfi => write!(f, "wfi"),
+            Self::sfence_vma => write!(f, "sfence.vma"),
+            Self::fence => write!(f, "fence"),
+            Self::mret => write!(f, "mret"),
+            Self::sret => write!(f, "sret"),
+            Self::uret => write!(f, "uret"),
+            Self::dret => write!(f, "dret"),
+        }
+    }
+}
+
 /// Length of single RISC-V [`Instruction`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Size {
@@ -398,6 +448,15 @@ impl From<Kind> for Instruction {
         Self {
             kind: Some(kind),
             size,
+        }
+    }
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            Some(kind) => write!(f, "{kind}"),
+            None => write!(f, ""),
         }
     }
 }

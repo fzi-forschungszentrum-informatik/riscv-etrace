@@ -140,7 +140,7 @@ fn main() {
 
                 let pc = item.pc();
                 match item.kind() {
-                    item::Kind::Regular(_) => println!("{pc:0x}"),
+                    item::Kind::Regular(insn) => println!("{pc:0x}, {insn}"),
                     item::Kind::Trap(info) => {
                         if let Some(tval) = info.tval {
                             println!(
