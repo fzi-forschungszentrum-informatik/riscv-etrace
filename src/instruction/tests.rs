@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::*;
+
 use base::Set::{Rv32I, Rv64I};
 
 macro_rules! decode_test {
