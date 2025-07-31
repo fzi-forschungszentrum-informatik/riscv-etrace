@@ -122,16 +122,6 @@ impl<S: ReturnStack> State<S> {
 
             let is_branch = self.insn.kind.and_then(Kind::branch_target).is_some();
             let branch_limit = if is_branch { 1 } else { 0 };
-
-            if end {
-                self.stop_condition = StopCondition::Fused;
-                if let Some(n) = core::num::NonZeroU8::new(self.branch_map.count())
-                    .filter(|n| n.get() > branch_limit)
-                {
-                    return Err(Error::UnprocessedBranches(n));
-                }
-            }
-
             let hit_address_and_branch =
                 self.pc == self.address && self.branch_map.count() == branch_limit;
             match self.stop_condition {
@@ -170,6 +160,14 @@ impl<S: ReturnStack> State<S> {
                 }
                 StopCondition::Sync { privilege: None } if hit_address_and_branch => {
                     self.stop_condition = StopCondition::Fused;
+                }
+                _ if end => {
+                    self.stop_condition = StopCondition::Fused;
+                    if let Some(n) = core::num::NonZeroU8::new(self.branch_map.count())
+                        .filter(|n| n.get() > branch_limit)
+                    {
+                        return Err(Error::UnprocessedBranches(n));
+                    }
                 }
                 _ => (),
             }
