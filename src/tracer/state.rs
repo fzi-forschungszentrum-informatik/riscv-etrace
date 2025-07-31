@@ -122,39 +122,28 @@ impl<S: ReturnStack> State<S> {
 
             let is_branch = self.insn.kind.and_then(Kind::branch_target).is_some();
             let branch_limit = if is_branch { 1 } else { 0 };
-
-            if end {
-                self.stop_condition = StopCondition::Fused;
-                if let Some(n) = core::num::NonZeroU8::new(self.branch_map.count())
-                    .filter(|n| n.get() > branch_limit)
-                {
-                    return Err(Error::UnprocessedBranches(n));
-                }
-            }
-
             let hit_address_and_branch =
                 self.pc == self.address && self.branch_map.count() == branch_limit;
             match self.stop_condition {
                 StopCondition::LastBranch if self.branch_map.count() == 1 && is_branch => {
                     self.stop_condition = StopCondition::Fused;
                 }
+                StopCondition::Address { notify: true, .. } if hit_address_and_branch => {
+                    self.stop_condition = StopCondition::Fused;
+                }
                 StopCondition::Address {
-                    notify,
-                    not_updiscon,
-                } if hit_address_and_branch => {
-                    if notify {
-                        self.stop_condition = StopCondition::Fused;
-                    } else if not_updiscon
-                        && !self
-                            .last_insn
-                            .kind
-                            .map(Kind::is_uninferable_discon)
-                            .unwrap_or(false)
-                        && self.stack_depth_matches()
-                    {
-                        self.inferred_address = Some(self.pc);
-                        self.stop_condition = StopCondition::Fused;
-                    }
+                    notify: false,
+                    not_updiscon: true,
+                } if hit_address_and_branch
+                    && !self
+                        .last_insn
+                        .kind
+                        .map(Kind::is_uninferable_discon)
+                        .unwrap_or(false)
+                    && self.stack_depth_matches() =>
+                {
+                    self.inferred_address = Some(self.pc);
+                    self.stop_condition = StopCondition::Fused;
                 }
                 StopCondition::Sync {
                     privilege: Some(privilege),
@@ -170,6 +159,14 @@ impl<S: ReturnStack> State<S> {
                 }
                 StopCondition::Sync { privilege: None } if hit_address_and_branch => {
                     self.stop_condition = StopCondition::Fused;
+                }
+                _ if end => {
+                    self.stop_condition = StopCondition::Fused;
+                    if let Some(n) = core::num::NonZeroU8::new(self.branch_map.count())
+                        .filter(|n| n.get() > branch_limit)
+                    {
+                        return Err(Error::UnprocessedBranches(n));
+                    }
                 }
                 _ => (),
             }
