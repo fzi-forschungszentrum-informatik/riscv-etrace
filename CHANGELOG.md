@@ -7,11 +7,14 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- `types::Privilege` impl for `Hash`.
 - `Display` impl for `instruction::Instruction`, `instruction::Kind` and the
   various `instruction::format::Type*`.
 
 ### Changed
 
+- When comparing against a reference, the "simple" example now only aborts on
+  mismatches of regular items.
 - Include (known) disassembled instruction in output of simple example.
 
 ## 0.2.0 - 2025-07-16
