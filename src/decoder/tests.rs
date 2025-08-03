@@ -28,22 +28,8 @@ macro_rules! bitstream_test {
 
 #[test]
 fn read_u64() {
-    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
-    buffer[0] = 0b01_011111;
-    buffer[1] = 0b01_011111;
-    buffer[2] = 0b10010010;
-    buffer[3] = 0xF1;
-    buffer[4] = 0xF0;
-    buffer[5] = 0xF0;
-    buffer[6] = 0xF0;
-    buffer[7] = 0xF0;
-    buffer[8] = 0xF0;
-    buffer[9] = 0xFF;
-    buffer[10] = 0b01_111111;
-    buffer[11] = 0b1;
-    // ...
-    buffer[18] = 0b11_110000;
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new()
+        .build(b"\x5f\x5f\x92\xf1\xf0\xf0\xf0\xf0\xf0\xff\x7f\x01\x00\x00\x00\x00\x00\x00\xf0");
     // testing for bit position
     assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
     assert_eq!(decoder.bit_pos, 6);
@@ -62,25 +48,14 @@ fn read_u64() {
 
 #[test]
 fn read_i64() {
-    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
-    buffer[0] = 0b1101000_0;
-    buffer[1] = 0xFF;
-    buffer[2] = 0xFF;
-    buffer[3] = 0xFF;
-    buffer[4] = 0xFF;
-    buffer[5] = 0xFF;
-    buffer[6] = 0xFF;
-    buffer[7] = 0xFF;
-    buffer[8] = 0b1;
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new().build(b"\xd0\xff\xff\xff\xff\xff\xff\xff\x01");
     assert_eq!(decoder.read_bits(1), Ok(0i64));
     assert_eq!(decoder.read_bits(64), Ok(-24i64));
 }
 
 #[test]
 fn read_entire_buffer() {
-    let buffer = [255; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new().build(b"\xff");
     assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
     assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
     assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
@@ -89,8 +64,7 @@ fn read_entire_buffer() {
 
 #[test]
 fn read_bool_bits() {
-    let buffer = [0b0101_0101; DEFAULT_PACKET_BUFFER_LEN];
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new().build(b"\x55");
     assert_eq!(decoder.read_bit(), Ok(true));
     assert_eq!(decoder.read_bit(), Ok(false));
     assert_eq!(decoder.read_bit(), Ok(true));
@@ -103,17 +77,7 @@ fn read_bool_bits() {
 
 #[test]
 fn missing_msb_shift_is_correct() {
-    let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
-    buffer[0] = 0b00_000000;
-    buffer[1] = 0xE1;
-    buffer[2] = 0xFF;
-    buffer[3] = 0xFF;
-    buffer[4] = 0xFF;
-    buffer[5] = 0xFF;
-    buffer[6] = 0xFF;
-    buffer[7] = 0xFF;
-    buffer[8] = 0b00_111111;
-    let mut decoder = Builder::new().build(&buffer);
+    let mut decoder = Builder::new().build(b"\x00\xe1\xff\xff\xff\xff\xff\xff\x3f");
     assert_eq!(decoder.read_bits(6), Ok(0i64));
     // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
     assert_eq!(decoder.read_bits(63), Ok(-124i64));
