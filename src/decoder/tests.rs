@@ -4,6 +4,28 @@ use super::*;
 
 use payload::AddressInfo;
 
+macro_rules! bitstream_test {
+    ($n:ident, $b:literal, $d:expr) => {
+        #[test]
+        fn $n() {
+            let mut decoder = Builder::new().build($b);
+            assert_eq!(Decode::decode(&mut decoder), Ok($d));
+        }
+    };
+    ($n:ident, $b:literal, $d:expr, $( $k:ident : $v:expr ),*) => {
+        #[test]
+        fn $n() {
+            let mut decoder = Builder::new()
+                .with_params(&config::Parameters {
+                    $($k: $v,)*
+                    ..Default::default()
+                })
+                .build($b);
+            assert_eq!(Decode::decode(&mut decoder), Ok($d));
+        }
+    };
+}
+
 #[test]
 fn read_u64() {
     let mut buffer = [0; DEFAULT_PACKET_BUFFER_LEN];
