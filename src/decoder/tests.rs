@@ -84,57 +84,16 @@ fn missing_msb_shift_is_correct() {
 }
 
 // `format` related tests
-
-#[test]
-fn sync() {
-    use format::Sync;
-
-    let buffer = [0b10_01_00_11_u8; 32];
-    let mut decoder = Builder::new().build(&buffer);
-    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Support));
-    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Start));
-    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Trap));
-    assert_eq!(Sync::decode(&mut decoder), Ok(Sync::Context));
-}
-
-#[test]
-fn extension() {
-    use format::Ext;
-
-    let buffer = [0b0010u8; 32];
-    let mut decoder = Builder::new()
-        .with_params(&config::Parameters {
-            f0s_width_p: 1,
-            ..Default::default()
-        })
-        .build(&buffer);
-
-    assert_eq!(Ext::decode(&mut decoder), Ok(Ext::BranchCount));
-    assert_eq!(Ext::decode(&mut decoder), Ok(Ext::JumpTargetIndex));
-}
-
-#[test]
-fn format() {
-    use format::{Ext, Format, Sync};
-
-    let mut buffer = [0u8; 32];
-    buffer[0] = 0b1_10_01_100;
-    buffer[1] = 0b00000_011;
-    let mut decoder = Builder::new()
-        .with_params(&config::Parameters {
-            f0s_width_p: 1,
-            ..Default::default()
-        })
-        .build(&buffer);
-
-    assert_eq!(
-        Format::decode(&mut decoder),
-        Ok(Format::Ext(Ext::JumpTargetIndex)),
-    );
-    assert_eq!(Format::decode(&mut decoder), Ok(Format::Branch));
-    assert_eq!(Format::decode(&mut decoder), Ok(Format::Addr));
-    assert_eq!(Format::decode(&mut decoder), Ok(Format::Sync(Sync::Trap)));
-}
+bitstream_test!(sync_support, b"\x03", format::Sync::Support);
+bitstream_test!(sync_start, b"\x00", format::Sync::Start);
+bitstream_test!(sync_trap, b"\x01", format::Sync::Trap);
+bitstream_test!(sync_ctx, b"\x02", format::Sync::Context);
+bitstream_test!(fmt_ex_branch_count, b"\x00", format::Ext::BranchCount, f0s_width_p: 1);
+bitstream_test!(fmt_ex_jti, b"\x01", format::Ext::JumpTargetIndex, f0s_width_p: 1);
+bitstream_test!(fmt_1, b"\x04", format::Format::Ext(format::Ext::JumpTargetIndex), f0s_width_p: 1);
+bitstream_test!(fmt_2, b"\x01", format::Format::Branch, f0s_width_p: 1);
+bitstream_test!(fmt_3, b"\x02", format::Format::Addr, f0s_width_p: 1);
+bitstream_test!(fmt_4, b"\x07", format::Format::Sync(format::Sync::Trap), f0s_width_p: 1);
 
 // `payload` related tests
 
