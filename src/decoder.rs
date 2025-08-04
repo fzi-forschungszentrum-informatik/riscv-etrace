@@ -156,7 +156,8 @@ impl<'d, U> Decoder<'d, U> {
         let payload = self.decode_restricted(len)?;
 
         Ok(smi::Packet {
-            header,
+            time_tag: header.time_tag,
+            hart: header.hart_index.try_into().unwrap(),
             payload,
         })
     }
