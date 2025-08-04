@@ -154,5 +154,3 @@ bitstream_test!(
     iaddress_width_p: 64.try_into().unwrap(),
     iaddress_lsb_p: 1.try_into().unwrap()
 );
-
-const DEFAULT_PACKET_BUFFER_LEN: usize = 32;
