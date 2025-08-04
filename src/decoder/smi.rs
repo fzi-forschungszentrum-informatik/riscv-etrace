@@ -16,8 +16,6 @@ use super::{payload, Decode, Decoder, Error};
 pub struct Packet<I, D> {
     pub header: Header,
     pub payload: payload::Payload<I, D>,
-    /// Length of the packet in bytes.
-    pub len: usize,
 }
 
 /// Siemens Messaging Infrastructure Packet header
