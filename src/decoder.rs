@@ -22,7 +22,6 @@ use core::ops;
 
 use crate::config;
 
-use format::Format;
 use truncate::TruncateNum;
 
 /// Decoder errors
@@ -182,7 +181,7 @@ impl<'d, U> Decoder<'d, U> {
     where
         U: unit::Unit,
     {
-        Format::decode(self)?.decode_payload(self)
+        Decode::decode(self)
     }
 
     /// Decode an item from a subset of the internal data
