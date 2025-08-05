@@ -4,7 +4,7 @@
 
 use core::fmt;
 
-use super::{payload, Decode, Decoder, Error};
+use super::{payload, unit, Decode, Decoder, Error};
 
 /// A Siemens Messaging Infrastructure (SMI) Packet
 ///
@@ -24,6 +24,26 @@ pub struct Packet<I, D> {
     pub hart: u64,
     /// The packet payload
     pub payload: payload::Payload<I, D>,
+}
+
+impl<U: unit::Unit> Decode<U> for Packet<U::IOptions, U::DOptions> {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        let payload_len: usize = decoder.read_bits(5)?;
+        TraceType::decode(decoder)?;
+        let time_tag = decoder
+            .read_bit()?
+            .then(|| decoder.read_bits(16))
+            .transpose()?;
+        let hart = decoder.read_bits(decoder.hart_index_width)?;
+        decoder.advance_to_byte();
+        decoder
+            .decode_restricted(decoder.byte_pos() + payload_len)
+            .map(|payload| Packet {
+                time_tag,
+                hart,
+                payload,
+            })
+    }
 }
 
 /// Siemens Messaging Infrastructure Packet header
