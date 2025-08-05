@@ -153,15 +153,8 @@ impl<'d, U> Decoder<'d, U> {
     {
         let header = smi::Header::decode(self)?;
         self.advance_to_byte();
-        let payload_start = self.bit_pos >> 3;
-        let len = payload_start + header.payload_len;
-
-        let (payload, remaining) = self.split_data(len)?;
-        self.data = payload;
-        let payload = self.decode_payload()?;
-
-        self.bit_pos = 0;
-        self.data = remaining;
+        let len = self.byte_pos() + header.payload_len;
+        let payload = self.decode_restricted(len)?;
 
         Ok(smi::Packet {
             header,
