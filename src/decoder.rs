@@ -150,16 +150,7 @@ impl<'d, U> Decoder<'d, U> {
     where
         U: unit::Unit,
     {
-        let header = smi::Header::decode(self)?;
-        self.advance_to_byte();
-        let len = self.byte_pos() + header.payload_len;
-        let payload = self.decode_restricted(len)?;
-
-        Ok(smi::Packet {
-            time_tag: header.time_tag,
-            hart: header.hart_index.try_into().unwrap(),
-            payload,
-        })
+        Decode::decode(self)
     }
 
     /// Decode a single, stand-alone [`Payload`][payload::Payload]
