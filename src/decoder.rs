@@ -122,6 +122,25 @@ impl<'d, U> Decoder<'d, U> {
         self.data.len().saturating_sub(self.bit_pos >> 3)
     }
 
+    /// Retrieve the current byte position
+    ///
+    /// Returns the zero-based position of the byte which is currently decoded.
+    /// If the current bit position is on a byte boundary, the position of the
+    /// byte after the boundary is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use riscv_etrace::decoder;
+    ///
+    /// # let trace_data = &[];
+    /// let mut decoder = decoder::builder().build(trace_data);
+    /// assert_eq!(decoder.byte_pos(), 0);
+    /// ```
+    pub fn byte_pos(&self) -> usize {
+        self.bit_pos >> 3
+    }
+
     /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
     /// Decodes a single [`smi::Packet`], consuming the associated data from the
