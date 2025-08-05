@@ -113,7 +113,7 @@ pub struct Decoder<'d, U> {
     hart_index_width: u8,
 }
 
-impl<U> Decoder<'_, U> {
+impl<'d, U> Decoder<'d, U> {
     /// Retrieve the number of bytes left in this decoder's data
     ///
     /// If the decoder is currently not at a byte boundary, the number returned
@@ -138,13 +138,7 @@ impl<U> Decoder<'_, U> {
         let payload_start = self.bit_pos >> 3;
         let len = payload_start + header.payload_len;
 
-        let (payload, remaining) = self.data.split_at_checked(len).ok_or_else(|| {
-            let need = len
-                .checked_sub(self.data.len())
-                .and_then(NonZeroUsize::new)
-                .unwrap_or(NonZeroUsize::MIN);
-            Error::InsufficientData(need)
-        })?;
+        let (payload, remaining) = self.split_data(len)?;
         self.data = payload;
         let payload = self.decode_payload()?;
 
@@ -177,6 +171,17 @@ impl<U> Decoder<'_, U> {
         if self.bit_pos & 0x7 != 0 {
             self.bit_pos = (self.bit_pos & !0x7usize) + 8;
         }
+    }
+
+    /// Split the inner data at the given position
+    fn split_data(&self, mid: usize) -> Result<(&'d [u8], &'d [u8]), Error> {
+        self.data.split_at_checked(mid).ok_or_else(|| {
+            let need = mid
+                .checked_sub(self.data.len())
+                .and_then(NonZeroUsize::new)
+                .unwrap_or(NonZeroUsize::MIN);
+            Error::InsufficientData(need)
+        })
     }
 
     /// Read a single bit
