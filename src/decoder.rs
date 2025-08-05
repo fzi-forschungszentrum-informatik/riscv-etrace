@@ -185,6 +185,25 @@ impl<'d, U> Decoder<'d, U> {
         Format::decode(self)?.decode_payload(self)
     }
 
+    /// Decode an item from a subset of the internal data
+    ///
+    /// This fn decodes an item after resetting the data to the first `restrict`
+    /// bytes of the current buffer. After the item is (successfully) decoded,
+    /// the internal data is reset to the remaining part of the original data.
+    /// Thus, no matter how many bytes are extracted and whether or not data was
+    /// decompressed, the first `restrict` bytes are discarded.
+    ///
+    /// If the data does not hold `restrict` bytes, an error is returned.
+    fn decode_restricted<D: Decode<U>>(&mut self, restrict: usize) -> Result<D, Error> {
+        let (payload, remaining) = self.split_data(restrict)?;
+        self.data = payload;
+        let res = Decode::decode(self)?;
+
+        self.bit_pos = 0;
+        self.data = remaining;
+        Ok(res)
+    }
+
     /// Advance the position to the next byte boundary
     fn advance_to_byte(&mut self) {
         if self.bit_pos & 0x7 != 0 {
