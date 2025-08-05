@@ -115,8 +115,11 @@ pub struct Decoder<'d, U> {
 
 impl<U> Decoder<'_, U> {
     /// Retrieve the number of bytes left in this decoder's data
+    ///
+    /// If the decoder is currently not at a byte boundary, the number returned
+    /// includes the partially decoded byte.
     pub fn bytes_left(&self) -> usize {
-        self.data.len()
+        self.data.len().saturating_sub(self.bit_pos >> 3)
     }
 
     /// Decode a single [`smi::Packet`] consisting of header and payload
