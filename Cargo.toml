@@ -7,6 +7,9 @@ edition = "2021"
 keywords = ["riscv", "tracing"]
 categories = ["no-std", "parser-implementations"]
 
+[features]
+alloc = []
+
 [dependencies]
 elf = { version = "0.7", optional = true }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }

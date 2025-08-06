@@ -7,6 +7,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- `alloc` feature for enabling types, impls and fns that require the `alloc`
+  crate.
 - A `binary::Binary` adapter `binary::Func` for using `FnMut`s.
 - A fn `binary::from_fn` for convenient creation of a `binary::Binary` from an
   `FnMut`.

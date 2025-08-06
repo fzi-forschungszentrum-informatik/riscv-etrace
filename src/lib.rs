@@ -44,6 +44,7 @@
 //! # Crate features
 //!
 //! Some functionality if controlled via crate features:
+//! * `alloc`: enables some features that require allocation
 //! * `elf`: enables the [`binary::elf`] module providing a
 //!   [`Binary`][binary::Binary] for static ELF files using the [`elf`] crate
 //! * `serde`: enables (de)serialization of configuration via [`serde`]
@@ -107,6 +108,9 @@
 //! [etrace]: <https://github.com/riscv-non-isa/riscv-trace-spec/>
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 pub mod binary;
 pub mod config;
