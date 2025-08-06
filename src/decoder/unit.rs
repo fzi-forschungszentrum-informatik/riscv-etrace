@@ -271,3 +271,15 @@ impl Unit for Plug {
         (decoder.unit().decode_doptions)(decoder)
     }
 }
+
+/// Type representing an empty set, zero-bit wide set of options
+#[derive(Copy, Clone, Debug, Default)]
+pub struct NoOptions;
+
+impl<U> Decode<U> for NoOptions {
+    fn decode(_decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        Ok(Self)
+    }
+}
+
+impl IOptions for NoOptions {}
