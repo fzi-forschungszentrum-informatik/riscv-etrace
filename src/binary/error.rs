@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Binary related error types and traits
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 use core::fmt;
 
 /// A [`MaybeMiss`] allowing the construction of a miss
@@ -41,6 +43,13 @@ impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
             Ok(_) => false,
             Err(e) => e.is_miss(),
         }
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<E: MaybeMiss + ?Sized> MaybeMiss for Box<E> {
+    fn is_miss(&self) -> bool {
+        E::is_miss(self.as_ref())
     }
 }
 
