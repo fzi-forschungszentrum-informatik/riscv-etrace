@@ -58,6 +58,12 @@ impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
+impl Miss for NoInstruction {
+    fn miss(_: u64) -> Self {
+        NoInstruction
+    }
+}
+
 impl MaybeMiss for NoInstruction {
     fn miss(_: u64) -> Self {
         NoInstruction
