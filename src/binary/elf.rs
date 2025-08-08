@@ -146,10 +146,6 @@ impl error::Miss for Error {
 }
 
 impl error::MaybeMiss for Error {
-    fn miss(_: u64) -> Self {
-        Self::NoSegmentFound
-    }
-
     fn is_miss(&self) -> bool {
         matches!(self, Self::NoSegmentFound)
     }

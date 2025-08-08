@@ -27,12 +27,6 @@ impl<T, E: Miss> Miss for Result<T, E> {
 /// naturally yield an error. This trait allows identifying these particular
 /// errors.
 pub trait MaybeMiss {
-    /// Construct a value indicating a miss
-    ///
-    /// This error value indicates that the [`Binary`][super::Binary] does not
-    /// cover the given `address`.
-    fn miss(address: u64) -> Self;
-
     /// Check whether this value indicates a miss
     ///
     /// This error value indicates that the [`Binary`][super::Binary] does not
@@ -42,10 +36,6 @@ pub trait MaybeMiss {
 }
 
 impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
-    fn miss(address: u64) -> Self {
-        Err(E::miss(address))
-    }
-
     fn is_miss(&self) -> bool {
         match self {
             Ok(_) => false,
@@ -65,10 +55,6 @@ impl Miss for NoInstruction {
 }
 
 impl MaybeMiss for NoInstruction {
-    fn miss(_: u64) -> Self {
-        NoInstruction
-    }
-
     fn is_miss(&self) -> bool {
         true
     }
