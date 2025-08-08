@@ -139,6 +139,12 @@ pub enum Error {
     UnsupportedEndianess,
 }
 
+impl error::Miss for Error {
+    fn miss(_: u64) -> Self {
+        Self::NoSegmentFound
+    }
+}
+
 impl error::MaybeMiss for Error {
     fn miss(_: u64) -> Self {
         Self::NoSegmentFound
