@@ -4,6 +4,21 @@
 
 use core::fmt;
 
+/// A [`MaybeMiss`] allowing the construction of a miss
+pub trait Miss: MaybeMiss {
+    /// Construct a value indicating a miss
+    ///
+    /// This error value indicates that the [`Binary`][super::Binary] does not
+    /// cover the given `address`.
+    fn miss(address: u64) -> Self;
+}
+
+impl<T, E: Miss> Miss for Result<T, E> {
+    fn miss(address: u64) -> Self {
+        Err(<E as Miss>::miss(address))
+    }
+}
+
 /// May indicate that an address is not covered by a [`Binary`][super::Binary]
 ///
 /// A [`Binary`][super::Binary] usually only covers a subset of all possible
