@@ -21,6 +21,13 @@ impl<T, E: Miss> Miss for Result<T, E> {
     }
 }
 
+#[cfg(feature = "alloc")]
+impl Miss for Box<dyn MaybeMiss> {
+    fn miss(address: u64) -> Self {
+        Box::new(NoInstruction::miss(address))
+    }
+}
+
 /// May indicate that an address is not covered by a [`Binary`][super::Binary]
 ///
 /// A [`Binary`][super::Binary] usually only covers a subset of all possible
