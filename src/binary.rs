@@ -96,7 +96,7 @@ pub struct Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     bins: C,
     last: usize,
@@ -107,7 +107,7 @@ impl<C, B> Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     /// Create a new [`Binary`] combining all `bins`
     pub fn new(bins: C) -> Self {
@@ -123,7 +123,7 @@ impl<C, B> From<C> for Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     fn from(bins: C) -> Self {
         Self::new(bins)
@@ -134,7 +134,7 @@ impl<C, B> Binary for Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     type Error = B::Error;
 
@@ -158,7 +158,7 @@ where
             self.last = current;
             res
         } else {
-            MaybeMiss::miss(address)
+            Miss::miss(address)
         }
     }
 }
