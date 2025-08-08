@@ -6,6 +6,8 @@
 //! well as a number of types that may serve as a [`Binary`].
 
 pub mod basic;
+#[cfg(feature = "alloc")]
+pub mod boxed;
 pub mod combinators;
 pub mod error;
 
