@@ -14,6 +14,9 @@ pub mod error;
 #[cfg(feature = "elf")]
 pub mod elf;
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 pub use basic::{from_fn, from_map, from_sorted_map, Empty};
 pub use combinators::Multi;
 
@@ -40,6 +43,19 @@ pub trait Binary {
             inner: self,
             offset,
         }
+    }
+
+    /// Box this binary for dynamic dispatching
+    ///
+    /// This allows combining binaries of different types with (originally)
+    /// different [`Error`][Self::Error] types in combinators such as [`Multi`].
+    #[cfg(feature = "alloc")]
+    fn boxed<'a>(self) -> BoxedBinary<'a>
+    where
+        Self: Sized + 'a,
+        Self::Error: error::MaybeMissError + 'static,
+    {
+        Box::new(boxed::BoxedError::new(self))
     }
 }
 
@@ -99,3 +115,7 @@ impl<B: Binary> Binary for Offset<B> {
         self.inner.get_insn(address.wrapping_sub(self.offset))
     }
 }
+
+/// a [`Binary`] boxed for dynamic dispatch
+#[cfg(feature = "alloc")]
+pub type BoxedBinary<'a> = Box<dyn Binary<Error = Box<dyn error::MaybeMissError>> + 'a>;
