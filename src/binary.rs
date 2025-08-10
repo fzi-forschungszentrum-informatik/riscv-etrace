@@ -38,14 +38,6 @@ pub trait Binary {
     }
 }
 
-impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for F {
-    type Error = E;
-
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
-        self(address)
-    }
-}
-
 /// [`Binary`] implementation for mapping from address to [`Instruction`]
 ///
 /// # Notice
