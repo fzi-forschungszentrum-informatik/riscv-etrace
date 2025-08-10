@@ -10,7 +10,7 @@ use elf::ElfBytes;
 
 use crate::instruction::{base, Instruction};
 
-use super::Binary;
+use super::{error, Binary};
 
 /// Static ELF [`Binary`]
 ///
@@ -139,7 +139,7 @@ pub enum Error {
     UnsupportedEndianess,
 }
 
-impl super::MaybeMiss for Error {
+impl error::MaybeMiss for Error {
     fn miss(_: u64) -> Self {
         Self::NoSegmentFound
     }

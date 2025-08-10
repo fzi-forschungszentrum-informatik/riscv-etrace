@@ -74,7 +74,7 @@
 //!         .and_then(|a| binary_data.split_at_checked(a as usize))
 //!         .and_then(|(_, d)| Instruction::extract(d, base::Set::Rv32I))
 //!         .map(|(i, _)| i)
-//!         .ok_or(binary::NoInstruction)
+//!         .ok_or(binary::error::NoInstruction)
 //! };
 //!
 //! let parameters = Default::default();

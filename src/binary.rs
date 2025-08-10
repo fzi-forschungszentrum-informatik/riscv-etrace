@@ -5,13 +5,16 @@
 //! This module defines the [`Binary`] trait for programs that may be traced as
 //! well as a number of types that may serve as a [`Binary`].
 
+pub mod error;
+
 #[cfg(feature = "elf")]
 pub mod elf;
 
 use core::borrow::BorrowMut;
-use core::fmt;
 
 use crate::instruction::Instruction;
+
+use error::MaybeMiss;
 
 /// A binary of some sort that contains [`Instruction`]s
 pub trait Binary {
@@ -49,12 +52,12 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for F {
 ///
 /// This impl only functions correctly for slices that are sorted by address.
 impl Binary for &[(u64, Instruction)] {
-    type Error = NoInstruction;
+    type Error = error::NoInstruction;
 
     fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
         self.binary_search_by_key(&address, |(a, _)| *a)
             .map(|i| self[i].1)
-            .map_err(|_| NoInstruction)
+            .map_err(|_| error::NoInstruction)
     }
 }
 
@@ -184,64 +187,9 @@ impl<B: Binary> Binary for Offset<B> {
 pub struct Empty;
 
 impl Binary for Empty {
-    type Error = NoInstruction;
+    type Error = error::NoInstruction;
 
     fn get_insn(&mut self, _: u64) -> Result<Instruction, Self::Error> {
-        Err(NoInstruction)
-    }
-}
-
-/// An error that may indicate that an address is not covered by a [`Binary`]
-///
-/// A [`Binary`] usually only provides [`Instruction`]s for a subset of all
-/// possible addresses, e.g. a memory area on the target device. Requesting
-/// [`Instruction`]s at addresses outside that area will naturally yield an
-/// error. This trait allows identifying these particular errors.
-pub trait MaybeMiss {
-    /// Construct a value indicating a miss
-    ///
-    /// This error value indicates that the [`Binary`] does not cover the
-    /// given `address`.
-    fn miss(address: u64) -> Self;
-
-    /// Check whether this value indicates a miss
-    ///
-    /// This error value indicates that the [`Binary`] does not cover the
-    /// address for which an [`Instruction`] was requested.
-    fn is_miss(&self) -> bool;
-}
-
-impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
-    fn miss(address: u64) -> Self {
-        Err(E::miss(address))
-    }
-
-    fn is_miss(&self) -> bool {
-        match self {
-            Ok(_) => false,
-            Err(e) => e.is_miss(),
-        }
-    }
-}
-
-/// An error type expressing simple absence of an [`Instruction`]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct NoInstruction;
-
-impl MaybeMiss for NoInstruction {
-    fn miss(_: u64) -> Self {
-        NoInstruction
-    }
-
-    fn is_miss(&self) -> bool {
-        true
-    }
-}
-
-impl core::error::Error for NoInstruction {}
-
-impl fmt::Display for NoInstruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "No Instruction availible")
+        Err(error::NoInstruction)
     }
 }
