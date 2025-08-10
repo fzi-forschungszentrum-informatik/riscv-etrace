@@ -209,6 +209,11 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for Func<F, E> {
     }
 }
 
+/// Create a [`Func`] [`Binary`] from an [`FnMut`]
+pub fn from_fn<F: FnMut(u64) -> Result<Instruction, E>, E>(func: F) -> Func<F, E> {
+    Func::new(func)
+}
+
 /// A [`Binary`] that does not contain any [`Instruction`]s
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Empty;
