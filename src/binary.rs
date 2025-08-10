@@ -5,10 +5,13 @@
 //! This module defines the [`Binary`] trait for programs that may be traced as
 //! well as a number of types that may serve as a [`Binary`].
 
+#[cfg(feature = "elf")]
+pub mod elf;
+
 use core::borrow::BorrowMut;
 use core::fmt;
 
-use super::Instruction;
+use crate::instruction::Instruction;
 
 /// A binary of some sort that contains [`Instruction`]s
 pub trait Binary {

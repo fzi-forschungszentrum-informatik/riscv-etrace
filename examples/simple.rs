@@ -22,11 +22,10 @@ mod spike;
 const TARGET_HART: usize = 0;
 
 fn main() {
+    use riscv_etrace::binary::{self, Binary};
     use riscv_etrace::decoder;
     use riscv_etrace::instruction;
     use riscv_etrace::tracer::{self, item, Tracer};
-
-    use instruction::binary::Binary;
 
     let debug = std::env::var_os("DEBUG").map(|v| v == "1").unwrap_or(false);
     let mut args = std::env::args_os().skip(1);
@@ -69,7 +68,7 @@ fn main() {
 
     // We need to construct a `Binary`. For PIE executables, we simply assume
     // that they are placed at a known offset.
-    let elf = instruction::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
+    let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
     let base_set = elf.base_set();
     let mut elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
         vec![elf.with_offset(0x8000_0000)]
@@ -78,11 +77,11 @@ fn main() {
     };
 
     elf.extend(pk.map(|e| {
-        instruction::elf::Elf::new(e)
+        binary::elf::Elf::new(e)
             .expect("Could not construct binary from ELF file")
             .with_offset(0)
     }));
-    let elf = instruction::binary::Multi::from(elf);
+    let elf = binary::Multi::from(elf);
 
     // Given a reference trace, we can check whether our trace is correct.
     let mut reference = args.next().map(|p| {
