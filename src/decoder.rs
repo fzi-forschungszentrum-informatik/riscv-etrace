@@ -298,7 +298,7 @@ impl<U> Builder<U> {
     }
 
     /// Build a [`Decoder`] for the given data
-    pub fn build(self, data: &[u8]) -> Decoder<U> {
+    pub fn build(self, data: &[u8]) -> Decoder<'_, U> {
         Decoder {
             data,
             bit_pos: 0,
