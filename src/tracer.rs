@@ -176,7 +176,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let mut initer = self.state.initializer(&mut self.binary)?;
                 initer.set_stack_depth(None);
                 if self.version != Version::V1 {
-                    initer.set_privilege(ctx.privilege);
+                    initer.set_context(ctx.into());
                 }
             }
             Synchronization::Support(sup) => {
@@ -262,7 +262,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         }
 
         if self.version != Version::V1 {
-            initer.set_privilege(ctx.privilege);
+            initer.set_context(ctx.into());
         }
 
         initer.set_stack_depth(None);

@@ -7,12 +7,18 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- The type `tracer::item::Context` for handling and communicating updates to the
+  execution context.
 - `types::Privilege` impl for `Hash`.
 - `Display` impl for `instruction::Instruction`, `instruction::Kind` and the
   various `instruction::format::Type*`.
 
 ### Changed
 
+- The "simple" example will attempt to filter out context updates occuring on
+  resynchronization packets when comparing against a reference spike trace.
+- `tracer::item::Item` now has a variant `Context` for communicating updates to
+  the execution context.
 - When comparing against a reference, the "simple" example now only aborts on
   mismatches of regular items.
 - Include (known) disassembled instruction in output of simple example.

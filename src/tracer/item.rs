@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tracing item
 
+use crate::decoder::sync;
 use crate::instruction::{self, Instruction};
-use crate::types::trap;
+use crate::types::{trap, Privilege};
 
 /// Tracing item
 ///
@@ -66,6 +67,12 @@ pub enum Kind {
     /// case of an interrupt, the PC will point at the last [`Instruction`]
     /// retired before the interrut.
     Trap(trap::Info),
+    /// Signals an updated execution context
+    ///
+    /// The [`Context`] may or may not differ from the last communicated one.
+    /// The [`Item`]'s PC is the PC of the first instruction executed (and
+    /// retired) after the update, i.e. the PC of the following [`Item`].
+    Context(Context),
 }
 
 impl From<Instruction> for Kind {
@@ -83,5 +90,35 @@ impl From<instruction::Kind> for Kind {
 impl From<trap::Info> for Kind {
     fn from(info: trap::Info) -> Self {
         Self::Trap(info)
+    }
+}
+
+impl From<Context> for Kind {
+    fn from(context: Context) -> Self {
+        Self::Context(context)
+    }
+}
+
+/// Execution context
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct Context {
+    /// The privilege level under which code is executed
+    pub privilege: Privilege,
+    /// The context of the execution
+    pub context: u64,
+}
+
+impl From<&sync::Context> for Context {
+    fn from(ctx: &sync::Context) -> Self {
+        Self {
+            privilege: ctx.privilege,
+            context: ctx.context.unwrap_or_default(),
+        }
+    }
+}
+
+impl From<sync::Context> for Context {
+    fn from(ctx: sync::Context) -> Self {
+        (&ctx).into()
     }
 }
