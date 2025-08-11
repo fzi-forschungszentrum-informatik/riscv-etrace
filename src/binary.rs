@@ -70,6 +70,15 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<B: Binary + ?Sized> Binary for Box<B> {
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        B::get_insn(self.as_mut(), address)
+    }
+}
+
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
