@@ -100,6 +100,18 @@ impl<T: AsRef<[(u64, Instruction)]>> Binary for SimpleMap<T> {
     }
 }
 
+pub fn from_sorted_map<T: AsRef<[(u64, Instruction)]>>(inner: T) -> Option<SimpleMap<T>> {
+    SimpleMap::from_sorted(inner)
+}
+
+pub fn from_map<T, I>(inner: I) -> SimpleMap<T>
+where
+    T: AsRef<[(u64, Instruction)]> + From<I>,
+    I: AsMut<[(u64, Instruction)]>,
+{
+    inner.into()
+}
+
 /// A [`Binary`] that does not contain any [`Instruction`]s
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Empty;
