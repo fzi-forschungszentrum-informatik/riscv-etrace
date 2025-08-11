@@ -240,7 +240,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         reset_branch_map: bool,
         branch_taken: bool,
         ctx: &sync::Context,
-    ) -> Result<state::Initializer<S, B>, Error<B::Error>> {
+    ) -> Result<state::Initializer<'_, S, B>, Error<B::Error>> {
         let insn = self
             .binary
             .get_insn(address)
