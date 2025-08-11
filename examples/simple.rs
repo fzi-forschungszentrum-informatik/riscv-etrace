@@ -19,7 +19,7 @@
 
 mod spike;
 
-const TARGET_HART: usize = 0;
+const TARGET_HART: u64 = 0;
 
 fn main() {
     use riscv_etrace::binary::{self, Binary};
@@ -127,7 +127,7 @@ fn main() {
         pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.
-        if packet.header.hart_index == TARGET_HART {
+        if packet.hart == TARGET_HART {
             // We process the packet's contents ...
             tracer
                 .process_te_inst(&packet.payload)

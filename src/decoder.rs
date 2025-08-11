@@ -143,24 +143,14 @@ impl<'d, U> Decoder<'d, U> {
     /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
     /// Decodes a single [`smi::Packet`], consuming the associated data from the
-    /// input. The returned packet's [`len`][`smi::Packet::len`] will contain
-    /// the number of bytes consumed. After successful operation, the decoder is
-    /// left at the byte boundary following the packet, ready to decode the next
-    /// one. A failure may leave the decoder in an unspecified state.
+    /// input. After successful operation, the decoder is left at the byte
+    /// boundary following the packet, ready to decode the next one. A failure
+    /// may leave the decoder in an unspecified state.
     pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<U::IOptions, U::DOptions>, Error>
     where
         U: unit::Unit,
     {
-        let header = smi::Header::decode(self)?;
-        self.advance_to_byte();
-        let len = self.byte_pos() + header.payload_len;
-        let payload = self.decode_restricted(len)?;
-
-        Ok(smi::Packet {
-            header,
-            payload,
-            len,
-        })
+        Decode::decode(self)
     }
 
     /// Decode a single, stand-alone [`Payload`][payload::Payload]

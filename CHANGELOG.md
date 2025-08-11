@@ -17,6 +17,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Integrated header fields directly into `decoder::smi::Packet`.
 - Made `instruction::binary` a toplevel module.
 - Moved `MaybeMiss` and `NoInstruction` from `binary` to `binary::error`.
 - Moved `instruction::elf` to `binary`.
@@ -27,6 +28,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - When comparing against a reference, the "simple" example now only aborts on
   mismatches of regular items.
 - Include (known) disassembled instruction in output of simple example.
+
+### Removed
+
+- `decoder::smi::Packet::header` and `decoder::smi::Header`. Relevant fields are
+  now part of `decoder::smi::Packet` itself.
+- `decoder::smi::Packet::len`. This information may be retrieved from the
+  `decoder::Decoder` if necessary.
 
 ### Fixed
 
