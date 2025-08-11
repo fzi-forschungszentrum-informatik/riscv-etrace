@@ -6,11 +6,7 @@
 //! extracting information relevant for tracing.
 
 pub mod base;
-pub mod binary;
 pub mod format;
-
-#[cfg(feature = "elf")]
-pub mod elf;
 
 #[cfg(test)]
 mod tests;

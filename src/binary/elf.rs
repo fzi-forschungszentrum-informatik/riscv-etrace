@@ -8,8 +8,9 @@ use core::fmt;
 use elf::endian::EndianParse;
 use elf::ElfBytes;
 
-use super::binary::{self, Binary};
-use super::{base, Instruction};
+use crate::instruction::{base, Instruction};
+
+use super::{error, Binary};
 
 /// Static ELF [`Binary`]
 ///
@@ -138,7 +139,7 @@ pub enum Error {
     UnsupportedEndianess,
 }
 
-impl binary::MaybeMiss for Error {
+impl error::MaybeMiss for Error {
     fn miss(_: u64) -> Self {
         Self::NoSegmentFound
     }

@@ -17,6 +17,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Made `instruction::binary` a toplevel module.
+- Moved `MaybeMiss` and `NoInstruction` from `binary` to `binary::error`.
+- Moved `instruction::elf` to `binary`.
 - The "simple" example will attempt to filter out context updates occuring on
   resynchronization packets when comparing against a reference spike trace.
 - `tracer::item::Item` now has a variant `Context` for communicating updates to

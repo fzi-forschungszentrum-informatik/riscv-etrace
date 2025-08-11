@@ -26,10 +26,10 @@
 //! A [`Tracer`][tracer::Tracer] processes packets and generates a series of
 //! tracing [`Item`][tracer::item::Item]s. It is constructed via a
 //! [`tracer::Builder`], which is configured for the specific program
-//! being traced (in the form of a [`Binary`][instruction::binary::Binary]) and
-//! the same [`config::Parameters`] that the decoder was configured with.
+//! being traced (in the form of a [`Binary`][binary::Binary]) and the same
+//! [`config::Parameters`] that the decoder was configured with.
 //!
-//! [`Binary`][instruction::binary::Binary] is a trait abstracting access to
+//! [`Binary`][binary::Binary] is a trait abstracting access to
 //! [`Instruction`][instruction::Instruction]s. This library provides a number
 //! of implementations and utilities for constructing one, including limited
 //! instruction decoding capabilities.
@@ -44,9 +44,8 @@
 //! # Crate features
 //!
 //! Some functionality if controlled via crate features:
-//! * `elf`: enables the [`instruction::elf`] module providing a
-//!   [`Binary`][instruction::binary::Binary] for static ELF files using the
-//!   [`elf`] crate
+//! * `elf`: enables the [`binary::elf`] module providing a
+//!   [`Binary`][binary::Binary] for static ELF files using the [`elf`] crate
 //! * `serde`: enables (de)serialization of configuration via [`serde`]
 //!
 //! # no_std
@@ -57,12 +56,13 @@
 //! # Example
 //!
 //! The following example demonstrates basic instruction tracing, with default
-//! [`config::Parameters`], a custom [`Binary`][instruction::binary::Binary] and
-//! tracing packets placed in a single buffer.
+//! [`config::Parameters`], a custom [`Binary`][binary::Binary] and tracing
+//! packets placed in a single buffer.
 //!
 //! ```
+//! use riscv_etrace::binary;
 //! use riscv_etrace::decoder;
-//! use riscv_etrace::instruction::{base, binary, Instruction};
+//! use riscv_etrace::instruction::{base, Instruction};
 //! use riscv_etrace::tracer::{self, Tracer};
 //!
 //! # let binary_data = b"\x14\x41\x11\x05\x94\xc1\x91\x05\xe3\xec\xc5\xfe\x82\x80";
@@ -74,7 +74,7 @@
 //!         .and_then(|a| binary_data.split_at_checked(a as usize))
 //!         .and_then(|(_, d)| Instruction::extract(d, base::Set::Rv32I))
 //!         .map(|(i, _)| i)
-//!         .ok_or(binary::NoInstruction)
+//!         .ok_or(binary::error::NoInstruction)
 //! };
 //!
 //! let parameters = Default::default();
@@ -108,6 +108,7 @@
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
+pub mod binary;
 pub mod config;
 pub mod decoder;
 pub mod instruction;

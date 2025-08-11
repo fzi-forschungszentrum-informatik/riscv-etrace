@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execution tracing utilities
 
+use crate::binary::Binary;
 use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 
 use super::error::Error;
 use super::item::Context;
 use super::stack::ReturnStack;
-
-use instruction::binary::Binary;
 
 /// Execution tracing state
 #[derive(Clone, Debug)]

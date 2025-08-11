@@ -15,6 +15,7 @@ mod tests;
 
 pub use item::Item;
 
+use crate::binary::{self, Binary};
 use crate::config::{self, AddressMode, Version};
 use crate::decoder::payload::Payload;
 use crate::decoder::sync;
@@ -23,7 +24,6 @@ use crate::instruction;
 use crate::types::trap;
 
 use error::Error;
-use instruction::binary::{self, Binary};
 use stack::ReturnStack;
 
 /// Tracer
