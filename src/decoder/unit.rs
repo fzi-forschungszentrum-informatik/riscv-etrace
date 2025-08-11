@@ -6,6 +6,9 @@
 //! implementations not captured by [`config::Parameters`], as well as
 //! implementations of those traits.
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 use crate::config;
 
 use super::{Decode, Decoder, Error};
@@ -77,6 +80,33 @@ pub trait IOptions {
     /// Retrieve whether jump target caching is enabled
     fn jump_target_cache(&self) -> Option<bool> {
         None
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<T: IOptions + ?Sized> IOptions for Box<T> {
+    fn address_mode(&self) -> Option<AddressMode> {
+        T::address_mode(self.as_ref())
+    }
+
+    fn sequentially_inferred_jumps(&self) -> Option<bool> {
+        T::sequentially_inferred_jumps(self.as_ref())
+    }
+
+    fn implicit_return(&self) -> Option<bool> {
+        T::implicit_return(self.as_ref())
+    }
+
+    fn implicit_exception(&self) -> Option<bool> {
+        T::implicit_exception(self.as_ref())
+    }
+
+    fn branch_prediction(&self) -> Option<bool> {
+        T::branch_prediction(self.as_ref())
+    }
+
+    fn jump_target_cache(&self) -> Option<bool> {
+        T::jump_target_cache(self.as_ref())
     }
 }
 
