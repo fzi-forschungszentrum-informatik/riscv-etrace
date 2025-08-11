@@ -4,7 +4,7 @@
 
 use crate::types::branch;
 
-use super::{sync, unit, util, Decode, Decoder, Error};
+use super::{format, sync, unit, util, Decode, Decoder, Error};
 
 /// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -45,6 +45,12 @@ pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     Branch(Branch),
     Address(AddressInfo),
     Synchronization(sync::Synchronization<I, D>),
+}
+
+impl<U: unit::Unit> Decode<U> for Payload<U::IOptions, U::DOptions> {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        format::Format::decode(decoder)?.decode_payload(decoder)
+    }
 }
 
 impl<I, D> Payload<I, D> {

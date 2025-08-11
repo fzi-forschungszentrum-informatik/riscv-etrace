@@ -7,6 +7,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A fn `decoder::Decoder::byte_pos` exposing the current position within the
+  `decoder::Decoder`'s inner buffer.
 - The type `tracer::item::Context` for handling and communicating updates to the
   execution context.
 - `types::Privilege` impl for `Hash`.
@@ -22,6 +24,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - When comparing against a reference, the "simple" example now only aborts on
   mismatches of regular items.
 - Include (known) disassembled instruction in output of simple example.
+
+### Fixed
+
+- `decoder::Decoder::bytes_left` now accounts for bits that were consumed by
+  decoding operations.
 
 ## 0.2.0 - 2025-07-16
 

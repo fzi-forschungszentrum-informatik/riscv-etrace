@@ -22,7 +22,6 @@ use core::ops;
 
 use crate::config;
 
-use format::Format;
 use truncate::TruncateNum;
 
 /// Decoder errors
@@ -113,10 +112,32 @@ pub struct Decoder<'d, U> {
     hart_index_width: u8,
 }
 
-impl<U> Decoder<'_, U> {
+impl<'d, U> Decoder<'d, U> {
     /// Retrieve the number of bytes left in this decoder's data
+    ///
+    /// If the decoder is currently not at a byte boundary, the number returned
+    /// includes the partially decoded byte.
     pub fn bytes_left(&self) -> usize {
-        self.data.len()
+        self.data.len().saturating_sub(self.bit_pos >> 3)
+    }
+
+    /// Retrieve the current byte position
+    ///
+    /// Returns the zero-based position of the byte which is currently decoded.
+    /// If the current bit position is on a byte boundary, the position of the
+    /// byte after the boundary is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use riscv_etrace::decoder;
+    ///
+    /// # let trace_data = &[];
+    /// let mut decoder = decoder::builder().build(trace_data);
+    /// assert_eq!(decoder.byte_pos(), 0);
+    /// ```
+    pub fn byte_pos(&self) -> usize {
+        self.bit_pos >> 3
     }
 
     /// Decode a single [`smi::Packet`] consisting of header and payload
@@ -132,21 +153,8 @@ impl<U> Decoder<'_, U> {
     {
         let header = smi::Header::decode(self)?;
         self.advance_to_byte();
-        let payload_start = self.bit_pos >> 3;
-        let len = payload_start + header.payload_len;
-
-        let (payload, remaining) = self.data.split_at_checked(len).ok_or_else(|| {
-            let need = len
-                .checked_sub(self.data.len())
-                .and_then(NonZeroUsize::new)
-                .unwrap_or(NonZeroUsize::MIN);
-            Error::InsufficientData(need)
-        })?;
-        self.data = payload;
-        let payload = self.decode_payload()?;
-
-        self.bit_pos = 0;
-        self.data = remaining;
+        let len = self.byte_pos() + header.payload_len;
+        let payload = self.decode_restricted(len)?;
 
         Ok(smi::Packet {
             header,
@@ -166,7 +174,26 @@ impl<U> Decoder<'_, U> {
     where
         U: unit::Unit,
     {
-        Format::decode(self)?.decode_payload(self)
+        Decode::decode(self)
+    }
+
+    /// Decode an item from a subset of the internal data
+    ///
+    /// This fn decodes an item after resetting the data to the first `restrict`
+    /// bytes of the current buffer. After the item is (successfully) decoded,
+    /// the internal data is reset to the remaining part of the original data.
+    /// Thus, no matter how many bytes are extracted and whether or not data was
+    /// decompressed, the first `restrict` bytes are discarded.
+    ///
+    /// If the data does not hold `restrict` bytes, an error is returned.
+    fn decode_restricted<D: Decode<U>>(&mut self, restrict: usize) -> Result<D, Error> {
+        let (payload, remaining) = self.split_data(restrict)?;
+        self.data = payload;
+        let res = Decode::decode(self)?;
+
+        self.bit_pos = 0;
+        self.data = remaining;
+        Ok(res)
     }
 
     /// Advance the position to the next byte boundary
@@ -174,6 +201,17 @@ impl<U> Decoder<'_, U> {
         if self.bit_pos & 0x7 != 0 {
             self.bit_pos = (self.bit_pos & !0x7usize) + 8;
         }
+    }
+
+    /// Split the inner data at the given position
+    fn split_data(&self, mid: usize) -> Result<(&'d [u8], &'d [u8]), Error> {
+        self.data.split_at_checked(mid).ok_or_else(|| {
+            let need = mid
+                .checked_sub(self.data.len())
+                .and_then(NonZeroUsize::new)
+                .unwrap_or(NonZeroUsize::MIN);
+            Error::InsufficientData(need)
+        })
     }
 
     /// Read a single bit
