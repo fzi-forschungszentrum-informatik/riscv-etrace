@@ -7,7 +7,7 @@ use crate::instruction;
 use crate::types::branch;
 
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
-use item::Item;
+use item::{Context, Item};
 
 /// Test derived from the specification's Chaper 12, examples 1 and 2
 #[test]
@@ -34,6 +34,10 @@ fn debug_printf() {
     tracer
         .process_te_inst(&start_packet(0x80001a80))
         .expect("Could not process packet");
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001a80, Context::default().into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x80001a80, UNCOMPRESSED.into())))
@@ -107,6 +111,10 @@ fn exitting_from_func_2() {
         .expect("Could not process packet");
     assert_eq!(
         tracer.next(),
+        Some(Ok(Item::new(0x800010da, Context::default().into())))
+    );
+    assert_eq!(
+        tracer.next(),
         Some(Ok(Item::new(0x800010da, COMPRESSED.into())))
     );
     assert_eq!(tracer.next(), None);
@@ -177,6 +185,10 @@ fn three_branches() {
     tracer
         .process_te_inst(&start_packet(0x80001110))
         .expect("Could not process packet");
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80001110, Context::default().into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x80001110, COMPRESSED.into())))
@@ -282,6 +294,10 @@ fn complex() {
     tracer
         .process_te_inst(&start_packet(0x8000121c))
         .expect("Could not process packet");
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x8000121c, Context::default().into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x8000121c, COMPRESSED.into())))
@@ -395,6 +411,10 @@ fn full_branch_map() {
     tracer
         .process_te_inst(&start_packet(0x80000028))
         .expect("Could not process packet");
+    assert_eq!(
+        tracer.next(),
+        Some(Ok(Item::new(0x80000028, Context::default().into())))
+    );
     assert_eq!(
         tracer.next(),
         Some(Ok(Item::new(0x80000028, COMPRESSED.into())))

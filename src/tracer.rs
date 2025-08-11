@@ -138,17 +138,25 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let is_tracing = self.iter_state.is_tracing();
                 let version = self.version;
 
-                let initer =
-                    self.sync_init(start.address, !is_tracing, !start.branch, &start.ctx)?;
+                let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
                 if is_tracing {
-                    let privilege = match version {
-                        Version::V1 => Some(start.ctx.privilege),
-                        _ => None,
+                    let action = match version {
+                        Version::V1 => state::SyncAction::Compare,
+                        _ => state::SyncAction::Update,
                     };
-                    initer.set_condition(state::StopCondition::Sync { privilege });
+                    initer.set_condition(state::StopCondition::Sync {
+                        context: start.ctx.into(),
+                        action,
+                    });
                 } else {
+                    if version != Version::V1 {
+                        initer.set_context(start.ctx.into());
+                    }
                     initer.reset_to_address()?;
-                    self.iter_state = IterationState::SingleItem;
+                    self.iter_state = IterationState::ContextItem {
+                        context: start.ctx.into(),
+                        follow_up: true,
+                    };
                 }
             }
             Synchronization::Trap(trap) => {
@@ -163,12 +171,17 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                         .initializer(&mut self.binary)?
                         .set_stack_depth(None);
                 } else {
-                    self.sync_init(trap.address, false, !trap.branch, &trap.ctx)?
-                        .reset_to_address()?;
+                    let version = self.version;
+                    let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
+                    if version != Version::V1 {
+                        initer.set_context(trap.ctx.into());
+                    }
+                    initer.reset_to_address()?;
                 }
                 self.iter_state = IterationState::TrapItem {
                     epc,
                     info: trap.info,
+                    context: trap.ctx.into(),
                     follow_up: trap.thaddr,
                 };
             }
@@ -178,6 +191,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 if self.version != Version::V1 {
                     initer.set_context(ctx.into());
                 }
+                self.iter_state = IterationState::ContextItem {
+                    context: ctx.into(),
+                    follow_up: false,
+                };
             }
             Synchronization::Support(sup) => {
                 self.process_support(sup)?;
@@ -239,7 +256,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
-        ctx: &sync::Context,
     ) -> Result<state::Initializer<'_, S, B>, Error<B::Error>> {
         let insn = self
             .binary
@@ -259,10 +275,6 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             .is_some()
         {
             branch_map.push_branch_taken(branch_taken);
-        }
-
-        if self.version != Version::V1 {
-            initer.set_context(ctx.into());
         }
 
         initer.set_stack_depth(None);
@@ -287,22 +299,35 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
             IterationState::TrapItem {
                 epc,
                 info,
+                context,
                 follow_up,
             } => {
+                self.iter_state = IterationState::ContextItem { context, follow_up };
+
+                Some(Ok(Item::new(epc, info.into())))
+            }
+            IterationState::ContextItem { context, follow_up } => {
                 self.iter_state = if follow_up {
                     IterationState::SingleItem
                 } else {
                     IterationState::FollowExec
                 };
 
-                Some(Ok(Item::new(epc, info.into())))
+                Some(Ok(Item::new(self.state.current_pc(), context.into())))
             }
             IterationState::FollowExec | IterationState::Depleting => {
                 let res = self
                     .state
                     .next_item(&mut self.binary)
                     .transpose()?
-                    .map(|(p, i)| Item::new(p, i.into()));
+                    .map(|(p, i, c)| {
+                        if let Some(ctx) = c {
+                            self.iter_state = IterationState::SingleItem;
+                            Item::new(p, ctx.into())
+                        } else {
+                            Item::new(p, i.into())
+                        }
+                    });
                 Some(res)
             }
         }
@@ -434,6 +459,12 @@ enum IterationState {
     TrapItem {
         epc: u64,
         info: trap::Info,
+        context: item::Context,
+        follow_up: bool,
+    },
+    /// We report a context update and optionally a single follow-up item
+    ContextItem {
+        context: item::Context,
         follow_up: bool,
     },
     /// We follow the execution path based on the current packet's data

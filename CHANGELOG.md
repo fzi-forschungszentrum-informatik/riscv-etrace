@@ -17,6 +17,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `tracer::Tracer` now communicates updates to the execution context via the
+  `tracer::item::Kind::Context` variant.
 - Integrated header fields directly into `decoder::smi::Packet`.
 - Made `instruction::binary` a toplevel module.
 - Moved `MaybeMiss` and `NoInstruction` from `binary` to `binary::error`.
