@@ -139,11 +139,13 @@ pub enum Error {
     UnsupportedEndianess,
 }
 
-impl error::MaybeMiss for Error {
+impl error::Miss for Error {
     fn miss(_: u64) -> Self {
         Self::NoSegmentFound
     }
+}
 
+impl error::MaybeMiss for Error {
     fn is_miss(&self) -> bool {
         matches!(self, Self::NoSegmentFound)
     }

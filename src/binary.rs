@@ -14,7 +14,7 @@ use core::borrow::BorrowMut;
 
 use crate::instruction::Instruction;
 
-use error::MaybeMiss;
+use error::{MaybeMiss, Miss};
 
 /// A binary of some sort that contains [`Instruction`]s
 pub trait Binary {
@@ -79,14 +79,14 @@ impl<B: Binary, P: Binary> Binary for (B, P) {
 impl<B> Binary for Option<B>
 where
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     type Error = B::Error;
 
     fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
         self.as_mut()
             .map(|b| b.get_insn(address))
-            .unwrap_or_else(|| MaybeMiss::miss(address))
+            .unwrap_or_else(|| Miss::miss(address))
     }
 }
 
@@ -96,7 +96,7 @@ pub struct Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     bins: C,
     last: usize,
@@ -107,7 +107,7 @@ impl<C, B> Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     /// Create a new [`Binary`] combining all `bins`
     pub fn new(bins: C) -> Self {
@@ -123,7 +123,7 @@ impl<C, B> From<C> for Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     fn from(bins: C) -> Self {
         Self::new(bins)
@@ -134,7 +134,7 @@ impl<C, B> Binary for Multi<C, B>
 where
     C: BorrowMut<[B]>,
     B: Binary,
-    B::Error: MaybeMiss,
+    B::Error: Miss,
 {
     type Error = B::Error;
 
@@ -158,7 +158,7 @@ where
             self.last = current;
             res
         } else {
-            MaybeMiss::miss(address)
+            Miss::miss(address)
         }
     }
 }

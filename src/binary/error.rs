@@ -4,6 +4,21 @@
 
 use core::fmt;
 
+/// A [`MaybeMiss`] allowing the construction of a miss
+pub trait Miss: MaybeMiss {
+    /// Construct a value indicating a miss
+    ///
+    /// This error value indicates that the [`Binary`][super::Binary] does not
+    /// cover the given `address`.
+    fn miss(address: u64) -> Self;
+}
+
+impl<T, E: Miss> Miss for Result<T, E> {
+    fn miss(address: u64) -> Self {
+        Err(<E as Miss>::miss(address))
+    }
+}
+
 /// May indicate that an address is not covered by a [`Binary`][super::Binary]
 ///
 /// A [`Binary`][super::Binary] usually only covers a subset of all possible
@@ -12,12 +27,6 @@ use core::fmt;
 /// naturally yield an error. This trait allows identifying these particular
 /// errors.
 pub trait MaybeMiss {
-    /// Construct a value indicating a miss
-    ///
-    /// This error value indicates that the [`Binary`][super::Binary] does not
-    /// cover the given `address`.
-    fn miss(address: u64) -> Self;
-
     /// Check whether this value indicates a miss
     ///
     /// This error value indicates that the [`Binary`][super::Binary] does not
@@ -27,10 +36,6 @@ pub trait MaybeMiss {
 }
 
 impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
-    fn miss(address: u64) -> Self {
-        Err(E::miss(address))
-    }
-
     fn is_miss(&self) -> bool {
         match self {
             Ok(_) => false,
@@ -43,11 +48,13 @@ impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
 
-impl MaybeMiss for NoInstruction {
+impl Miss for NoInstruction {
     fn miss(_: u64) -> Self {
         NoInstruction
     }
+}
 
+impl MaybeMiss for NoInstruction {
     fn is_miss(&self) -> bool {
         true
     }

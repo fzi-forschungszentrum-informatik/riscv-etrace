@@ -7,6 +7,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A trait `binary::error::Miss` for creation of error values indicating a
+  "miss".
+- `binary::Binary` impl for `Option` now requires the inner binary's `Error` to
+  be `binary::error::Miss` rather than `binary::error::MaybeMiss`.
+- `binary::Binary` impl for `binary::Multi` now requires the inner binary's
+  `Error` to be `binary::error::Miss` rather than `binary::error::MaybeMiss`.
 - A fn `decoder::Decoder::byte_pos` exposing the current position within the
   `decoder::Decoder`'s inner buffer.
 - The type `tracer::item::Context` for handling and communicating updates to the
@@ -33,6 +39,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Removed
 
+- `binary::error::MaybeMiss::miss`. It's now part of a separate trait
+  `binary::error::Miss`.
 - `decoder::smi::Packet::header` and `decoder::smi::Header`. Relevant fields are
   now part of `decoder::smi::Packet` itself.
 - `decoder::smi::Packet::len`. This information may be retrieved from the
