@@ -69,13 +69,13 @@
 //! # let binary_offset = 0x80000028;
 //! # let trace_data = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
 //! # let hart_to_trace = 0;
-//! let binary = |addr: u64| {
+//! let binary = binary::from_fn(|addr: u64| {
 //!     addr.checked_sub(binary_offset)
 //!         .and_then(|a| binary_data.split_at_checked(a as usize))
 //!         .and_then(|(_, d)| Instruction::extract(d, base::Set::Rv32I))
 //!         .map(|(i, _)| i)
 //!         .ok_or(binary::error::NoInstruction)
-//! };
+//! });
 //!
 //! let parameters = Default::default();
 //! let mut decoder = decoder::builder()

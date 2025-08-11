@@ -7,6 +7,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A `binary::Binary` adapter `binary::Func` for using `FnMut`s.
+- A fn `binary::from_fn` for convenient creation of a `binary::Binary` from an
+  `FnMut`.
 - A trait `binary::error::Miss` for creation of error values indicating a
   "miss".
 - `binary::Binary` impl for `Option` now requires the inner binary's `Error` to
@@ -39,6 +42,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Removed
 
+- `binary::Binary` impl for `FnMut`. Users may use `binary::Func` instead.
 - `binary::error::MaybeMiss::miss`. It's now part of a separate trait
   `binary::error::Miss`.
 - `decoder::smi::Packet::header` and `decoder::smi::Header`. Relevant fields are
