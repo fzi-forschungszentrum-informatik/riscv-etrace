@@ -49,6 +49,17 @@ where
     }
 }
 
+impl<C, B> FromIterator<B> for Multi<C, B>
+where
+    C: BorrowMut<[B]> + FromIterator<B>,
+    B: Binary,
+    B::Error: Miss,
+{
+    fn from_iter<T: IntoIterator<Item = B>>(iter: T) -> Self {
+        C::from_iter(iter).into()
+    }
+}
+
 impl<C, B> Binary for Multi<C, B>
 where
     C: BorrowMut<[B]>,
