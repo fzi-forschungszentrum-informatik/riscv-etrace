@@ -60,6 +60,17 @@ where
     }
 }
 
+impl<C, B> Extend<B> for Multi<C, B>
+where
+    C: BorrowMut<[B]> + Extend<B>,
+    B: Binary,
+    B::Error: Miss,
+{
+    fn extend<T: IntoIterator<Item = B>>(&mut self, iter: T) {
+        self.bins.extend(iter)
+    }
+}
+
 impl<C, B> Binary for Multi<C, B>
 where
     C: BorrowMut<[B]>,
