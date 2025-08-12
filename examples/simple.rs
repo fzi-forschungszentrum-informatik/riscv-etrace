@@ -66,28 +66,7 @@ fn main() {
         eprintln!("Parameters: {params:?}");
     }
 
-    // We need to construct a `Binary`. For PIE executables, we simply assume
-    // that they are placed at a known offset.
-    let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
-    let base_set = elf.base_set();
-    let mut elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
-        vec![elf.with_offset(0x8000_0000)]
-    } else {
-        vec![elf.with_offset(0)]
-    };
-
-    elf.extend(pk.map(|e| {
-        binary::elf::Elf::new(e)
-            .expect("Could not construct binary from ELF file")
-            .with_offset(0)
-    }));
-    let elf = binary::Multi::from(elf);
-
-    // Given a reference trace, we can check whether our trace is correct.
-    let mut reference = args.next().map(|p| {
-        let csv = std::fs::File::open(p).expect("Could open reference trace");
-        spike::CSVTrace::new(std::io::BufReader::new(csv), base_set).peekable()
-    });
+    let mut binary: Vec<_> = Default::default();
 
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
@@ -100,13 +79,37 @@ fn main() {
         (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
     ])
     .expect("Bootrom was not sorted by address");
+    binary.push(bootrom.boxed());
+
+    // We need to construct a `Binary`. For PIE executables, we simply assume
+    // that they are placed at a known offset.
+    let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
+    let base_set = elf.base_set();
+    let elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
+        elf.with_offset(0x8000_0000).boxed()
+    } else {
+        elf.boxed()
+    };
+    binary.push(elf);
+
+    binary.extend(pk.map(|e| {
+        binary::elf::Elf::new(e)
+            .expect("Could not construct binary from ELF file")
+            .boxed()
+    }));
+
+    // Given a reference trace, we can check whether our trace is correct.
+    let mut reference = args.next().map(|p| {
+        let csv = std::fs::File::open(p).expect("Could open reference trace");
+        spike::CSVTrace::new(std::io::BufReader::new(csv), base_set).peekable()
+    });
 
     // Finally, construct decoder and tracer...
     let mut decoder = decoder::builder()
         .with_params(&params)
         .build(trace_data.as_ref());
     let mut tracer: Tracer<_> = tracer::builder()
-        .with_binary((elf, bootrom))
+        .with_binary(binary::Multi::from(binary))
         .with_params(&params)
         .build()
         .expect("Could not set up tracer");
