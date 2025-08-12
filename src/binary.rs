@@ -12,7 +12,7 @@ pub mod error;
 #[cfg(feature = "elf")]
 pub mod elf;
 
-pub use basic::{from_fn, Empty};
+pub use basic::{from_fn, from_map, from_sorted_map, Empty};
 pub use combinators::Multi;
 
 use crate::instruction::Instruction;
