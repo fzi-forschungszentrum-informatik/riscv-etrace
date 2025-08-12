@@ -44,6 +44,11 @@ impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
     }
 }
 
+/// [`MaybeMiss`] that is also an [`Error`][core::error::Error]
+pub trait MaybeMissError: MaybeMiss + core::error::Error {}
+
+impl<T: MaybeMiss + core::error::Error + ?Sized> MaybeMissError for T {}
+
 /// An error type expressing absence of an [`Instruction`][super::Instruction]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;
