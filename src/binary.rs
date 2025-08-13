@@ -41,21 +41,6 @@ pub trait Binary {
     }
 }
 
-/// [`Binary`] implementation for mapping from address to [`Instruction`]
-///
-/// # Notice
-///
-/// This impl only functions correctly for slices that are sorted by address.
-impl Binary for &[(u64, Instruction)] {
-    type Error = error::NoInstruction;
-
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
-        self.binary_search_by_key(&address, |(a, _)| *a)
-            .map(|i| self[i].1)
-            .map_err(|_| error::NoInstruction)
-    }
-}
-
 /// [`Binary`] implementation for a tuple of two binaries
 ///
 /// The second [`Binary`] is considered a "patch" that is only consulted if the
