@@ -43,6 +43,7 @@ else
 fi
 
 test_files_dir="${suite}/../../tests/test_files/"
+pk="${test_files_dir}pk.riscv"
 for elf in "${test_files_dir}"*.riscv "${test_files_dir}"*.pk; do
     if file ${elf} | grep 'ELF 64-bit' >> /dev/null; then
         params="params_64.toml"
@@ -61,5 +62,9 @@ for elf in "${test_files_dir}"*.riscv "${test_files_dir}"*.pk; do
         continue;
     fi
     echo "Checking with ${test_name}..."
-    cargo run --example simple --all-features -- "${elf}" "${trace_file}" "${params}" "${spike_trace}" >> /dev/null
+    if echo ${elf} | grep -qe '\.pk$'; then
+        echo "${trace_file}" "${pk}" "${elf}"
+    else
+        echo "${trace_file}" "${elf}"
+    fi | xargs cargo run --example simple --all-features -- -p "${params}" -r "${spike_trace}" --spike-bootrom >> /dev/null
 done
