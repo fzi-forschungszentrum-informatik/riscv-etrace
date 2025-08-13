@@ -92,20 +92,21 @@ fn main() {
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
     // representation of spike's bootrom.
-    let bootrom = vec![
+    let bootrom = binary::from_sorted_map([
         (0x1000, instruction::Kind::new_auipc(5, 0).into()),
         (0x1004, instruction::UNCOMPRESSED),
         (0x1008, instruction::UNCOMPRESSED),
         (0x100c, instruction::UNCOMPRESSED),
         (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
-    ];
+    ])
+    .expect("Bootrom was not sorted by address");
 
     // Finally, construct decoder and tracer...
     let mut decoder = decoder::builder()
         .with_params(&params)
         .build(trace_data.as_ref());
     let mut tracer: Tracer<_> = tracer::builder()
-        .with_binary((elf, bootrom.as_slice()))
+        .with_binary((elf, bootrom))
         .with_params(&params)
         .build()
         .expect("Could not set up tracer");
