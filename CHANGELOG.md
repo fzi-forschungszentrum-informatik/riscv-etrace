@@ -28,6 +28,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `binary::Offset` now requires the inner `binary::Binary`'s `Error` impl
+  `binary::error::Miss`.
+- `binary::Offset` now does not wrap addresses but reports a "miss" for
+  addresses lower than the offset.
 - `tracer::Tracer` now communicates updates to the execution context via the
   `tracer::item::Kind::Context` variant.
 - Integrated header fields directly into `decoder::smi::Packet`.

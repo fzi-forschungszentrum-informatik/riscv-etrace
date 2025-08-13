@@ -33,6 +33,7 @@ pub trait Binary {
     fn with_offset(self, offset: u64) -> Offset<Self>
     where
         Self: Sized,
+        Self::Error: Miss,
     {
         Offset {
             inner: self,
@@ -88,18 +89,28 @@ where
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
-/// The subtraction is done in a wrapping fashion, i.e. accesses to addresses
-/// lower than the offset will translate to accesses to higher addresses.
+/// Accesses to addresses lower than the offset will result in a [miss][Miss].
 #[derive(Copy, Clone, Debug)]
-pub struct Offset<B: Binary> {
+pub struct Offset<B>
+where
+    B: Binary,
+    B::Error: Miss,
+{
     inner: B,
     offset: u64,
 }
 
-impl<B: Binary> Binary for Offset<B> {
+impl<B> Binary for Offset<B>
+where
+    B: Binary,
+    B::Error: Miss,
+{
     type Error = B::Error;
 
     fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
-        self.inner.get_insn(address.wrapping_sub(self.offset))
+        address
+            .checked_sub(self.offset)
+            .ok_or(B::Error::miss(address))
+            .and_then(|a| self.inner.get_insn(a))
     }
 }
