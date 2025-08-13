@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Simple tracer for single core platforms
 //!
-//!     Usage: simple ELF-file trace-file [parameter-file] [reference-trace]
-//!
 //! This program traces a program provided in the form of an ELF file. The trace
 //! is supplies as a file consisting of concatenated trace packets. Optionally,
 //! parameters may be supplied in the form of a TOML file (such as `params.toml`
@@ -19,6 +17,8 @@
 
 mod spike;
 
+use std::path::PathBuf;
+
 const TARGET_HART: u64 = 0;
 
 fn main() {
@@ -27,36 +27,63 @@ fn main() {
     use riscv_etrace::instruction;
     use riscv_etrace::tracer::{self, item, Tracer};
 
+    let matches = clap::Command::new("Simple tracer")
+        .arg(
+            clap::arg!(<trace> "Path to the trace file").value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(<elf>... "ELF files containing code being traced")
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(-p --params <FILE> "Trace encoder parameters")
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(-r --reference <FILE> "Reference spike CSV trace")
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .get_matches();
+
     let debug = std::env::var_os("DEBUG").map(|v| v == "1").unwrap_or(false);
-    let mut args = std::env::args_os().skip(1);
 
     // For tracing, we need the program to trace ...
-    let mut elf_path: std::path::PathBuf = args.next().expect("No ELF file specified").into();
-    let elf_data = std::fs::read(&elf_path).expect("Could not load ELF file");
-    let elf = elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_data.as_ref())
-        .expect("Coult not parse ELF file");
+    let elf_data: Vec<_> = matches
+        .get_many::<PathBuf>("elf")
+        .expect("No ELF file specified")
+        .map(|p| std::fs::read(p).expect("Could not load ELF file"))
+        .collect();
+    let mut base_set = instruction::base::Set::Rv32I;
+    let mut binary: Vec<_> = elf_data
+        .iter()
+        .map(|d| {
+            let elf = elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(d.as_ref())
+                .expect("Coult not parse ELF file");
+            // We need to construct a `Binary`.
+            let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
+            base_set = elf.base_set();
 
-    // ... the proxy kernel for non-bare-metal applications ...
-    let pk_data = elf_path.extension().is_some_and(|e| e == "pk").then(|| {
-        elf_path.set_file_name("pk.riscv");
-        eprintln!(
-            "Loading additional proxy kernel '{}' due to 'pk' extension...",
-            elf_path.display()
-        );
-        std::fs::read(&elf_path).expect("Could not load pk")
-    });
-    let pk = pk_data.as_ref().map(|d| {
-        elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(d.as_ref())
-            .expect("Coult not parse pk ELF file")
-    });
+            // For PIE executables, we simply assume that they are placed at a known
+            // offset. This only works it a single ELF is a PIE executable
+            if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
+                elf.with_offset(0x8000_0000).boxed()
+            } else {
+                elf.boxed()
+            }
+        })
+        .collect();
 
     // ... and the trace file.
-    let trace_data = std::fs::read(args.next().expect("No trace file specified"))
-        .expect("Could not load trace file");
+    let trace_data = std::fs::read(
+        matches
+            .get_one::<PathBuf>("trace")
+            .expect("No trace file specified"),
+    )
+    .expect("Could not load trace file");
 
     // Often, we also need the encoder parameters
-    let params = args
-        .next()
+    let params = matches
+        .get_one::<PathBuf>("params")
         .map(|p| {
             let params = std::fs::read_to_string(p).expect("Could not load parameters");
             toml::from_str(params.as_ref()).expect("Could not parse parameters")
@@ -65,8 +92,6 @@ fn main() {
     if debug {
         eprintln!("Parameters: {params:?}");
     }
-
-    let mut binary: Vec<_> = Default::default();
 
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
@@ -81,25 +106,8 @@ fn main() {
     .expect("Bootrom was not sorted by address");
     binary.push(bootrom.boxed());
 
-    // We need to construct a `Binary`. For PIE executables, we simply assume
-    // that they are placed at a known offset.
-    let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
-    let base_set = elf.base_set();
-    let elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
-        elf.with_offset(0x8000_0000).boxed()
-    } else {
-        elf.boxed()
-    };
-    binary.push(elf);
-
-    binary.extend(pk.map(|e| {
-        binary::elf::Elf::new(e)
-            .expect("Could not construct binary from ELF file")
-            .boxed()
-    }));
-
     // Given a reference trace, we can check whether our trace is correct.
-    let mut reference = args.next().map(|p| {
+    let mut reference = matches.get_one::<PathBuf>("reference").map(|p| {
         let csv = std::fs::File::open(p).expect("Could open reference trace");
         spike::CSVTrace::new(std::io::BufReader::new(csv), base_set).peekable()
     });
