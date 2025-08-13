@@ -33,6 +33,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Integrated header fields directly into `decoder::smi::Packet`.
 - Made `instruction::binary` a toplevel module.
 - Moved `MaybeMiss` and `NoInstruction` from `binary` to `binary::error`.
+- Moved `binary::Multi` from `binary` to `binary::combinators`. It is, however,
+  reexported as `binary::Multi`.
+- Moved `binary::Func` `binary::from_fn` and `binary::Empty` from `binary` to
+  `binary::basic`. However, `from_fn` and `Empty` are reexported from `binary`.
 - Moved `instruction::elf` to `binary`.
 - The "simple" example will attempt to filter out context updates occuring on
   resynchronization packets when comparing against a reference spike trace.
