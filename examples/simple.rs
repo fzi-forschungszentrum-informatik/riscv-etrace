@@ -9,11 +9,8 @@
 //! program will compare the reconstructed trace against that reference and
 //! abort if a mismatch is found.
 //!
-//! Only a single hart is traced.
-//!
-//! By default, the program prints a single line for every trace item to stdout.
-//! If run with the environment variable `DEBUG` set to `1`, the configuration
-//! and every packet decoded are printed to stderr.
+//! Only a single hart is traced. The program prints a single line for every
+//! trace item to stdout. Additional information may be printed to stderr.
 
 mod spike;
 
@@ -50,9 +47,15 @@ fn main() {
                 .value_parser(clap::value_parser!(u64))
                 .default_value("0"),
         )
+        .arg(
+            clap::arg!(-d --debug "Enable additional debug output")
+                .env("DEBUG")
+                .action(clap::ArgAction::SetTrue)
+                .value_parser(clap::builder::FalseyValueParser::new()),
+        )
         .get_matches();
 
-    let debug = std::env::var_os("DEBUG").map(|v| v == "1").unwrap_or(false);
+    let debug = matches.get_flag("debug");
 
     // For tracing, we need the program to trace ...
     let elf_data: Vec<_> = matches
