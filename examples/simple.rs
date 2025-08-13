@@ -9,7 +9,7 @@
 //! program will compare the reconstructed trace against that reference and
 //! abort if a mismatch is found.
 //!
-//! Only a single hart (hart `0`) is traced.
+//! Only a single hart is traced.
 //!
 //! By default, the program prints a single line for every trace item to stdout.
 //! If run with the environment variable `DEBUG` set to `1`, the configuration
@@ -18,8 +18,6 @@
 mod spike;
 
 use std::path::PathBuf;
-
-const TARGET_HART: u64 = 0;
 
 fn main() {
     use riscv_etrace::binary::{self, Binary};
@@ -46,6 +44,11 @@ fn main() {
         .arg(
             clap::arg!(--"spike-bootrom" <FILE> "Assume presence of the spike bootrom")
                 .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            clap::arg!(--hart <NUM> "Hart to trace")
+                .value_parser(clap::value_parser!(u64))
+                .default_value("0"),
         )
         .get_matches();
 
@@ -131,6 +134,7 @@ fn main() {
     // ... and get going.
     let mut icount = 0u64;
     let mut pcount = 0u64;
+    let target_hart = matches.get_one("hart").cloned().unwrap_or(0);
     while decoder.bytes_left() > 0 {
         // We decode a packet ...
         let packet = decoder
@@ -145,7 +149,7 @@ fn main() {
         pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.
-        if packet.hart == TARGET_HART {
+        if packet.hart == target_hart {
             // We process the packet's contents ...
             tracer
                 .process_te_inst(&packet.payload)
