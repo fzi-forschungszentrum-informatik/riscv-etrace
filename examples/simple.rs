@@ -43,6 +43,10 @@ fn main() {
             clap::arg!(-r --reference <FILE> "Reference spike CSV trace")
                 .value_parser(clap::value_parser!(PathBuf)),
         )
+        .arg(
+            clap::arg!(--"spike-bootrom" <FILE> "Assume presence of the spike bootrom")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let debug = std::env::var_os("DEBUG").map(|v| v == "1").unwrap_or(false);
@@ -96,15 +100,17 @@ fn main() {
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
     // representation of spike's bootrom.
-    let bootrom = binary::from_sorted_map([
-        (0x1000, instruction::Kind::new_auipc(5, 0).into()),
-        (0x1004, instruction::UNCOMPRESSED),
-        (0x1008, instruction::UNCOMPRESSED),
-        (0x100c, instruction::UNCOMPRESSED),
-        (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
-    ])
-    .expect("Bootrom was not sorted by address");
-    binary.push(bootrom.boxed());
+    if matches.get_flag("spike-bootrom") {
+        let bootrom = binary::from_sorted_map([
+            (0x1000, instruction::Kind::new_auipc(5, 0).into()),
+            (0x1004, instruction::UNCOMPRESSED),
+            (0x1008, instruction::UNCOMPRESSED),
+            (0x100c, instruction::UNCOMPRESSED),
+            (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
+        ])
+        .expect("Bootrom was not sorted by address");
+        binary.push(bootrom.boxed());
+    }
 
     // Given a reference trace, we can check whether our trace is correct.
     let mut reference = matches.get_one::<PathBuf>("reference").map(|p| {
