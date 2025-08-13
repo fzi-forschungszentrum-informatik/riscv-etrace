@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
+use crate::binary;
 use crate::decoder::payload;
 use crate::instruction;
 use crate::types::branch;
@@ -12,7 +13,7 @@ use item::{Context, Item};
 /// Test derived from the specification's Chaper 12, examples 1 and 2
 #[test]
 fn debug_printf() {
-    let code: &[(u64, _)] = &[
+    let code = binary::from_sorted_map([
         // debug_printf:
         (0x80001178, COMPRESSED),
         (0x8000117a, COMPRESSED),
@@ -24,7 +25,7 @@ fn debug_printf() {
         // Call debug_printf
         (0x80001a84, Kind::new_jal(1, -0x90c).into()),
         (0x80001a88, UNCOMPRESSED),
-    ];
+    ]);
 
     let mut tracer: Tracer<_> = Builder::new()
         .with_binary(code)
@@ -88,7 +89,7 @@ fn debug_printf() {
 /// Test derived from the specification's Chaper 12, example 3
 #[test]
 fn exitting_from_func_2() {
-    let code: &[(u64, _)] = &[
+    let code = binary::from_sorted_map([
         // Func_2:
         (0x800010da, COMPRESSED),
         (0x800010dc, Kind::new_bge(0, 10, 0x008).into()),
@@ -99,7 +100,7 @@ fn exitting_from_func_2() {
         (0x800010e8, Kind::new_c_jr(1).into()),
         // main:
         (0x80001b8a, UNCOMPRESSED),
-    ];
+    ]);
 
     let mut tracer: Tracer<_> = Builder::new()
         .with_binary(code)
@@ -161,7 +162,7 @@ fn exitting_from_func_2() {
 /// Test derived from the specification's Chaper 12, example 4
 #[test]
 fn three_branches() {
-    let code: &[(u64, _)] = &[
+    let code = binary::from_sorted_map([
         // Proc_6:
         (0x80001110, COMPRESSED),
         (0x80001112, COMPRESSED),
@@ -175,7 +176,7 @@ fn three_branches() {
         (0x80001162, Kind::new_c_jr(1).into()),
         // Proc_1:
         (0x80001258, UNCOMPRESSED),
-    ];
+    ]);
 
     let mut tracer: Tracer<_> = Builder::new()
         .with_binary(code)
@@ -259,7 +260,7 @@ fn three_branches() {
 
 #[test]
 fn complex() {
-    let code: &[(u64, _)] = &[
+    let code = binary::from_sorted_map([
         // Func_3:
         (0x800010f8, COMPRESSED),
         (0x800010fa, UNCOMPRESSED),
@@ -284,7 +285,7 @@ fn complex() {
         (0x80001252, COMPRESSED),
         // Call Proc_6
         (0x80001254, Kind::new_jal(1, -0x154).into()),
-    ];
+    ]);
 
     let mut tracer: Tracer<_> = Builder::new()
         .with_binary(code)
@@ -396,12 +397,12 @@ fn complex() {
 
 #[test]
 fn full_branch_map() {
-    let code: &[(u64, _)] = &[
+    let code = binary::from_sorted_map([
         (0x80000028, COMPRESSED),
         (0x8000002a, COMPRESSED),
         (0x8000002c, Kind::new_c_beqz(10, -0x004).into()),
         (0x8000002e, COMPRESSED),
-    ];
+    ]);
 
     let mut tracer: Tracer<_> = Builder::new()
         .with_binary(code)
