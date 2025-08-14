@@ -49,7 +49,7 @@ use stack::ReturnStack;
 /// use riscv_etrace::tracer;
 ///
 /// # use riscv_etrace::instruction::COMPRESSED;
-/// # let code: &[(u64, _)] = &[(0x28, COMPRESSED)];
+/// # let code = riscv_etrace::binary::from_sorted_map([(0x28, COMPRESSED)]);
 /// let parameters = Default::default();
 /// let mut tracer: tracer::Tracer<_> = tracer::builder()
 ///     .with_binary(code)

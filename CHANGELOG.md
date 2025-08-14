@@ -9,6 +9,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `alloc` feature for enabling types, impls and fns that require the `alloc`
   crate.
+- A `binary::Binary` adapter `binary::basic::SimpleMap` for fixed, small code
+  fragments such as bootroms.
+- Fns `binary::basic::from_map` and `binary::basic::from_sorted_map` (both
+  reexported from `binary`) for creating `binary::basic::SimpleMap`s.
 - A `binary::Binary` adapter `binary::Func` for using `FnMut`s.
 - A fn `binary::from_fn` for convenient creation of a `binary::Binary` from an
   `FnMut`.
@@ -52,6 +56,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Removed
 
+- `binary::Binary` impl for `&[(u64, Instruction)]`. Users may use the adapter
+  `binary::basic::SimpleMap` instead.
 - `binary::Binary` impl for `FnMut`. Users may use `binary::Func` instead.
 - `binary::error::MaybeMiss::miss`. It's now part of a separate trait
   `binary::error::Miss`.

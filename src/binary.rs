@@ -12,7 +12,7 @@ pub mod error;
 #[cfg(feature = "elf")]
 pub mod elf;
 
-pub use basic::{from_fn, Empty};
+pub use basic::{from_fn, from_map, from_sorted_map, Empty};
 pub use combinators::Multi;
 
 use crate::instruction::Instruction;
@@ -39,21 +39,6 @@ pub trait Binary {
             inner: self,
             offset,
         }
-    }
-}
-
-/// [`Binary`] implementation for mapping from address to [`Instruction`]
-///
-/// # Notice
-///
-/// This impl only functions correctly for slices that are sorted by address.
-impl Binary for &[(u64, Instruction)] {
-    type Error = error::NoInstruction;
-
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
-        self.binary_search_by_key(&address, |(a, _)| *a)
-            .map(|i| self[i].1)
-            .map_err(|_| error::NoInstruction)
     }
 }
 
