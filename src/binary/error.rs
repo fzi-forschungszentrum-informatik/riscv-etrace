@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Binary related error types and traits
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 use core::fmt;
 
 /// A [`MaybeMiss`] allowing the construction of a miss
@@ -16,6 +18,20 @@ pub trait Miss: MaybeMiss {
 impl<T, E: Miss> Miss for Result<T, E> {
     fn miss(address: u64) -> Self {
         Err(<E as Miss>::miss(address))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Miss for Box<dyn MaybeMiss> {
+    fn miss(address: u64) -> Self {
+        Box::new(NoInstruction::miss(address))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Miss for Box<dyn MaybeMissError> {
+    fn miss(address: u64) -> Self {
+        Box::new(NoInstruction::miss(address))
     }
 }
 
@@ -43,6 +59,18 @@ impl<T, E: MaybeMiss> MaybeMiss for Result<T, E> {
         }
     }
 }
+
+#[cfg(feature = "alloc")]
+impl<E: MaybeMiss + ?Sized> MaybeMiss for Box<E> {
+    fn is_miss(&self) -> bool {
+        E::is_miss(self.as_ref())
+    }
+}
+
+/// [`MaybeMiss`] that is also an [`Error`][core::error::Error]
+pub trait MaybeMissError: MaybeMiss + core::error::Error {}
+
+impl<T: MaybeMiss + core::error::Error + ?Sized> MaybeMissError for T {}
 
 /// An error type expressing absence of an [`Instruction`][super::Instruction]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

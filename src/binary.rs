@@ -6,11 +6,16 @@
 //! well as a number of types that may serve as a [`Binary`].
 
 pub mod basic;
+#[cfg(feature = "alloc")]
+pub mod boxed;
 pub mod combinators;
 pub mod error;
 
 #[cfg(feature = "elf")]
 pub mod elf;
+
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 
 pub use basic::{from_fn, from_map, from_sorted_map, Empty};
 pub use combinators::Multi;
@@ -39,6 +44,19 @@ pub trait Binary {
             inner: self,
             offset,
         }
+    }
+
+    /// Box this binary for dynamic dispatching
+    ///
+    /// This allows combining binaries of different types with (originally)
+    /// different [`Error`][Self::Error] types in combinators such as [`Multi`].
+    #[cfg(feature = "alloc")]
+    fn boxed<'a>(self) -> BoxedBinary<'a>
+    where
+        Self: Sized + 'a,
+        Self::Error: error::MaybeMissError + 'static,
+    {
+        Box::new(boxed::BoxedError::new(self))
     }
 }
 
@@ -71,6 +89,15 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<B: Binary + ?Sized> Binary for Box<B> {
+    type Error = B::Error;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        B::get_insn(self.as_mut(), address)
+    }
+}
+
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
@@ -99,3 +126,7 @@ where
             .and_then(|a| self.inner.get_insn(a))
     }
 }
+
+/// a [`Binary`] boxed for dynamic dispatch
+#[cfg(feature = "alloc")]
+pub type BoxedBinary<'a> = Box<dyn Binary<Error = Box<dyn error::MaybeMissError>> + 'a>;

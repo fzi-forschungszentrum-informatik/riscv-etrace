@@ -9,6 +9,17 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `alloc` feature for enabling types, impls and fns that require the `alloc`
   crate.
+- A trait `binary::error::MaybeMissError` combining `binary::error::MaybeMiss`
+  and `core::error::Error`, along with a blanket impl for all eligible types.
+- `binary::error::MaybeMiss` impl for `Box<binary::error::MaybeMiss>`.
+- `binary::error::Miss` impls for `Box<dyn binary::error::MaybeMiss>` and
+  `Box<dyn binary::error::MaybeMissError>`.
+- `binary::Binary` impl for `Box<binary::Binary>`.
+- A `binary::Binary` helper `binary::boxed::BoxedError` which wraps `Error`s
+  in dynamically dispatchable `Box`es.
+- A type alias `binary::BoxedBinary` for a `Box<dyn Binary>` with a specific,
+  fixed `Error` type.
+- A provided fn `binary::Binary::boxed` for creation of `binary::BoxedBinary`.
 - A `binary::Binary` adapter `binary::basic::SimpleMap` for fixed, small code
   fragments such as bootroms.
 - Fns `binary::basic::from_map` and `binary::basic::from_sorted_map` (both
