@@ -451,8 +451,8 @@ impl From<Kind> for Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            Some(kind) => write!(f, "{kind}"),
-            None => write!(f, ""),
+            Some(kind) => fmt::Display::fmt(kind, f),
+            None => Ok(()),
         }
     }
 }
