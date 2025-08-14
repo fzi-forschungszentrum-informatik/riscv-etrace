@@ -167,6 +167,11 @@ impl<'d, U> Decoder<'d, U> {
         Decode::decode(self)
     }
 
+    /// Retrieve this decoder's [`Unit`][unit::Unit]
+    pub fn unit(&self) -> &U {
+        &self.unit
+    }
+
     /// Decode an item from a subset of the internal data
     ///
     /// This fn decodes an item after resetting the data to the first `restrict`
