@@ -9,6 +9,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `alloc` feature for enabling types, impls and fns that require the `alloc`
   crate.
+- `decoder::unit::IOptions` impl for `Box<decoder::unit::IOptions>`.
+- A type `decoder::unit::Plug` for type erasing `decoder::unit::Unit`s.
+- A fn `decoder::unit::Unit::plug` for creating `decoder::unit::Plug`s.
+- A fn `decoder::Decoder::unit` for retrieving a `decoder::Decoder`s unit.
 - A trait `binary::error::MaybeMissError` combining `binary::error::MaybeMiss`
   and `core::error::Error`, along with a blanket impl for all eligible types.
 - `binary::error::MaybeMiss` impl for `Box<binary::error::MaybeMiss>`.
@@ -43,6 +47,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `decoder::unit::Unit` now requires `IOptions` and `DOptions` to be `'static`.
 - `binary::Offset` now requires the inner `binary::Binary`'s `Error` impl
   `binary::error::Miss`.
 - `binary::Offset` now does not wrap addresses but reports a "miss" for

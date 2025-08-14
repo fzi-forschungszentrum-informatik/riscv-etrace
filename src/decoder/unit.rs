@@ -6,6 +6,9 @@
 //! implementations not captured by [`config::Parameters`], as well as
 //! implementations of those traits.
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 use crate::config;
 
 use super::{Decode, Decoder, Error};
@@ -15,10 +18,10 @@ use config::AddressMode;
 /// Specifics about a trace unit implementation
 pub trait Unit<U = Self> {
     /// Instruction trace options
-    type IOptions: IOptions;
+    type IOptions: IOptions + 'static;
 
     /// Data trace options
-    type DOptions;
+    type DOptions: 'static;
 
     /// Width of the encoder mode field
     fn encoder_mode_width(&self) -> u8;
@@ -28,6 +31,15 @@ pub trait Unit<U = Self> {
 
     /// Decode data trace options
     fn decode_doptions(decoder: &mut Decoder<U>) -> Result<Self::DOptions, Error>;
+
+    /// Create a [`Plug`] for this unit
+    #[cfg(feature = "alloc")]
+    fn as_plug(&self) -> Plug
+    where
+        Self: Unit<Plug> + Sized,
+    {
+        Plug::new(self)
+    }
 }
 
 /// Instruction trace options that may be communicated via support packets
@@ -77,6 +89,33 @@ pub trait IOptions {
     /// Retrieve whether jump target caching is enabled
     fn jump_target_cache(&self) -> Option<bool> {
         None
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<T: IOptions + ?Sized> IOptions for Box<T> {
+    fn address_mode(&self) -> Option<AddressMode> {
+        T::address_mode(self.as_ref())
+    }
+
+    fn sequentially_inferred_jumps(&self) -> Option<bool> {
+        T::sequentially_inferred_jumps(self.as_ref())
+    }
+
+    fn implicit_return(&self) -> Option<bool> {
+        T::implicit_return(self.as_ref())
+    }
+
+    fn implicit_exception(&self) -> Option<bool> {
+        T::implicit_exception(self.as_ref())
+    }
+
+    fn branch_prediction(&self) -> Option<bool> {
+        T::branch_prediction(self.as_ref())
+    }
+
+    fn jump_target_cache(&self) -> Option<bool> {
+        T::jump_target_cache(self.as_ref())
     }
 }
 
@@ -173,5 +212,62 @@ impl<U> Decode<U> for ReferenceDOptions {
             full_address,
             full_data,
         })
+    }
+}
+
+/// A [`Unit`] allowing plugging any [`Unit`] into a [`Decoder`]
+///
+/// [`Decoder`] is generic over its [`Unit`], and may thus be constructed with
+/// any [`Unit`]. However , this choice is reflected in the [`Decoder`]'s type.
+/// This helper allows erasing the type of the specific [`Unit`] used, serving
+/// as a "plug" for arbitrary [`Unit`]s.
+#[cfg(feature = "alloc")]
+#[allow(clippy::type_complexity)]
+#[derive(Copy, Clone, Debug)]
+pub struct Plug {
+    encoder_mode_width: u8,
+    decode_ioptions: fn(decoder: &mut Decoder<Self>) -> Result<Box<dyn IOptions>, Error>,
+    decode_doptions: fn(decoder: &mut Decoder<Self>) -> Result<Box<dyn core::any::Any>, Error>,
+}
+
+#[cfg(feature = "alloc")]
+impl Plug {
+    /// Create a new plug for the given [`Unit`]
+    pub fn new<U: Unit<Self>>(inner: &U) -> Self {
+        fn decode_ioptions<V: Unit<Plug>>(
+            decoder: &mut Decoder<Plug>,
+        ) -> Result<Box<dyn IOptions>, Error> {
+            V::decode_ioptions(decoder).map(|r| -> Box<dyn IOptions> { Box::new(r) })
+        }
+
+        fn decode_doptions<V: Unit<Plug>>(
+            decoder: &mut Decoder<Plug>,
+        ) -> Result<Box<dyn core::any::Any>, Error> {
+            V::decode_doptions(decoder).map(|r| -> Box<dyn core::any::Any> { Box::new(r) })
+        }
+
+        Self {
+            encoder_mode_width: inner.encoder_mode_width(),
+            decode_ioptions: decode_ioptions::<U>,
+            decode_doptions: decode_doptions::<U>,
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Unit for Plug {
+    type IOptions = Box<dyn IOptions>;
+    type DOptions = Box<dyn core::any::Any>;
+
+    fn encoder_mode_width(&self) -> u8 {
+        self.encoder_mode_width
+    }
+
+    fn decode_ioptions(decoder: &mut Decoder<Self>) -> Result<Self::IOptions, Error> {
+        (decoder.unit().decode_ioptions)(decoder)
+    }
+
+    fn decode_doptions(decoder: &mut Decoder<Self>) -> Result<Self::DOptions, Error> {
+        (decoder.unit().decode_doptions)(decoder)
     }
 }
