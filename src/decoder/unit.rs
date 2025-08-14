@@ -31,6 +31,15 @@ pub trait Unit<U = Self> {
 
     /// Decode data trace options
     fn decode_doptions(decoder: &mut Decoder<U>) -> Result<Self::DOptions, Error>;
+
+    /// Create a [`Plug`] for this unit
+    #[cfg(feature = "alloc")]
+    fn as_plug(&self) -> Plug
+    where
+        Self: Unit<Plug> + Sized,
+    {
+        Plug::new(self)
+    }
 }
 
 /// Instruction trace options that may be communicated via support packets
