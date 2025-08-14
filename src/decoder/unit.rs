@@ -205,3 +205,60 @@ impl<U> Decode<U> for ReferenceDOptions {
         })
     }
 }
+
+/// A [`Unit`] allowing plugging any [`Unit`] into a [`Decoder`]
+///
+/// [`Decoder`] is generic over its [`Unit`], and may thus be constructed with
+/// any [`Unit`]. However , this choice is reflected in the [`Decoder`]'s type.
+/// This helper allows erasing the type of the specific [`Unit`] used, serving
+/// as a "plug" for arbitrary [`Unit`]s.
+#[cfg(feature = "alloc")]
+#[allow(clippy::type_complexity)]
+#[derive(Copy, Clone, Debug)]
+pub struct Plug {
+    encoder_mode_width: u8,
+    decode_ioptions: fn(decoder: &mut Decoder<Self>) -> Result<Box<dyn IOptions>, Error>,
+    decode_doptions: fn(decoder: &mut Decoder<Self>) -> Result<Box<dyn core::any::Any>, Error>,
+}
+
+#[cfg(feature = "alloc")]
+impl Plug {
+    /// Create a new plug for the given [`Unit`]
+    pub fn new<U: Unit<Self>>(inner: &U) -> Self {
+        fn decode_ioptions<V: Unit<Plug>>(
+            decoder: &mut Decoder<Plug>,
+        ) -> Result<Box<dyn IOptions>, Error> {
+            V::decode_ioptions(decoder).map(|r| -> Box<dyn IOptions> { Box::new(r) })
+        }
+
+        fn decode_doptions<V: Unit<Plug>>(
+            decoder: &mut Decoder<Plug>,
+        ) -> Result<Box<dyn core::any::Any>, Error> {
+            V::decode_doptions(decoder).map(|r| -> Box<dyn core::any::Any> { Box::new(r) })
+        }
+
+        Self {
+            encoder_mode_width: inner.encoder_mode_width(),
+            decode_ioptions: decode_ioptions::<U>,
+            decode_doptions: decode_doptions::<U>,
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Unit for Plug {
+    type IOptions = Box<dyn IOptions>;
+    type DOptions = Box<dyn core::any::Any>;
+
+    fn encoder_mode_width(&self) -> u8 {
+        self.encoder_mode_width
+    }
+
+    fn decode_ioptions(decoder: &mut Decoder<Self>) -> Result<Self::IOptions, Error> {
+        (decoder.unit().decode_ioptions)(decoder)
+    }
+
+    fn decode_doptions(decoder: &mut Decoder<Self>) -> Result<Self::DOptions, Error> {
+        (decoder.unit().decode_doptions)(decoder)
+    }
+}
