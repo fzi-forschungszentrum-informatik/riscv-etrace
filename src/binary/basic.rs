@@ -91,6 +91,11 @@ impl<T: AsRef<[u8]>> Binary for Segment<T> {
     }
 }
 
+/// Create a new [`Binary`] for a segment of (raw) code
+pub fn from_segment<T: AsRef<[u8]>>(data: T, base: base::Set) -> Segment<T> {
+    Segment::new(data, base)
+}
+
 /// [`Binary`] defined by a set of addresses-[`Instruction`] pairs
 ///
 /// This [`Binary`] is backed by a slice of addresses-[`Instruction`] pairs
