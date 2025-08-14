@@ -100,10 +100,15 @@ impl<T: AsRef<[(u64, Instruction)]>> Binary for SimpleMap<T> {
     }
 }
 
+/// Create a [`Func`] [`Binary`] from some `AsRef<[(u64, Instruction)]>`
+///
+/// Returns `None` if the address-[`Instruction`] pairs are not sorted by
+/// address.
 pub fn from_sorted_map<T: AsRef<[(u64, Instruction)]>>(inner: T) -> Option<SimpleMap<T>> {
     SimpleMap::from_sorted(inner)
 }
 
+/// Create a [`Func`] [`Binary`] from some `AsMut<[(u64, Instruction)]>`
 pub fn from_map<T, I>(inner: I) -> SimpleMap<T>
 where
     T: AsRef<[(u64, Instruction)]> + From<I>,
