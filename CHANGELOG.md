@@ -13,9 +13,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
   fragments such as bootroms.
 - Fns `binary::basic::from_map` and `binary::basic::from_sorted_map` (both
   reexported from `binary`) for creating `binary::basic::SimpleMap`s.
-- A `binary::Binary` adapter `binary::Func` for using `FnMut`s.
-- A fn `binary::from_fn` for convenient creation of a `binary::Binary` from an
-  `FnMut`.
+- A `binary::Binary` adapter `binary::basic::Func` for using `FnMut`s.
+- A fn `binary::basic::from_fn` (reexported from `binary`) for convenient
+  creation of a `binary::Binary` from an `FnMut`.
 - A trait `binary::error::Miss` for creation of error values indicating a
   "miss".
 - `binary::Binary` impl for `Option` now requires the inner binary's `Error` to
