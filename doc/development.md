@@ -33,6 +33,6 @@ The `simple` example can be executed in reference checking mode for all tests
 in a suite for which a trace exists by running a test-script from the project's
 root directory:
 
-``sh
+```sh
 doc/test-reference.sh ${suite}
-``
+```
