@@ -57,11 +57,11 @@
 //! # Example
 //!
 //! The following example demonstrates basic instruction tracing, with default
-//! [`config::Parameters`], a custom [`Binary`][binary::Binary] and tracing
+//! [`config::Parameters`], a simple [`Binary`][binary::Binary] and tracing
 //! packets placed in a single buffer.
 //!
 //! ```
-//! use riscv_etrace::binary;
+//! use riscv_etrace::binary::{self, Binary};
 //! use riscv_etrace::decoder;
 //! use riscv_etrace::instruction::{base, Instruction};
 //! use riscv_etrace::tracer::{self, Tracer};
@@ -70,13 +70,8 @@
 //! # let binary_offset = 0x80000028;
 //! # let trace_data = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
 //! # let hart_to_trace = 0;
-//! let binary = binary::from_fn(|addr: u64| {
-//!     addr.checked_sub(binary_offset)
-//!         .and_then(|a| binary_data.split_at_checked(a as usize))
-//!         .and_then(|(_, d)| Instruction::extract(d, base::Set::Rv32I))
-//!         .map(|(i, _)| i)
-//!         .ok_or(binary::error::NoInstruction)
-//! });
+//! let binary = binary::from_segment(binary_data, base::Set::Rv32I)
+//!     .with_offset(binary_offset);
 //!
 //! let parameters = Default::default();
 //! let mut decoder = decoder::builder()
