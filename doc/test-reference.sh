@@ -44,9 +44,9 @@ fi
 
 test_files_dir="${suite}/../../tests/test_files/"
 for elf in "${test_files_dir}"*.riscv "${test_files_dir}"*.pk; do
-    if file ${elf} | grep 'ELF 64-bit' >> /dev/null; then
+    if file ${elf} | grep -q 'ELF 64-bit'; then
         params="params_64.toml"
-    elif file ${elf} | grep 'ELF 32-bit' >> /dev/null; then
+    elif file ${elf} | grep -q 'ELF 32-bit'; then
         params="params_32.toml"
     else
         echo "Ignoring ${test_name}: unknown ELF type"
