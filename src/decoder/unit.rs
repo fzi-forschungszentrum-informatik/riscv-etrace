@@ -15,10 +15,10 @@ use config::AddressMode;
 /// Specifics about a trace unit implementation
 pub trait Unit<U = Self> {
     /// Instruction trace options
-    type IOptions: IOptions;
+    type IOptions: IOptions + 'static;
 
     /// Data trace options
-    type DOptions;
+    type DOptions: 'static;
 
     /// Width of the encoder mode field
     fn encoder_mode_width(&self) -> u8;
