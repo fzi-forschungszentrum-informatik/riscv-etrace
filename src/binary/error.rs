@@ -72,6 +72,51 @@ pub trait MaybeMissError: MaybeMiss + core::error::Error {}
 
 impl<T: MaybeMiss + core::error::Error + ?Sized> MaybeMissError for T {}
 
+/// An error for single segments of encoded [`Instruction`][super::Instruction]s
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SegmentError {
+    /// The address was not covered
+    AddressNotCovered,
+    /// Could not use an address or offset because it is too big for the host
+    ExceededHostUSize(core::num::TryFromIntError),
+    /// An [`Instruction`][super::Instruction] could not be decoded
+    InvalidInstruction,
+}
+
+impl Miss for SegmentError {
+    fn miss(_: u64) -> Self {
+        Self::AddressNotCovered
+    }
+}
+
+impl MaybeMiss for SegmentError {
+    fn is_miss(&self) -> bool {
+        matches!(self, Self::AddressNotCovered)
+    }
+}
+
+impl core::error::Error for SegmentError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::ExceededHostUSize(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for SegmentError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AddressNotCovered => write!(f, "Given address not covered"),
+            Self::ExceededHostUSize(_) => write!(
+                f,
+                "An offset exceeds what can be represented with host native addresses"
+            ),
+            Self::InvalidInstruction => write!(f, "No valid instruction at address"),
+        }
+    }
+}
+
 /// An error type expressing absence of an [`Instruction`][super::Instruction]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoInstruction;

@@ -9,6 +9,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `alloc` feature for enabling types, impls and fns that require the `alloc`
   crate.
+- A `binary::Binary` adapter `binary::basic::Segment` for individual raw code
+  segments.
+- A fn `binary::basic::from_segment` (reexported from `binary`) for convenient
+  creation of a `binary::Binary` from raw code segments.
 - `decoder::unit::IOptions` impl for `Box<decoder::unit::IOptions>`.
 - A type `decoder::unit::Plug` for type erasing `decoder::unit::Unit`s.
 - A fn `decoder::unit::Unit::plug` for creating `decoder::unit::Plug`s.

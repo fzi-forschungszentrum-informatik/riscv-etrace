@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Basic [`Binary`]s and adapters
 
-use crate::instruction::Instruction;
+use crate::instruction::{base, Instruction};
 
 use super::error;
 use super::Binary;
@@ -37,6 +37,63 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for Func<F, E> {
 /// Create a [`Func`] [`Binary`] from an [`FnMut`]
 pub fn from_fn<F: FnMut(u64) -> Result<Instruction, E>, E>(func: F) -> Func<F, E> {
     Func::new(func)
+}
+
+/// [`Binary`] consisting of a single segment of encoded [`Instruction`]s
+///
+/// This [`Binary`] serves a single buffer as a code segment starting from
+/// address `0`.
+///
+/// # Example
+///
+/// The following example builds a segment at a specifig offset:
+///
+/// ```
+/// use riscv_etrace::binary::{self, Binary};
+/// use riscv_etrace::instruction::{self, base};
+///
+/// let bootrom = b"\x97\x02\x00\x00\x93\x85\x02\x02\x73\x25\x40\xf1\x83\xb2\x82\x01\x67\x80\x02\x00";
+/// let mut bootrom = binary::from_segment(bootrom, base::Set::Rv64I)
+///     .with_offset(0x1000);
+/// assert_eq!(
+///     bootrom.get_insn(0x1010),
+///     Ok(instruction::Kind::new_jalr(0, 5, 0).into()),
+/// );
+/// ```
+#[derive(Copy, Clone, Debug)]
+pub struct Segment<T: AsRef<[u8]>> {
+    data: T,
+    base: base::Set,
+}
+
+impl<T: AsRef<[u8]>> Segment<T> {
+    /// Create a new [`Binary`] for code of a given instruction [`base::Set`]
+    pub fn new(data: T, base: base::Set) -> Self {
+        Self { data, base }
+    }
+}
+
+impl<T: AsRef<[u8]>> Binary for Segment<T> {
+    type Error = error::SegmentError;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+        let offset = address.try_into().map_err(Self::Error::ExceededHostUSize)?;
+        let insn_data = self
+            .data
+            .as_ref()
+            .split_at_checked(offset)
+            .map(|(_, d)| d)
+            .filter(|d| !d.is_empty())
+            .ok_or(Self::Error::AddressNotCovered)?;
+        Instruction::extract(insn_data, self.base)
+            .map(|(i, _)| i)
+            .ok_or(Self::Error::InvalidInstruction)
+    }
+}
+
+/// Create a new [`Binary`] for a segment of (raw) code
+pub fn from_segment<T: AsRef<[u8]>>(data: T, base: base::Set) -> Segment<T> {
+    Segment::new(data, base)
 }
 
 /// [`Binary`] defined by a set of addresses-[`Instruction`] pairs
