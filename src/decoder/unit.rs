@@ -38,6 +38,8 @@ pub trait Unit<U = Self> {
     fn as_plug(&self) -> Plug
     where
         Self: Unit<Plug> + Sized,
+        <Self as Unit<Plug>>::IOptions: fmt::Debug,
+        <Self as Unit<Plug>>::DOptions: fmt::Debug,
     {
         Plug::new(self)
     }
@@ -319,24 +321,33 @@ impl IOptions for PULPIOptions {
 #[derive(Copy, Clone, Debug)]
 pub struct Plug {
     encoder_mode_width: u8,
-    decode_ioptions: fn(decoder: &mut Decoder<Self>) -> Result<Box<dyn IOptions>, Error>,
-    decode_doptions: fn(decoder: &mut Decoder<Self>) -> Result<Box<dyn core::any::Any>, Error>,
+    decode_ioptions: fn(&mut Decoder<Self>) -> Result<Box<dyn DebugIOptions>, Error>,
+    decode_doptions: fn(&mut Decoder<Self>) -> Result<Box<dyn fmt::Debug>, Error>,
 }
 
 #[cfg(feature = "alloc")]
 impl Plug {
     /// Create a new plug for the given [`Unit`]
-    pub fn new<U: Unit<Self>>(inner: &U) -> Self {
-        fn decode_ioptions<V: Unit<Plug>>(
-            decoder: &mut Decoder<Plug>,
-        ) -> Result<Box<dyn IOptions>, Error> {
-            V::decode_ioptions(decoder).map(|r| -> Box<dyn IOptions> { Box::new(r) })
+    pub fn new<U>(inner: &U) -> Self
+    where
+        U: Unit<Self>,
+        U::IOptions: fmt::Debug,
+        U::DOptions: fmt::Debug,
+    {
+        fn decode_ioptions<U>(decoder: &mut Decoder<Plug>) -> Result<Box<dyn DebugIOptions>, Error>
+        where
+            U: Unit<Plug>,
+            U::IOptions: fmt::Debug,
+        {
+            U::decode_ioptions(decoder).map(|r| -> Box<dyn DebugIOptions> { Box::new(r) })
         }
 
-        fn decode_doptions<V: Unit<Plug>>(
-            decoder: &mut Decoder<Plug>,
-        ) -> Result<Box<dyn core::any::Any>, Error> {
-            V::decode_doptions(decoder).map(|r| -> Box<dyn core::any::Any> { Box::new(r) })
+        fn decode_doptions<U>(decoder: &mut Decoder<Plug>) -> Result<Box<dyn fmt::Debug>, Error>
+        where
+            U: Unit<Plug>,
+            U::DOptions: fmt::Debug,
+        {
+            U::decode_doptions(decoder).map(|r| -> Box<dyn fmt::Debug> { Box::new(r) })
         }
 
         Self {
@@ -349,8 +360,8 @@ impl Plug {
 
 #[cfg(feature = "alloc")]
 impl Unit for Plug {
-    type IOptions = Box<dyn IOptions>;
-    type DOptions = Box<dyn core::any::Any>;
+    type IOptions = Box<dyn DebugIOptions>;
+    type DOptions = Box<dyn fmt::Debug>;
 
     fn encoder_mode_width(&self) -> u8 {
         self.encoder_mode_width
