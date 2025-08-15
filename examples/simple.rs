@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Simple tracer for single core platforms
 //!
-//!     Usage: simple ELF-file trace-file [parameter-file] [reference-trace]
-//!
 //! This program traces a program provided in the form of an ELF file. The trace
 //! is supplies as a file consisting of concatenated trace packets. Optionally,
 //! parameters may be supplied in the form of a TOML file (such as `params.toml`
@@ -11,15 +9,12 @@
 //! program will compare the reconstructed trace against that reference and
 //! abort if a mismatch is found.
 //!
-//! Only a single hart (hart `0`) is traced.
-//!
-//! By default, the program prints a single line for every trace item to stdout.
-//! If run with the environment variable `DEBUG` set to `1`, the configuration
-//! and every packet decoded are printed to stderr.
+//! Only a single hart is traced. The program prints a single line for every
+//! trace item to stdout. Additional information may be printed to stderr.
 
 mod spike;
 
-const TARGET_HART: u64 = 0;
+use std::path::PathBuf;
 
 fn main() {
     use riscv_etrace::binary::{self, Binary};
@@ -27,36 +22,78 @@ fn main() {
     use riscv_etrace::instruction;
     use riscv_etrace::tracer::{self, item, Tracer};
 
-    let debug = std::env::var_os("DEBUG").map(|v| v == "1").unwrap_or(false);
-    let mut args = std::env::args_os().skip(1);
+    let matches = clap::Command::new("Simple tracer")
+        .arg(
+            clap::arg!(<trace> "Path to the trace file").value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(<elf>... "ELF files containing code being traced")
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(-p --params <FILE> "Trace encoder parameters")
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(-r --reference <FILE> "Reference spike CSV trace")
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(--"spike-bootrom" <FILE> "Assume presence of the spike bootrom")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            clap::arg!(--hart <NUM> "Hart to trace")
+                .value_parser(clap::value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            clap::arg!(-d --debug "Enable additional debug output")
+                .env("DEBUG")
+                .action(clap::ArgAction::SetTrue)
+                .value_parser(clap::builder::FalseyValueParser::new()),
+        )
+        .get_matches();
+
+    let debug = matches.get_flag("debug");
 
     // For tracing, we need the program to trace ...
-    let mut elf_path: std::path::PathBuf = args.next().expect("No ELF file specified").into();
-    let elf_data = std::fs::read(&elf_path).expect("Could not load ELF file");
-    let elf = elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_data.as_ref())
-        .expect("Coult not parse ELF file");
+    let elf_data: Vec<_> = matches
+        .get_many::<PathBuf>("elf")
+        .expect("No ELF file specified")
+        .map(|p| std::fs::read(p).expect("Could not load ELF file"))
+        .collect();
+    let mut base_set = instruction::base::Set::Rv32I;
+    let mut binary: Vec<_> = elf_data
+        .iter()
+        .map(|d| {
+            let elf = elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(d.as_ref())
+                .expect("Coult not parse ELF file");
+            // We need to construct a `Binary`.
+            let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
+            base_set = elf.base_set();
 
-    // ... the proxy kernel for non-bare-metal applications ...
-    let pk_data = elf_path.extension().is_some_and(|e| e == "pk").then(|| {
-        elf_path.set_file_name("pk.riscv");
-        eprintln!(
-            "Loading additional proxy kernel '{}' due to 'pk' extension...",
-            elf_path.display()
-        );
-        std::fs::read(&elf_path).expect("Could not load pk")
-    });
-    let pk = pk_data.as_ref().map(|d| {
-        elf::ElfBytes::<elf::endian::LittleEndian>::minimal_parse(d.as_ref())
-            .expect("Coult not parse pk ELF file")
-    });
+            // For PIE executables, we simply assume that they are placed at a known
+            // offset. This only works it a single ELF is a PIE executable
+            if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
+                elf.with_offset(0x8000_0000).boxed()
+            } else {
+                elf.boxed()
+            }
+        })
+        .collect();
 
     // ... and the trace file.
-    let trace_data = std::fs::read(args.next().expect("No trace file specified"))
-        .expect("Could not load trace file");
+    let trace_data = std::fs::read(
+        matches
+            .get_one::<PathBuf>("trace")
+            .expect("No trace file specified"),
+    )
+    .expect("Could not load trace file");
 
     // Often, we also need the encoder parameters
-    let params = args
-        .next()
+    let params = matches
+        .get_one::<PathBuf>("params")
         .map(|p| {
             let params = std::fs::read_to_string(p).expect("Could not load parameters");
             toml::from_str(params.as_ref()).expect("Could not parse parameters")
@@ -66,47 +103,33 @@ fn main() {
         eprintln!("Parameters: {params:?}");
     }
 
-    // We need to construct a `Binary`. For PIE executables, we simply assume
-    // that they are placed at a known offset.
-    let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
-    let base_set = elf.base_set();
-    let mut elf = if elf.inner().ehdr.e_type == elf::abi::ET_DYN {
-        vec![elf.with_offset(0x8000_0000)]
-    } else {
-        vec![elf.with_offset(0)]
-    };
-
-    elf.extend(pk.map(|e| {
-        binary::elf::Elf::new(e)
-            .expect("Could not construct binary from ELF file")
-            .with_offset(0)
-    }));
-    let elf = binary::Multi::from(elf);
-
-    // Given a reference trace, we can check whether our trace is correct.
-    let mut reference = args.next().map(|p| {
-        let csv = std::fs::File::open(p).expect("Could open reference trace");
-        spike::CSVTrace::new(std::io::BufReader::new(csv), base_set).peekable()
-    });
-
     // Depending on how we trace, we'll also observe the bootrom. Not having it
     // results in instruction fetch errors while tracing. This is a
     // representation of spike's bootrom.
-    let bootrom = binary::from_sorted_map([
-        (0x1000, instruction::Kind::new_auipc(5, 0).into()),
-        (0x1004, instruction::UNCOMPRESSED),
-        (0x1008, instruction::UNCOMPRESSED),
-        (0x100c, instruction::UNCOMPRESSED),
-        (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
-    ])
-    .expect("Bootrom was not sorted by address");
+    if matches.get_flag("spike-bootrom") {
+        let bootrom = binary::from_sorted_map([
+            (0x1000, instruction::Kind::new_auipc(5, 0).into()),
+            (0x1004, instruction::UNCOMPRESSED),
+            (0x1008, instruction::UNCOMPRESSED),
+            (0x100c, instruction::UNCOMPRESSED),
+            (0x1010, instruction::Kind::new_jalr(0, 5, 0).into()),
+        ])
+        .expect("Bootrom was not sorted by address");
+        binary.push(bootrom.boxed());
+    }
+
+    // Given a reference trace, we can check whether our trace is correct.
+    let mut reference = matches.get_one::<PathBuf>("reference").map(|p| {
+        let csv = std::fs::File::open(p).expect("Could open reference trace");
+        spike::CSVTrace::new(std::io::BufReader::new(csv), base_set).peekable()
+    });
 
     // Finally, construct decoder and tracer...
     let mut decoder = decoder::builder()
         .with_params(&params)
         .build(trace_data.as_ref());
     let mut tracer: Tracer<_> = tracer::builder()
-        .with_binary((elf, bootrom))
+        .with_binary(binary::Multi::from(binary))
         .with_params(&params)
         .build()
         .expect("Could not set up tracer");
@@ -114,6 +137,7 @@ fn main() {
     // ... and get going.
     let mut icount = 0u64;
     let mut pcount = 0u64;
+    let target_hart = matches.get_one("hart").cloned().unwrap_or(0);
     while decoder.bytes_left() > 0 {
         // We decode a packet ...
         let packet = decoder
@@ -128,7 +152,7 @@ fn main() {
         pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.
-        if packet.hart == TARGET_HART {
+        if packet.hart == target_hart {
             // We process the packet's contents ...
             tracer
                 .process_te_inst(&packet.payload)
@@ -140,7 +164,7 @@ fn main() {
 
                 let pc = item.pc();
                 match item.kind() {
-                    item::Kind::Regular(insn) => println!("{pc:0x}, {insn}"),
+                    item::Kind::Regular(insn) => println!("{pc:0x}\t{insn}"),
                     item::Kind::Trap(info) => {
                         if let Some(tval) = info.tval {
                             println!(

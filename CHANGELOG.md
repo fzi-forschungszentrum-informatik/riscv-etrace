@@ -47,6 +47,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The "simple" example now has a proper argument parser which enables a wider
+  variety of use-cases.
 - `decoder::unit::Unit` now requires `IOptions` and `DOptions` to be `'static`.
 - `binary::Offset` now requires the inner `binary::Binary`'s `Error` impl
   `binary::error::Miss`.
