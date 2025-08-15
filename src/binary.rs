@@ -81,6 +81,8 @@ use crate::instruction::Instruction;
 use error::Miss;
 
 /// A binary of some sort that contains [`Instruction`]s
+///
+/// See the [module level][self] documentation for more details.
 pub trait Binary {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
