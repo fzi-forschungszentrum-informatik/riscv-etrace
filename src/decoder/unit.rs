@@ -215,6 +215,93 @@ impl<U> Decode<U> for ReferenceDOptions {
     }
 }
 
+/// PULP trace [`Unit`]
+///
+/// Supports the [PULP rv tracer](https://github.com/pulp-platform/rv_tracer)
+/// and compatible trace units.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct PULP;
+
+impl<U> Unit<U> for PULP {
+    type IOptions = PULPIOptions;
+    type DOptions = NoOptions;
+
+    fn encoder_mode_width(&self) -> u8 {
+        1
+    }
+
+    fn decode_ioptions(decoder: &mut Decoder<U>) -> Result<Self::IOptions, Error> {
+        Decode::decode(decoder)
+    }
+
+    fn decode_doptions(decoder: &mut Decoder<U>) -> Result<Self::DOptions, Error> {
+        Decode::decode(decoder)
+    }
+}
+
+/// [`IOptions`] for the [`PULP`] [`Unit`]
+#[derive(Copy, Clone, Debug)]
+pub struct PULPIOptions {
+    pub delta_address: bool,
+    pub full_address: bool,
+    pub implicit_exception: bool,
+    pub sijump: bool,
+    pub implicit_return: bool,
+    pub branch_prediction: bool,
+    pub jump_target_cache: bool,
+}
+
+impl<U> Decode<U> for PULPIOptions {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        let jump_target_cache = decoder.read_bit()?;
+        let branch_prediction = decoder.read_bit()?;
+        let implicit_return = decoder.read_bit()?;
+        let sijump = decoder.read_bit()?;
+        let implicit_exception = decoder.read_bit()?;
+        let full_address = decoder.read_bit()?;
+        let delta_address = decoder.read_bit()?;
+        Ok(Self {
+            delta_address,
+            full_address,
+            implicit_exception,
+            sijump,
+            implicit_return,
+            branch_prediction,
+            jump_target_cache,
+        })
+    }
+}
+
+impl IOptions for PULPIOptions {
+    fn address_mode(&self) -> Option<AddressMode> {
+        match (self.delta_address, self.full_address) {
+            (true, false) => Some(AddressMode::Delta),
+            (false, true) => Some(AddressMode::Full),
+            _ => None,
+        }
+    }
+
+    fn sequentially_inferred_jumps(&self) -> Option<bool> {
+        Some(self.sijump)
+    }
+
+    fn implicit_return(&self) -> Option<bool> {
+        Some(self.implicit_return)
+    }
+
+    fn implicit_exception(&self) -> Option<bool> {
+        Some(self.implicit_exception)
+    }
+
+    fn branch_prediction(&self) -> Option<bool> {
+        Some(self.branch_prediction)
+    }
+
+    fn jump_target_cache(&self) -> Option<bool> {
+        Some(self.jump_target_cache)
+    }
+}
+
 /// A [`Unit`] allowing plugging any [`Unit`] into a [`Decoder`]
 ///
 /// [`Decoder`] is generic over its [`Unit`], and may thus be constructed with
@@ -271,3 +358,15 @@ impl Unit for Plug {
         (decoder.unit().decode_doptions)(decoder)
     }
 }
+
+/// Type representing an empty set, zero-bit wide set of options
+#[derive(Copy, Clone, Debug, Default)]
+pub struct NoOptions;
+
+impl<U> Decode<U> for NoOptions {
+    fn decode(_decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        Ok(Self)
+    }
+}
+
+impl IOptions for NoOptions {}
