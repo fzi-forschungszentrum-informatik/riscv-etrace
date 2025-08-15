@@ -359,6 +359,13 @@ impl Plug {
 }
 
 #[cfg(feature = "alloc")]
+impl Default for Plug {
+    fn default() -> Self {
+        Self::new(&Reference)
+    }
+}
+
+#[cfg(feature = "alloc")]
 impl Unit for Plug {
     type IOptions = Box<dyn DebugIOptions>;
     type DOptions = Box<dyn fmt::Debug>;
