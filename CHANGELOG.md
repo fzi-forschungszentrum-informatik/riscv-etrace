@@ -51,6 +51,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The `tracer::Tracer` fns `process_te_inst`, `process_sync` and
+  `process_support` are now also generic over the pyloads' doptions.
 - The "simple" example now has a proper argument parser which enables a wider
   variety of use-cases.
 - `decoder::unit::Unit` now requires `IOptions` and `DOptions` to be `'static`.

@@ -84,9 +84,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
     /// payloads via this fn.
-    pub fn process_te_inst(
+    pub fn process_te_inst<D>(
         &mut self,
-        payload: &Payload<impl IOptions>,
+        payload: &Payload<impl IOptions, D>,
     ) -> Result<(), Error<B::Error>> {
         use state::StopCondition;
 
@@ -127,9 +127,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     ///
     /// After a call to this fn, the tracer may yield new trace
     /// [`Item`]s.
-    pub fn process_sync(
+    pub fn process_sync<D>(
         &mut self,
-        sync: &sync::Synchronization<impl IOptions>,
+        sync: &sync::Synchronization<impl IOptions, D>,
     ) -> Result<(), Error<B::Error>> {
         use sync::Synchronization;
 
@@ -208,9 +208,9 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     ///
     /// After a call to this fn, the tracer may yield new trace
     /// [`Item`]s.
-    pub fn process_support(
+    pub fn process_support<D>(
         &mut self,
-        support: &sync::Support<impl IOptions>,
+        support: &sync::Support<impl IOptions, D>,
     ) -> Result<(), Error<B::Error>> {
         use sync::QualStatus;
 
