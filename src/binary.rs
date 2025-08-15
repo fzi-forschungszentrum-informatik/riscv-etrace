@@ -107,7 +107,7 @@ pub trait Binary {
     /// Box this binary for dynamic dispatching
     ///
     /// This allows combining binaries of different types with (originally)
-    /// different [`Error`][Self::Error] types in combinators such as [`Multi`].
+    /// different [`Error`][Self::Error] types in [combinators].
     #[cfg(feature = "alloc")]
     fn boxed<'a>(self) -> BoxedBinary<'a>
     where
