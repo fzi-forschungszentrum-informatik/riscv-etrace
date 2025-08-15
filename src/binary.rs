@@ -2,8 +2,64 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Binaries containing [`Instruction`]s
 //!
-//! This module defines the [`Binary`] trait for programs that may be traced as
-//! well as a number of types that may serve as a [`Binary`].
+//! Tracing requires knowledge about the program being traced. This module
+//! defines the [`Binary`] trait used by the [`Tracer`][super::tracer::Tracer]
+//! for retrieving [`Instruction`]s as well as a number of types implementing
+//! the [`Binary`] trait. These include:
+//!
+//! * some [basic] [`Binary`]s such as adapters that may be created through
+//!   free fns such as [`from_fn`] and [`from_segment`] and allow defining
+//!   [`Binary`]s from a wide range of types supplying data,
+//! * [combinators] that allow tracing multiple programs or program parts such
+//!   as a firmware and an appliction,
+//! * modifiers such as [`Offset`] that are usually created through provided fns
+//!   of the [`Binary`] trait and
+//! * feature-dependent [`Binary`]s, e.g. for using [ELF][elf] files as
+//!   [`Binary`]s.
+//!
+//! # Combining [`Binary`]s
+//!
+//! Usually, [`Binary`]s used in [combinators] all need to agree on the
+//! [`Binary::Error`] type. Combinators such as [`Multi`] in particular also
+//! requires the [`Binary`]s themselves to be of the same type. If the `alloc`
+//! feature is enabled, the error type may be erased through the provided method
+//! [`Binary::boxed`]. The lifetime of the original [`Binary`] is preserved in
+//! the resulting [`BoxedBinary`]. This is relevant when using an [`elf::Elf`]
+//! or when...
+//!
+//! # Sharing [`Binary`]s between [`Tracer`] instances
+//!
+//! [`Binary`]s are intended for use by a single [`Tracer`] and can not be
+//! easily shared between instances. They may be mutated when fetching an
+//! [`Instruction`], e.g. for caching purposes. For example, a [`Multi`] will
+//! remember the [`Binary`] it chooses and pick that particular one first the
+//! next time.
+//!
+//! Sharing a [`Binary`] between [`Tracer`]s by placing them behind a mutex of
+//! some kind defeates the caching, incurs considerable overhead and is highly
+//! discouraged. Instead, users should consider sharing the data backing the
+//! [`Binary`]s. For example, a [`basic::Segment`] may be created from a shared
+//! buffer or [`Arc`][alloc::sync::Arc] and then cloned.
+//!
+//! # Example
+//!
+//! The following constructs a [`Binary`] from a firmware image and a bootrom
+//! and clones it for use by a second [`Tracer`] instance.
+//!
+//! ```
+//! use riscv_etrace::binary::{self, Binary, Multi};
+//! use riscv_etrace::instruction::base;
+//!
+//! # let bootrom = b"\x97\x02\x00\x00\x93\x85\x02\x02\x73\x25\x40\xf1\x83\xb2\x82\x01\x67\x80\x02\x00";
+//! # let firmware = b"\x97\x02\x00\x00\x93\x82\x02\x00\x73\xa0\x52\x30\x73\x00\x50\x10\x6f\xf0\xdf\xff";
+//! let binary1 = Multi::new([
+//!     binary::from_segment(bootrom, base::Set::Rv32I).with_offset(0x1000),
+//!     binary::from_segment(firmware, base::Set::Rv32I).with_offset(0x80000000),
+//! ]);
+//! let binary2 = binary1.clone();
+//! ```
+//!
+//! [`Tracer`]: [super::tracer::Tracer]
 
 pub mod basic;
 #[cfg(feature = "alloc")]
@@ -25,6 +81,8 @@ use crate::instruction::Instruction;
 use error::Miss;
 
 /// A binary of some sort that contains [`Instruction`]s
+///
+/// See the [module level][self] documentation for more details.
 pub trait Binary {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
@@ -49,7 +107,7 @@ pub trait Binary {
     /// Box this binary for dynamic dispatching
     ///
     /// This allows combining binaries of different types with (originally)
-    /// different [`Error`][Self::Error] types in combinators such as [`Multi`].
+    /// different [`Error`][Self::Error] types in [combinators].
     #[cfg(feature = "alloc")]
     fn boxed<'a>(self) -> BoxedBinary<'a>
     where
