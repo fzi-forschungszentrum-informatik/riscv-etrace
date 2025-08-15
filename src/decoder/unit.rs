@@ -383,6 +383,14 @@ impl Unit for Plug {
     }
 }
 
+/// List of [`Plug`] constructors for all [`Unit`]s provided by this library
+#[cfg(feature = "alloc")]
+#[allow(clippy::type_complexity)]
+pub const PLUGS: &[(&str, fn() -> Plug)] = &[
+    ("reference", || Plug::new(&Reference)),
+    ("pulp", || Plug::new(&PULP)),
+];
+
 /// Type representing an empty set, zero-bit wide set of options
 #[derive(Copy, Clone, Debug, Default)]
 pub struct NoOptions;
