@@ -8,6 +8,7 @@
 
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
+use core::fmt;
 
 use crate::config;
 
@@ -118,6 +119,11 @@ impl<T: IOptions + ?Sized> IOptions for Box<T> {
         T::jump_target_cache(self.as_ref())
     }
 }
+
+/// An [`IOptions`] that is [`Debug`][fmt::Debug]
+pub trait DebugIOptions: IOptions + fmt::Debug {}
+
+impl<T: IOptions + fmt::Debug> DebugIOptions for T {}
 
 /// Reference trace [`Unit`]
 ///
