@@ -53,6 +53,10 @@ fn main() {
                 .default_value("0"),
         )
         .arg(
+            clap::arg!(--"hart-index-width" <WIDTH> "Width of the hart index field")
+                .value_parser(clap::value_parser!(u8)),
+        )
+        .arg(
             clap::arg!(-d --debug "Enable additional debug output")
                 .env("DEBUG")
                 .action(clap::ArgAction::SetTrue)
@@ -134,7 +138,10 @@ fn main() {
         .get_one::<decoder::unit::Plug>("unit")
         .cloned()
         .unwrap_or_default();
-    let mut decoder = decoder::builder()
+    let mut decoder = matches
+        .get_one("hart-index-width")
+        .map(|w| decoder::builder().with_hart_index_width(*w))
+        .unwrap_or_default()
         .for_unit(unit)
         .with_params(&params)
         .build(trace_data.as_ref());
