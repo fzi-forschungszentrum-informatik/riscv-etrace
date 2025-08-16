@@ -53,6 +53,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `(A, B)` now implements `binary::Binary` only if both binaries agree on their
+  `binary::Binary::Error` type, and selects `B` only if `A` yield a "miss".
 - The `tracer::Tracer` fns `process_te_inst`, `process_sync` and
   `process_support` are now also generic over the pyloads' doptions.
 - The "simple" example now has a proper argument parser which enables a wider
