@@ -57,6 +57,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Moved reference checking logic out of the "simple" example into the `spike`
+  module, removing some potential distraction from the show case.
 - The `instruction::Bits` has two more variants `Bit48` and `Bit64`.
 - The `instruction::Size` has two more variants `Wide` and `ExtraWide`.
 - `(A, B)` now implements `binary::Binary` only if both binaries agree on their

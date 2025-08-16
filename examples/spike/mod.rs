@@ -4,10 +4,12 @@
 
 use std::io::BufRead;
 
+use riscv_etrace::decoder;
 use riscv_etrace::instruction;
 use riscv_etrace::tracer::item::{self, Item};
 use riscv_etrace::types::Privilege;
 
+use decoder::payload::Payload;
 use instruction::base;
 
 /// Reference flow spike CSV trace
@@ -159,5 +161,36 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
 
         self.last_address = address;
         Some(item)
+    }
+}
+
+/// Check a regularly traced item against a reference trait
+pub fn check_reference(
+    reference: &mut std::iter::Peekable<impl Iterator<Item = Item>>,
+    item: &Item,
+    payload: &Payload<impl decoder::unit::IOptions, impl std::any::Any>,
+    icount: u64,
+) {
+    use decoder::sync::Synchronization;
+
+    let refitem = reference.peek().expect("Reference trace ended");
+    if item != refitem {
+        if !matches!(payload, Payload::Synchronization(Synchronization::Start(_)))
+            || matches!(refitem.kind(), item::Kind::Context(_))
+            || !matches!(item.kind(), item::Kind::Context(_))
+        {
+            eprintln!("Traced item {icount} differs from reference!");
+            eprintln!("  Traced item: {item:?}");
+            eprintln!("  Reference:   {refitem:?}");
+            assert!(
+                !matches!(item.kind(), item::Kind::Regular(_)) || item.pc() == refitem.pc(),
+                "Aborting due to differing PCs ({:0x} vs. {:0x})",
+                item.pc(),
+                refitem.pc()
+            );
+            reference.next();
+        }
+    } else {
+        reference.next();
     }
 }

@@ -196,31 +196,7 @@ fn main() {
                 }
 
                 if let Some(reference) = reference.as_mut() {
-                    use decoder::payload::Payload;
-                    use decoder::sync::Synchronization;
-                    let refitem = reference.peek().expect("Reference trace ended");
-                    if &item != refitem {
-                        if !matches!(
-                            packet.payload,
-                            Payload::Synchronization(Synchronization::Start(_))
-                        ) || matches!(refitem.kind(), item::Kind::Context(_))
-                            || !matches!(item.kind(), item::Kind::Context(_))
-                        {
-                            eprintln!("Traced item {icount} differs from reference!");
-                            eprintln!("  Traced item: {item:?}");
-                            eprintln!("  Reference:   {refitem:?}");
-                            assert!(
-                                !matches!(item.kind(), item::Kind::Regular(_))
-                                    || item.pc() == refitem.pc(),
-                                "Aborting due to differing PCs ({:0x} vs. {:0x})",
-                                item.pc(),
-                                refitem.pc()
-                            );
-                            reference.next();
-                        }
-                    } else {
-                        reference.next();
-                    }
+                    spike::check_reference(reference, &item, &packet.payload, icount);
                 }
 
                 icount += 1;
