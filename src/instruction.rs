@@ -18,8 +18,10 @@ use format::Register;
 /// Bits from which [`Instruction`]s can be disassembled
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
-    Bit32(u32),
     Bit16(u16),
+    Bit32(u32),
+    Bit48(u64),
+    Bit64(u64),
 }
 
 impl Bits {
@@ -41,6 +43,14 @@ impl Bits {
             [a, b, c, d, r @ ..] if a & 0b11100 != 0b11100 => {
                 Some((Self::Bit32(u32::from_le_bytes([*a, *b, *c, *d])), r))
             }
+            [a, b, c, d, e, f, r @ ..] if a & 0x3f == 0x1f => Some((
+                Self::Bit48(u64::from_le_bytes([*a, *b, *c, *d, *e, *f, 0, 0])),
+                r,
+            )),
+            [a, b, c, d, e, f, g, h, r @ ..] if a & 0x7f == 0x3f => Some((
+                Self::Bit64(u64::from_le_bytes([*a, *b, *c, *d, *e, *f, *g, *h])),
+                r,
+            )),
             _ => None,
         }
     }
@@ -51,13 +61,21 @@ impl Bits {
     /// known.
     pub fn decode(self, base: base::Set) -> Instruction {
         match self {
+            Self::Bit16(bits) => Instruction {
+                size: Size::Compressed,
+                kind: base.decode_16(bits),
+            },
             Self::Bit32(bits) => Instruction {
                 size: Size::Normal,
                 kind: base.decode_32(bits),
             },
-            Self::Bit16(bits) => Instruction {
-                size: Size::Compressed,
-                kind: base.decode_16(bits),
+            Self::Bit48(bits) => Instruction {
+                size: Size::Wide,
+                kind: base.decode_48(bits),
+            },
+            Self::Bit64(bits) => Instruction {
+                size: Size::ExtraWide,
+                kind: base.decode_64(bits),
             },
         }
     }
@@ -392,6 +410,8 @@ impl fmt::Display for Kind {
 pub enum Size {
     Compressed = 2,
     Normal = 4,
+    Wide = 6,
+    ExtraWide = 8,
 }
 
 impl Default for Size {

@@ -95,6 +95,24 @@ impl Set {
             _ => None,
         }
     }
+
+    /// Decode a 48bit instruction
+    ///
+    /// Returns an instruction [`Kind`] if it can be decoded, that is if that
+    /// instruction is known. As only a small part of all RISC-V instruction is
+    /// relevant, we don't consider unknown instructions an error.
+    pub fn decode_48(self, _insn: u64) -> Option<Kind> {
+        None
+    }
+
+    /// Decode a 64bit instruction
+    ///
+    /// Returns an instruction [`Kind`] if it can be decoded, that is if that
+    /// instruction is known. As only a small part of all RISC-V instruction is
+    /// relevant, we don't consider unknown instructions an error.
+    pub fn decode_64(self, _insn: u64) -> Option<Kind> {
+        None
+    }
 }
 
 #[repr(u32)]
