@@ -44,7 +44,7 @@ fn main() {
                 .value_parser(clap::value_parser!(PathBuf)),
         )
         .arg(
-            clap::arg!(--"spike-bootrom" <FILE> "Assume presence of the spike bootrom")
+            clap::arg!(--"spike-bootrom" "Assume presence of the spike bootrom")
                 .action(clap::ArgAction::SetTrue),
         )
         .arg(
