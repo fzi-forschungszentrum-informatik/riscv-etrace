@@ -10,6 +10,14 @@ specification. It provides:
 * a specialized instruction database with limited decoding capabilities and
 * various utilities, including types for handling trace encoder parameters.
 
+## Supported trace encoders
+
+Some aspects of support packets are defined by trace encoder implementations.
+This library provides an interface for abstracting them and support for the
+followng specific encoders (and, of course, compatible units):
+* the reference encoder implementation and
+* the [PULP rv tracer](https://github.com/pulp-platform/rv_tracer).
+
 ## License
 
 This library is licensed under the [Apache License 2.0](./LICENSE).
