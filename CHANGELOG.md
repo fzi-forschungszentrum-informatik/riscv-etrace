@@ -9,6 +9,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `alloc` feature for enabling types, impls and fns that require the `alloc`
   crate.
+- A trait `decoder::unit::DebugIOptions` combining `decoder::unit::IOptions` and
+  `Debug`.
 - A `decoder::unit::Unit` type `decoder::unit::PULP` for PULP's `rv_tracer`.
 - A type `decoder::unit::NoOptions` representing an empty set of options.
 - A `binary::Binary` adapter `binary::basic::Segment` for individual raw code

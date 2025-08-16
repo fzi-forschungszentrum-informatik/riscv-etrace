@@ -16,9 +16,10 @@ mod spike;
 
 use std::path::PathBuf;
 
+use riscv_etrace::decoder;
+
 fn main() {
     use riscv_etrace::binary::{self, Binary};
-    use riscv_etrace::decoder;
     use riscv_etrace::instruction;
     use riscv_etrace::tracer::{self, item, Tracer};
 
@@ -33,6 +34,10 @@ fn main() {
         .arg(
             clap::arg!(-p --params <FILE> "Trace encoder parameters")
                 .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            clap::arg!(-u --unit <UNIT> "Trace encoder implementation that produced the trace")
+                .value_parser(TraceUnitParser),
         )
         .arg(
             clap::arg!(-r --reference <FILE> "Reference spike CSV trace")
@@ -125,7 +130,12 @@ fn main() {
     });
 
     // Finally, construct decoder and tracer...
+    let unit = matches
+        .get_one::<decoder::unit::Plug>("unit")
+        .cloned()
+        .unwrap_or_default();
     let mut decoder = decoder::builder()
+        .for_unit(unit)
         .with_params(&params)
         .build(trace_data.as_ref());
     let mut tracer: Tracer<_> = tracer::builder()
@@ -216,4 +226,41 @@ fn main() {
     }
 
     eprintln!("Decoded {pcount} packets, traced {icount} items");
+}
+
+#[derive(Clone)]
+struct TraceUnitParser;
+
+impl clap::builder::TypedValueParser for TraceUnitParser {
+    type Value = decoder::unit::Plug;
+
+    fn parse_ref(
+        &self,
+        cmd: &clap::Command,
+        arg: Option<&clap::Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        use clap::error::{ContextKind, ContextValue};
+
+        decoder::unit::PLUGS
+            .iter()
+            .find(|(n, _)| *n == value)
+            .map(|(_, p)| p())
+            .ok_or_else(|| {
+                let mut err =
+                    clap::Error::new(clap::error::ErrorKind::ValueValidation).with_cmd(cmd);
+                if let Some(arg) = arg {
+                    err.insert(
+                        ContextKind::InvalidArg,
+                        ContextValue::String(arg.to_string()),
+                    );
+                }
+                let value = value
+                    .try_into()
+                    .map(|s: &str| ContextValue::String(s.into()))
+                    .unwrap_or(ContextValue::None);
+                err.insert(ContextKind::InvalidValue, value);
+                err
+            })
+    }
 }
