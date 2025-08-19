@@ -10,6 +10,41 @@ use crate::types::branch;
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use item::{Context, Item};
 
+macro_rules! trace_test {
+    ($n:ident, $b:expr, $($p:expr => { $($i:tt),* })*) => {
+        #[test]
+        fn $n() {
+            let code = binary::from_sorted_map($b);
+            let mut tracer: Tracer<_> = Builder::new()
+                .with_binary(code)
+                .build()
+                .expect("Could not build tracer");
+            $(
+                let payload: Payload = $p.into();
+                tracer.process_te_inst(&payload)
+                    .expect("Could not process packet");
+                $(
+                    trace_check_def!(tracer, $i);
+                )*
+                assert_eq!(tracer.next(), None);
+            )*
+        }
+    };
+}
+
+macro_rules! trace_check_def {
+    ($t:ident, ($a:literal, $i:expr)) => {
+        assert_eq!($t.next(), Some(Ok(Item::new($a, $i.into()))));
+    };
+    ($t:ident, ($n:literal, $($i:tt),*)) => {
+        (0..$n).for_each(|_| {
+            $(
+                trace_check_def!($t, $i);
+            )*
+        });
+    };
+}
+
 /// Test derived from the specification's Chaper 12, examples 1 and 2
 #[test]
 fn debug_printf() {
