@@ -151,7 +151,7 @@ impl<U> Unit<U> for Reference {
 }
 
 /// [`IOptions`] for the [`Reference`] [`Unit`]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ReferenceIOptions {
     pub implicit_return: bool,
     pub implicit_exception: bool,
@@ -200,7 +200,7 @@ impl IOptions for ReferenceIOptions {
 }
 
 /// DOptions for the [`Reference`] [`Unit`]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ReferenceDOptions {
     pub no_address: bool,
     pub no_data: bool,

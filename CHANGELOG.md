@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- `PartialEq` impl for `decoder::unit::ReferenceIOptions` and
+  `ReferenceDOptions`.
+
 ## 0.3.0 - 2025-08-16
 
 ### Added
