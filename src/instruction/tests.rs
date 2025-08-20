@@ -1,6 +1,8 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
+extern crate alloc;
+
 use super::*;
 
 use base::Set::{Rv32I, Rv64I};
@@ -110,11 +112,16 @@ decode_test!(
     1633
 );
 
-extern crate alloc;
-use alloc::format;
-use alloc::vec;
+mod c_jal {
+    use super::*;
+    decode_test!(Rv32I, rv32i, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
+    decode_test!(Rv64I, rv64i, 0x39f5u16, None);
+}
+
 #[test]
 fn display_formats_correctly() {
+    use alloc::format;
+    use alloc::vec;
     let cases = vec![
         (Kind::new_c_jr(12), "c.jr x12"),
         (Kind::new_c_jalr(31), "c.jalr x31"),
@@ -145,12 +152,6 @@ fn display_formats_correctly() {
             kind
         );
     }
-}
-
-mod c_jal {
-    use super::*;
-    decode_test!(Rv32I, rv32i, 0x39f5u16, Kind::new_c_jal(0, -772), j, -772);
-    decode_test!(Rv64I, rv64i, 0x39f5u16, None);
 }
 
 // Instruction type related tests
