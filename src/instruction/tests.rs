@@ -118,40 +118,39 @@ mod c_jal {
     decode_test!(Rv64I, rv64i, 0x39f5u16, None);
 }
 
-#[test]
-fn display_formats_correctly() {
-    use alloc::format;
-    use alloc::vec;
-    let cases = vec![
-        (Kind::new_c_jr(12), "c.jr x12"),
-        (Kind::new_c_jalr(31), "c.jalr x31"),
-        (Kind::new_c_jal(3, 0x5), "c.jal 0x5"),
-        (Kind::new_c_j(3, 0x15), "c.j 0x15"),
-        (Kind::new_jal(5, 0x12), "jal x5, 0x12"),
-        // Right shift displayed immediate by 12 bit
-        (Kind::new_c_lui(3, 0x5000), "c.lui x3, 0x5"),
-        (Kind::new_auipc(5, 0x12000), "auipc x5, 0x12"),
-        (Kind::new_lui(8, 0x135000), "lui x8, 0x135"),
-        (Kind::new_jalr(7, 5, 0x3057), "jalr x7, x5, 0x3057"),
-        (Kind::new_c_beqz(8, 0x333), "c.beqz x8, 0x333"),
-        (Kind::new_c_bnez(10, 0x812), "c.bnez x10, 0x812"),
-        (Kind::new_beq(9, 11, 0x111), "beq x9, x11, 0x111"),
-        (Kind::new_bne(12, 13, 0x555), "bne x12, x13, 0x555"),
-        (Kind::new_blt(15, 12, 0x723), "blt x15, x12, 0x723"),
-        (Kind::new_bge(10, 13, 0x444), "bge x10, x13, 0x444"),
-        (Kind::new_bltu(7, 11, 0x487), "bltu x7, x11, 0x487"),
-        (Kind::new_bgeu(6, 14, 0x777), "bgeu x6, x14, 0x777"),
-        (Kind::c_ebreak, "c.ebreak"),
-    ];
+mod fmt {
+    use alloc::string::ToString;
 
-    for (kind, expected) in cases {
-        assert_eq!(
-            format!("{}", kind),
-            expected,
-            "Failed for instruction: {:?}",
-            kind
-        );
+    use super::*;
+
+    macro_rules! format_test {
+        ($n:ident, $k:expr, $l:literal) => {
+            #[test]
+            fn $n() {
+                assert_eq!($k.to_string(), $l);
+            }
+        };
     }
+
+    format_test!(c_jr, Kind::new_c_jr(12), "c.jr x12");
+    format_test!(c_jalr, Kind::new_c_jalr(31), "c.jalr x31");
+    format_test!(c_jal, Kind::new_c_jal(3, 0x5), "c.jal 0x5");
+    format_test!(c_j, Kind::new_c_j(3, 0x15), "c.j 0x15");
+    format_test!(jal, Kind::new_jal(5, 0x12), "jal x5, 0x12");
+    // Right shift displayed immediate by 12 bit
+    format_test!(c_lui, Kind::new_c_lui(3, 0x5000), "c.lui x3, 0x5");
+    format_test!(auipc, Kind::new_auipc(5, 0x12000), "auipc x5, 0x12");
+    format_test!(lui, Kind::new_lui(8, 0x135000), "lui x8, 0x135");
+    format_test!(jalr, Kind::new_jalr(7, 5, 0x3057), "jalr x7, x5, 0x3057");
+    format_test!(c_beqz, Kind::new_c_beqz(8, 0x333), "c.beqz x8, 0x333");
+    format_test!(c_bnez, Kind::new_c_bnez(10, 0x812), "c.bnez x10, 0x812");
+    format_test!(beq, Kind::new_beq(9, 11, 0x111), "beq x9, x11, 0x111");
+    format_test!(bne, Kind::new_bne(12, 13, 0x555), "bne x12, x13, 0x555");
+    format_test!(blt, Kind::new_blt(15, 12, 0x723), "blt x15, x12, 0x723");
+    format_test!(bge, Kind::new_bge(10, 13, 0x444), "bge x10, x13, 0x444");
+    format_test!(bltu, Kind::new_bltu(7, 11, 0x487), "bltu x7, x11, 0x487");
+    format_test!(bgeu, Kind::new_bgeu(6, 14, 0x777), "bgeu x6, x14, 0x777");
+    format_test!(c_ebreak, Kind::c_ebreak, "c.ebreak");
 }
 
 // Instruction type related tests
