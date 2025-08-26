@@ -304,19 +304,14 @@ impl<S: ReturnStack> State<S> {
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
     fn sequential_jump_target(&self, insn: instruction::Kind) -> Option<u64> {
-        use instruction::Kind;
-
         if !self.sequential_jumps {
             return None;
         }
 
-        let (reg, target) = match self.last_insn.kind? {
-            Kind::auipc(d) => (d.rd, self.last_pc.wrapping_add_signed(d.imm.into())),
-            Kind::lui(d) => (d.rd, d.imm as u64),
-            Kind::c_lui(d) => (d.rd, d.imm as u64),
-            _ => return None,
-        };
-
+        let (reg, target) = self
+            .last_insn
+            .kind
+            .and_then(|k| k.upper_immediate(self.last_pc))?;
         let (dep, off) = insn.uninferable_jump()?;
 
         (dep == reg).then_some(target.wrapping_add_signed(off.into()))
