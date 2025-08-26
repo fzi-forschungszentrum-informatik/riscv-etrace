@@ -300,6 +300,22 @@ impl Kind {
         .filter(|(r, _)| *r != 0)
     }
 
+    /// Determine the upper immediate
+    ///
+    /// If [`Self`] refers to an `auipc`, `lui` or other instruction loading an
+    /// upper immediate, this fn returns the register the immediate is stored to
+    /// (first tuple element) and its effective value after the instruction
+    /// retired (second tuple element) under the assumption that the
+    /// instruction's address is `pc`.
+    pub fn upper_immediate(self, pc: u64) -> Option<(Register, u64)> {
+        match self {
+            Self::auipc(d) => Some((d.rd, pc.wrapping_add_signed(d.imm.into()))),
+            Self::lui(d) => Some((d.rd, d.imm as u64)),
+            Self::c_lui(d) => Some((d.rd, d.imm as u64)),
+            _ => None,
+        }
+    }
+
     /// Determine whether this instruction returns from a trap
     ///
     /// Returns `true` if [`Self`] refers to one of the (known) special
