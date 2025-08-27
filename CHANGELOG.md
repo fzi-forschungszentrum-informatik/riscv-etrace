@@ -9,6 +9,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `PartialEq` impl for `decoder::unit::ReferenceIOptions` and
   `ReferenceDOptions`.
+- A fn `instruction::Kind::upper_immediate` for extracting effective immediates
+  of `auipc`, `lui` and `c.lui` instructions.
 
 ## 0.3.0 - 2025-08-16
 
