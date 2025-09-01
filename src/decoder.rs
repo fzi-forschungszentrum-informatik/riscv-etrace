@@ -140,6 +140,12 @@ impl<'d, U> Decoder<'d, U> {
         self.bit_pos >> 3
     }
 
+    /// Reset the inner data to the given byte slice
+    pub fn reset(&mut self, data: &'d [u8]) {
+        self.bit_pos = 0;
+        self.data = data;
+    }
+
     /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
     /// Decodes a single [`smi::Packet`], consuming the associated data from the
@@ -187,9 +193,7 @@ impl<'d, U> Decoder<'d, U> {
     ) -> Result<D, Error> {
         let remaining = self.split_data(restrict)?;
         let res = Decode::decode(self)?;
-
-        self.bit_pos = 0;
-        self.data = remaining;
+        self.reset(remaining);
         Ok(res)
     }
 
