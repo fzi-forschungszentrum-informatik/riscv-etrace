@@ -110,6 +110,7 @@ pub struct Decoder<'d, U> {
     field_widths: Widths,
     unit: U,
     hart_index_width: u8,
+    timestamp_width: u8,
     trace_type_width: u8,
 }
 
@@ -309,6 +310,7 @@ pub struct Builder<U = unit::Reference> {
     field_widths: Widths,
     unit: U,
     hart_index_width: u8,
+    timestamp_width: u8,
     trace_type_width: u8,
 }
 
@@ -334,6 +336,7 @@ impl<U> Builder<U> {
             field_widths: self.field_widths,
             unit,
             hart_index_width: self.hart_index_width,
+            timestamp_width: self.timestamp_width,
             trace_type_width: self.trace_type_width,
         }
     }
@@ -345,6 +348,18 @@ impl<U> Builder<U> {
     pub fn with_hart_index_width(self, hart_index_width: u8) -> Self {
         Self {
             hart_index_width,
+            ..self
+        }
+    }
+
+    /// Set the width to use for packet timestamps
+    ///
+    /// Set the width of timestamps in applicable types of encapsulations, e.g.
+    /// packet headers. This does not affect the width of the `time` field in
+    /// context payloads.
+    pub fn with_timestamp_width(self, timestamp_width: u8) -> Self {
+        Self {
+            timestamp_width,
             ..self
         }
     }
@@ -368,6 +383,7 @@ impl<U> Builder<U> {
             field_widths: self.field_widths,
             unit: self.unit,
             hart_index_width: self.hart_index_width,
+            timestamp_width: self.timestamp_width,
             trace_type_width: self.trace_type_width,
         }
     }
