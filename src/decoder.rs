@@ -110,6 +110,7 @@ pub struct Decoder<'d, U> {
     field_widths: Widths,
     unit: U,
     hart_index_width: u8,
+    trace_type_width: u8,
 }
 
 impl<'d, U> Decoder<'d, U> {
@@ -308,6 +309,7 @@ pub struct Builder<U = unit::Reference> {
     field_widths: Widths,
     unit: U,
     hart_index_width: u8,
+    trace_type_width: u8,
 }
 
 impl Builder<unit::Reference> {
@@ -332,6 +334,7 @@ impl<U> Builder<U> {
             field_widths: self.field_widths,
             unit,
             hart_index_width: self.hart_index_width,
+            trace_type_width: self.trace_type_width,
         }
     }
 
@@ -346,6 +349,17 @@ impl<U> Builder<U> {
         }
     }
 
+    /// Set the width to use for the trace type
+    ///
+    /// Set the width of fields identifying the trace type (e.g. "instruction"
+    /// or "data") in applicable types of packets.
+    pub fn with_trace_type_width(self, trace_type_width: u8) -> Self {
+        Self {
+            trace_type_width,
+            ..self
+        }
+    }
+
     /// Build a [`Decoder`] for the given data
     pub fn build(self, data: &[u8]) -> Decoder<'_, U> {
         Decoder {
@@ -354,6 +368,7 @@ impl<U> Builder<U> {
             field_widths: self.field_widths,
             unit: self.unit,
             hart_index_width: self.hart_index_width,
+            trace_type_width: self.trace_type_width,
         }
     }
 }
