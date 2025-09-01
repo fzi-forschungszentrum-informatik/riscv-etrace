@@ -5,6 +5,7 @@
 //! This module provides definitions for [payloads][payload] and packets as well
 //! as a [`Decoder`] for decoding them from raw trace data.
 
+pub mod encap;
 mod format;
 pub mod payload;
 pub mod smi;
