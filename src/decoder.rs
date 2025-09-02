@@ -149,6 +149,16 @@ impl<'d, U> Decoder<'d, U> {
         self.data = data;
     }
 
+    /// Decode a single [`encap::Packet`]
+    ///
+    /// Decodes a single [`encap::Packet`], which will consume all associated
+    /// data from the input when [dropped][Drop::drop], leaving the decoder at
+    /// the byte boundary following the packet. If an error is returned, the
+    /// decoder may be in an unspecified state.
+    pub fn decode_encap_packet(&mut self) -> Result<encap::Packet<'_, 'd, U>, Error> {
+        Decode::decode(self)
+    }
+
     /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
     /// Decodes a single [`smi::Packet`], consuming the associated data from the
