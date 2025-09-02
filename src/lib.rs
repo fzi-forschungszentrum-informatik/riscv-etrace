@@ -8,9 +8,9 @@
 //! these allow reconstruction of the execution path.
 //!
 //! This library also features a limited [instruction] database with decoding
-//! functionality. Currently, only decoding of RV32IC instructions is supported.
-//! However, tracing is not impacted by other instructions that do not influence
-//! the control flow ("control transfer instructions").
+//! functionality. Currently, only decoding of RV32IC and RV64IC instructions
+//! are supported. However, tracing is not impacted by other instructions that
+//! do not influence the control flow ("control transfer instructions").
 //!
 //! # Tracing flow
 //!
