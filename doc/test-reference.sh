@@ -15,6 +15,8 @@
 # `params_64.toml` in the current working directory and run the simple
 # example for all test files for which a trace file is present.
 
+set -e
+
 die() {
     echo "$1" >&2
     exit 1
