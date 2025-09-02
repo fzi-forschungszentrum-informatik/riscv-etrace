@@ -55,6 +55,43 @@ impl<'a, 'd, U> From<Normal<'a, 'd, U>> for Packet<'a, 'd, U> {
     }
 }
 
+impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
+    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
+        if decoder.bytes_left() == 0 {
+            // We need to make sure we don't decode a series of `null` packets
+            // from nothing because of transparent decompression. Normal packets
+            // are taken care of by `Decoder::split_data`.
+            return Err(Error::InsufficientData(core::num::NonZeroUsize::MIN));
+        }
+        let length = decoder.read_bits(5)?;
+        let flow = decoder.read_bits(2)?;
+        let extend = decoder.read_bit()?;
+
+        match core::num::NonZeroU8::new(length) {
+            Some(length) => {
+                let src_id = decoder.read_bits(decoder.hart_index_width)?;
+                let timestamp = extend
+                    .then(|| decoder.read_bits(8 * decoder.timestamp_width))
+                    .transpose()?;
+                decoder
+                    .split_data(decoder.byte_pos() + length.get() as usize)
+                    .map(|remaining| {
+                        Normal {
+                            flow,
+                            src_id,
+                            timestamp,
+                            decoder,
+                            remaining,
+                        }
+                        .into()
+                    })
+            }
+            _ if extend => Ok(Self::NullAlign { flow }),
+            _ => Ok(Self::NullIdle { flow }),
+        }
+    }
+}
+
 /// Normal RISC-V Encapsulation [Packet]
 ///
 /// This datatype represents a "Normal Encapsulation Structure" as describes in
