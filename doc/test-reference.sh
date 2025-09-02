@@ -44,6 +44,7 @@ fi
 
 test_files_dir="${suite}/../../tests/test_files/"
 pk="${test_files_dir}pk.riscv"
+failed=""
 for elf in "${test_files_dir}"*.riscv "${test_files_dir}"*.pk; do
     if file ${elf} | grep -q 'ELF 64-bit'; then
         params="params_64.toml"
@@ -66,5 +67,11 @@ for elf in "${test_files_dir}"*.riscv "${test_files_dir}"*.pk; do
         echo "${trace_file}" "${pk}" "${elf}"
     else
         echo "${trace_file}" "${elf}"
-    fi | xargs cargo run --example simple --all-features -- -p "${params}" -r "${spike_trace}" --spike-bootrom >> /dev/null
+    fi | xargs cargo run --example simple --all-features -- \
+        -p "${params}" -r "${spike_trace}" --spike-bootrom >> /dev/null || \
+        failed="${failed} ${test_name}"
 done
+
+if [ -n "${failed}" ]; then
+    die "Some tests failed:${failed}"
+fi
