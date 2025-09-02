@@ -181,7 +181,10 @@ impl<'d, U> Decoder<'d, U> {
     /// decompressed, the first `restrict` bytes are discarded.
     ///
     /// If the data does not hold `restrict` bytes, an error is returned.
-    fn decode_restricted<D: Decode<U>>(&mut self, restrict: usize) -> Result<D, Error> {
+    fn decode_restricted<D: for<'a> Decode<'a, 'd, U>>(
+        &mut self,
+        restrict: usize,
+    ) -> Result<D, Error> {
         let (payload, remaining) = self.split_data(restrict)?;
         self.data = payload;
         let res = Decode::decode(self)?;
@@ -342,8 +345,8 @@ impl<U> Builder<U> {
     }
 }
 
-trait Decode<U>: Sized {
-    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error>;
+trait Decode<'a, 'd, U>: Sized {
+    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
 }
 
 /// Widths of various payload fields

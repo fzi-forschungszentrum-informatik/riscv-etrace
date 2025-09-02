@@ -160,7 +160,7 @@ pub struct ReferenceIOptions {
     pub branch_prediction: bool,
 }
 
-impl<U> Decode<U> for ReferenceIOptions {
+impl<U> Decode<'_, '_, U> for ReferenceIOptions {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let implicit_return = decoder.read_bit()?;
         let implicit_exception = decoder.read_bit()?;
@@ -208,7 +208,7 @@ pub struct ReferenceDOptions {
     pub full_data: bool,
 }
 
-impl<U> Decode<U> for ReferenceDOptions {
+impl<U> Decode<'_, '_, U> for ReferenceDOptions {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let no_address = decoder.read_bit()?;
         let no_data = decoder.read_bit()?;
@@ -259,7 +259,7 @@ pub struct PULPIOptions {
     pub jump_target_cache: bool,
 }
 
-impl<U> Decode<U> for PULPIOptions {
+impl<U> Decode<'_, '_, U> for PULPIOptions {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let jump_target_cache = decoder.read_bit()?;
         let branch_prediction = decoder.read_bit()?;
@@ -395,7 +395,7 @@ pub const PLUGS: &[(&str, fn() -> Plug)] = &[
 #[derive(Copy, Clone, Debug, Default)]
 pub struct NoOptions;
 
-impl<U> Decode<U> for NoOptions {
+impl<U> Decode<'_, '_, U> for NoOptions {
     fn decode(_decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(Self)
     }

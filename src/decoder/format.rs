@@ -35,7 +35,7 @@ impl Format {
     }
 }
 
-impl<U> Decode<U> for Format {
+impl<U> Decode<'_, '_, U> for Format {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => Self::Ext(Ext::decode(decoder)?),
@@ -54,7 +54,7 @@ pub enum Ext {
     JumpTargetIndex,
 }
 
-impl<U> Decode<U> for Ext {
+impl<U> Decode<'_, '_, U> for Ext {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits(decoder.field_widths.format0_subformat)? {
             0 => Ok(Self::BranchCount),
@@ -73,7 +73,7 @@ pub enum Sync {
     Support,
 }
 
-impl<U> Decode<U> for Sync {
+impl<U> Decode<'_, '_, U> for Sync {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => Self::Start,
