@@ -140,6 +140,12 @@ impl<'d, U> Decoder<'d, U> {
         self.bit_pos >> 3
     }
 
+    /// Reset the inner data to the given byte slice
+    pub fn reset(&mut self, data: &'d [u8]) {
+        self.bit_pos = 0;
+        self.data = data;
+    }
+
     /// Decode a single [`smi::Packet`] consisting of header and payload
     ///
     /// Decodes a single [`smi::Packet`], consuming the associated data from the
@@ -181,13 +187,13 @@ impl<'d, U> Decoder<'d, U> {
     /// decompressed, the first `restrict` bytes are discarded.
     ///
     /// If the data does not hold `restrict` bytes, an error is returned.
-    fn decode_restricted<D: Decode<U>>(&mut self, restrict: usize) -> Result<D, Error> {
-        let (payload, remaining) = self.split_data(restrict)?;
-        self.data = payload;
+    fn decode_restricted<D: for<'a> Decode<'a, 'd, U>>(
+        &mut self,
+        restrict: usize,
+    ) -> Result<D, Error> {
+        let remaining = self.split_data(restrict)?;
         let res = Decode::decode(self)?;
-
-        self.bit_pos = 0;
-        self.data = remaining;
+        self.reset(remaining);
         Ok(res)
     }
 
@@ -199,14 +205,21 @@ impl<'d, U> Decoder<'d, U> {
     }
 
     /// Split the inner data at the given position
-    fn split_data(&self, mid: usize) -> Result<(&'d [u8], &'d [u8]), Error> {
-        self.data.split_at_checked(mid).ok_or_else(|| {
+    ///
+    /// On success, the inner data is set restricted to the half up to the given
+    /// position, i.e. its length will be `mid`. The remaining data will be
+    /// returned.
+    fn split_data(&mut self, mid: usize) -> Result<&'d [u8], Error> {
+        if let Some((data, remaining)) = self.data.split_at_checked(mid) {
+            self.data = data;
+            Ok(remaining)
+        } else {
             let need = mid
                 .checked_sub(self.data.len())
                 .and_then(NonZeroUsize::new)
                 .unwrap_or(NonZeroUsize::MIN);
-            Error::InsufficientData(need)
-        })
+            Err(Error::InsufficientData(need))
+        }
     }
 
     /// Read a single bit
@@ -322,7 +335,10 @@ impl<U> Builder<U> {
         }
     }
 
-    /// Set the width to use for CPU index fields
+    /// Set the width to use for packet source index fields
+    ///
+    /// Set the width of fields containing source indices in applicable types of
+    /// packets.
     pub fn with_hart_index_width(self, hart_index_width: u8) -> Self {
         Self {
             hart_index_width,
@@ -342,8 +358,8 @@ impl<U> Builder<U> {
     }
 }
 
-trait Decode<U>: Sized {
-    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error>;
+trait Decode<'a, 'd, U>: Sized {
+    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
 }
 
 /// Widths of various payload fields

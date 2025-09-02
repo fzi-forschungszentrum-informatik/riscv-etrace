@@ -7,6 +7,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A fn `decoder::Decoder::reset` for resetting the `Decoder` with new data.
 - `PartialEq` impl for `decoder::unit::ReferenceIOptions` and
   `ReferenceDOptions`.
 - A fn `instruction::Kind::upper_immediate` for extracting effective immediates

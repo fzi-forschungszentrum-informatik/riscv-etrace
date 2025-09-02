@@ -26,7 +26,7 @@ pub struct Packet<I, D> {
     pub payload: payload::Payload<I, D>,
 }
 
-impl<U: unit::Unit> Decode<U> for Packet<U::IOptions, U::DOptions> {
+impl<U: unit::Unit> Decode<'_, '_, U> for Packet<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
         TraceType::decode(decoder)?;
@@ -61,7 +61,7 @@ impl fmt::Display for TraceType {
     }
 }
 
-impl<U> Decode<U> for TraceType {
+impl<U> Decode<'_, '_, U> for TraceType {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b10 => Ok(TraceType::Instruction),

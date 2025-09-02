@@ -67,7 +67,7 @@ impl BranchCount {
     pub const FULL: Self = Self(31);
 }
 
-impl<U> Decode<U> for BranchCount {
+impl<U> Decode<'_, '_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         decoder.read_bits(5).map(Self)
     }

@@ -26,7 +26,7 @@ pub enum BranchFmt {
     AddrFail = 3,
 }
 
-impl<U> Decode<U> for BranchFmt {
+impl<U> Decode<'_, '_, U> for BranchFmt {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b00 => Ok(BranchFmt::NoAddr),
@@ -47,7 +47,7 @@ pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     Synchronization(sync::Synchronization<I, D>),
 }
 
-impl<U: unit::Unit> Decode<U> for Payload<U::IOptions, U::DOptions> {
+impl<U: unit::Unit> Decode<'_, '_, U> for Payload<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         format::Format::decode(decoder)?.decode_payload(decoder)
     }
@@ -174,7 +174,7 @@ pub struct BranchCount {
     pub address: Option<AddressInfo>,
 }
 
-impl<U> Decode<U> for BranchCount {
+impl<U> Decode<'_, '_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch_count = decoder.read_bits::<u32>(32)? - 31;
         let branch_fmt = BranchFmt::decode(decoder)?;
@@ -204,7 +204,7 @@ pub struct JumpTargetIndex {
     pub irdepth: Option<usize>,
 }
 
-impl<U> Decode<U> for JumpTargetIndex {
+impl<U> Decode<'_, '_, U> for JumpTargetIndex {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.field_widths.cache_index)?;
         let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
@@ -230,7 +230,7 @@ pub struct Branch {
     pub address: Option<AddressInfo>,
 }
 
-impl<U> Decode<U> for Branch {
+impl<U> Decode<'_, '_, U> for Branch {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         use util::BranchCount;
 
@@ -286,7 +286,7 @@ pub struct AddressInfo {
     pub irdepth: Option<usize>,
 }
 
-impl<U> Decode<U> for AddressInfo {
+impl<U> Decode<'_, '_, U> for AddressInfo {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;
