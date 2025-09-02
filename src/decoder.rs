@@ -335,7 +335,10 @@ impl<U> Builder<U> {
         }
     }
 
-    /// Set the width to use for CPU index fields
+    /// Set the width to use for packet source index fields
+    ///
+    /// Set the width of fields containing source indices in applicable types of
+    /// packets.
     pub fn with_hart_index_width(self, hart_index_width: u8) -> Self {
         Self {
             hart_index_width,
