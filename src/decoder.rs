@@ -89,19 +89,21 @@ impl fmt::Display for Error {
 /// let builder = decoder::builder().with_params(&parameters);
 /// let mut decoder = builder.build(trace_data);
 /// loop {
-///     match decoder.decode_smi_packet() {
-///         Ok(packet) => eprintln!("{packet:?}", ),
+///     let packet = match decoder.decode_encap_packet() {
+///         Ok(packet) => packet,
 ///         Err(decoder::Error::InsufficientData(_)) => break,
 ///         Err(e) => panic!("{e:?}"),
-///     }
+///     };
+///     // ...
 /// }
 /// let mut decoder = builder.build(trace_data_next);
 /// loop {
-///     match decoder.decode_smi_packet() {
-///         Ok(packet) => eprintln!("{packet:?}", ),
+///     let packet = match decoder.decode_encap_packet() {
+///         Ok(packet) => packet,
 ///         Err(decoder::Error::InsufficientData(_)) => break,
 ///         Err(e) => panic!("{e:?}"),
-///     }
+///     };
+///     // ...
 /// }
 /// ```
 #[derive(Clone)]
