@@ -8,7 +8,7 @@
 //!
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 
-use super::payload;
+use super::{payload, unit, Decode, Decoder, Error};
 
 /// ETrace payload of an Encapsulation packet
 ///
@@ -45,6 +45,15 @@ impl<I, D> TryFrom<Payload<I, D>> for payload::Payload<I, D> {
         match payload {
             Payload::InstructionTrace(p) => Ok(p),
             p => Err(p),
+        }
+    }
+}
+
+impl<U: unit::Unit> Decode<'_, '_, U> for Payload<U::IOptions, U::DOptions> {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        match decoder.read_bits::<u8>(decoder.trace_type_width)? {
+            0 => Decode::decode(decoder).map(Self::InstructionTrace),
+            unknown => Err(Error::UnknownTraceType(unknown)),
         }
     }
 }
