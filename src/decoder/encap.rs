@@ -10,6 +10,57 @@
 
 use super::{payload, unit, Decode, Decoder, Error};
 
+/// Normal RISC-V Encapsulation packet
+///
+/// This datatype represents a "Normal Encapsulation Structure" as describes in
+/// Chapter 2.1 of the Encapsulation specification.
+///
+/// This type encapsulates a [`Decoder`], from which it will consume all
+/// associated when [dropped][Drop::drop], leaving the decoder at the byte
+/// boundary following the packet. Thus, the packet's data will be consumed
+/// regardless of whether the payload was decoded or not and even if an error
+/// occurred while decoding the payload.
+pub struct Normal<'a, 'd, U> {
+    flow: u8,
+    src_id: u16,
+    timestamp: Option<u64>,
+    decoder: &'a mut Decoder<'d, U>,
+    remaining: &'d [u8],
+}
+
+impl<'a, 'd, U> Normal<'a, 'd, U> {
+    /// Retrieve the flow indicator of this packet
+    pub fn flow(&self) -> u8 {
+        self.flow
+    }
+
+    /// Retrieve the packet's source id
+    ///
+    /// Identifies the source (e.g. Trace encoder associated to a specific HART)
+    /// of the packet.
+    pub fn src_id(&self) -> u16 {
+        self.src_id
+    }
+
+    /// Retrieve the packet's (outer) timestamp
+    pub fn timestamp(&self) -> Option<u64> {
+        self.timestamp
+    }
+}
+
+impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
+    /// Decode the packet's ETrace payload
+    pub fn payload(self) -> Result<Payload<U::IOptions, U::DOptions>, Error> {
+        Decode::decode(self.decoder)
+    }
+}
+
+impl<'a, 'd, U> Drop for Normal<'a, 'd, U> {
+    fn drop(&mut self) {
+        self.decoder.reset(self.remaining);
+    }
+}
+
 /// ETrace payload of an Encapsulation packet
 ///
 /// This datatype represents a payload as describes in Chapter 2.1.4 and Chapter
