@@ -10,7 +10,52 @@
 
 use super::{payload, unit, Decode, Decoder, Error};
 
-/// Normal RISC-V Encapsulation packet
+/// RISC-V Packet Encapsulation
+///
+/// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
+/// of the Encapsulation specification.
+pub enum Packet<'a, 'd, U> {
+    NullIdle { flow: u8 },
+    NullAlign { flow: u8 },
+    Normal(Normal<'a, 'd, U>),
+}
+
+impl<'a, 'd, U> Packet<'a, 'd, U> {
+    /// Retrieve the flow indicator of this packet
+    pub fn flow(&self) -> u8 {
+        match self {
+            Self::NullIdle { flow } => *flow,
+            Self::NullAlign { flow } => *flow,
+            Self::Normal(p) => p.flow(),
+        }
+    }
+
+    /// Check whether this packet is a null packet
+    ///
+    /// Returns [`true`] if the packet is a `null.idle` or a `null.align`
+    /// packet.
+    pub fn is_null(&self) -> bool {
+        matches!(self, Self::NullIdle { .. } | Self::NullAlign { .. })
+    }
+
+    /// Transform into a [`Normal`] Encapsulation Structure
+    ///
+    /// Returns [`None`] if this packet is a null packet.
+    pub fn into_normal(self) -> Option<Normal<'a, 'd, U>> {
+        match self {
+            Self::Normal(n) => Some(n),
+            _ => None,
+        }
+    }
+}
+
+impl<'a, 'd, U> From<Normal<'a, 'd, U>> for Packet<'a, 'd, U> {
+    fn from(normal: Normal<'a, 'd, U>) -> Self {
+        Self::Normal(normal)
+    }
+}
+
+/// Normal RISC-V Encapsulation [Packet]
 ///
 /// This datatype represents a "Normal Encapsulation Structure" as describes in
 /// Chapter 2.1 of the Encapsulation specification.
@@ -61,7 +106,7 @@ impl<'a, 'd, U> Drop for Normal<'a, 'd, U> {
     }
 }
 
-/// ETrace payload of an Encapsulation packet
+/// ETrace payload of an Encapsulation [Packet]
 ///
 /// This datatype represents a payload as describes in Chapter 2.1.4 and Chapter
 /// 3.3 of the Encapsulation specification.
