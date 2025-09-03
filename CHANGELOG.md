@@ -7,8 +7,6 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
-- `PartialEq` impl for `decoder::unit::Reference`, `decoder::unit::PULP` and
-  `decoder::unit::PulpIOptions`
 - A new module `decoder::encap` providing support for the RISC-V packet
   encapsulation, containing the types `Packet`, `Normal` and `Payload`.
 - A fn `decoder::Decoder::decode_encap_packet` for decoding an (ephemeral)
@@ -18,8 +16,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `decoder::Builder::with_trace_type_width` for setting a new width for
   packet format specific trace type fields.
 - A fn `decoder::Decoder::reset` for resetting the `Decoder` with new data.
-- `PartialEq` impl for `decoder::unit::ReferenceIOptions` and
-  `ReferenceDOptions`.
+- `PartialEq` impl for `decoder::unit::Reference`, `ReferenceIOptions`,
+  `ReferenceDOptions`, `PULP` and `PulpIOptions`
 - A fn `instruction::Kind::upper_immediate` for extracting effective immediates
   of `auipc`, `lui` and `c.lui` instructions.
 
