@@ -227,7 +227,7 @@ impl<U> Decode<'_, '_, U> for ReferenceDOptions {
 ///
 /// Supports the [PULP rv tracer](https://github.com/pulp-platform/rv_tracer)
 /// and compatible trace units.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct PULP;
 
 impl<U> Unit<U> for PULP {
@@ -248,7 +248,7 @@ impl<U> Unit<U> for PULP {
 }
 
 /// [`IOptions`] for the [`PULP`] [`Unit`]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PULPIOptions {
     pub delta_address: bool,
     pub full_address: bool,
