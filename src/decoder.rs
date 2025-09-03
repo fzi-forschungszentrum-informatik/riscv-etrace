@@ -5,6 +5,7 @@
 //! This module provides definitions for [payloads][payload] and packets as well
 //! as a [`Decoder`] for decoding them from raw trace data.
 
+pub mod encap;
 mod format;
 pub mod payload;
 pub mod smi;
@@ -88,19 +89,21 @@ impl fmt::Display for Error {
 /// let builder = decoder::builder().with_params(&parameters);
 /// let mut decoder = builder.build(trace_data);
 /// loop {
-///     match decoder.decode_smi_packet() {
-///         Ok(packet) => eprintln!("{packet:?}", ),
+///     let packet = match decoder.decode_encap_packet() {
+///         Ok(packet) => packet,
 ///         Err(decoder::Error::InsufficientData(_)) => break,
 ///         Err(e) => panic!("{e:?}"),
-///     }
+///     };
+///     // ...
 /// }
 /// let mut decoder = builder.build(trace_data_next);
 /// loop {
-///     match decoder.decode_smi_packet() {
-///         Ok(packet) => eprintln!("{packet:?}", ),
+///     let packet = match decoder.decode_encap_packet() {
+///         Ok(packet) => packet,
 ///         Err(decoder::Error::InsufficientData(_)) => break,
 ///         Err(e) => panic!("{e:?}"),
-///     }
+///     };
+///     // ...
 /// }
 /// ```
 #[derive(Clone)]
@@ -110,6 +113,8 @@ pub struct Decoder<'d, U> {
     field_widths: Widths,
     unit: U,
     hart_index_width: u8,
+    timestamp_width: u8,
+    trace_type_width: u8,
 }
 
 impl<'d, U> Decoder<'d, U> {
@@ -144,6 +149,16 @@ impl<'d, U> Decoder<'d, U> {
     pub fn reset(&mut self, data: &'d [u8]) {
         self.bit_pos = 0;
         self.data = data;
+    }
+
+    /// Decode a single [`encap::Packet`]
+    ///
+    /// Decodes a single [`encap::Packet`], which will consume all associated
+    /// data from the input when [dropped][Drop::drop], leaving the decoder at
+    /// the byte boundary following the packet. If an error is returned, the
+    /// decoder may be in an unspecified state.
+    pub fn decode_encap_packet(&mut self) -> Result<encap::Packet<'_, 'd, U>, Error> {
+        Decode::decode(self)
     }
 
     /// Decode a single [`smi::Packet`] consisting of header and payload
@@ -308,6 +323,8 @@ pub struct Builder<U = unit::Reference> {
     field_widths: Widths,
     unit: U,
     hart_index_width: u8,
+    timestamp_width: u8,
+    trace_type_width: u8,
 }
 
 impl Builder<unit::Reference> {
@@ -332,6 +349,8 @@ impl<U> Builder<U> {
             field_widths: self.field_widths,
             unit,
             hart_index_width: self.hart_index_width,
+            timestamp_width: self.timestamp_width,
+            trace_type_width: self.trace_type_width,
         }
     }
 
@@ -346,6 +365,29 @@ impl<U> Builder<U> {
         }
     }
 
+    /// Set the width to use for packet timestamps
+    ///
+    /// Set the width of timestamps in applicable types of encapsulations, e.g.
+    /// packet headers. This does not affect the width of the `time` field in
+    /// context payloads.
+    pub fn with_timestamp_width(self, timestamp_width: u8) -> Self {
+        Self {
+            timestamp_width,
+            ..self
+        }
+    }
+
+    /// Set the width to use for the trace type
+    ///
+    /// Set the width of fields identifying the trace type (e.g. "instruction"
+    /// or "data") in applicable types of packets.
+    pub fn with_trace_type_width(self, trace_type_width: u8) -> Self {
+        Self {
+            trace_type_width,
+            ..self
+        }
+    }
+
     /// Build a [`Decoder`] for the given data
     pub fn build(self, data: &[u8]) -> Decoder<'_, U> {
         Decoder {
@@ -354,6 +396,8 @@ impl<U> Builder<U> {
             field_widths: self.field_widths,
             unit: self.unit,
             hart_index_width: self.hart_index_width,
+            timestamp_width: self.timestamp_width,
+            trace_type_width: self.trace_type_width,
         }
     }
 }

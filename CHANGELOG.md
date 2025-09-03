@@ -7,6 +7,14 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A new module `decoder::encap` providing support for the RISC-V packet
+  encapsulation, containing the types `Packet`, `Normal` and `Payload`.
+- A fn `decoder::Decoder::decode_encap_packet` for decoding an (ephemeral)
+  `decoder::encap::Packet`.
+- A fn `decoder::Builder::with_timestamp_width` for setting a new width for
+  packet format specific timestamps.
+- A fn `decoder::Builder::with_trace_type_width` for setting a new width for
+  packet format specific trace type fields.
 - A fn `decoder::Decoder::reset` for resetting the `Decoder` with new data.
 - `PartialEq` impl for `decoder::unit::ReferenceIOptions` and
   `ReferenceDOptions`.

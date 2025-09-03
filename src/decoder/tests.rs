@@ -154,3 +154,19 @@ bitstream_test!(
     iaddress_width_p: 64.try_into().unwrap(),
     iaddress_lsb_p: 1.try_into().unwrap()
 );
+
+#[test]
+fn encap_stop() {
+    let mut decoder = Builder::new().build(b"\x00\x00\x00\x00");
+    for _ in 0..4 {
+        let packet = decoder
+            .decode_encap_packet()
+            .expect("Failed to decode expected packet");
+        assert_eq!(packet.is_null(), true);
+    }
+    assert_eq!(decoder.bytes_left(), 0, "Not at end of buffer");
+    let Err(e) = decoder.decode_encap_packet() else {
+        panic!("Decoded packet past buffer")
+    };
+    assert_eq!(e, Error::InsufficientData(NonZeroUsize::MIN))
+}

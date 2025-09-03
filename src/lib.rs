@@ -58,7 +58,8 @@
 //!
 //! The following example demonstrates basic instruction tracing, with default
 //! [`config::Parameters`], a simple [`Binary`][binary::Binary] and tracing
-//! packets placed in a single buffer.
+//! packets conforming to the [Unformatted Trace & Diagnostic Data Packet
+//! Encapsulation for RISC-V][encap] specification placed in a single buffer.
 //!
 //! ```
 //! use riscv_etrace::binary::{self, Binary};
@@ -84,10 +85,11 @@
 //!     .unwrap();
 //!
 //! while decoder.bytes_left() > 0 {
-//!     let packet = decoder.decode_smi_packet().unwrap();
-//!     eprintln!("{packet:?}");
-//!     if packet.hart == hart_to_trace {
-//!         tracer.process_te_inst(&packet.payload).unwrap();
+//!     let packet = decoder.decode_encap_packet().unwrap().into_normal();
+//!     if let Some(packet) = packet.filter(|p| p.src_id() == hart_to_trace) {
+//!         let payload = packet.payload().unwrap();
+//!         eprintln!("{payload:?}");
+//!         tracer.process_te_inst(payload.as_instruction_trace().unwrap()).unwrap();
 //!         tracer.by_ref().for_each(|i| {
 //!             let item = i.unwrap();
 //!             if let Some(info) = item.trap() {
@@ -101,6 +103,7 @@
 //! ```
 //!
 //! [etrace]: <https://github.com/riscv-non-isa/riscv-trace-spec/>
+//! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
