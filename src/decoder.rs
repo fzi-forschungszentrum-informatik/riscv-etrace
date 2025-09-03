@@ -370,6 +370,11 @@ impl<U> Builder<U> {
     /// Set the width of timestamps in applicable types of encapsulations, e.g.
     /// packet headers. This does not affect the width of the `time` field in
     /// context payloads.
+    ///
+    /// # Note
+    ///
+    /// For [`encap::Packet`]/[`encap::Normal`], this value denotes the field
+    /// width in bytes rather than in bits.
     pub fn with_timestamp_width(self, timestamp_width: u8) -> Self {
         Self {
             timestamp_width,
