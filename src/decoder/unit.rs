@@ -130,7 +130,7 @@ impl<T: IOptions + fmt::Debug> DebugIOptions for T {}
 /// Reference trace [`Unit`]
 ///
 /// This unit is used in the reference flow (in the form of a model).
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Reference;
 
 impl<U> Unit<U> for Reference {
