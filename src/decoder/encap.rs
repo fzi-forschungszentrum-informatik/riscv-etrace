@@ -16,6 +16,7 @@ use super::{payload, unit, Decode, Decoder, Error};
 ///
 /// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
 /// of the Encapsulation specification.
+#[derive(Debug, PartialEq)]
 pub enum Packet<'a, 'd, U> {
     NullIdle { flow: u8 },
     NullAlign { flow: u8 },
