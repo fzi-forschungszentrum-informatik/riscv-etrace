@@ -8,6 +8,8 @@
 //!
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 
+use core::fmt;
+
 use super::{payload, unit, Decode, Decoder, Error};
 
 /// RISC-V Packet Encapsulation
@@ -134,6 +136,16 @@ impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
     /// Decode the packet's ETrace payload
     pub fn payload(self) -> Result<Payload<U::IOptions, U::DOptions>, Error> {
         Decode::decode(self.decoder)
+    }
+}
+
+impl<U> fmt::Debug for Normal<'_, '_, U> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Normal")
+            .field("flow", &self.flow)
+            .field("src_id", &self.src_id)
+            .field("timestamp", &self.timestamp)
+            .finish_non_exhaustive()
     }
 }
 
