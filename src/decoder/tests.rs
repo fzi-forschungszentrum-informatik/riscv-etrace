@@ -159,14 +159,14 @@ bitstream_test!(
 fn encap_stop() {
     let mut decoder = Builder::new().build(b"\x00\x00\x00\x00");
     for _ in 0..4 {
-        let packet = decoder
-            .decode_encap_packet()
-            .expect("Failed to decode expected packet");
-        assert_eq!(packet.is_null(), true);
+        assert_eq!(
+            decoder.decode_encap_packet(),
+            Ok(encap::Packet::NullIdle { flow: 0 }),
+        );
     }
     assert_eq!(decoder.bytes_left(), 0, "Not at end of buffer");
-    let Err(e) = decoder.decode_encap_packet() else {
-        panic!("Decoded packet past buffer")
-    };
-    assert_eq!(e, Error::InsufficientData(NonZeroUsize::MIN))
+    assert_eq!(
+        decoder.decode_encap_packet(),
+        Err(Error::InsufficientData(NonZeroUsize::MIN)),
+    );
 }
