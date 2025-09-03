@@ -8,12 +8,15 @@
 //!
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 
+use core::fmt;
+
 use super::{payload, unit, Decode, Decoder, Error};
 
 /// RISC-V Packet Encapsulation
 ///
 /// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
 /// of the Encapsulation specification.
+#[derive(Debug, PartialEq)]
 pub enum Packet<'a, 'd, U> {
     NullIdle { flow: u8 },
     NullAlign { flow: u8 },
@@ -134,6 +137,31 @@ impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
     /// Decode the packet's ETrace payload
     pub fn payload(self) -> Result<Payload<U::IOptions, U::DOptions>, Error> {
         Decode::decode(self.decoder)
+    }
+}
+
+impl<U> fmt::Debug for Normal<'_, '_, U> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Normal")
+            .field("flow", &self.flow)
+            .field("src_id", &self.src_id)
+            .field("timestamp", &self.timestamp)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Compare flow indicator, source id and timestamp
+///
+/// # Note
+///
+/// Equivalence between these [`Normal`] Encapsulation Structure representations
+/// does not mean equivalence between their payloads.
+impl<U> PartialEq for Normal<'_, '_, U> {
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(
+            &(self.flow, self.src_id, self.timestamp),
+            &(other.flow, other.src_id, other.timestamp),
+        )
     }
 }
 

@@ -7,6 +7,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- `PartialEq` impl for `decoder::unit::Reference`, `decoder::unit::PULP` and
+  `decoder::unit::PulpIOptions`
 - A new module `decoder::encap` providing support for the RISC-V packet
   encapsulation, containing the types `Packet`, `Normal` and `Payload`.
 - A fn `decoder::Decoder::decode_encap_packet` for decoding an (ephemeral)
