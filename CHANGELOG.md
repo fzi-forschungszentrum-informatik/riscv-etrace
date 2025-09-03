@@ -7,6 +7,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A new submodule `instruction::bits`.
 - A new submodule `decoder::error`.
 - A new type `decoder::payload::Payload` which represents both instruction and
   data trace payloads. The previous `Payload` was renamed to `Instructiontrace`.
@@ -34,6 +35,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The type `instruction::Bits` was moved to a new module `instruction::bits`.
 - The old `decoder::payload::Payload` was renamed to `InstructionTrace`.
 - Made `decoder::smi::Packet` data members private.
 - Made `decoder::smi::Packet` ephemeral, bound by lifetimes associated to the
