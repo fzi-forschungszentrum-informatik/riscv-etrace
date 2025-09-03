@@ -149,6 +149,21 @@ impl<U> fmt::Debug for Normal<'_, '_, U> {
     }
 }
 
+/// Compare flow indicator, source id and timestamp
+///
+/// # Note
+///
+/// Equivalence between these [`Normal`] Encapsulation Structure representations
+/// does not mean equivalence between their payloads.
+impl<U> PartialEq for Normal<'_, '_, U> {
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(
+            &(self.flow, self.src_id, self.timestamp),
+            &(other.flow, other.src_id, other.timestamp),
+        )
+    }
+}
+
 impl<'a, 'd, U> Drop for Normal<'a, 'd, U> {
     fn drop(&mut self) {
         self.decoder.reset(self.remaining);
