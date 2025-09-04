@@ -60,11 +60,9 @@ impl<I, D> Payload<I, D> {
     /// [`None`] if it does not contain one.
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
         match self {
-            Payload::Address(addr) => Some(addr),
-            Payload::Branch(branch) => branch.address.as_ref(),
-            Payload::Extension(Extension::BranchCount(branch_count)) => {
-                branch_count.address.as_ref()
-            }
+            Self::Address(addr) => Some(addr),
+            Self::Branch(branch) => branch.address.as_ref(),
+            Self::Extension(Extension::BranchCount(branch_count)) => branch_count.address.as_ref(),
             _ => None,
         }
     }
