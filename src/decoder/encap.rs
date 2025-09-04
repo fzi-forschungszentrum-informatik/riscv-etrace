@@ -139,6 +139,7 @@ impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
         let width = self.decoder.trace_type_width;
         match self.decoder.read_bits::<u8>(width)? {
             0 => Decode::decode(self.decoder).map(Payload::InstructionTrace),
+            1 => Ok(Payload::DataTrace),
             unknown => Err(Error::UnknownTraceType(unknown)),
         }
     }
