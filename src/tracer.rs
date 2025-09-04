@@ -17,7 +17,7 @@ pub use item::Item;
 
 use crate::binary::{self, Binary};
 use crate::config::{self, AddressMode, Version};
-use crate::decoder::payload::InstructionTrace;
+use crate::decoder::payload::{InstructionTrace, Payload};
 use crate::decoder::sync;
 use crate::decoder::unit::IOptions;
 use crate::instruction;
@@ -81,6 +81,20 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
 }
 
 impl<B: Binary, S: ReturnStack> Tracer<B, S> {
+    /// Process an [`Payload`]
+    ///
+    /// The tracer will yield new trace [`Item`]s after receiving most types of
+    /// payloads via this fn.
+    pub fn process_payload<D>(
+        &mut self,
+        payload: &Payload<impl IOptions, D>,
+    ) -> Result<(), Error<B::Error>> {
+        match payload {
+            Payload::InstructionTrace(p) => self.process_te_inst(p),
+            _ => Ok(()),
+        }
+    }
+
     /// Process an [`InstructionTrace`] payload
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
