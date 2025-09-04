@@ -14,16 +14,9 @@ use super::{payload, unit, Decode, Decoder, Error};
 /// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
 #[derive(Debug)]
 pub struct Packet<I, D> {
-    /// Partial time stamp
-    pub time_tag: Option<u16>,
-    /// Index of the hart this packet is originating from
-    ///
-    /// The index specifies the address of the hart's trace unit within the
-    /// messaging infrastructure. It may not be identical to the value of the
-    /// `mhartid` CSR for that hart.
-    pub hart: u64,
-    /// The packet payload
-    pub payload: payload::InstructionTrace<I, D>,
+    time_tag: Option<u16>,
+    hart: u64,
+    payload: payload::InstructionTrace<I, D>,
 }
 
 impl<I, D> Packet<I, D> {
