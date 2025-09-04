@@ -12,14 +12,15 @@ use super::{payload, unit, Decode, Decoder, Error};
 /// as described in Chapter 7. Instruction Trace Encoder Output Packets of the
 /// specification. A packet consists of SMI specific header information, and an
 /// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
-#[derive(Debug)]
-pub struct Packet<I, D> {
+pub struct Packet<'a, 'd, U> {
+    trace_type: u8,
     time_tag: Option<u16>,
     hart: u64,
-    payload: payload::InstructionTrace<I, D>,
+    decoder: &'a mut Decoder<'d, U>,
+    remaining: &'d [u8],
 }
 
-impl<I, D> Packet<I, D> {
+impl<U> Packet<'_, '_, U> {
     /// Retrieve this packet's partial time stamp if present
     pub fn time_tag(&self) -> Option<u16> {
         self.time_tag
@@ -33,17 +34,43 @@ impl<I, D> Packet<I, D> {
     pub fn hart(&self) -> u64 {
         self.hart
     }
+}
 
-    /// Retrieve the packet's ETrace payload
-    pub fn payload(self) -> Result<payload::Payload<I, D>, Error> {
-        Ok(self.payload.into())
+impl<U: unit::Unit> Packet<'_, '_, U> {
+    /// Decode the packet's ETrace payload
+    pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+        let trace_type = self
+            .trace_type
+            .try_into()
+            .map_err(Error::UnknownTraceType)?;
+        match trace_type {
+            TraceType::Instruction => {
+                Decode::decode(self.decoder).map(payload::Payload::InstructionTrace)
+            }
+        }
     }
 }
 
-impl<U: unit::Unit> Decode<'_, '_, U> for Packet<U::IOptions, U::DOptions> {
-    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+impl<U> fmt::Debug for Packet<'_, '_, U> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Packet")
+            .field("trace_type", &self.trace_type)
+            .field("time_tag", &self.time_tag)
+            .field("hart", &self.hart)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<U> Drop for Packet<'_, '_, U> {
+    fn drop(&mut self) {
+        self.decoder.reset(self.remaining);
+    }
+}
+
+impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
+    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
-        TraceType::decode(decoder)?;
+        let trace_type = decoder.read_bits::<u8>(2)?;
         let time_tag = decoder
             .read_bit()?
             .then(|| decoder.read_bits(16))
@@ -51,11 +78,13 @@ impl<U: unit::Unit> Decode<'_, '_, U> for Packet<U::IOptions, U::DOptions> {
         let hart = decoder.read_bits(decoder.hart_index_width)?;
         decoder.advance_to_byte();
         decoder
-            .decode_restricted(decoder.byte_pos() + payload_len)
-            .map(|payload| Packet {
+            .split_data(decoder.byte_pos() + payload_len)
+            .map(|remaining| Self {
+                trace_type,
                 time_tag,
                 hart,
-                payload,
+                decoder,
+                remaining,
             })
     }
 }
