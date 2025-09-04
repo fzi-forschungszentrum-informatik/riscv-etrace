@@ -21,6 +21,18 @@ pub struct Packet<'a, 'd, U> {
 }
 
 impl<U> Packet<'_, '_, U> {
+    /// Retrieve the [`TraceType`] of this packet's payload
+    ///
+    /// Returns [`None`] if the trace type is unknown.
+    pub fn trace_type(&self) -> Option<TraceType> {
+        self.raw_trace_type().try_into().ok()
+    }
+
+    /// Retrieve the raw trace type of this packet
+    pub fn raw_trace_type(&self) -> u8 {
+        self.trace_type
+    }
+
     /// Retrieve this packet's partial time stamp if present
     pub fn time_tag(&self) -> Option<u16> {
         self.time_tag
@@ -40,7 +52,7 @@ impl<U: unit::Unit> Packet<'_, '_, U> {
     /// Decode the packet's ETrace payload
     pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let trace_type = self
-            .trace_type
+            .raw_trace_type()
             .try_into()
             .map_err(Error::UnknownTraceType)?;
         match trace_type {
