@@ -89,7 +89,7 @@
 //!     if let Some(packet) = packet.filter(|p| p.src_id() == hart_to_trace) {
 //!         let payload = packet.payload().unwrap();
 //!         eprintln!("{payload:?}");
-//!         tracer.process_te_inst(payload.as_instruction_trace().unwrap()).unwrap();
+//!         tracer.process_payload(&payload).unwrap();
 //!         tracer.by_ref().for_each(|i| {
 //!             let item = i.unwrap();
 //!             if let Some(info) = item.trap() {

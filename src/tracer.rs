@@ -32,7 +32,7 @@ use stack::ReturnStack;
 /// hart and generates [`Item`]s for that hart.
 ///
 /// Individual [`InstructionTrace`] payloads are fed to the tracer through
-/// [`process_te_inst`][Self::process_te_inst]. Alternatively, specific types of
+/// [`process_payload`][Self::process_payload]. Alternatively, specific types of
 /// paylaods may be fed through more specialized fns. After a payload was fed to
 /// the tracer, [`Item`]s become availible via the tracer's [`Iterator`]
 /// implementation.
@@ -59,14 +59,16 @@ use stack::ReturnStack;
 ///     .unwrap();
 ///
 /// # use riscv_etrace::decoder;
-/// # use decoder::payload::InstructionTrace;
-/// # let payload: InstructionTrace = decoder::sync::Start {
-/// #   branch: false,
-/// #   ctx: Default::default(),
-/// #   address: 0x28,
-/// # }
+/// # use decoder::payload::{InstructionTrace, Payload};
+/// # let payload: Payload = InstructionTrace::from(
+/// #   decoder::sync::Start {
+/// #       branch: false,
+/// #       ctx: Default::default(),
+/// #       address: 0x28,
+/// #   }
+/// # )
 /// # .into();
-/// tracer.process_te_inst(&payload).unwrap();
+/// tracer.process_payload(&payload).unwrap();
 /// tracer.by_ref().for_each(|i| {
 ///     println!("PC: {:0x}", i.unwrap().pc());
 /// });
