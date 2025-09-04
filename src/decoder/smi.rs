@@ -26,6 +26,27 @@ pub struct Packet<I, D> {
     pub payload: payload::InstructionTrace<I, D>,
 }
 
+impl<I, D> Packet<I, D> {
+    /// Retrieve this packet's partial time stamp if present
+    pub fn time_tag(&self) -> Option<u16> {
+        self.time_tag
+    }
+
+    /// Retrieve this packet's hart index
+    ///
+    /// The index specifies the address of the hart's trace unit within the
+    /// messaging infrastructure. It may not be identical to the value of the
+    /// `mhartid` CSR for that hart.
+    pub fn hart(&self) -> u64 {
+        self.hart
+    }
+
+    /// Retrieve the packet's ETrace payload
+    pub fn payload(self) -> Result<payload::Payload<I, D>, Error> {
+        Ok(self.payload.into())
+    }
+}
+
 impl<U: unit::Unit> Decode<'_, '_, U> for Packet<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
