@@ -82,10 +82,10 @@ impl<I, D> Payload<I, D> {
     /// Returns [`None`] otherwise.
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
-            Payload::Address(a) => a.irdepth,
-            Payload::Branch(b) => b.address.and_then(|a| a.irdepth),
-            Payload::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
-            Payload::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
+            Self::Address(a) => a.irdepth,
+            Self::Branch(b) => b.address.and_then(|a| a.irdepth),
+            Self::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
+            Self::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
             _ => None,
         }
     }
