@@ -40,20 +40,20 @@ impl<U> Decode<'_, '_, U> for BranchFmt {
 
 /// An instruction trace payload
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
+pub enum InstructionTrace<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     Extension(Extension),
     Branch(Branch),
     Address(AddressInfo),
     Synchronization(sync::Synchronization<I, D>),
 }
 
-impl<U: unit::Unit> Decode<'_, '_, U> for Payload<U::IOptions, U::DOptions> {
+impl<U: unit::Unit> Decode<'_, '_, U> for InstructionTrace<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         format::Format::decode(decoder)?.decode_payload(decoder)
     }
 }
 
-impl<I, D> Payload<I, D> {
+impl<I, D> InstructionTrace<I, D> {
     /// Retrieve the [`AddressInfo`] in this payload
     ///
     /// Returns a reference to the [`AddressInfo`] contained in this payload or
@@ -91,61 +91,61 @@ impl<I, D> Payload<I, D> {
     }
 }
 
-impl<I, D> From<Extension> for Payload<I, D> {
+impl<I, D> From<Extension> for InstructionTrace<I, D> {
     fn from(ex: Extension) -> Self {
         Self::Extension(ex)
     }
 }
 
-impl<I, D> From<BranchCount> for Payload<I, D> {
+impl<I, D> From<BranchCount> for InstructionTrace<I, D> {
     fn from(count: BranchCount) -> Self {
         Self::Extension(Extension::BranchCount(count))
     }
 }
 
-impl<I, D> From<JumpTargetIndex> for Payload<I, D> {
+impl<I, D> From<JumpTargetIndex> for InstructionTrace<I, D> {
     fn from(idx: JumpTargetIndex) -> Self {
         Self::Extension(Extension::JumpTargetIndex(idx))
     }
 }
 
-impl<I, D> From<Branch> for Payload<I, D> {
+impl<I, D> From<Branch> for InstructionTrace<I, D> {
     fn from(branch: Branch) -> Self {
         Self::Branch(branch)
     }
 }
 
-impl<I, D> From<AddressInfo> for Payload<I, D> {
+impl<I, D> From<AddressInfo> for InstructionTrace<I, D> {
     fn from(addr: AddressInfo) -> Self {
         Self::Address(addr)
     }
 }
 
-impl<I, D> From<sync::Synchronization<I, D>> for Payload<I, D> {
+impl<I, D> From<sync::Synchronization<I, D>> for InstructionTrace<I, D> {
     fn from(sync: sync::Synchronization<I, D>) -> Self {
         Self::Synchronization(sync)
     }
 }
 
-impl<I, D> From<sync::Start> for Payload<I, D> {
+impl<I, D> From<sync::Start> for InstructionTrace<I, D> {
     fn from(start: sync::Start) -> Self {
         Self::Synchronization(start.into())
     }
 }
 
-impl<I, D> From<sync::Trap> for Payload<I, D> {
+impl<I, D> From<sync::Trap> for InstructionTrace<I, D> {
     fn from(trap: sync::Trap) -> Self {
         Self::Synchronization(trap.into())
     }
 }
 
-impl<I, D> From<sync::Context> for Payload<I, D> {
+impl<I, D> From<sync::Context> for InstructionTrace<I, D> {
     fn from(ctx: sync::Context) -> Self {
         Self::Synchronization(ctx.into())
     }
 }
 
-impl<I, D> From<sync::Support<I, D>> for Payload<I, D> {
+impl<I, D> From<sync::Support<I, D>> for InstructionTrace<I, D> {
     fn from(support: sync::Support<I, D>) -> Self {
         Self::Synchronization(support.into())
     }

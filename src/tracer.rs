@@ -3,7 +3,7 @@
 //! Tracing logic
 //!
 //! This module provides the [`Tracer`], which processes tracing packet
-//! [`Payload`]s and generates streams of tracing [`Item`]s.
+//! [`InstructionTrace`] payloads and generates streams of tracing [`Item`]s.
 
 pub mod error;
 pub mod item;
@@ -17,7 +17,7 @@ pub use item::Item;
 
 use crate::binary::{self, Binary};
 use crate::config::{self, AddressMode, Version};
-use crate::decoder::payload::Payload;
+use crate::decoder::payload::InstructionTrace;
 use crate::decoder::sync;
 use crate::decoder::unit::IOptions;
 use crate::instruction;
@@ -28,13 +28,14 @@ use stack::ReturnStack;
 
 /// Tracer
 ///
-/// A tracer processes packet [`Payload`]s for a single RISC-V hart and
-/// generates [`Item`]s for that hart.
+/// A tracer processes packet [`InstructionTrace`] payloads for a single RISC-V
+/// hart and generates [`Item`]s for that hart.
 ///
-/// [`Payload`]s are fed through [`process_te_inst`][Self::process_te_inst].
-/// Alternatively, some specialized paylaods may be fed through more specialized
-/// fns. After a payload was fed to the tracer, [`Item`]s become availible via
-/// the tracer's [`Iterator`] implementation.
+/// Individual [`InstructionTrace`] payloads are fed to the tracer through
+/// [`process_te_inst`][Self::process_te_inst]. Alternatively, specific types of
+/// paylaods may be fed through more specialized fns. After a payload was fed to
+/// the tracer, [`Item`]s become availible via the tracer's [`Iterator`]
+/// implementation.
 ///
 /// After all [`Item`]s were extracted, the next payload may be fed to the
 /// tracer. Feeding a payload while the items generated from the last payload
@@ -42,8 +43,8 @@ use stack::ReturnStack;
 ///
 /// # Example
 ///
-/// The following example demonstrates feeding a [`Payload`] to a tracer and
-/// then iterating over the generated [`Item`]s.
+/// The following example demonstrates feeding a payload to a tracer and then
+/// iterating over the generated [`Item`]s.
 ///
 /// ```
 /// use riscv_etrace::tracer;
@@ -58,8 +59,8 @@ use stack::ReturnStack;
 ///     .unwrap();
 ///
 /// # use riscv_etrace::decoder;
-/// # use decoder::payload::Payload;
-/// # let payload: Payload = decoder::sync::Start {
+/// # use decoder::payload::InstructionTrace;
+/// # let payload: InstructionTrace = decoder::sync::Start {
 /// #   branch: false,
 /// #   ctx: Default::default(),
 /// #   address: 0x28,
@@ -80,23 +81,23 @@ pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
 }
 
 impl<B: Binary, S: ReturnStack> Tracer<B, S> {
-    /// Process a [`Payload`]
+    /// Process an [`InstructionTrace`] payload
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
     /// payloads via this fn.
     pub fn process_te_inst<D>(
         &mut self,
-        payload: &Payload<impl IOptions, D>,
+        payload: &InstructionTrace<impl IOptions, D>,
     ) -> Result<(), Error<B::Error>> {
         use state::StopCondition;
 
-        if let Payload::Synchronization(sync) = payload {
+        if let InstructionTrace::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
             let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
-            if let Payload::Branch(branch) = payload {
+            if let InstructionTrace::Branch(branch) = payload {
                 initer.get_branch_map_mut().append(branch.branch_map);
             }
             if let Some(info) = payload.get_address_info() {

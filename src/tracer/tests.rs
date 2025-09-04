@@ -20,7 +20,7 @@ macro_rules! trace_test {
                 .build()
                 .expect("Could not build tracer");
             $(
-                let payload: Payload = $p.into();
+                let payload: InstructionTrace = $p.into();
                 tracer.process_te_inst(&payload)
                     .expect("Could not process packet");
                 $(
@@ -249,7 +249,7 @@ trace_test!(
     }
 );
 
-fn start_packet(address: u64) -> payload::Payload {
+fn start_packet(address: u64) -> payload::InstructionTrace {
     sync::Start {
         branch: false,
         ctx: Default::default(),

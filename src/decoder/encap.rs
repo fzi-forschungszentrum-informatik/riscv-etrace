@@ -177,7 +177,7 @@ impl<'a, 'd, U> Drop for Normal<'a, 'd, U> {
 /// 3.3 of the Encapsulation specification.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Payload<I, D> {
-    InstructionTrace(payload::Payload<I, D>),
+    InstructionTrace(payload::InstructionTrace<I, D>),
     DataTrace,
 }
 
@@ -185,7 +185,7 @@ impl<I, D> Payload<I, D> {
     /// Retrieve the encapsulated instruction trace payload
     ///
     /// Returns [None] if this payload is not an instruction trace payload.
-    pub fn as_instruction_trace(&self) -> Option<&payload::Payload<I, D>> {
+    pub fn as_instruction_trace(&self) -> Option<&payload::InstructionTrace<I, D>> {
         match self {
             Payload::InstructionTrace(p) => Some(p),
             _ => None,
@@ -193,13 +193,13 @@ impl<I, D> Payload<I, D> {
     }
 }
 
-impl<I, D> From<payload::Payload<I, D>> for Payload<I, D> {
-    fn from(p: payload::Payload<I, D>) -> Self {
+impl<I, D> From<payload::InstructionTrace<I, D>> for Payload<I, D> {
+    fn from(p: payload::InstructionTrace<I, D>) -> Self {
         Self::InstructionTrace(p)
     }
 }
 
-impl<I, D> TryFrom<Payload<I, D>> for payload::Payload<I, D> {
+impl<I, D> TryFrom<Payload<I, D>> for payload::InstructionTrace<I, D> {
     type Error = Payload<I, D>;
 
     fn try_from(payload: Payload<I, D>) -> Result<Self, Self::Error> {
