@@ -6,6 +6,44 @@ use crate::types::branch;
 
 use super::{format, sync, unit, util, Decode, Decoder, Error};
 
+/// An ETrace payload
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
+    /// An instruction trace payload
+    InstructionTrace(InstructionTrace<I, D>),
+    /// A data trace payload
+    DataTrace,
+}
+
+impl<I, D> Payload<I, D> {
+    /// Retrieve the encapsulated instruction trace payload
+    ///
+    /// Returns [None] if this payload is not an instruction trace payload.
+    pub fn as_instruction_trace(&self) -> Option<&InstructionTrace<I, D>> {
+        match self {
+            Payload::InstructionTrace(p) => Some(p),
+            _ => None,
+        }
+    }
+}
+
+impl<I, D> From<InstructionTrace<I, D>> for Payload<I, D> {
+    fn from(p: InstructionTrace<I, D>) -> Self {
+        Self::InstructionTrace(p)
+    }
+}
+
+impl<I, D> TryFrom<Payload<I, D>> for InstructionTrace<I, D> {
+    type Error = Payload<I, D>;
+
+    fn try_from(payload: Payload<I, D>) -> Result<Self, Self::Error> {
+        match payload {
+            Payload::InstructionTrace(p) => Ok(p),
+            p => Err(p),
+        }
+    }
+}
+
 /// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchFmt {
