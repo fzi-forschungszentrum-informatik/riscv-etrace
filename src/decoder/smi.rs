@@ -53,6 +53,17 @@ pub enum TraceType {
     Instruction,
 }
 
+impl TryFrom<u8> for TraceType {
+    type Error = u8;
+
+    fn try_from(num: u8) -> Result<Self, Self::Error> {
+        match num {
+            0b10 => Ok(TraceType::Instruction),
+            unknown => Err(unknown),
+        }
+    }
+}
+
 impl fmt::Display for TraceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
