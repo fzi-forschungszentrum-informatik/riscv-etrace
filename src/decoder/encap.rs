@@ -136,7 +136,11 @@ impl<'a, 'd, U> Normal<'a, 'd, U> {
 impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
     /// Decode the packet's ETrace payload
     pub fn payload(self) -> Result<Payload<U::IOptions, U::DOptions>, Error> {
-        Decode::decode(self.decoder)
+        let width = self.decoder.trace_type_width;
+        match self.decoder.read_bits::<u8>(width)? {
+            0 => Decode::decode(self.decoder).map(Payload::InstructionTrace),
+            unknown => Err(Error::UnknownTraceType(unknown)),
+        }
     }
 }
 
@@ -206,15 +210,6 @@ impl<I, D> TryFrom<Payload<I, D>> for payload::InstructionTrace<I, D> {
         match payload {
             Payload::InstructionTrace(p) => Ok(p),
             p => Err(p),
-        }
-    }
-}
-
-impl<U: unit::Unit> Decode<'_, '_, U> for Payload<U::IOptions, U::DOptions> {
-    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        match decoder.read_bits::<u8>(decoder.trace_type_width)? {
-            0 => Decode::decode(decoder).map(Self::InstructionTrace),
-            unknown => Err(Error::UnknownTraceType(unknown)),
         }
     }
 }
