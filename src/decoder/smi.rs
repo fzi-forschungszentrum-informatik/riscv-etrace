@@ -64,6 +64,12 @@ impl TryFrom<u8> for TraceType {
     }
 }
 
+impl PartialEq<u8> for TraceType {
+    fn eq(&self, other: &u8) -> bool {
+        Self::try_from(*other).map(|o| *self == o).unwrap_or(false)
+    }
+}
+
 impl fmt::Display for TraceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
