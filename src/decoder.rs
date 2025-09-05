@@ -23,6 +23,7 @@ use core::ops;
 
 use crate::config;
 
+use payload::InstructionTrace;
 use truncate::TruncateNum;
 
 /// Decoder errors
@@ -58,13 +59,13 @@ impl fmt::Display for Error {
     }
 }
 
-/// A decoder for individual packets and/or [`Payload`][payload::Payload]s
+/// A decoder for individual packets and/or payloads
 ///
 /// Use this decoder to decode individual [`smi::Packet`]s.
 ///
 /// A decoder is created and loaded with raw data via a [`Builder`]. From that
 /// data, the fn [`decode_smi_packet`][Self::decode_smi_packet] will decode one
-/// [`smi::Packet`]s containing a [`Payload`][payload::Payload]. Multiple
+/// [`smi::Packet`]s containing an [`InstructionTrace`] payload. Multiple
 /// packets from different harts may be sequentially decoded by a single decoder
 /// instance.
 ///
@@ -174,14 +175,14 @@ impl<'d, U> Decoder<'d, U> {
         Decode::decode(self)
     }
 
-    /// Decode a single, stand-alone [`Payload`][payload::Payload]
+    /// Decode a single, stand-alone [`InstructionTrace`] payload
     ///
-    /// Decodes a single [`Payload`][payload::Payload], consuming the associated
+    /// Decodes a single [`InstructionTrace`] payload, consuming the associated
     /// data from the input and sign-extending the input if neccessary. After
     /// successful operation, the decoder is left at the _bit_ boundary
     /// following the payload. A failure may leave the decoder in an unspecified
     /// state.
-    pub fn decode_payload(&mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error>
+    pub fn decode_payload(&mut self) -> Result<InstructionTrace<U::IOptions, U::DOptions>, Error>
     where
         U: unit::Unit,
     {

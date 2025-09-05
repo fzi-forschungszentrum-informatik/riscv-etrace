@@ -6,6 +6,44 @@ use crate::types::branch;
 
 use super::{format, sync, unit, util, Decode, Decoder, Error};
 
+/// An ETrace payload
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
+    /// An instruction trace payload
+    InstructionTrace(InstructionTrace<I, D>),
+    /// A data trace payload
+    DataTrace,
+}
+
+impl<I, D> Payload<I, D> {
+    /// Retrieve the encapsulated instruction trace payload
+    ///
+    /// Returns [None] if this payload is not an instruction trace payload.
+    pub fn as_instruction_trace(&self) -> Option<&InstructionTrace<I, D>> {
+        match self {
+            Payload::InstructionTrace(p) => Some(p),
+            _ => None,
+        }
+    }
+}
+
+impl<I, D> From<InstructionTrace<I, D>> for Payload<I, D> {
+    fn from(p: InstructionTrace<I, D>) -> Self {
+        Self::InstructionTrace(p)
+    }
+}
+
+impl<I, D> TryFrom<Payload<I, D>> for InstructionTrace<I, D> {
+    type Error = Payload<I, D>;
+
+    fn try_from(payload: Payload<I, D>) -> Result<Self, Self::Error> {
+        match payload {
+            Payload::InstructionTrace(p) => Ok(p),
+            p => Err(p),
+        }
+    }
+}
+
 /// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchFmt {
@@ -40,31 +78,29 @@ impl<U> Decode<'_, '_, U> for BranchFmt {
 
 /// An instruction trace payload
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
+pub enum InstructionTrace<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     Extension(Extension),
     Branch(Branch),
     Address(AddressInfo),
     Synchronization(sync::Synchronization<I, D>),
 }
 
-impl<U: unit::Unit> Decode<'_, '_, U> for Payload<U::IOptions, U::DOptions> {
+impl<U: unit::Unit> Decode<'_, '_, U> for InstructionTrace<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         format::Format::decode(decoder)?.decode_payload(decoder)
     }
 }
 
-impl<I, D> Payload<I, D> {
+impl<I, D> InstructionTrace<I, D> {
     /// Retrieve the [`AddressInfo`] in this payload
     ///
     /// Returns a reference to the [`AddressInfo`] contained in this payload or
     /// [`None`] if it does not contain one.
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
         match self {
-            Payload::Address(addr) => Some(addr),
-            Payload::Branch(branch) => branch.address.as_ref(),
-            Payload::Extension(Extension::BranchCount(branch_count)) => {
-                branch_count.address.as_ref()
-            }
+            Self::Address(addr) => Some(addr),
+            Self::Branch(branch) => branch.address.as_ref(),
+            Self::Extension(Extension::BranchCount(branch_count)) => branch_count.address.as_ref(),
             _ => None,
         }
     }
@@ -84,70 +120,70 @@ impl<I, D> Payload<I, D> {
     /// Returns [`None`] otherwise.
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
-            Payload::Address(a) => a.irdepth,
-            Payload::Branch(b) => b.address.and_then(|a| a.irdepth),
-            Payload::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
-            Payload::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
+            Self::Address(a) => a.irdepth,
+            Self::Branch(b) => b.address.and_then(|a| a.irdepth),
+            Self::Extension(Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
+            Self::Extension(Extension::JumpTargetIndex(j)) => j.irdepth,
             _ => None,
         }
     }
 }
 
-impl<I, D> From<Extension> for Payload<I, D> {
+impl<I, D> From<Extension> for InstructionTrace<I, D> {
     fn from(ex: Extension) -> Self {
         Self::Extension(ex)
     }
 }
 
-impl<I, D> From<BranchCount> for Payload<I, D> {
+impl<I, D> From<BranchCount> for InstructionTrace<I, D> {
     fn from(count: BranchCount) -> Self {
         Self::Extension(Extension::BranchCount(count))
     }
 }
 
-impl<I, D> From<JumpTargetIndex> for Payload<I, D> {
+impl<I, D> From<JumpTargetIndex> for InstructionTrace<I, D> {
     fn from(idx: JumpTargetIndex) -> Self {
         Self::Extension(Extension::JumpTargetIndex(idx))
     }
 }
 
-impl<I, D> From<Branch> for Payload<I, D> {
+impl<I, D> From<Branch> for InstructionTrace<I, D> {
     fn from(branch: Branch) -> Self {
         Self::Branch(branch)
     }
 }
 
-impl<I, D> From<AddressInfo> for Payload<I, D> {
+impl<I, D> From<AddressInfo> for InstructionTrace<I, D> {
     fn from(addr: AddressInfo) -> Self {
         Self::Address(addr)
     }
 }
 
-impl<I, D> From<sync::Synchronization<I, D>> for Payload<I, D> {
+impl<I, D> From<sync::Synchronization<I, D>> for InstructionTrace<I, D> {
     fn from(sync: sync::Synchronization<I, D>) -> Self {
         Self::Synchronization(sync)
     }
 }
 
-impl<I, D> From<sync::Start> for Payload<I, D> {
+impl<I, D> From<sync::Start> for InstructionTrace<I, D> {
     fn from(start: sync::Start) -> Self {
         Self::Synchronization(start.into())
     }
 }
 
-impl<I, D> From<sync::Trap> for Payload<I, D> {
+impl<I, D> From<sync::Trap> for InstructionTrace<I, D> {
     fn from(trap: sync::Trap) -> Self {
         Self::Synchronization(trap.into())
     }
 }
 
-impl<I, D> From<sync::Context> for Payload<I, D> {
+impl<I, D> From<sync::Context> for InstructionTrace<I, D> {
     fn from(ctx: sync::Context) -> Self {
         Self::Synchronization(ctx.into())
     }
 }
 
-impl<I, D> From<sync::Support<I, D>> for Payload<I, D> {
+impl<I, D> From<sync::Support<I, D>> for InstructionTrace<I, D> {
     fn from(support: sync::Support<I, D>) -> Self {
         Self::Synchronization(support.into())
     }

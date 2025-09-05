@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Utilties for decoding a payload's format and subformat
 
-use super::payload::{self, Payload};
+use super::payload::{self, InstructionTrace};
 use super::{sync, unit, Decode, Decoder, Error};
 
 /// [`Payload`] format and subformat
@@ -19,7 +19,7 @@ impl Format {
     pub fn decode_payload<U: unit::Unit>(
         &self,
         decoder: &mut Decoder<U>,
-    ) -> Result<Payload<U::IOptions, U::DOptions>, Error> {
+    ) -> Result<InstructionTrace<U::IOptions, U::DOptions>, Error> {
         match self {
             Self::Ext(Ext::BranchCount) => payload::BranchCount::decode(decoder).map(Into::into),
             Self::Ext(Ext::JumpTargetIndex) => {

@@ -11,7 +11,7 @@ use super::{payload, unit, Decode, Decoder, Error};
 /// This type represents a decoded Siemens Messaging Infrastructure (SMI) Packet
 /// as described in Chapter 7. Instruction Trace Encoder Output Packets of the
 /// specification. A packet consists of SMI specific header information, and an
-/// SMI-independent tracing [`Payload`][payload::Payload].
+/// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
 #[derive(Debug)]
 pub struct Packet<I, D> {
     /// Partial time stamp
@@ -23,7 +23,7 @@ pub struct Packet<I, D> {
     /// `mhartid` CSR for that hart.
     pub hart: u64,
     /// The packet payload
-    pub payload: payload::Payload<I, D>,
+    pub payload: payload::InstructionTrace<I, D>,
 }
 
 impl<U: unit::Unit> Decode<'_, '_, U> for Packet<U::IOptions, U::DOptions> {

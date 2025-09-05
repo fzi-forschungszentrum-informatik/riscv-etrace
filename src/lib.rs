@@ -19,9 +19,9 @@
 //! configured for a trace [`Unit`][decoder::unit::Unit] implementation with
 //! specific [`config::Parameters`].
 //!
-//! A decoded packet or [`Payload`][decoder::payload::Payload] needs to be
-//! dispatched to the [`Tracer`][tracer::Tracer] for that RISC-V hart. It is the
-//! responsibility of the library user to do so.
+//! A decoded packet or [`InstructionTrace`][decoder::payload::InstructionTrace]
+//! payload needs to be dispatched to the [`Tracer`][tracer::Tracer] for that
+//! RISC-V hart. It is the responsibility of the library user to do so.
 //!
 //! A [`Tracer`][tracer::Tracer] processes packets and generates a series of
 //! tracing [`Item`][tracer::item::Item]s. It is constructed via a
@@ -89,7 +89,7 @@
 //!     if let Some(packet) = packet.filter(|p| p.src_id() == hart_to_trace) {
 //!         let payload = packet.payload().unwrap();
 //!         eprintln!("{payload:?}");
-//!         tracer.process_te_inst(payload.as_instruction_trace().unwrap()).unwrap();
+//!         tracer.process_payload(&payload).unwrap();
 //!         tracer.by_ref().for_each(|i| {
 //!             let item = i.unwrap();
 //!             if let Some(info) = item.trap() {

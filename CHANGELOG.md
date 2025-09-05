@@ -7,8 +7,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A new type `decoder::payload::Payload` which represents both instruction and
+  data trace payloads. The previous `Payload` was renamed to `Instructiontrace`.
+- A fn `tracer::Tracer::process_payload` for processing instances of the (new)
+  `decoder::payload::Payload` without the need to extract
+  `decoder::payload::InstructionTrace`.
 - A new module `decoder::encap` providing support for the RISC-V packet
-  encapsulation, containing the types `Packet`, `Normal` and `Payload`.
+  encapsulation, containing the types `Packet` and `Normal`.
 - A fn `decoder::Decoder::decode_encap_packet` for decoding an (ephemeral)
   `decoder::encap::Packet`.
 - A fn `decoder::Builder::with_timestamp_width` for setting a new width for
@@ -20,6 +25,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `ReferenceDOptions`, `PULP` and `PulpIOptions`
 - A fn `instruction::Kind::upper_immediate` for extracting effective immediates
   of `auipc`, `lui` and `c.lui` instructions.
+
+### Changed
+
+- The old `decoder::payload::Payload` was renamed to `InstructionTrace`.
 
 ## 0.3.0 - 2025-08-16
 
