@@ -29,15 +29,17 @@ use crate::config;
 use payload::InstructionTrace;
 use truncate::TruncateNum;
 
-/// A decoder for individual packets and/or payloads
+/// A decoder for individual packets and/or [payloads][payload]
 ///
-/// Use this decoder to decode individual [`smi::Packet`]s.
+/// Use this decoder to decode [`encap::Packet`]s or [`smi::Packet`]s.
 ///
 /// A decoder is created and loaded with raw data via a [`Builder`]. From that
-/// data, the fn [`decode_smi_packet`][Self::decode_smi_packet] will decode one
-/// [`smi::Packet`]s containing an [`InstructionTrace`] payload. Multiple
-/// packets from different harts may be sequentially decoded by a single decoder
-/// instance.
+/// data, packets of different dormats may be decoded using the corresponding
+/// fns such as [`decode_encap_packet`][Self::decode_encap_packet] or
+/// [`decode_smi_packet`][Self::decode_smi_packet]. After assessing whether a
+/// packet is relevant or not, its [`Payload`][payload::Payload] may be decoded.
+/// Multiple packets from different harts may be sequentially decoded by a
+/// single decoder instance.
 ///
 /// If a packet could not be decoded due to insufficient data, the decoder will
 /// report this by emitting an [`Error::InsufficientData`] error.
