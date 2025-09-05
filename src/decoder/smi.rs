@@ -74,17 +74,21 @@ impl<U> fmt::Debug for Packet<'_, '_, U> {
     }
 }
 
-/// Compare trace type, time tag and hart
-///
-/// # Note
-///
-/// Equivalence between these [`Packet`] representations does not mean
-/// equivalence between their payloads.
 impl<U> PartialEq for Packet<'_, '_, U> {
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(
-            &(self.trace_type, self.time_tag, self.hart),
-            &(other.trace_type, other.time_tag, other.hart),
+            &(
+                self.trace_type,
+                self.time_tag,
+                self.hart,
+                self.decoder.remaining_data(),
+            ),
+            &(
+                other.trace_type,
+                other.time_tag,
+                other.hart,
+                other.decoder.remaining_data(),
+            ),
         )
     }
 }
