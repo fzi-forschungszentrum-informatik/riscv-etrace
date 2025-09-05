@@ -7,6 +7,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A new submodule `decoder::error`.
 - A new type `decoder::payload::Payload` which represents both instruction and
   data trace payloads. The previous `Payload` was renamed to `Instructiontrace`.
 - A fn `tracer::Tracer::process_payload` for processing instances of the (new)
@@ -44,6 +45,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - The "simple" example is now capable of processing trace data containing
   arbitrary payloads as long as packets for the traced HART only contain
   instruction trace payloads.
+- `decoder::Error` was moved to a new submodule `decoder::error` but is still
+  availible as `decoder::Error` via a re-export.
+- `decoder::smi::TraceType` has one more variant `Data`, indicating a data
+  tracing payload.
 
 ## 0.3.0 - 2025-08-16
 

@@ -59,6 +59,7 @@ impl<U: unit::Unit> Packet<'_, '_, U> {
             TraceType::Instruction => {
                 Decode::decode(self.decoder).map(payload::Payload::InstructionTrace)
             }
+            TraceType::Data => Ok(payload::Payload::DataTrace),
         }
     }
 }
@@ -126,6 +127,7 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
 pub enum TraceType {
     /// The packet contains an instruction trace payload
     Instruction,
+    Data,
 }
 
 impl TryFrom<u8> for TraceType {
@@ -134,6 +136,7 @@ impl TryFrom<u8> for TraceType {
     fn try_from(num: u8) -> Result<Self, Self::Error> {
         match num {
             0b10 => Ok(TraceType::Instruction),
+            0b11 => Ok(TraceType::Data),
             unknown => Err(unknown),
         }
     }
@@ -149,6 +152,7 @@ impl fmt::Display for TraceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Instruction => write!(f, "Instruction"),
+            Self::Data => write!(f, "Data"),
         }
     }
 }

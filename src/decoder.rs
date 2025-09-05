@@ -6,6 +6,7 @@
 //! as a [`Decoder`] for decoding them from raw trace data.
 
 pub mod encap;
+pub mod error;
 mod format;
 pub mod payload;
 pub mod smi;
@@ -13,12 +14,14 @@ pub mod sync;
 pub mod truncate;
 pub mod unit;
 mod util;
+mod width;
 
 #[cfg(test)]
 mod tests;
 
-use core::fmt;
-use core::num::{NonZeroU8, NonZeroUsize};
+pub use error::Error;
+
+use core::num::NonZeroUsize;
 use core::ops;
 
 use crate::config;
@@ -26,48 +29,17 @@ use crate::config;
 use payload::InstructionTrace;
 use truncate::TruncateNum;
 
-/// Decoder errors
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Error {
-    /// The trace type is not known to us
-    UnknownTraceType(u8),
-    /// The format/subformat is unknown.
-    UnknownFmt(u8, Option<u8>),
-    /// The branch format in [`payload::BranchCount`] is `0b01`.
-    BadBranchFmt,
-    /// Some more bytes of data are required for the operation to succeed
-    InsufficientData(NonZeroUsize),
-    /// The privilege level is not known. You might want to implement it.
-    UnknownPrivilege(u8),
-    /// Encountered an unknown encoder mode
-    UnknownEncoderMode(u8),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnknownTraceType(t) => write!(f, "Unknown trace type {t}"),
-            Self::UnknownFmt(t, None) => write!(f, "Unknown format {t}"),
-            Self::UnknownFmt(t, Some(s)) => write!(f, "Unknown format,subformat {t},{s}"),
-            Self::BadBranchFmt => write!(f, "Malformed branch format"),
-            Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
-            Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
-            Self::UnknownEncoderMode(m) => write!(f, "Unknown encoder mode {m}"),
-        }
-    }
-}
-
-/// A decoder for individual packets and/or payloads
+/// A decoder for individual packets and/or [payloads][payload]
 ///
-/// Use this decoder to decode individual [`smi::Packet`]s.
+/// Use this decoder to decode [`encap::Packet`]s or [`smi::Packet`]s.
 ///
 /// A decoder is created and loaded with raw data via a [`Builder`]. From that
-/// data, the fn [`decode_smi_packet`][Self::decode_smi_packet] will decode one
-/// [`smi::Packet`]s containing an [`InstructionTrace`] payload. Multiple
-/// packets from different harts may be sequentially decoded by a single decoder
-/// instance.
+/// data, packets of different dormats may be decoded using the corresponding
+/// fns such as [`decode_encap_packet`][Self::decode_encap_packet] or
+/// [`decode_smi_packet`][Self::decode_smi_packet]. After assessing whether a
+/// packet is relevant or not, its [`Payload`][payload::Payload] may be decoded.
+/// Multiple packets from different harts may be sequentially decoded by a
+/// single decoder instance.
 ///
 /// If a packet could not be decoded due to insufficient data, the decoder will
 /// report this by emitting an [`Error::InsufficientData`] error.
@@ -111,7 +83,7 @@ impl fmt::Display for Error {
 pub struct Decoder<'d, U> {
     data: &'d [u8],
     bit_pos: usize,
-    field_widths: Widths,
+    field_widths: width::Widths,
     unit: U,
     hart_index_width: u8,
     timestamp_width: u8,
@@ -307,7 +279,7 @@ pub fn builder() -> Builder<unit::Reference> {
 /// and [`Clone`] as long as the [`Unit`][unit::Unit] used does.
 #[derive(Copy, Clone, Default)]
 pub struct Builder<U = unit::Reference> {
-    field_widths: Widths,
+    field_widths: width::Widths,
     unit: U,
     hart_index_width: u8,
     timestamp_width: u8,
@@ -396,43 +368,4 @@ impl<U> Builder<U> {
 
 trait Decode<'a, 'd, U>: Sized {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
-}
-
-/// Widths of various payload fields
-#[derive(Copy, Clone)]
-struct Widths {
-    pub cache_index: u8,
-    pub context: Option<NonZeroU8>,
-    pub time: Option<NonZeroU8>,
-    pub ecause: NonZeroU8,
-    pub format0_subformat: u8,
-    pub iaddress_lsb: NonZeroU8,
-    pub iaddress: NonZeroU8,
-    pub privilege: NonZeroU8,
-    pub stack_depth: Option<NonZeroU8>,
-}
-
-impl Default for Widths {
-    fn default() -> Self {
-        (&config::Parameters::default()).into()
-    }
-}
-
-impl From<&config::Parameters> for Widths {
-    fn from(params: &config::Parameters) -> Self {
-        let stack_depth = params.return_stack_size_p
-            + params.call_counter_size_p
-            + if params.return_stack_size_p > 0 { 1 } else { 0 };
-        Self {
-            cache_index: params.cache_size_p,
-            context: (!params.nocontext_p).then_some(params.context_width_p),
-            time: (!params.notime_p).then_some(params.time_width_p),
-            ecause: params.ecause_width_p,
-            format0_subformat: params.f0s_width_p,
-            iaddress_lsb: params.iaddress_lsb_p,
-            iaddress: params.iaddress_width_p,
-            privilege: params.privilege_width_p,
-            stack_depth: NonZeroU8::new(stack_depth),
-        }
-    }
 }
