@@ -156,23 +156,22 @@ fn main() {
     let mut pcount = 0u64;
     let target_hart = matches.get_one("hart").cloned().unwrap_or(0);
     while decoder.bytes_left() > 0 {
+        let bytes_left = decoder.bytes_left();
         // We decode a packet ...
         let packet = decoder
             .decode_smi_packet()
             .expect("Could not decode packet");
         if debug {
-            eprintln!(
-                "Decoded packet: {packet:?} ({} bytes left)",
-                decoder.bytes_left()
-            );
+            eprintln!("Decoded packet: {packet:?} ({bytes_left} bytes left)");
         }
         pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.
-        if packet.hart == target_hart {
+        if packet.hart() == target_hart {
+            let payload = packet.payload().expect("Could not decode payload");
             // We process the packet's contents ...
             tracer
-                .process_te_inst(&packet.payload)
+                .process_payload(&payload)
                 .expect("Could not process packet");
             // and then iterate over all the trace items. Those need to be
             // exhaused before feeding the next packet.
@@ -196,7 +195,9 @@ fn main() {
                 }
 
                 if let Some(reference) = reference.as_mut() {
-                    spike::check_reference(reference, &item, &packet.payload, icount);
+                    if let Some(payload) = payload.as_instruction_trace() {
+                        spike::check_reference(reference, &item, payload, icount);
+                    }
                 }
 
                 icount += 1;

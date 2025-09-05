@@ -12,6 +12,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `tracer::Tracer::process_payload` for processing instances of the (new)
   `decoder::payload::Payload` without the need to extract
   `decoder::payload::InstructionTrace`.
+- Fns `decoder::smi::Packet::trace_type`, `raw_trace_type`, `time_tag` and
+  `hart` for querying values and `payload` for deferred decoding of the packet's
+  `decoder::payload::Payload`.
+- `PartialEq` and `Drop` impls for `decoder::smi::Packet`.
+- `TryFrom<u8>` and `PartialEq<u8>` impls for `decoder::smi::TraceType`.
 - A new module `decoder::encap` providing support for the RISC-V packet
   encapsulation, containing the types `Packet` and `Normal`.
 - A fn `decoder::Decoder::decode_encap_packet` for decoding an (ephemeral)
@@ -29,6 +34,16 @@ is based on https://keepachangelog.com/en/1.1.0/.
 ### Changed
 
 - The old `decoder::payload::Payload` was renamed to `InstructionTrace`.
+- Made `decoder::smi::Packet` data members private.
+- Made `decoder::smi::Packet` ephemeral, bound by lifetimes associated to the
+  `decoder::Decoder` it was decoded with.
+- Decoding a `decoder::smi::Packet` does no longer unconditionally decode the
+  payload (and emit an error if that fails).
+- `decoder::Decoder<U>::decode_smi_packet` no longer requires `U` to impl
+  `decoder::unit::Unit`.
+- The "simple" example is now capable of processing trace data containing
+  arbitrary payloads as long as packets for the traced HART only contain
+  instruction trace payloads.
 
 ## 0.3.0 - 2025-08-16
 
