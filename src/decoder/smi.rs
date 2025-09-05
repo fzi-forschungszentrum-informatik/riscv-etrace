@@ -69,6 +69,7 @@ impl<U> fmt::Debug for Packet<'_, '_, U> {
             .field("trace_type", &self.trace_type)
             .field("time_tag", &self.time_tag)
             .field("hart", &self.hart)
+            .field("payload", &self.decoder.remaining_data())
             .finish_non_exhaustive()
     }
 }
