@@ -151,6 +151,7 @@ impl<U> fmt::Debug for Normal<'_, '_, U> {
             .field("flow", &self.flow)
             .field("src_id", &self.src_id)
             .field("timestamp", &self.timestamp)
+            .field("unaligned_payload", &self.decoder.remaining_data())
             .finish_non_exhaustive()
     }
 }
