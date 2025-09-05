@@ -198,6 +198,14 @@ impl<'d, U> Decoder<'d, U> {
         }
     }
 
+    /// Retrieve the remaining inner data, including the current byte
+    fn remaining_data(&self) -> &'d [u8] {
+        self.data
+            .split_at_checked(self.bit_pos >> 3)
+            .unwrap_or_default()
+            .1
+    }
+
     /// Split the inner data at the given position
     ///
     /// On success, the inner data is set restricted to the half up to the given

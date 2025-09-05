@@ -151,21 +151,31 @@ impl<U> fmt::Debug for Normal<'_, '_, U> {
             .field("flow", &self.flow)
             .field("src_id", &self.src_id)
             .field("timestamp", &self.timestamp)
+            .field("unaligned_payload", &self.decoder.remaining_data())
             .finish_non_exhaustive()
     }
 }
 
-/// Compare flow indicator, source id and timestamp
+/// Compare two normal encapsulation structures
 ///
 /// # Note
 ///
-/// Equivalence between these [`Normal`] Encapsulation Structure representations
-/// does not mean equivalence between their payloads.
+/// Comparison is only guranteed to work if the sub-byte alignment matches.
 impl<U> PartialEq for Normal<'_, '_, U> {
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(
-            &(self.flow, self.src_id, self.timestamp),
-            &(other.flow, other.src_id, other.timestamp),
+            &(
+                self.flow,
+                self.src_id,
+                self.timestamp,
+                self.decoder.remaining_data(),
+            ),
+            &(
+                other.flow,
+                other.src_id,
+                other.timestamp,
+                other.decoder.remaining_data(),
+            ),
         )
     }
 }
