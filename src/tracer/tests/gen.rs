@@ -27,17 +27,21 @@ macro_rules! trace_test_helper {
         trace_test_helper!($n, $t.with_implicit_return($r), $c $i);
     };
     ($n:ident, $t:expr, [] [$($p:expr => { $($i:tt),* })*]) => {
-        #[test]
-        fn $n() {
-            let mut tracer: Tracer<_, stack::StaticStack<8>> = $t
-                .build()
-                .expect("Could not build tracer");
-            $(
-                let payload: InstructionTrace = $p.into();
-                tracer.process_te_inst(&payload).expect("Could not process packet");
-                trace_check_def!(tracer, $($i),*);
-                assert_eq!(tracer.next(), None);
-            )*
+        mod $n {
+            use super::*;
+
+            #[test]
+            fn decode() {
+                let mut tracer: Tracer<_, stack::StaticStack<8>> = $t
+                    .build()
+                    .expect("Could not build tracer");
+                $(
+                    let payload: InstructionTrace = $p.into();
+                    tracer.process_te_inst(&payload).expect("Could not process packet");
+                    trace_check_def!(tracer, $($i),*);
+                    assert_eq!(tracer.next(), None);
+                )*
+            }
         }
     };
     ($n:ident, $t:expr, [$k:ident $v:tt $($kr:ident $vr:tt)*] $i:tt) => {
