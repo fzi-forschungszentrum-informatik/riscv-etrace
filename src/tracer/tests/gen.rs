@@ -42,6 +42,28 @@ macro_rules! trace_test_helper {
                     assert_eq!(tracer.next(), None);
                 )*
             }
+
+            #[test]
+            fn size_hint() {
+                let mut tracer: Tracer<_, stack::StaticStack<8>> = $t
+                    .build()
+                    .expect("Could not build tracer");
+                $(
+                    let payload: InstructionTrace = $p.into();
+                    let mut items = trace_item_count!($($i),*);
+                    tracer.process_te_inst(&payload).expect("Could not process packet");
+                    while items > 0 {
+                        let (min, max) = tracer.size_hint();
+                        assert_ne!(tracer.next(), None);
+                        assert!(min <= items, "Lower bound: {min} > {items}");
+                        if let Some(max) = max {
+                            assert!(max >= items, "Upper bound: {max} < {items}");
+                        }
+                        items -= 1;
+                    }
+                    assert_eq!(tracer.next(), None);
+                )*
+            }
         }
     };
     ($n:ident, $t:expr, [$k:ident $v:tt $($kr:ident $vr:tt)*] $i:tt) => {
@@ -63,4 +85,10 @@ macro_rules! trace_check_def {
             trace_check_def!($t, $i);
         )*
     }
+}
+
+macro_rules! trace_item_count {
+    (($a:literal, $i:expr)) => { 1 };
+    (($n:literal, $($i:tt),*)) => { $n * trace_item_count!($($i),*) };
+    ($($i:tt),*) => { 0usize $( + trace_item_count!($i) )* };
 }
