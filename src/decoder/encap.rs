@@ -134,7 +134,7 @@ impl<'a, 'd, U> Normal<'a, 'd, U> {
 }
 
 impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
-    /// Decode the packet's ETrace payload
+    /// Decode the packet's E-Trace payload
     pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let width = self.decoder.trace_type_width;
         match self.decoder.read_bits::<u8>(width)? {

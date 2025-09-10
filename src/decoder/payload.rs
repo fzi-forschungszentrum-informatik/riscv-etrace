@@ -6,7 +6,7 @@ use crate::types::branch;
 
 use super::{format, sync, unit, util, Decode, Decoder, Error};
 
-/// An ETrace payload
+/// An E-Trace payload
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Payload<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     /// An instruction trace payload

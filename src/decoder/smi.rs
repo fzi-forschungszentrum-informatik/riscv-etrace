@@ -49,7 +49,7 @@ impl<U> Packet<'_, '_, U> {
 }
 
 impl<U: unit::Unit> Packet<'_, '_, U> {
-    /// Decode the packet's ETrace payload
+    /// Decode the packet's E-Trace payload
     pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let trace_type = self
             .raw_trace_type()

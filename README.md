@@ -1,4 +1,4 @@
-# Decoder and tracer for RISC-V ETraces
+# Decoder and tracer for RISC-V E-Traces
 
 This library provides a decoder and a tracer for the instruction tracing
 defined in the [Efficient Trace for RISC-V](https://github.com/riscv-non-isa/riscv-trace-spec/)

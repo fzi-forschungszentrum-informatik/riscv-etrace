@@ -1,6 +1,6 @@
 // Copyright (C) 2024, 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! # Decoder and tracer for RISC-V ETraces
+//! # Decoder and tracer for RISC-V E-Traces
 //!
 //! This library provides a [decoder] and a [tracer] for the instruction tracing
 //! defined in the [Efficient Trace for RISC-V][etrace] specification. Given
@@ -34,9 +34,9 @@
 //! of implementations and utilities for constructing one, including limited
 //! instruction decoding capabilities.
 //!
-//! # ETrace options
+//! # E-Trace options
 //!
-//! The following [ETrace][etrace] options are supported:
+//! The following [E-Trace][etrace] options are supported:
 //! * delta/full address mode
 //! * sequentially inferred jumps
 //! * implicit return
