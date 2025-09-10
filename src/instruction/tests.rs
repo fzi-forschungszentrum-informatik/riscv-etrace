@@ -533,3 +533,82 @@ fn bits_extract_32() {
         Some((Bits::Bit32(0x00000697), [0x93, 0x86, 0x86, 0x05].as_slice())),
     );
 }
+
+#[test]
+fn bits_extract_48() {
+    let data = [0x5F, 0x36, 0x98, 0x00, 0x45, 0xF1, 0x20, 0x37];
+    assert_eq!(
+        Bits::extract(&data),
+        Some((Bits::Bit48(0xF1450098365F), [0x20, 0x37].as_slice())),
+    );
+}
+
+#[test]
+fn bits_extract_64() {
+    let data = [0xBF, 0x2F, 0x15, 0x46, 0x52, 0x8C, 0x84, 0x23, 0xFE, 0x4B];
+    assert_eq!(
+        Bits::extract(&data),
+        Some((Bits::Bit64(0x23848C5246152FBF), [0xFE, 0x4B].as_slice())),
+    );
+}
+
+#[test]
+fn bits_extract_none() {
+    let data = [0xFF, 0x82, 0xCA, 0xF5, 0xEF];
+    assert_eq!(Bits::extract(&data), None,)
+}
+
+#[test]
+fn decode_16() {
+    // c.jal instruction with func3 and op
+    let bits = Bits::Bit16(0b001_010_0010_0000_01);
+
+    let instr = bits.decode(base::Set::Rv32I);
+    assert_eq!(instr.size, Size::Compressed);
+
+    // rd is 0 and immediate needs to be shifted by 1 to left to match logic f. TypeJ instructions
+    assert_eq!(
+        instr.kind,
+        Some(Kind::new_c_jal(0, (0b_0000_0101_000) << 1))
+    );
+}
+
+#[test]
+fn decode_32() {
+    // blt; func3: 100, op: 1100011, rs1: 20, rs2: 26, imm: 0001_1010_0001
+    let bits = Bits::Bit32(0x35AA4163);
+    let instr = bits.decode(base::Set::Rv32I);
+
+    assert_eq!(instr.size, Size::Normal);
+    //shift to left by 1 to match imm. logic
+    assert_eq!(
+        instr.kind,
+        Some(Kind::new_blt(20, 26, (0b0001_1010_0001) << 1))
+    );
+}
+
+#[test]
+fn decode_48() {
+    let bits = Bits::Bit48(0x63E3312B);
+    let instr = bits.decode(base::Set::Rv64I);
+
+    assert_eq!(instr.size, Size::Wide);
+    assert_eq!(instr.kind, None);
+}
+
+#[test]
+fn decode_64() {
+    let bits = Bits::Bit64(0x218A202D);
+    let instr = bits.decode(base::Set::Rv64I);
+
+    assert_eq!(instr.size, Size::ExtraWide);
+    assert_eq!(instr.kind, None);
+}
+
+#[test]
+fn upper_immediate_lui() {
+    let kind = Kind::new_lui(5, 0x80010);
+    let result = kind.upper_immediate(20010556);
+
+    assert_eq!((result), Some((5, 0x80010)));
+}
