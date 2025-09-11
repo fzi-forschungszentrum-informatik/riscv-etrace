@@ -70,6 +70,27 @@ retrieval_test!(
     0x1008
 );
 
+#[cfg(feature = "elf")]
+retrieval_test!(
+    elf,
+    {
+        let elf = include_bytes!("testfile.elf");
+        let elf = ::elf::ElfBytes::<::elf::endian::LittleEndian>::minimal_parse(elf)
+            .expect("Coult not parse ELF file");
+        elf::Elf::new(elf).expect("Could not construct binary from ELF file")
+    },
+    0x0,
+    0xa0000000 => Ok(instruction::Kind::new_auipc(13, 0).into()),
+    0xa0000004 => Ok(instruction::UNCOMPRESSED),
+    0xa0000008 => Ok(instruction::UNCOMPRESSED),
+    0xa000000c => Ok(instruction::Kind::new_jal(0, 10).into()),
+    0xa0000010 => Ok(instruction::Kind::wfi.into()),
+    0xa0000014 => Ok(instruction::Kind::new_c_j(0, -4).into()),
+    0xa0000016 => Ok(instruction::Kind::wfi.into()),
+    0xa000001a => Ok(instruction::Kind::new_jal(0, -4).into()),
+    0xa000001e
+);
+
 #[test]
 fn binary_from_sorted_map() {
     from_sorted_map([
