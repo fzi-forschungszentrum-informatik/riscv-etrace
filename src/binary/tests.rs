@@ -24,6 +24,18 @@ macro_rules! retrieval_test {
 }
 
 retrieval_test!(
+    offset,
+    from_sorted_map([
+        (0x00, instruction::UNCOMPRESSED),
+        (0x04, instruction::COMPRESSED),
+    ]).with_offset(0x1000),
+    0x0,
+    0x1000 => Ok(instruction::UNCOMPRESSED),
+    0x1004 => Ok(instruction::COMPRESSED),
+    0x1008
+);
+
+retrieval_test!(
     segment,
     from_segment(
         b"\x97\x02\x00\x00\xff\x00\x00\x00\x73\x25\x40\xf1\x83\xb2\x82\x01\x67\x80\x02\x00",
