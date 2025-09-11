@@ -65,10 +65,9 @@ pub mod basic;
 #[cfg(feature = "alloc")]
 pub mod boxed;
 pub mod combinators;
-pub mod error;
-
 #[cfg(feature = "elf")]
 pub mod elf;
+pub mod error;
 
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
