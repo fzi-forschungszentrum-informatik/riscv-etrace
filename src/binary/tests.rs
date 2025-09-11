@@ -49,6 +49,27 @@ retrieval_test!(
     0x1008
 );
 
+retrieval_test!(
+    multi,
+    Multi::new([
+        from_sorted_map([
+            (0x1000, instruction::UNCOMPRESSED),
+            (0x1004, instruction::UNCOMPRESSED),
+        ]),
+        from_sorted_map([
+            (0x2000, instruction::UNCOMPRESSED),
+            (0x2004, instruction::UNCOMPRESSED),
+        ]),
+    ]),
+    0x0,
+    0x1000 => Ok(instruction::UNCOMPRESSED),
+    0x1004 => Ok(instruction::UNCOMPRESSED),
+    0x2000 => Ok(instruction::UNCOMPRESSED),
+    0x2004 => Ok(instruction::UNCOMPRESSED),
+    0x1000 => Ok(instruction::UNCOMPRESSED),
+    0x1008
+);
+
 #[test]
 fn binary_from_sorted_map() {
     from_sorted_map([
