@@ -10,7 +10,7 @@ use super::Binary;
 /// [`Binary`] adapter for an [`FnMut`]
 ///
 /// This forwards calls to [`Binary::get_insn`] to the wrapped [`FnMut`].
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Func<F: FnMut(u64) -> Result<Instruction, E>, E> {
     func: F,
     phantom: core::marker::PhantomData<E>,
@@ -60,7 +60,7 @@ pub fn from_fn<F: FnMut(u64) -> Result<Instruction, E>, E>(func: F) -> Func<F, E
 ///     Ok(instruction::Kind::new_jalr(0, 5, 0).into()),
 /// );
 /// ```
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Segment<T: AsRef<[u8]>> {
     data: T,
     base: base::Set,
@@ -101,7 +101,7 @@ pub fn from_segment<T: AsRef<[u8]>>(data: T, base: base::Set) -> Segment<T> {
 /// This [`Binary`] is backed by a slice of addresses-[`Instruction`] pairs
 /// specifying the presence of an [`Instruction`] at the specified address. The
 /// [`Binary`] is meant for small, fixed code sequences such as bootroms.
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct SimpleMap<T: AsRef<[(u64, Instruction)]>> {
     inner: T,
 }
@@ -175,7 +175,7 @@ where
 }
 
 /// A [`Binary`] that does not contain any [`Instruction`]s
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Empty;
 
 impl Binary for Empty {
