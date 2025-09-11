@@ -69,6 +69,9 @@ pub mod combinators;
 pub mod elf;
 pub mod error;
 
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
