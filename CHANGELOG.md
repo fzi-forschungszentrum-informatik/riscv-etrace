@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- `PartialEq` impl for `binary::basic:Func`, `Segment`, `SimpleMap` and `Empty`.
+- `PartialEq` impl for `binary::elf::Error`.
+
 ## 0.4.0 - 2025-09-10
 
 ### Added

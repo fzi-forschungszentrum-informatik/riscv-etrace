@@ -176,3 +176,17 @@ impl fmt::Display for Error {
         }
     }
 }
+
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::NoSegmentFound, Self::NoSegmentFound) => true,
+            (Self::CouldNotRetrieveData(_), Self::CouldNotRetrieveData(_)) => true,
+            (Self::ExceededHostUSize(l), Self::ExceededHostUSize(r)) => l == r,
+            (Self::InvalidInstruction, Self::InvalidInstruction) => true,
+            (Self::UnsupportedArchitecture, Self::UnsupportedArchitecture) => true,
+            (Self::UnsupportedEndianess, Self::UnsupportedEndianess) => true,
+            _ => false,
+        }
+    }
+}
