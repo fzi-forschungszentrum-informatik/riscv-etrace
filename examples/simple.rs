@@ -171,6 +171,9 @@ fn main() {
         // and dispatch it to the tracer tracing the specified hart.
         if packet.hart() == target_hart {
             let payload = packet.payload().expect("Could not decode payload");
+            if debug {
+                eprintln!("Payload: {payload:?}");
+            }
             // We process the packet's contents ...
             tracer
                 .process_payload(&payload)
