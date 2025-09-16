@@ -156,19 +156,24 @@ fn main() {
     let mut pcount = 0u64;
     let target_hart = matches.get_one("hart").cloned().unwrap_or(0);
     while decoder.bytes_left() > 0 {
-        let bytes_left = decoder.bytes_left();
+        if debug {
+            eprintln!("{} bytes left in trace", decoder.bytes_left());
+        }
         // We decode a packet ...
         let packet = decoder
             .decode_smi_packet()
             .expect("Could not decode packet");
         if debug {
-            eprintln!("Decoded packet: {packet:?} ({bytes_left} bytes left)");
+            eprintln!("Decoded packet: {packet:?}");
         }
         pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.
         if packet.hart() == target_hart {
             let payload = packet.payload().expect("Could not decode payload");
+            if debug {
+                eprintln!("Payload: {payload:?}");
+            }
             // We process the packet's contents ...
             tracer
                 .process_payload(&payload)

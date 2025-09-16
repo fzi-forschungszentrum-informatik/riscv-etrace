@@ -10,6 +10,15 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `PartialEq` impl for `binary::basic:Func`, `Segment`, `SimpleMap` and `Empty`.
 - `PartialEq` impl for `binary::elf::Error`.
 
+### Changed
+
+- If debug is enabled, the "simple" example now prints number of bytes not
+  decoded before each packet on a separate line. The value does now exclude the
+  packet's size.
+- If debug is enabled, the "simple" example now prints the decoded payload on a
+  separate line. In version 0.4.0, we would only print the raw payload as part
+  of the packet.
+
 ## 0.4.0 - 2025-09-10
 
 ### Added
