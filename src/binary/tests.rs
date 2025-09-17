@@ -79,6 +79,8 @@ retrieval_test!(
     0x1008
 );
 
+retrieval_test!(empty, Empty, 0x0);
+
 retrieval_test!(
     multi,
     Multi::new([
