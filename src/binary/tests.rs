@@ -30,6 +30,18 @@ macro_rules! retrieval_test {
 }
 
 retrieval_test!(
+    from_func,
+    from_fn(|a| {
+        match a {
+            0x1000 => Ok(instruction::UNCOMPRESSED),
+            _ => Err(error::NoInstruction),
+        }
+    }),
+    0x1000 => Ok(instruction::UNCOMPRESSED),
+    0x1004
+);
+
+retrieval_test!(
     offset,
     from_sorted_map([
         (0x00, instruction::UNCOMPRESSED),
