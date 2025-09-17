@@ -5,6 +5,8 @@ use super::*;
 
 use crate::instruction;
 
+use error::MaybeMiss;
+
 macro_rules! retrieval_test {
     ($n:ident, $b:expr, $($a:literal $(=> $i:expr)?),*) => {
         #[test]
@@ -16,10 +18,14 @@ macro_rules! retrieval_test {
         }
     };
     ($b:ident, $a:literal, $i:expr) => {
-        assert_eq!($b.get_insn($a), $i);
+        let res = $b.get_insn($a);
+        assert_eq!(res, $i);
+        assert!(!res.is_miss());
     };
     ($b:ident, $a:literal) => {
-        assert_eq!($b.get_insn($a), Err(Miss::miss($a)));
+        let res = $b.get_insn($a);
+        assert_eq!(res, Err(Miss::miss($a)));
+        assert!(res.is_miss());
     };
 }
 
