@@ -68,6 +68,18 @@ retrieval_test!(
 );
 
 retrieval_test!(
+    segment_tuple,
+    (
+        from_segment(b"\xff\x00\x00\x00\x73\x25\x40\xf1", instruction::base::Set::Rv64I),
+        from_segment(b"\x97\x02\x00\x00", instruction::base::Set::Rv64I).with_offset(0x1000),
+    ),
+    0x0000 => Err(error::SegmentError::InvalidInstruction),
+    0x0004 => Ok(instruction::UNCOMPRESSED),
+    0x1000 => Ok(instruction::Kind::new_auipc(5, 0).into()),
+    0x1004
+);
+
+retrieval_test!(
     simple_map,
     from_sorted_map([
         (0x1000, instruction::UNCOMPRESSED),
