@@ -5,6 +5,8 @@ use super::*;
 
 use crate::instruction;
 
+use error::MaybeMiss;
+
 macro_rules! retrieval_test {
     ($n:ident, $b:expr, $($a:literal $(=> $i:expr)?),*) => {
         #[test]
@@ -16,12 +18,45 @@ macro_rules! retrieval_test {
         }
     };
     ($b:ident, $a:literal, $i:expr) => {
-        assert_eq!($b.get_insn($a), $i);
+        let res = $b.get_insn($a);
+        assert_eq!(res, $i);
+        assert!(!res.is_miss());
     };
     ($b:ident, $a:literal) => {
-        assert_eq!($b.get_insn($a), Err(Miss::miss($a)));
+        let res = $b.get_insn($a);
+        assert_eq!(res, Err(Miss::miss($a)));
+        assert!(res.is_miss());
     };
 }
+
+#[cfg(feature = "alloc")]
+#[test]
+fn boxed() {
+    let mut binary = from_sorted_map([
+        (0x1000, instruction::UNCOMPRESSED),
+        (0x1004, instruction::COMPRESSED),
+    ])
+    .boxed();
+    assert!(binary.get_insn(0x0).is_miss());
+    assert_eq!(
+        binary.get_insn(0x1000).expect("Could not get insn"),
+        instruction::UNCOMPRESSED
+    );
+}
+
+retrieval_test!(option, None::<Empty>, 0x0);
+
+retrieval_test!(
+    from_func,
+    from_fn(|a| {
+        match a {
+            0x1000 => Ok(instruction::UNCOMPRESSED),
+            _ => Err(error::NoInstruction),
+        }
+    }),
+    0x1000 => Ok(instruction::UNCOMPRESSED),
+    0x1004
+);
 
 retrieval_test!(
     offset,
@@ -50,6 +85,18 @@ retrieval_test!(
 );
 
 retrieval_test!(
+    segment_tuple,
+    (
+        from_segment(b"\xff\x00\x00\x00\x73\x25\x40\xf1", instruction::base::Set::Rv64I),
+        from_segment(b"\x97\x02\x00\x00", instruction::base::Set::Rv64I).with_offset(0x1000),
+    ),
+    0x0000 => Err(error::SegmentError::InvalidInstruction),
+    0x0004 => Ok(instruction::UNCOMPRESSED),
+    0x1000 => Ok(instruction::Kind::new_auipc(5, 0).into()),
+    0x1004
+);
+
+retrieval_test!(
     simple_map,
     from_sorted_map([
         (0x1000, instruction::UNCOMPRESSED),
@@ -60,6 +107,8 @@ retrieval_test!(
     0x1004 => Ok(instruction::UNCOMPRESSED),
     0x1008
 );
+
+retrieval_test!(empty, Empty, 0x0);
 
 retrieval_test!(
     multi,
