@@ -29,6 +29,8 @@ macro_rules! retrieval_test {
     };
 }
 
+retrieval_test!(option, None::<Empty>, 0x0);
+
 retrieval_test!(
     from_func,
     from_fn(|a| {
