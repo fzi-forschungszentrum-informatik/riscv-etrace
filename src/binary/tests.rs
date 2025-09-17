@@ -29,6 +29,21 @@ macro_rules! retrieval_test {
     };
 }
 
+#[cfg(feature = "alloc")]
+#[test]
+fn boxed() {
+    let mut binary = from_sorted_map([
+        (0x1000, instruction::UNCOMPRESSED),
+        (0x1004, instruction::COMPRESSED),
+    ])
+    .boxed();
+    assert!(binary.get_insn(0x0).is_miss());
+    assert_eq!(
+        binary.get_insn(0x1000).expect("Could not get insn"),
+        instruction::UNCOMPRESSED
+    );
+}
+
 retrieval_test!(option, None::<Empty>, 0x0);
 
 retrieval_test!(
