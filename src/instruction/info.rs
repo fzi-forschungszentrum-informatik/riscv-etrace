@@ -124,3 +124,41 @@ pub trait Info {
         self.is_uninferable_jump() || self.is_return_from_trap() || self.is_ecall_or_ebreak()
     }
 }
+
+impl<T: Info> Info for Option<T> {
+    type Register = T::Register;
+
+    fn branch_target(&self) -> Option<i16> {
+        self.as_ref().and_then(Info::branch_target)
+    }
+
+    fn inferable_jump_target(&self) -> Option<i32> {
+        self.as_ref().and_then(Info::inferable_jump_target)
+    }
+
+    fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
+        self.as_ref().and_then(Info::uninferable_jump_target)
+    }
+
+    fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
+        self.as_ref().and_then(|i| i.upper_immediate(pc))
+    }
+
+    fn is_return_from_trap(&self) -> bool {
+        self.as_ref()
+            .map(Info::is_return_from_trap)
+            .unwrap_or(false)
+    }
+
+    fn is_ecall_or_ebreak(&self) -> bool {
+        self.as_ref().map(Info::is_ecall_or_ebreak).unwrap_or(false)
+    }
+
+    fn is_call(&self) -> bool {
+        self.as_ref().map(Info::is_call).unwrap_or(false)
+    }
+
+    fn is_return(&self) -> bool {
+        self.as_ref().map(Info::is_return).unwrap_or(false)
+    }
+}
