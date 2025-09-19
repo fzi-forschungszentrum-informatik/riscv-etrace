@@ -8,6 +8,7 @@
 pub mod base;
 pub mod bits;
 pub mod format;
+pub mod info;
 
 #[cfg(test)]
 mod tests;
