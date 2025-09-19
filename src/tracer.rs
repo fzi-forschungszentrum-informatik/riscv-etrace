@@ -274,6 +274,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         reset_branch_map: bool,
         branch_taken: bool,
     ) -> Result<state::Initializer<'_, S, B>, Error<B::Error>> {
+        use instruction::info::Info;
+
         let insn = self
             .binary
             .get_insn(address)
@@ -286,11 +288,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         if reset_branch_map {
             *branch_map = Default::default();
         }
-        if insn
-            .kind
-            .and_then(instruction::Kind::branch_target)
-            .is_some()
-        {
+        if insn.is_branch() {
             branch_map.push_branch_taken(branch_taken);
         }
 
