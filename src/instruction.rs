@@ -458,6 +458,42 @@ impl From<Kind> for Instruction {
     }
 }
 
+impl info::Info for Instruction {
+    type Register = Register;
+
+    fn branch_target(&self) -> Option<i16> {
+        self.kind.branch_target()
+    }
+
+    fn inferable_jump_target(&self) -> Option<i32> {
+        self.kind.inferable_jump_target()
+    }
+
+    fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
+        self.kind.uninferable_jump_target()
+    }
+
+    fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
+        self.kind.upper_immediate(pc)
+    }
+
+    fn is_return_from_trap(&self) -> bool {
+        self.kind.is_return_from_trap()
+    }
+
+    fn is_ecall_or_ebreak(&self) -> bool {
+        self.kind.is_ecall_or_ebreak()
+    }
+
+    fn is_call(&self) -> bool {
+        self.kind.is_call()
+    }
+
+    fn is_return(&self) -> bool {
+        self.kind.is_return()
+    }
+}
+
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
