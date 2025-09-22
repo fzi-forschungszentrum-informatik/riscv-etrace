@@ -259,13 +259,7 @@ impl<S: ReturnStack> State<S> {
             .transpose()?
             .unwrap_or((after_pc, false));
 
-        if self.implicit_return
-            && self
-                .insn
-                .kind
-                .map(instruction::Kind::is_call)
-                .unwrap_or(false)
-        {
+        if self.implicit_return && self.insn.is_call() {
             self.return_stack.push(after_pc);
         }
 
