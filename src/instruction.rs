@@ -166,14 +166,10 @@ impl Kind {
 }
 
 /// Queries
-impl Kind {
-    /// Determine the branch target
-    ///
-    /// If [`Self`] refers to a branch instruction, this fn returns the
-    /// immediate, which is the branch target relative to this instruction.
-    /// Returns `None` if [`Self`] does not refer to a (known) branch
-    /// instruction. Jump instructions are not considered branch instructions.
-    pub fn branch_target(self) -> Option<i16> {
+impl info::Info for Kind {
+    type Register = Register;
+
+    fn branch_target(&self) -> Option<i16> {
         match self {
             Self::c_beqz(d) => Some(d.imm),
             Self::c_bnez(d) => Some(d.imm),
@@ -185,6 +181,74 @@ impl Kind {
             Self::bgeu(d) => Some(d.imm),
             _ => None,
         }
+    }
+
+    fn inferable_jump_target(&self) -> Option<i32> {
+        match self {
+            Self::jal(d) => Some(d.imm),
+            Self::c_jal(d) => Some(d.imm),
+            Self::c_j(d) => Some(d.imm),
+            Self::jalr(format::TypeI { rs1: 0, imm, .. }) => Some((*imm).into()),
+            _ => None,
+        }
+    }
+
+    fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
+        match self {
+            Self::c_jalr(d) => Some((d.rs1, 0)),
+            Self::c_jr(d) => Some((d.rs1, 0)),
+            Self::jalr(d) => Some((d.rs1, d.imm)),
+            _ => None,
+        }
+        .filter(|(r, _)| *r != 0)
+    }
+
+    fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
+        match self {
+            Self::auipc(d) => Some((d.rd, pc.wrapping_add_signed(d.imm.into()))),
+            Self::lui(d) => Some((d.rd, d.imm as u64)),
+            Self::c_lui(d) => Some((d.rd, d.imm as u64)),
+            _ => None,
+        }
+    }
+
+    fn is_return_from_trap(&self) -> bool {
+        matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
+    }
+
+    fn is_ecall_or_ebreak(&self) -> bool {
+        matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
+    }
+
+    fn is_call(&self) -> bool {
+        matches!(
+            self,
+            Self::jalr(format::TypeI { rd: 1, .. })
+                | Self::c_jalr(_)
+                | Self::jal(format::TypeJ { rd: 1, .. })
+                | Self::c_jal(_)
+        )
+    }
+
+    fn is_return(&self) -> bool {
+        matches!(
+            self,
+            Self::jalr(format::TypeI { rd: 0, rs1: 1, .. })
+                | Self::c_jr(format::TypeR { rs1: 1, .. })
+        )
+    }
+}
+
+/// Queries
+impl Kind {
+    /// Determine the branch target
+    ///
+    /// If [`Self`] refers to a branch instruction, this fn returns the
+    /// immediate, which is the branch target relative to this instruction.
+    /// Returns `None` if [`Self`] does not refer to a (known) branch
+    /// instruction. Jump instructions are not considered branch instructions.
+    pub fn branch_target(self) -> Option<i16> {
+        info::Info::branch_target(&self)
     }
 
     /// Determine the inferable jump target
@@ -202,13 +266,7 @@ impl Kind {
     ///
     /// Branch instructions are not considered jump instructions.
     pub fn inferable_jump_target(self) -> Option<i32> {
-        match self {
-            Self::jal(d) => Some(d.imm),
-            Self::c_jal(d) => Some(d.imm),
-            Self::c_j(d) => Some(d.imm),
-            Self::jalr(format::TypeI { rs1: 0, imm, .. }) => Some(imm.into()),
-            _ => None,
-        }
+        info::Info::inferable_jump_target(&self)
     }
 
     /// Determine whether this instruction refers to an uninferable jump
@@ -228,13 +286,7 @@ impl Kind {
     ///
     /// Branch instructions are not considered jump instructions.
     pub fn uninferable_jump(self) -> Option<(Register, i16)> {
-        match self {
-            Self::c_jalr(d) => Some((d.rs1, 0)),
-            Self::c_jr(d) => Some((d.rs1, 0)),
-            Self::jalr(d) => Some((d.rs1, d.imm)),
-            _ => None,
-        }
-        .filter(|(r, _)| *r != 0)
+        info::Info::uninferable_jump_target(&self)
     }
 
     /// Determine the upper immediate
@@ -245,12 +297,7 @@ impl Kind {
     /// retired (second tuple element) under the assumption that the
     /// instruction's address is `pc`.
     pub fn upper_immediate(self, pc: u64) -> Option<(Register, u64)> {
-        match self {
-            Self::auipc(d) => Some((d.rd, pc.wrapping_add_signed(d.imm.into()))),
-            Self::lui(d) => Some((d.rd, d.imm as u64)),
-            Self::c_lui(d) => Some((d.rd, d.imm as u64)),
-            _ => None,
-        }
+        info::Info::upper_immediate(&self, pc)
     }
 
     /// Determine whether this instruction returns from a trap
@@ -258,7 +305,7 @@ impl Kind {
     /// Returns `true` if [`Self`] refers to one of the (known) special
     /// instructions that return from a trap.
     pub fn is_return_from_trap(self) -> bool {
-        matches!(self, Self::uret | Self::sret | Self::mret | Self::dret)
+        info::Info::is_return_from_trap(&self)
     }
 
     /// Determine whether this instruction causes an uninferable discontinuity
@@ -270,7 +317,7 @@ impl Kind {
     /// * a [return from trap][Self::is_return_from_trap] or
     /// * an `ecall` or `ebreak` (compressed or uncompressed).
     pub fn is_uninferable_discon(self) -> bool {
-        self.uninferable_jump().is_some() || self.is_return_from_trap() || self.is_ecall_or_ebreak()
+        info::Info::is_uninferable_discon(&self)
     }
 
     /// Determine whether this instruction is an `ecall` or `ebreak`
@@ -278,7 +325,7 @@ impl Kind {
     /// Returns `true` if this refers to either an `ecall`, `ebreak` or
     /// `c.ebreak`.
     pub fn is_ecall_or_ebreak(self) -> bool {
-        matches!(self, Self::ecall | Self::ebreak | Self::c_ebreak)
+        info::Info::is_ecall_or_ebreak(&self)
     }
 
     /// Determine whether this instruction can be considered a function call
@@ -287,13 +334,7 @@ impl Kind {
     /// function call, that is a jump-and-link instruction with `ra` (the return
     /// address register) as `rd`.
     pub fn is_call(self) -> bool {
-        matches!(
-            self,
-            Self::jalr(format::TypeI { rd: 1, .. })
-                | Self::c_jalr(_)
-                | Self::jal(format::TypeJ { rd: 1, .. })
-                | Self::c_jal(_)
-        )
+        info::Info::is_call(&self)
     }
 
     /// Determine whether this instruction can be considered a function return
@@ -302,11 +343,7 @@ impl Kind {
     /// function return, that is a jump register instruction with `ra` (the
     /// return address register) as `rs1`.
     pub fn is_return(self) -> bool {
-        matches!(
-            self,
-            Self::jalr(format::TypeI { rd: 0, rs1: 1, .. })
-                | Self::c_jr(format::TypeR { rs1: 1, .. })
-        )
+        info::Info::is_return(&self)
     }
 }
 
