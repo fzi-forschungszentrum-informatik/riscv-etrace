@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Basic [`Binary`]s and adapters
 
-use crate::instruction::{base, Instruction};
+use crate::instruction::{base, info, Instruction};
 
 use super::error;
 use super::Binary;
@@ -11,12 +11,12 @@ use super::Binary;
 ///
 /// This forwards calls to [`Binary::get_insn`] to the wrapped [`FnMut`].
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Func<F: FnMut(u64) -> Result<Instruction, E>, E> {
+pub struct Func<F: FnMut(u64) -> Result<Instruction<I>, E>, I: info::Info, E> {
     func: F,
-    phantom: core::marker::PhantomData<E>,
+    phantom: core::marker::PhantomData<(I, E)>,
 }
 
-impl<F: FnMut(u64) -> Result<Instruction, E>, E> Func<F, E> {
+impl<F: FnMut(u64) -> Result<Instruction<I>, E>, I: info::Info, E> Func<F, I, E> {
     /// Create a new [`Binary`] from an [`FnMut`]
     fn new(func: F) -> Self {
         Self {
@@ -26,16 +26,20 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Func<F, E> {
     }
 }
 
-impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for Func<F, E> {
+impl<F: FnMut(u64) -> Result<Instruction<I>, E>, I: info::Info, E> Binary<I> for Func<F, I, E> {
     type Error = E;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         (self.func)(address)
     }
 }
 
 /// Create a [`Func`] [`Binary`] from an [`FnMut`]
-pub fn from_fn<F: FnMut(u64) -> Result<Instruction, E>, E>(func: F) -> Func<F, E> {
+pub fn from_fn<F, I, E>(func: F) -> Func<F, I, E>
+where
+    F: FnMut(u64) -> Result<Instruction<I>, E>,
+    I: info::Info,
+{
     Func::new(func)
 }
 
