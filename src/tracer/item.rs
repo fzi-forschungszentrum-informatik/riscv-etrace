@@ -3,7 +3,7 @@
 //! Tracing item
 
 use crate::decoder::sync;
-use crate::instruction::{self, Instruction};
+use crate::instruction::{self, info, Instruction};
 use crate::types::{trap, Privilege};
 
 /// Tracing item
@@ -58,9 +58,9 @@ impl Item {
 
 /// Kind of a tracing [`Item`]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Kind {
+pub enum Kind<I: info::Info = Option<instruction::Kind>> {
     /// Signals the retiring of the [`Instruction`] at the [`Item`]'s PC
-    Regular(Instruction),
+    Regular(Instruction<I>),
     /// Signals a trap
     ///
     /// In the case of an exception, the [`Item`]'s PC indicated the EPC. In the
@@ -75,25 +75,25 @@ pub enum Kind {
     Context(Context),
 }
 
-impl From<Instruction> for Kind {
-    fn from(insn: Instruction) -> Self {
+impl<I: info::Info> From<Instruction<I>> for Kind<I> {
+    fn from(insn: Instruction<I>) -> Self {
         Self::Regular(insn)
     }
 }
 
-impl From<instruction::Kind> for Kind {
+impl From<instruction::Kind> for Kind<Option<instruction::Kind>> {
     fn from(insn: instruction::Kind) -> Self {
         Self::Regular(insn.into())
     }
 }
 
-impl From<trap::Info> for Kind {
+impl<I: info::Info> From<trap::Info> for Kind<I> {
     fn from(info: trap::Info) -> Self {
         Self::Trap(info)
     }
 }
 
-impl From<Context> for Kind {
+impl<I: info::Info> From<Context> for Kind<I> {
     fn from(context: Context) -> Self {
         Self::Context(context)
     }
