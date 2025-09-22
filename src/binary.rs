@@ -146,14 +146,15 @@ where
     }
 }
 
-impl<B> Binary for Option<B>
+impl<B, I> Binary<I> for Option<B>
 where
-    B: Binary,
+    B: Binary<I>,
     B::Error: Miss,
+    I: Info,
 {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         self.as_mut()
             .map(|b| b.get_insn(address))
             .unwrap_or_else(|| Miss::miss(address))
