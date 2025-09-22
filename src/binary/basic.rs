@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Basic [`Binary`]s and adapters
 
-use crate::instruction::{base, info, Instruction};
+use crate::instruction::{info, Instruction};
 
 use super::error;
 use super::Binary;
@@ -65,22 +65,22 @@ where
 /// );
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Segment<T: AsRef<[u8]>> {
+pub struct Segment<T: AsRef<[u8]>, B> {
     data: T,
-    base: base::Set,
+    base: B,
 }
 
-impl<T: AsRef<[u8]>> Segment<T> {
-    /// Create a new [`Binary`] for code of a given instruction [`base::Set`]
-    pub fn new(data: T, base: base::Set) -> Self {
+impl<T: AsRef<[u8]>, B> Segment<T, B> {
+    /// Create a new [`Binary`] for code of a given instruction base set
+    pub fn new(data: T, base: B) -> Self {
         Self { data, base }
     }
 }
 
-impl<T: AsRef<[u8]>> Binary for Segment<T> {
+impl<T: AsRef<[u8]>, B: info::Decode<I>, I: info::Info> Binary<I> for Segment<T, B> {
     type Error = error::SegmentError;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         let offset = address.try_into().map_err(Self::Error::ExceededHostUSize)?;
         let insn_data = self
             .data
@@ -96,7 +96,7 @@ impl<T: AsRef<[u8]>> Binary for Segment<T> {
 }
 
 /// Create a new [`Binary`] for a segment of (raw) code
-pub fn from_segment<T: AsRef<[u8]>>(data: T, base: base::Set) -> Segment<T> {
+pub fn from_segment<T: AsRef<[u8]>, B>(data: T, base: B) -> Segment<T, B> {
     Segment::new(data, base)
 }
 
