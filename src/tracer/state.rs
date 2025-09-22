@@ -294,11 +294,8 @@ impl<S: ReturnStack> State<S> {
             return None;
         }
 
-        let (reg, target) = self
-            .last_insn
-            .kind
-            .and_then(|k| k.upper_immediate(self.last_pc))?;
-        let (dep, off) = insn.uninferable_jump()?;
+        let (reg, target) = self.last_insn.upper_immediate(self.last_pc)?;
+        let (dep, off) = insn.uninferable_jump_target()?;
 
         (dep == reg).then_some(target.wrapping_add_signed(off.into()))
     }
