@@ -125,10 +125,16 @@ pub trait Binary<I: Info = Option<instruction::Kind>> {
 ///
 /// This impl allows combining [`Binary`]s as long as they agree on their error
 /// type. If the first [`Binary`] returns a "miss", the second one is consulted.
-impl<A: Binary<Error = E>, B: Binary<Error = E>, E: error::MaybeMiss> Binary for (A, B) {
+impl<A, B, I, E> Binary<I> for (A, B)
+where
+    A: Binary<I, Error = E>,
+    B: Binary<I, Error = E>,
+    I: Info,
+    E: error::MaybeMiss,
+{
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         use error::MaybeMiss;
 
         let res = self.0.get_insn(address);
