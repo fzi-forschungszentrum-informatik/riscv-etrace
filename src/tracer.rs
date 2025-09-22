@@ -74,7 +74,7 @@ use stack::ReturnStack;
 /// });
 /// ```
 pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
-    state: state::State<S>,
+    state: state::State<S, Option<instruction::Kind>>,
     iter_state: IterationState,
     binary: B,
     address_mode: AddressMode,
@@ -273,7 +273,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
-    ) -> Result<state::Initializer<'_, S, B>, Error<B::Error>> {
+    ) -> Result<state::Initializer<'_, S, B, Option<instruction::Kind>>, Error<B::Error>> {
         use instruction::info::Info;
 
         let insn = self
