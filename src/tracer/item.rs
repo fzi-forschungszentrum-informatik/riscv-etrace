@@ -11,14 +11,14 @@ use crate::types::{trap, Privilege};
 /// A tracing item corresponds to either a traced, retired [`Instruction`] or
 /// some other noteworthy event such as a trap.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Item {
+pub struct Item<I: info::Info = Option<instruction::Kind>> {
     pc: u64,
-    kind: Kind,
+    kind: Kind<I>,
 }
 
-impl Item {
+impl<I: info::Info> Item<I> {
     /// Create a new item
-    pub fn new(pc: u64, kind: Kind) -> Self {
+    pub fn new(pc: u64, kind: Kind<I>) -> Self {
         Self { pc, kind }
     }
 
@@ -32,13 +32,13 @@ impl Item {
     }
 
     /// Retrieve the item's [`Kind`]
-    pub fn kind(&self) -> &Kind {
+    pub fn kind(&self) -> &Kind<I> {
         &self.kind
     }
 
     /// Retrieve the (retired) [`Instruction`]
-    pub fn instruction(&self) -> Option<Instruction> {
-        match self.kind {
+    pub fn instruction(&self) -> Option<&Instruction<I>> {
+        match &self.kind {
             Kind::Regular(insn) => Some(insn),
             _ => None,
         }
