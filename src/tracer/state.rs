@@ -187,16 +187,14 @@ impl<S: ReturnStack> State<S> {
         binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
-        if let Some(kind) = self.insn.info {
-            if kind.is_uninferable_discon() {
-                if let Some(epc) = packet_epc {
-                    return Ok(epc);
-                }
+        if self.insn.is_uninferable_discon() {
+            if let Some(epc) = packet_epc {
+                return Ok(epc);
             }
+        }
 
-            if kind.is_ecall_or_ebreak() {
-                return Ok(self.pc);
-            }
+        if self.insn.is_ecall_or_ebreak() {
+            return Ok(self.pc);
         }
 
         let (pc, insn, end) = self.next_pc(binary, self.pc)?;
