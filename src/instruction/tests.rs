@@ -6,6 +6,7 @@ extern crate alloc;
 use super::*;
 
 use base::Set::{Rv32I, Rv64I};
+use info::Info;
 
 macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
@@ -15,7 +16,7 @@ macro_rules! decode_test {
             assert_eq!(insn, $k);
             assert_eq!(insn.branch_target(), $bt);
             assert_eq!(insn.inferable_jump_target(), $jt);
-            assert_eq!(insn.uninferable_jump(), $uj);
+            assert_eq!(insn.uninferable_jump_target(), $uj);
         }
     };
     ($s:ident, $n:ident, $l:literal, None) => {
