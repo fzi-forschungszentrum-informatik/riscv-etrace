@@ -87,17 +87,40 @@ pub trait Info {
     /// return address register) as `rs1`.
     fn is_return(&self) -> bool;
 
+    /// Determin whether this instruction is a branch instruction
+    ///
+    /// Returns `true` if [`Self`] refers to a branch instruction.
+    fn is_branch(&self) -> bool {
+        self.branch_target().is_some()
+    }
+
+    /// Determin whether this instruction is an inferable jump
+    ///
+    /// Returns `true` if [`Self`] refers to a jump with a jump target that can
+    /// be infered from the instruction lone. See
+    /// [`inferable_jump_target`][Self::inferable_jump_target] for details.
+    fn is_inferable_jump(&self) -> bool {
+        self.inferable_jump_target().is_some()
+    }
+
+    /// Determin whether this instruction is an uninferable jump
+    ///
+    /// Returns `true` if [`Self`] refers to a jump with a jump target that can
+    /// not be infered from the instruction lone. See
+    /// [`uninferable_jump_target`][Self::uninferable_jump_target] for details.
+    fn is_uninferable_jump(&self) -> bool {
+        self.uninferable_jump_target().is_some()
+    }
+
     /// Determine whether this instruction causes an uninferable discontinuity
     ///
     /// Returns `true` if [`Self`] refers to an instruction that causes a (PC)
     /// discontinuity with a target that can not be inferred from the
     /// instruction alone. This is the case if the instruction is either
-    /// * an [uninferable jump][Self::uninferable_jump_target],
+    /// * an [uninferable jump][Self::is_uninferable_jump],
     /// * a [return from trap][Self::is_return_from_trap] or
     /// * an [`ecall` or `ebreak`][Self::is_ecall_or_ebreak].
     fn is_uninferable_discon(&self) -> bool {
-        self.uninferable_jump_target().is_some()
-            || self.is_return_from_trap()
-            || self.is_ecall_or_ebreak()
+        self.is_uninferable_jump() || self.is_return_from_trap() || self.is_ecall_or_ebreak()
     }
 }
