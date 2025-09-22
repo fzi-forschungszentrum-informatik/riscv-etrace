@@ -193,10 +193,10 @@ where
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Empty;
 
-impl Binary for Empty {
+impl<I: info::Info> Binary<I> for Empty {
     type Error = error::NoInstruction;
 
-    fn get_insn(&mut self, _: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, _: u64) -> Result<Instruction<I>, Self::Error> {
         Err(error::NoInstruction)
     }
 }
