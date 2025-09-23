@@ -44,6 +44,16 @@ impl Bits {
         }
     }
 
+    /// Retrieve this instruction's [`Size`]
+    pub fn size(self) -> Size {
+        match self {
+            Self::Bit16(_) => Size::Compressed,
+            Self::Bit32(_) => Size::Normal,
+            Self::Bit48(_) => Size::Wide,
+            Self::Bit64(_) => Size::ExtraWide,
+        }
+    }
+
     /// Decode this "raw" instruction to an [`Instruction`]
     ///
     /// Decodes an [`Instruction`], including the instruction
