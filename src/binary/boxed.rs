@@ -15,30 +15,18 @@ use super::Binary;
 /// [`Binary`]. This allows dynamically dispatching [`Binary`]s with differrent
 /// [`Binary::Error`] types.
 #[derive(Copy, Clone, Debug)]
-pub struct BoxedError<B>
-where
-    B: Binary,
-    B::Error: MaybeMissError + 'static,
-{
+pub struct BoxedError<B> {
     inner: B,
 }
 
-impl<B> BoxedError<B>
-where
-    B: Binary,
-    B::Error: MaybeMissError + 'static,
-{
+impl<B> BoxedError<B> {
     /// Create a new [`Binary`] wrapping another one
     pub fn new(inner: B) -> Self {
         Self { inner }
     }
 }
 
-impl<B> From<B> for BoxedError<B>
-where
-    B: Binary,
-    B::Error: MaybeMissError + 'static,
-{
+impl<B> From<B> for BoxedError<B> {
     fn from(inner: B) -> Self {
         Self { inner }
     }
