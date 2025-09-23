@@ -4,7 +4,7 @@
 
 use alloc::boxed::Box;
 
-use crate::instruction::Instruction;
+use crate::instruction::{info, Instruction};
 
 use super::error::MaybeMissError;
 use super::Binary;
@@ -32,14 +32,15 @@ impl<B> From<B> for BoxedError<B> {
     }
 }
 
-impl<B> Binary for BoxedError<B>
+impl<B, I> Binary<I> for BoxedError<B>
 where
-    B: Binary,
+    B: Binary<I>,
     B::Error: MaybeMissError + 'static,
+    I: info::Info,
 {
     type Error = Box<dyn MaybeMissError>;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         self.inner
             .get_insn(address)
             .map_err(|e| -> Box<dyn MaybeMissError> { Box::new(e) })

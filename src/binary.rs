@@ -78,19 +78,20 @@ use alloc::boxed::Box;
 pub use basic::{from_fn, from_map, from_segment, from_sorted_map, Empty};
 pub use combinators::Multi;
 
-use crate::instruction::Instruction;
+use crate::instruction::{self, Instruction};
 
 use error::Miss;
+use instruction::info::Info;
 
 /// A binary of some sort that contains [`Instruction`]s
 ///
 /// See the [module level][self] documentation for more details.
-pub trait Binary {
+pub trait Binary<I: Info = Option<instruction::Kind>> {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
 
     /// Retrieve the [`Instruction`] at the given address
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error>;
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error>;
 
     /// "Move" this binary by the given offset
     ///
@@ -111,7 +112,7 @@ pub trait Binary {
     /// This allows combining binaries of different types with (originally)
     /// different [`Error`][Self::Error] types in [combinators].
     #[cfg(feature = "alloc")]
-    fn boxed<'a>(self) -> BoxedBinary<'a>
+    fn boxed<'a>(self) -> BoxedBinary<'a, I>
     where
         Self: Sized + 'a,
         Self::Error: error::MaybeMissError + 'static,
@@ -189,4 +190,4 @@ where
 
 /// a [`Binary`] boxed for dynamic dispatch
 #[cfg(feature = "alloc")]
-pub type BoxedBinary<'a> = Box<dyn Binary<Error = Box<dyn error::MaybeMissError>> + 'a>;
+pub type BoxedBinary<'a, I> = Box<dyn Binary<I, Error = Box<dyn error::MaybeMissError>> + 'a>;
