@@ -114,7 +114,7 @@ bitstream_test!(
     branch,
     b"\x47\x0b",
     payload::Branch {
-        branch_map: branch::Map::new(7, 0b1011_010),
+        branch_map: branch::Map::new(7, 0b101_1010),
         address: Some(AddressInfo { address: 0, notify: false, updiscon: false, irdepth: None }),
     },
     cache_size_p: 10
