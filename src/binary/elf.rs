@@ -116,7 +116,7 @@ where
             .ok_or(Error::NoSegmentFound)??;
 
         self.last_segment = segment;
-        Instruction::extract(insn_data, self.base)
+        Instruction::extract(insn_data, &self.base)
             .map(|(i, _)| i)
             .ok_or(Error::InvalidInstruction)
     }

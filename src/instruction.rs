@@ -322,9 +322,15 @@ impl Instruction {
     ///
     /// Try to extract [`Bits`] from the beginning of the given slice, then
     /// decode them into an [`Instruction`]. See [`Bits::extract`] and
-    /// [`Bits::decode`] for details.
-    pub fn extract(data: &[u8], base: base::Set) -> Option<(Self, &[u8])> {
-        Bits::extract(data).map(|(b, r)| (b.decode(base), r))
+    /// [`info::Decode`] for details.
+    pub fn extract<'d, D>(data: &'d [u8], base: &D) -> Option<(Self, &'d [u8])>
+    where
+        D: info::Decode<Option<Kind>>,
+    {
+        let (bits, rest) = Bits::extract(data)?;
+        let size = bits.size();
+        let kind = base.decode_bits(bits);
+        Some((Self { size, kind }, rest))
     }
 }
 
