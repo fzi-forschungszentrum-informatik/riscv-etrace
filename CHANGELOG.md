@@ -16,6 +16,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- Lifted constraints on type parameters for `binary::Offset`,
+  `binary::combinators::Multi` and `binary::boxed::BoxedError`. This allows for
+  creation of those types with a wider rande of paramters, even if they will not
+  impl `binary::Binary`.
 - If debug is enabled, the "simple" example now prints number of bytes not
   decoded before each packet on a separate line. The value does now exclude the
   packet's size.

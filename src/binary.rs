@@ -167,11 +167,7 @@ impl<B: Binary + ?Sized> Binary for Box<B> {
 /// Accesses will be mapped by subtracting the fixed offset from the address.
 /// Accesses to addresses lower than the offset will result in a [miss][Miss].
 #[derive(Copy, Clone, Debug)]
-pub struct Offset<B>
-where
-    B: Binary,
-    B::Error: Miss,
-{
+pub struct Offset<B> {
     inner: B,
     offset: u64,
 }
