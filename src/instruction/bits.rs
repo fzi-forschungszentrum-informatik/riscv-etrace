@@ -59,6 +59,8 @@ impl Bits {
     /// Decodes an [`Instruction`], including the instruction
     /// [`Kind`][super::Kind] if it is known.
     pub fn decode(self, base: base::Set) -> Instruction {
+        use super::info::Decode;
+
         match self {
             Self::Bit16(bits) => Instruction {
                 size: Size::Compressed,

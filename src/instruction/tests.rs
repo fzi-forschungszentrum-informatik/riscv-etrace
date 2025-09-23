@@ -6,7 +6,7 @@ extern crate alloc;
 use super::*;
 
 use base::Set::{Rv32I, Rv64I};
-use info::Info;
+use info::{Decode, Info};
 
 macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
