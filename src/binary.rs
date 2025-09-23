@@ -180,14 +180,15 @@ pub struct Offset<B> {
     offset: u64,
 }
 
-impl<B> Binary for Offset<B>
+impl<B, I> Binary<I> for Offset<B>
 where
-    B: Binary,
+    B: Binary<I>,
     B::Error: Miss,
+    I: Info,
 {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         address
             .checked_sub(self.offset)
             .ok_or(B::Error::miss(address))
