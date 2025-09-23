@@ -1,10 +1,10 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Utilities for dissecting a bunch of bytes into [`Instruction`] [`Bits`]
+//! Utilities for dissecting a bunch of bytes into instruction [`Bits`]
 
-use super::{base, Instruction, Size};
+use super::Size;
 
-/// Bits from which [`Instruction`]s can be disassembled
+/// Bits from which [`Instruction`][super::Instruction]s can be disassembled
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bits {
     Bit16(u16),
@@ -51,33 +51,6 @@ impl Bits {
             Self::Bit32(_) => Size::Normal,
             Self::Bit48(_) => Size::Wide,
             Self::Bit64(_) => Size::ExtraWide,
-        }
-    }
-
-    /// Decode this "raw" instruction to an [`Instruction`]
-    ///
-    /// Decodes an [`Instruction`], including the instruction
-    /// [`Kind`][super::Kind] if it is known.
-    pub fn decode(self, base: base::Set) -> Instruction {
-        use super::info::Decode;
-
-        match self {
-            Self::Bit16(bits) => Instruction {
-                size: Size::Compressed,
-                info: base.decode_16(bits),
-            },
-            Self::Bit32(bits) => Instruction {
-                size: Size::Normal,
-                info: base.decode_32(bits),
-            },
-            Self::Bit48(bits) => Instruction {
-                size: Size::Wide,
-                info: base.decode_48(bits),
-            },
-            Self::Bit64(bits) => Instruction {
-                size: Size::ExtraWide,
-                info: base.decode_64(bits),
-            },
         }
     }
 }
