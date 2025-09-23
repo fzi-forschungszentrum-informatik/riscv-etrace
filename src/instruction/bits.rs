@@ -64,19 +64,19 @@ impl Bits {
         match self {
             Self::Bit16(bits) => Instruction {
                 size: Size::Compressed,
-                kind: base.decode_16(bits),
+                info: base.decode_16(bits),
             },
             Self::Bit32(bits) => Instruction {
                 size: Size::Normal,
-                kind: base.decode_32(bits),
+                info: base.decode_32(bits),
             },
             Self::Bit48(bits) => Instruction {
                 size: Size::Wide,
-                kind: base.decode_48(bits),
+                info: base.decode_48(bits),
             },
             Self::Bit64(bits) => Instruction {
                 size: Size::ExtraWide,
-                kind: base.decode_64(bits),
+                info: base.decode_64(bits),
             },
         }
     }

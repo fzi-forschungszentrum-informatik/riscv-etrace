@@ -313,8 +313,8 @@ impl From<Size> for u64 {
 pub struct Instruction {
     /// [`Size`] of the instruction
     pub size: Size,
-    /// [`Kind`] of the instruciton if known
-    pub kind: Option<Kind>,
+    /// [`Info`][info::Info] associated to this instruction
+    pub info: Option<Kind>,
 }
 
 impl Instruction {
@@ -329,8 +329,8 @@ impl Instruction {
     {
         let (bits, rest) = Bits::extract(data)?;
         let size = bits.size();
-        let kind = base.decode_bits(bits);
-        Some((Self { size, kind }, rest))
+        let info = base.decode_bits(bits);
+        Some((Self { size, info }, rest))
     }
 }
 
@@ -350,7 +350,7 @@ impl From<Kind> for Instruction {
             Kind::c_ebreak => Size::Compressed,
         };
         Self {
-            kind: Some(kind),
+            info: Some(kind),
             size,
         }
     }
@@ -360,41 +360,41 @@ impl info::Info for Instruction {
     type Register = Register;
 
     fn branch_target(&self) -> Option<i16> {
-        self.kind.branch_target()
+        self.info.branch_target()
     }
 
     fn inferable_jump_target(&self) -> Option<i32> {
-        self.kind.inferable_jump_target()
+        self.info.inferable_jump_target()
     }
 
     fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
-        self.kind.uninferable_jump_target()
+        self.info.uninferable_jump_target()
     }
 
     fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
-        self.kind.upper_immediate(pc)
+        self.info.upper_immediate(pc)
     }
 
     fn is_return_from_trap(&self) -> bool {
-        self.kind.is_return_from_trap()
+        self.info.is_return_from_trap()
     }
 
     fn is_ecall_or_ebreak(&self) -> bool {
-        self.kind.is_ecall_or_ebreak()
+        self.info.is_ecall_or_ebreak()
     }
 
     fn is_call(&self) -> bool {
-        self.kind.is_call()
+        self.info.is_call()
     }
 
     fn is_return(&self) -> bool {
-        self.kind.is_return()
+        self.info.is_return()
     }
 }
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
+        match &self.info {
             Some(kind) => fmt::Display::fmt(kind, f),
             None => Ok(()),
         }
@@ -403,12 +403,12 @@ impl fmt::Display for Instruction {
 
 /// An unknown 16bit [`Instruction`]
 pub const COMPRESSED: Instruction = Instruction {
-    kind: None,
+    info: None,
     size: Size::Compressed,
 };
 
 /// An unknown 32bit [`Instruction`]
 pub const UNCOMPRESSED: Instruction = Instruction {
-    kind: None,
+    info: None,
     size: Size::Normal,
 };
