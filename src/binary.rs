@@ -162,10 +162,10 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<B: Binary + ?Sized> Binary for Box<B> {
+impl<B: Binary<I> + ?Sized, I: Info> Binary<I> for Box<B> {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         B::get_insn(self.as_mut(), address)
     }
 }
