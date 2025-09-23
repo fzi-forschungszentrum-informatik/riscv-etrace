@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Instruction information
 
+use super::bits::Bits;
+
 /// Instruction information
 ///
 /// This trait defines fns for querying control flow relevant information of
@@ -160,5 +162,30 @@ impl<T: Info> Info for Option<T> {
 
     fn is_return(&self) -> bool {
         self.as_ref().map(Info::is_return).unwrap_or(false)
+    }
+}
+
+/// Decode for instruction [`Info`]
+pub trait Decode<I: Info> {
+    /// Decode a 16bit ("compressed") instruction [`Info`]
+    fn decode_16(&self, insn: u16) -> I;
+
+    /// Decode a 32bit ("normal") instruction [`Info`]
+    fn decode_32(&self, insn: u32) -> I;
+
+    /// Decode a 48bit instruction [`Info`]
+    fn decode_48(&self, insn: u64) -> I;
+
+    /// Decode a 64bit instruction [`Info`]
+    fn decode_64(&self, insn: u64) -> I;
+
+    /// Decode instruction [`Info`] from [`Bits`]
+    fn decode_bits(&self, bits: Bits) -> I {
+        match bits {
+            Bits::Bit16(bits) => self.decode_16(bits),
+            Bits::Bit32(bits) => self.decode_32(bits),
+            Bits::Bit48(bits) => self.decode_48(bits),
+            Bits::Bit64(bits) => self.decode_64(bits),
+        }
     }
 }

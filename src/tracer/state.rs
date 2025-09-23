@@ -187,7 +187,7 @@ impl<S: ReturnStack> State<S> {
         binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
-        if let Some(kind) = self.insn.kind {
+        if let Some(kind) = self.insn.info {
             if kind.is_uninferable_discon() {
                 if let Some(epc) = packet_epc {
                     return Ok(epc);
@@ -241,7 +241,7 @@ impl<S: ReturnStack> State<S> {
 
         let (next_pc, end) = self
             .insn
-            .kind
+            .info
             .and_then(|k| {
                 self.inferable_jump_target(k)
                     .or_else(|| self.sequential_jump_target(k).map(|t| (t, false)))

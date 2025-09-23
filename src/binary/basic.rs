@@ -85,7 +85,7 @@ impl<T: AsRef<[u8]>> Binary for Segment<T> {
             .map(|(_, d)| d)
             .filter(|d| !d.is_empty())
             .ok_or(Self::Error::AddressNotCovered)?;
-        Instruction::extract(insn_data, self.base)
+        Instruction::extract(insn_data, &self.base)
             .map(|(i, _)| i)
             .ok_or(Self::Error::InvalidInstruction)
     }

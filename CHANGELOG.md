@@ -8,9 +8,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
 ### Added
 
 - A new submodule `instruction::info` hosting the trait `Info` which provides
-  instruction information.
+  instruction information and `Decode` for decoding an `Info`.
 - `instruction::info::Info` impls for `Option`, `instruction::Kind` and
   `instruction::Instruction`.
+- `instruction::info::Decode<Option<instruction::Kind>>` impl for
+  `instruction::base::Set`.
+- A fn `instruction::bits::Bits::size` for retrieving the "bits"' instruction
+  size.
 - `PartialEq` impl for `binary::basic:Func`, `Segment`, `SimpleMap` and `Empty`.
 - `PartialEq` impl for `binary::elf::Error`.
 
@@ -20,6 +24,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `binary::combinators::Multi` and `binary::boxed::BoxedError`. This allows for
   creation of those types with a wider rande of paramters, even if they will not
   impl `binary::Binary`.
+- `instruciton::Instruction` gained a type parameter for its `info::Info`, which
+  was previously fixed to `Option<instruction::Kind>`.
+- `instruction::Instruction::extract` now takes a reference to any
+  `instruction::info::Decode` as a parameter instread of an
+  `instruction::base::Set` value.
+- `instruction::Instruction::kind` was renamed to `info`.
 - If debug is enabled, the "simple" example now prints number of bytes not
   decoded before each packet on a separate line. The value does now exclude the
   packet's size.
@@ -33,6 +43,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `is_return_from_trap`, `is_uninferable_discon`, `is_ecall_or_ebreak`,
   `is_call` and `is_return`. The associated functionality is now provided via
   the `instruction::info::Info` impl.
+- Instruction decoding fns `instruction::base::Set::decode_16`,
+  `instruction::base::Set::decode_32`, `instruction::base::Set::decode_48` and
+  `instruction::base::Set::decode_48`. The associated functionality is now
+  provided via its `instruction::info::Decode` impl.
 
 ## 0.4.0 - 2025-09-10
 

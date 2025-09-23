@@ -5,7 +5,7 @@
 //! This module provides definitions for representing RISC-V base instruction
 //! set variants such as `RV32I` and utilities for decoding instructions.
 
-use super::{format, Kind};
+use super::{format, info, Kind};
 
 /// RISC-V base instruction set variant
 ///
@@ -19,14 +19,14 @@ pub enum Set {
     Rv64I,
 }
 
-impl Set {
-    /// Decode a 32bit ("normal") instruction
-    ///
-    /// Returns an instruction [`Kind`] if it can be decoded, that is if that
-    /// instruction is known. As only a small part of all RISC-V instruction is
-    /// relevant, we don't consider unknown instructions an error.
+/// Decoding of instruction [`Kind`]s
+///
+/// This [`info::Decode`] impl decodes [`Kind`] if possible, that is if that
+/// instruction is known. As only relatively few RISC-V instructions are
+/// relevant, we don't consider unknown instructions an error.
+impl info::Decode<Option<Kind>> for Set {
     #[allow(clippy::unusual_byte_groupings)]
-    pub fn decode_32(self, insn: u32) -> Option<Kind> {
+    fn decode_32(&self, insn: u32) -> Option<Kind> {
         let funct3 = (insn >> 12) & 0x7;
 
         match OpCode::from(insn) {
@@ -61,16 +61,11 @@ impl Set {
         }
     }
 
-    /// Decode a 16bit ("compressed") instruction
-    ///
-    /// Returns an instruction [`Kind`] if it can be decoded, that is if that
-    /// instruction is known. As only a small part of all RISC-V instruction is
-    /// relevant, we don't consider unknown instructions an error.
-    pub fn decode_16(self, insn: u16) -> Option<Kind> {
+    fn decode_16(&self, insn: u16) -> Option<Kind> {
         let op = insn & 0x3;
         let func3 = insn >> 13;
         match (op, func3) {
-            (0b01, 0b001) if self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
+            (0b01, 0b001) if *self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);
                 if data.rd != 0 || data.rd != 2 {
@@ -96,21 +91,11 @@ impl Set {
         }
     }
 
-    /// Decode a 48bit instruction
-    ///
-    /// Returns an instruction [`Kind`] if it can be decoded, that is if that
-    /// instruction is known. As only a small part of all RISC-V instruction is
-    /// relevant, we don't consider unknown instructions an error.
-    pub fn decode_48(self, _insn: u64) -> Option<Kind> {
+    fn decode_48(&self, _insn: u64) -> Option<Kind> {
         None
     }
 
-    /// Decode a 64bit instruction
-    ///
-    /// Returns an instruction [`Kind`] if it can be decoded, that is if that
-    /// instruction is known. As only a small part of all RISC-V instruction is
-    /// relevant, we don't consider unknown instructions an error.
-    pub fn decode_64(self, _insn: u64) -> Option<Kind> {
+    fn decode_64(&self, _insn: u64) -> Option<Kind> {
         None
     }
 }
