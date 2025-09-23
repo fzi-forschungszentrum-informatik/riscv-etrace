@@ -310,23 +310,20 @@ impl From<Size> for u64 {
 
 /// A single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub struct Instruction {
+pub struct Instruction<I: info::Info = Option<Kind>> {
     /// [`Size`] of the instruction
     pub size: Size,
     /// [`Info`][info::Info] associated to this instruction
-    pub info: Option<Kind>,
+    pub info: I,
 }
 
-impl Instruction {
+impl<I: info::Info> Instruction<I> {
     /// Extract an instruction from a raw byte slice
     ///
     /// Try to extract [`Bits`] from the beginning of the given slice, then
     /// decode them into an [`Instruction`]. See [`Bits::extract`] and
     /// [`info::Decode`] for details.
-    pub fn extract<'d, D>(data: &'d [u8], base: &D) -> Option<(Self, &'d [u8])>
-    where
-        D: info::Decode<Option<Kind>>,
-    {
+    pub fn extract<'d, D: info::Decode<I>>(data: &'d [u8], base: &D) -> Option<(Self, &'d [u8])> {
         let (bits, rest) = Bits::extract(data)?;
         let size = bits.size();
         let info = base.decode_bits(bits);
@@ -356,8 +353,8 @@ impl From<Kind> for Instruction {
     }
 }
 
-impl info::Info for Instruction {
-    type Register = Register;
+impl<I: info::Info> info::Info for Instruction<I> {
+    type Register = I::Register;
 
     fn branch_target(&self) -> Option<i16> {
         self.info.branch_target()
