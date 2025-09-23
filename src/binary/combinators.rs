@@ -11,23 +11,13 @@ use super::Binary;
 
 /// Set of [`Binary`] acting as a single [`Binary`]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Multi<C, B>
-where
-    C: BorrowMut<[B]>,
-    B: Binary,
-    B::Error: Miss,
-{
+pub struct Multi<C: BorrowMut<[B]>, B> {
     bins: C,
     last: usize,
     phantom: core::marker::PhantomData<B>,
 }
 
-impl<C, B> Multi<C, B>
-where
-    C: BorrowMut<[B]>,
-    B: Binary,
-    B::Error: Miss,
-{
+impl<C: BorrowMut<[B]>, B> Multi<C, B> {
     /// Create a new [`Binary`] combining all `bins`
     pub fn new(bins: C) -> Self {
         Self {
@@ -38,34 +28,19 @@ where
     }
 }
 
-impl<C, B> From<C> for Multi<C, B>
-where
-    C: BorrowMut<[B]>,
-    B: Binary,
-    B::Error: Miss,
-{
+impl<C: BorrowMut<[B]>, B> From<C> for Multi<C, B> {
     fn from(bins: C) -> Self {
         Self::new(bins)
     }
 }
 
-impl<C, B> FromIterator<B> for Multi<C, B>
-where
-    C: BorrowMut<[B]> + FromIterator<B>,
-    B: Binary,
-    B::Error: Miss,
-{
+impl<C: BorrowMut<[B]> + FromIterator<B>, B> FromIterator<B> for Multi<C, B> {
     fn from_iter<T: IntoIterator<Item = B>>(iter: T) -> Self {
         C::from_iter(iter).into()
     }
 }
 
-impl<C, B> Extend<B> for Multi<C, B>
-where
-    C: BorrowMut<[B]> + Extend<B>,
-    B: Binary,
-    B::Error: Miss,
-{
+impl<C: BorrowMut<[B]> + Extend<B>, B> Extend<B> for Multi<C, B> {
     fn extend<T: IntoIterator<Item = B>>(&mut self, iter: T) {
         self.bins.extend(iter)
     }
