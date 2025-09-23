@@ -55,6 +55,7 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
     type Item = Item;
 
     fn next(&mut self) -> Option<Self::Item> {
+        use instruction::info::Info;
         use instruction::Instruction;
         use riscv_etrace::types::trap;
 
@@ -130,11 +131,7 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
             // Interrupt
             self.last_priv = None;
             Item::new(self.last_address, trap::Info { ecause, tval: None }.into())
-        } else if insn
-            .kind
-            .map(instruction::Kind::is_ecall_or_ebreak)
-            .unwrap_or(false)
-        {
+        } else if insn.is_ecall_or_ebreak() {
             // ECALL or EBREAK
             self.last_priv = None;
             self.intermediate = Some(Item::new(

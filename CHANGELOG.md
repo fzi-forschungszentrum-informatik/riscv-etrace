@@ -7,6 +7,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A new submodule `instruction::info` hosting the trait `Info` which provides
+  instruction information.
+- `instruction::info::Info` impls for `Option`, `instruction::Kind` and
+  `instruction::Instruction`.
 - `PartialEq` impl for `binary::basic:Func`, `Segment`, `SimpleMap` and `Empty`.
 - `PartialEq` impl for `binary::elf::Error`.
 
@@ -18,6 +22,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - If debug is enabled, the "simple" example now prints the decoded payload on a
   separate line. In version 0.4.0, we would only print the raw payload as part
   of the packet.
+
+### Removed
+- Instruction info query fns `instruciton::Kind::branch_target`,
+  `inferable_jump_target`, `uninferable_jump`, `upper_immediate`,
+  `is_return_from_trap`, `is_uninferable_discon`, `is_ecall_or_ebreak`,
+  `is_call` and `is_return`. The associated functionality is now provided via
+  the `instruction::info::Info` impl.
 
 ## 0.4.0 - 2025-09-10
 

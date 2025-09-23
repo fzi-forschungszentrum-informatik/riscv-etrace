@@ -10,6 +10,8 @@ use super::error::Error;
 use super::item::Context;
 use super::stack::ReturnStack;
 
+use instruction::info::Info;
+
 /// Execution tracing state
 #[derive(Clone, Debug)]
 pub struct State<S: ReturnStack> {
@@ -101,8 +103,6 @@ impl<S: ReturnStack> State<S> {
         &mut self,
         binary: &mut B,
     ) -> Result<Option<ProtoItem>, Error<B::Error>> {
-        use instruction::Kind;
-
         if self.is_fused() {
             return Ok(None);
         }
@@ -120,7 +120,7 @@ impl<S: ReturnStack> State<S> {
         } else {
             let (pc, insn, end) = self.next_pc(binary, self.address)?;
 
-            let is_branch = self.insn.kind.and_then(Kind::branch_target).is_some();
+            let is_branch = self.insn.is_branch();
             let branch_limit = if is_branch { 1 } else { 0 };
             let hit_address_and_branch =
                 self.pc == self.address && self.branch_map.count() == branch_limit;
@@ -137,11 +137,7 @@ impl<S: ReturnStack> State<S> {
                     notify: false,
                     not_updiscon: true,
                 } if hit_address_and_branch
-                    && !self
-                        .last_insn
-                        .kind
-                        .map(Kind::is_uninferable_discon)
-                        .unwrap_or(false)
+                    && !self.last_insn.is_uninferable_discon()
                     && self.stack_depth_matches() =>
                 {
                     self.inferred_address = Some(self.pc);
@@ -153,11 +149,7 @@ impl<S: ReturnStack> State<S> {
                     action: SyncAction::Compare,
                 } if hit_address_and_branch
                     && context.privilege == self.privilege
-                    && self
-                        .last_insn
-                        .kind
-                        .map(instruction::Kind::is_return_from_trap)
-                        .unwrap_or(false) =>
+                    && self.last_insn.is_return_from_trap() =>
                 {
                     self.stop_condition = StopCondition::Fused;
                     None
@@ -267,13 +259,7 @@ impl<S: ReturnStack> State<S> {
             .transpose()?
             .unwrap_or((after_pc, false));
 
-        if self.implicit_return
-            && self
-                .insn
-                .kind
-                .map(instruction::Kind::is_call)
-                .unwrap_or(false)
-        {
+        if self.implicit_return && self.insn.is_call() {
             self.return_stack.push(after_pc);
         }
 
@@ -308,11 +294,8 @@ impl<S: ReturnStack> State<S> {
             return None;
         }
 
-        let (reg, target) = self
-            .last_insn
-            .kind
-            .and_then(|k| k.upper_immediate(self.last_pc))?;
-        let (dep, off) = insn.uninferable_jump()?;
+        let (reg, target) = self.last_insn.upper_immediate(self.last_pc)?;
+        let (dep, off) = insn.uninferable_jump_target()?;
 
         (dep == reg).then_some(target.wrapping_add_signed(off.into()))
     }
