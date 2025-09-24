@@ -78,19 +78,20 @@ use alloc::boxed::Box;
 pub use basic::{from_fn, from_map, from_segment, from_sorted_map, Empty};
 pub use combinators::Multi;
 
-use crate::instruction::Instruction;
+use crate::instruction::{self, Instruction};
 
 use error::Miss;
+use instruction::info::Info;
 
 /// A binary of some sort that contains [`Instruction`]s
 ///
 /// See the [module level][self] documentation for more details.
-pub trait Binary {
+pub trait Binary<I: Info = Option<instruction::Kind>> {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
 
     /// Retrieve the [`Instruction`] at the given address
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error>;
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error>;
 
     /// "Move" this binary by the given offset
     ///
@@ -111,7 +112,7 @@ pub trait Binary {
     /// This allows combining binaries of different types with (originally)
     /// different [`Error`][Self::Error] types in [combinators].
     #[cfg(feature = "alloc")]
-    fn boxed<'a>(self) -> BoxedBinary<'a>
+    fn boxed<'a>(self) -> BoxedBinary<'a, I>
     where
         Self: Sized + 'a,
         Self::Error: error::MaybeMissError + 'static,
@@ -124,10 +125,16 @@ pub trait Binary {
 ///
 /// This impl allows combining [`Binary`]s as long as they agree on their error
 /// type. If the first [`Binary`] returns a "miss", the second one is consulted.
-impl<A: Binary<Error = E>, B: Binary<Error = E>, E: error::MaybeMiss> Binary for (A, B) {
+impl<A, B, I, E> Binary<I> for (A, B)
+where
+    A: Binary<I, Error = E>,
+    B: Binary<I, Error = E>,
+    I: Info,
+    E: error::MaybeMiss,
+{
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         use error::MaybeMiss;
 
         let res = self.0.get_insn(address);
@@ -139,14 +146,15 @@ impl<A: Binary<Error = E>, B: Binary<Error = E>, E: error::MaybeMiss> Binary for
     }
 }
 
-impl<B> Binary for Option<B>
+impl<B, I> Binary<I> for Option<B>
 where
-    B: Binary,
+    B: Binary<I>,
     B::Error: Miss,
+    I: Info,
 {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         self.as_mut()
             .map(|b| b.get_insn(address))
             .unwrap_or_else(|| Miss::miss(address))
@@ -154,10 +162,10 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<B: Binary + ?Sized> Binary for Box<B> {
+impl<B: Binary<I> + ?Sized, I: Info> Binary<I> for Box<B> {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         B::get_insn(self.as_mut(), address)
     }
 }
@@ -172,14 +180,15 @@ pub struct Offset<B> {
     offset: u64,
 }
 
-impl<B> Binary for Offset<B>
+impl<B, I> Binary<I> for Offset<B>
 where
-    B: Binary,
+    B: Binary<I>,
     B::Error: Miss,
+    I: Info,
 {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         address
             .checked_sub(self.offset)
             .ok_or(B::Error::miss(address))
@@ -189,4 +198,4 @@ where
 
 /// a [`Binary`] boxed for dynamic dispatch
 #[cfg(feature = "alloc")]
-pub type BoxedBinary<'a> = Box<dyn Binary<Error = Box<dyn error::MaybeMissError>> + 'a>;
+pub type BoxedBinary<'a, I> = Box<dyn Binary<I, Error = Box<dyn error::MaybeMissError>> + 'a>;

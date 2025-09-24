@@ -20,6 +20,20 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `binary::Binary` is now generic over the `instruction::info::Info` of the
+  `instruction::Info` it yields.
+- `binary::basic::Func` and `binary::basic::from_fn` are now generic over the
+  `instruction::info::Info`.
+- `binary::basic::Segment` and `binary::basic::from_segment` can now be
+  constructed with arbitrary "bases". The `binary::Binary` impl for `Segment`
+  covers all info types for which the base impls `instruction::info::Decode`.
+- `binary::basic::SimpleMap`, `binary::basic::from_map` and
+  `binary::basic::from_sorted_map` are now generic over the
+  `instruction::info::Info`.
+- The `binary::Binary` impls of 2-tuples, `Option`, `Box`, `binary::Offset`,
+  `binary::basic::Empty`, `binary::combinators::Multi` and `binary::elf::Elf`
+  were extended to cover all `instruction::info::Info` given the underlying
+  types.
 - Lifted constraints on type parameters for `binary::Offset`,
   `binary::combinators::Multi` and `binary::boxed::BoxedError`. This allows for
   creation of those types with a wider rande of paramters, even if they will not

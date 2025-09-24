@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Basic [`Binary`]s and adapters
 
-use crate::instruction::{base, Instruction};
+use crate::instruction::{info, Instruction};
 
 use super::error;
 use super::Binary;
@@ -11,12 +11,12 @@ use super::Binary;
 ///
 /// This forwards calls to [`Binary::get_insn`] to the wrapped [`FnMut`].
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Func<F: FnMut(u64) -> Result<Instruction, E>, E> {
+pub struct Func<F: FnMut(u64) -> Result<Instruction<I>, E>, I: info::Info, E> {
     func: F,
-    phantom: core::marker::PhantomData<E>,
+    phantom: core::marker::PhantomData<(I, E)>,
 }
 
-impl<F: FnMut(u64) -> Result<Instruction, E>, E> Func<F, E> {
+impl<F: FnMut(u64) -> Result<Instruction<I>, E>, I: info::Info, E> Func<F, I, E> {
     /// Create a new [`Binary`] from an [`FnMut`]
     fn new(func: F) -> Self {
         Self {
@@ -26,16 +26,20 @@ impl<F: FnMut(u64) -> Result<Instruction, E>, E> Func<F, E> {
     }
 }
 
-impl<F: FnMut(u64) -> Result<Instruction, E>, E> Binary for Func<F, E> {
+impl<F: FnMut(u64) -> Result<Instruction<I>, E>, I: info::Info, E> Binary<I> for Func<F, I, E> {
     type Error = E;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         (self.func)(address)
     }
 }
 
 /// Create a [`Func`] [`Binary`] from an [`FnMut`]
-pub fn from_fn<F: FnMut(u64) -> Result<Instruction, E>, E>(func: F) -> Func<F, E> {
+pub fn from_fn<F, I, E>(func: F) -> Func<F, I, E>
+where
+    F: FnMut(u64) -> Result<Instruction<I>, E>,
+    I: info::Info,
+{
     Func::new(func)
 }
 
@@ -61,22 +65,22 @@ pub fn from_fn<F: FnMut(u64) -> Result<Instruction, E>, E>(func: F) -> Func<F, E
 /// );
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Segment<T: AsRef<[u8]>> {
+pub struct Segment<T: AsRef<[u8]>, B> {
     data: T,
-    base: base::Set,
+    base: B,
 }
 
-impl<T: AsRef<[u8]>> Segment<T> {
-    /// Create a new [`Binary`] for code of a given instruction [`base::Set`]
-    pub fn new(data: T, base: base::Set) -> Self {
+impl<T: AsRef<[u8]>, B> Segment<T, B> {
+    /// Create a new [`Binary`] for code of a given instruction base set
+    pub fn new(data: T, base: B) -> Self {
         Self { data, base }
     }
 }
 
-impl<T: AsRef<[u8]>> Binary for Segment<T> {
+impl<T: AsRef<[u8]>, B: info::Decode<I>, I: info::Info> Binary<I> for Segment<T, B> {
     type Error = error::SegmentError;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         let offset = address.try_into().map_err(Self::Error::ExceededHostUSize)?;
         let insn_data = self
             .data
@@ -92,7 +96,7 @@ impl<T: AsRef<[u8]>> Binary for Segment<T> {
 }
 
 /// Create a new [`Binary`] for a segment of (raw) code
-pub fn from_segment<T: AsRef<[u8]>>(data: T, base: base::Set) -> Segment<T> {
+pub fn from_segment<T: AsRef<[u8]>, B>(data: T, base: B) -> Segment<T, B> {
     Segment::new(data, base)
 }
 
@@ -102,11 +106,12 @@ pub fn from_segment<T: AsRef<[u8]>>(data: T, base: base::Set) -> Segment<T> {
 /// specifying the presence of an [`Instruction`] at the specified address. The
 /// [`Binary`] is meant for small, fixed code sequences such as bootroms.
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct SimpleMap<T: AsRef<[(u64, Instruction)]>> {
+pub struct SimpleMap<T: AsRef<[(u64, Instruction<I>)]>, I: info::Info> {
     inner: T,
+    phantom: core::marker::PhantomData<I>,
 }
 
-impl<T: AsRef<[(u64, Instruction)]>> SimpleMap<T> {
+impl<T: AsRef<[(u64, Instruction<I>)]>, I: info::Info> SimpleMap<T, I> {
     /// Create a new [`Binary`], potentially from a different type of container
     ///
     /// Prepares the slice held by the given container, then converts this to
@@ -114,14 +119,15 @@ impl<T: AsRef<[(u64, Instruction)]>> SimpleMap<T> {
     /// allows creating a [`Binary`] operating on an [`Arc`][alloc::sync::Arc]
     /// from containers that allow mutation of the slice such as
     /// [`Box`][alloc::boxed::Box].
-    pub fn new<I>(mut inner: I) -> Self
+    pub fn new<J>(mut inner: J) -> Self
     where
-        T: From<I>,
-        I: AsMut<[(u64, Instruction)]>,
+        T: From<J>,
+        J: AsMut<[(u64, Instruction<I>)]>,
     {
         inner.as_mut().sort_unstable_by_key(|(a, _)| *a);
         Self {
             inner: inner.into(),
+            phantom: Default::default(),
         }
     }
 
@@ -132,27 +138,31 @@ impl<T: AsRef<[(u64, Instruction)]>> SimpleMap<T> {
         inner
             .as_ref()
             .is_sorted_by_key(|(a, _)| *a)
-            .then_some(Self { inner })
+            .then_some(Self {
+                inner,
+                phantom: Default::default(),
+            })
     }
 }
 
-impl<T, I> From<I> for SimpleMap<T>
+impl<T, J, I> From<J> for SimpleMap<T, I>
 where
-    T: AsRef<[(u64, Instruction)]> + From<I>,
-    I: AsMut<[(u64, Instruction)]>,
+    T: AsRef<[(u64, Instruction<I>)]> + From<J>,
+    J: AsMut<[(u64, Instruction<I>)]>,
+    I: info::Info,
 {
-    fn from(inner: I) -> Self {
+    fn from(inner: J) -> Self {
         Self::new(inner)
     }
 }
 
-impl<T: AsRef<[(u64, Instruction)]>> Binary for SimpleMap<T> {
+impl<T: AsRef<[(u64, Instruction<I>)]>, I: info::Info + Clone> Binary<I> for SimpleMap<T, I> {
     type Error = error::NoInstruction;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         let map = self.inner.as_ref();
         map.binary_search_by_key(&address, |(a, _)| *a)
-            .map(|i| map[i].1)
+            .map(|i| map[i].1.clone())
             .map_err(|_| error::NoInstruction)
     }
 }
@@ -161,15 +171,20 @@ impl<T: AsRef<[(u64, Instruction)]>> Binary for SimpleMap<T> {
 ///
 /// Returns `None` if the address-[`Instruction`] pairs are not sorted by
 /// address.
-pub fn from_sorted_map<T: AsRef<[(u64, Instruction)]>>(inner: T) -> Option<SimpleMap<T>> {
+pub fn from_sorted_map<T, I>(inner: T) -> Option<SimpleMap<T, I>>
+where
+    T: AsRef<[(u64, Instruction<I>)]>,
+    I: info::Info,
+{
     SimpleMap::from_sorted(inner)
 }
 
 /// Create a [`Func`] [`Binary`] from some `AsMut<[(u64, Instruction)]>`
-pub fn from_map<T, I>(inner: I) -> SimpleMap<T>
+pub fn from_map<T, J, I>(inner: J) -> SimpleMap<T, I>
 where
-    T: AsRef<[(u64, Instruction)]> + From<I>,
-    I: AsMut<[(u64, Instruction)]>,
+    T: AsRef<[(u64, Instruction<I>)]> + From<J>,
+    J: AsMut<[(u64, Instruction<I>)]>,
+    I: info::Info,
 {
     inner.into()
 }
@@ -178,10 +193,10 @@ where
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Empty;
 
-impl Binary for Empty {
+impl<I: info::Info> Binary<I> for Empty {
     type Error = error::NoInstruction;
 
-    fn get_insn(&mut self, _: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, _: u64) -> Result<Instruction<I>, Self::Error> {
         Err(error::NoInstruction)
     }
 }

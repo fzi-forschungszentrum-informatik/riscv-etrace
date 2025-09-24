@@ -23,7 +23,7 @@ macro_rules! retrieval_test {
         assert!(!res.is_miss());
     };
     ($b:ident, $a:literal) => {
-        let res = $b.get_insn($a);
+        let res: Result<instruction::Instruction, _> = $b.get_insn($a);
         assert_eq!(res, Err(Miss::miss($a)));
         assert!(res.is_miss());
     };

@@ -8,7 +8,7 @@ use core::fmt;
 use elf::endian::EndianParse;
 use elf::ElfBytes;
 
-use crate::instruction::{base, Instruction};
+use crate::instruction::{base, info, Instruction};
 
 use super::{error, Binary};
 
@@ -69,14 +69,16 @@ where
     }
 }
 
-impl<'d, E, P> Binary for Elf<'d, E, P>
+impl<'d, E, P, I> Binary<I> for Elf<'d, E, P>
 where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
+    I: info::Info,
+    base::Set: info::Decode<I>,
 {
     type Error = Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         // Iterator over all relevant segments' offset and data
         let segments = self
             .elf

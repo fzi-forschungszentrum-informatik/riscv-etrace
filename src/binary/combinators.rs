@@ -4,7 +4,7 @@
 
 use core::borrow::BorrowMut;
 
-use crate::instruction::Instruction;
+use crate::instruction::{info, Instruction};
 
 use super::error::{MaybeMiss, Miss};
 use super::Binary;
@@ -46,15 +46,16 @@ impl<C: BorrowMut<[B]> + Extend<B>, B> Extend<B> for Multi<C, B> {
     }
 }
 
-impl<C, B> Binary for Multi<C, B>
+impl<C, B, I> Binary<I> for Multi<C, B>
 where
     C: BorrowMut<[B]>,
-    B: Binary,
+    B: Binary<I>,
     B::Error: Miss,
+    I: info::Info,
 {
     type Error = B::Error;
 
-    fn get_insn(&mut self, address: u64) -> Result<Instruction, Self::Error> {
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
         let bins = self.bins.borrow_mut();
         let res = bins
             .get_mut(self.last)
