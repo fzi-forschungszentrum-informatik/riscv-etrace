@@ -369,7 +369,7 @@ pub fn builder() -> Builder<binary::Empty> {
 /// For this purpose, [`Builder`] implements [`Copy`] and [`Clone`] as long as
 /// the [`Binary`] does.
 #[derive(Copy, Clone)]
-pub struct Builder<B: Binary = binary::Empty> {
+pub struct Builder<B = binary::Empty> {
     binary: B,
     max_stack_depth: usize,
     sequentially_inferred_jumps: bool,
@@ -385,7 +385,7 @@ impl Builder<binary::Empty> {
     }
 }
 
-impl<B: Binary> Builder<B> {
+impl<B> Builder<B> {
     /// Build the [`Tracer`] for encoders with the given [`config::Parameters`]
     ///
     /// New builders assume [`Default`] parameters.
@@ -409,7 +409,7 @@ impl<B: Binary> Builder<B> {
     ///
     /// New builders carry an empty or [`Default`] [`Binary`]. This is usually
     /// not what you want.
-    pub fn with_binary<C: Binary>(self, binary: C) -> Builder<C> {
+    pub fn with_binary<C>(self, binary: C) -> Builder<C> {
         Builder {
             binary,
             max_stack_depth: self.max_stack_depth,
@@ -438,9 +438,11 @@ impl<B: Binary> Builder<B> {
     }
 
     /// Build the [`Tracer`]
-    pub fn build<S>(self) -> Result<Tracer<B, S>, Error<B::Error>>
+    pub fn build<S, I>(self) -> Result<Tracer<B, S, I>, Error<B::Error>>
     where
+        B: Binary<I>,
         S: ReturnStack,
+        I: Info + Clone + Default,
     {
         let state = state::State::new(
             S::new(self.max_stack_depth)
@@ -459,7 +461,7 @@ impl<B: Binary> Builder<B> {
     }
 }
 
-impl<B: Binary + Default> Default for Builder<B> {
+impl<B: Default> Default for Builder<B> {
     fn default() -> Self {
         Self {
             binary: Default::default(),
