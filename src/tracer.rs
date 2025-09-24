@@ -24,6 +24,7 @@ use crate::instruction;
 use crate::types::trap;
 
 use error::Error;
+use instruction::info::Info;
 use stack::ReturnStack;
 
 /// Tracer
@@ -73,16 +74,22 @@ use stack::ReturnStack;
 ///     println!("PC: {:0x}", i.unwrap().pc());
 /// });
 /// ```
-pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
-    state: state::State<S, Option<instruction::Kind>>,
+pub struct Tracer<B, S = stack::NoStack, I = Option<instruction::Kind>>
+where
+    B: Binary<I>,
+    S: ReturnStack,
+    I: Info,
+{
+    state: state::State<S, I>,
     iter_state: IterationState,
     binary: B,
     address_mode: AddressMode,
     address_delta_width: core::num::NonZeroU8,
     version: Version,
+    phantom: core::marker::PhantomData<I>,
 }
 
-impl<B: Binary, S: ReturnStack> Tracer<B, S> {
+impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
     /// Process an [`Payload`]
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
@@ -273,7 +280,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
-    ) -> Result<state::Initializer<'_, S, B, Option<instruction::Kind>>, Error<B::Error>> {
+    ) -> Result<state::Initializer<'_, S, B, I>, Error<B::Error>> {
         use instruction::info::Info;
 
         let insn = self
@@ -298,8 +305,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 }
 
-impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
-    type Item = Result<Item, Error<B::Error>>;
+impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Iterator for Tracer<B, S, I> {
+    type Item = Result<Item<I>, Error<B::Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter_state {
@@ -447,6 +454,7 @@ impl<B: Binary> Builder<B> {
             address_mode: self.address_mode,
             address_delta_width: self.address_delta_width,
             version: self.version,
+            phantom: Default::default(),
         })
     }
 }
