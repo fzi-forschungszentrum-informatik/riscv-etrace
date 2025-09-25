@@ -86,7 +86,7 @@ use instruction::info::Info;
 /// A binary of some sort that contains [`Instruction`]s
 ///
 /// See the [module level][self] documentation for more details.
-pub trait Binary<I: Info = Option<instruction::Kind>> {
+pub trait Binary<I: Info> {
     /// Error type returned by [`get_insn`][Self::get_insn]
     type Error;
 
