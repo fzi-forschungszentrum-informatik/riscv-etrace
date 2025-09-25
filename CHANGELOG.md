@@ -20,6 +20,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `tracer::Tracer`, `tracer::item::Item` and `tracer::item::Kind` are now
+  generic over the `instruction::info::Info` included in tracing items.
+- Moved constraint of `tracer::Builder`'s type parameter for the `binary::Binary`
+  to `tracer::Builder::build`, allowing building `tracer::Tracer`s yielding
+  arbitrary `instruction::info::Info`.
 - `binary::Binary` is now generic over the `instruction::info::Info` of the
   `instruction::Info` it yields.
 - `binary::basic::Func` and `binary::basic::from_fn` are now generic over the

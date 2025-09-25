@@ -14,18 +14,18 @@ use instruction::info::Info;
 
 /// Execution tracing state
 #[derive(Clone, Debug)]
-pub struct State<S: ReturnStack> {
+pub struct State<S: ReturnStack, I: Info> {
     /// Current program counter
     pc: u64,
 
     /// Current instruction
-    insn: Instruction,
+    insn: Instruction<I>,
 
     /// Previous program counter
     last_pc: u64,
 
     /// Previous instruction
-    last_insn: Instruction,
+    last_insn: Instruction<I>,
 
     /// Address reconstructed from the latest packet
     address: u64,
@@ -55,7 +55,7 @@ pub struct State<S: ReturnStack> {
     implicit_return: bool,
 }
 
-impl<S: ReturnStack> State<S> {
+impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// Create a new, initial state for tracing
     pub fn new(return_stack: S, sequential_jumps: bool) -> Self {
         Self {
@@ -86,8 +86,8 @@ impl<S: ReturnStack> State<S> {
     }
 
     /// Retrieve the current [`Instruction`] without advancing the state
-    pub fn current_insn(&self) -> Instruction {
-        self.insn
+    pub fn current_insn(&self) -> Instruction<I> {
+        self.insn.clone()
     }
 
     /// Determine next [`ProtoItem`]
@@ -99,10 +99,10 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to the loop bodies in `follow_execution_path`
     /// and `process_support` of the reference implementation.
-    pub fn next_item<B: Binary>(
+    pub fn next_item<B: Binary<I>>(
         &mut self,
         binary: &mut B,
-    ) -> Result<Option<ProtoItem>, Error<B::Error>> {
+    ) -> Result<Option<ProtoItem<I>>, Error<B::Error>> {
         if self.is_fused() {
             return Ok(None);
         }
@@ -182,21 +182,19 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to `exception_address` of the reference
     /// implementation.
-    pub fn exception_address<B: Binary>(
+    pub fn exception_address<B: Binary<I>>(
         &mut self,
         binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
-        if let Some(kind) = self.insn.info {
-            if kind.is_uninferable_discon() {
-                if let Some(epc) = packet_epc {
-                    return Ok(epc);
-                }
+        if self.insn.is_uninferable_discon() {
+            if let Some(epc) = packet_epc {
+                return Ok(epc);
             }
+        }
 
-            if kind.is_ecall_or_ebreak() {
-                return Ok(self.pc);
-            }
+        if self.insn.is_ecall_or_ebreak() {
+            return Ok(self.pc);
         }
 
         let (pc, insn, end) = self.next_pc(binary, self.pc)?;
@@ -210,10 +208,10 @@ impl<S: ReturnStack> State<S> {
     /// Create an [`Initializer`]
     ///
     /// Returns an [`Initializer`] for this state if the state is fused.
-    pub fn initializer<'a, B: Binary>(
+    pub fn initializer<'a, B: Binary<I>>(
         &'a mut self,
         binary: &'a mut B,
-    ) -> Result<Initializer<'a, S, B>, Error<B::Error>> {
+    ) -> Result<Initializer<'a, S, B, I>, Error<B::Error>> {
         self.is_fused()
             .then_some(Initializer {
                 state: self,
@@ -231,31 +229,28 @@ impl<S: ReturnStack> State<S> {
     /// state (`false`) or not (`true`).
     ///
     /// This roughly corresponds to `next_pc` of the reference implementation.
-    fn next_pc<B: Binary>(
+    fn next_pc<B: Binary<I>>(
         &mut self,
         binary: &mut B,
         address: u64,
-    ) -> Result<(u64, Instruction, bool), Error<B::Error>> {
+    ) -> Result<(u64, Instruction<I>, bool), Error<B::Error>> {
         // The PC right after the current instruction
         let after_pc = self.pc.wrapping_add(self.insn.size.into());
 
+        let info = self.insn.info.clone();
         let (next_pc, end) = self
-            .insn
-            .info
-            .and_then(|k| {
-                self.inferable_jump_target(k)
-                    .or_else(|| self.sequential_jump_target(k).map(|t| (t, false)))
-                    .or_else(|| self.implicit_return_address(k).map(|t| (t, false)))
-                    .map(Ok)
-                    .or_else(|| {
-                        k.is_uninferable_discon().then(|| {
-                            (!matches!(self.stop_condition, StopCondition::LastBranch))
-                                .then_some((address, true))
-                                .ok_or(Error::UnexpectedUninferableDiscon)
-                        })
-                    })
-                    .or_else(|| self.taken_branch_target(k).transpose())
+            .inferable_jump_target(&info)
+            .or_else(|| self.sequential_jump_target(&info).map(|t| (t, false)))
+            .or_else(|| self.implicit_return_address(&info).map(|t| (t, false)))
+            .map(Ok)
+            .or_else(|| {
+                info.is_uninferable_discon().then(|| {
+                    (!matches!(self.stop_condition, StopCondition::LastBranch))
+                        .then_some((address, true))
+                        .ok_or(Error::UnexpectedUninferableDiscon)
+                })
             })
+            .or_else(|| self.taken_branch_target(&info).transpose())
             .transpose()?
             .unwrap_or((after_pc, false));
 
@@ -264,13 +259,13 @@ impl<S: ReturnStack> State<S> {
         }
 
         self.last_pc = self.pc;
-        self.last_insn = self.insn;
+        self.last_insn = self.insn.clone();
 
         let insn = binary
             .get_insn(next_pc)
             .map_err(|e| Error::CannotGetInstruction(e, next_pc))?;
         self.pc = next_pc;
-        self.insn = insn;
+        self.insn = insn.clone();
 
         Ok((next_pc, insn, end))
     }
@@ -280,7 +275,7 @@ impl<S: ReturnStack> State<S> {
     /// Computes and returns the absolute jump target along side a flag
     /// indicating whether the _relative_ target is zero if the given
     /// instruction an inferable jump instruction.
-    fn inferable_jump_target(&self, insn: instruction::Kind) -> Option<(u64, bool)> {
+    fn inferable_jump_target(&self, insn: &I) -> Option<(u64, bool)> {
         insn.inferable_jump_target()
             .map(|t| (self.pc.wrapping_add_signed(t.into()), t == 0))
     }
@@ -289,7 +284,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
-    fn sequential_jump_target(&self, insn: instruction::Kind) -> Option<u64> {
+    fn sequential_jump_target(&self, insn: &I) -> Option<u64> {
         if !self.sequential_jumps {
             return None;
         }
@@ -304,7 +299,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to a combination of `is_implicit_return` and
     /// `pop_return_stack` of the reference implementation.
-    fn implicit_return_address(&mut self, insn: instruction::Kind) -> Option<u64> {
+    fn implicit_return_address(&mut self, insn: &I) -> Option<u64> {
         if self.implicit_return
             && insn.is_return()
             && self.stack_depth != Some(self.return_stack.depth())
@@ -325,10 +320,7 @@ impl<S: ReturnStack> State<S> {
     ///
     /// This roughly corresponds to a combination of `is_taken_branch` of the
     /// reference implementation.
-    fn taken_branch_target<I>(
-        &mut self,
-        insn: instruction::Kind,
-    ) -> Result<Option<(u64, bool)>, Error<I>> {
+    fn taken_branch_target<E>(&mut self, insn: &I) -> Result<Option<(u64, bool)>, Error<E>> {
         let Some(target) = insn.branch_target() else {
             // Not a branch instruction
             return Ok(None);
@@ -356,19 +348,19 @@ impl<S: ReturnStack> State<S> {
 ///
 /// This expands to a regular tracer item, optionally preceeded by a context
 /// item.
-type ProtoItem = (u64, Instruction, Option<Context>);
+type ProtoItem<I> = (u64, Instruction<I>, Option<Context>);
 
 /// [`State`] initializer
 ///
 /// An initializer allows the configuration of a [`State`] and the subsequent
 /// setting of a [`StopCondition`]. It allows safe configuration as long as it
 /// is created for a fused [`State`].
-pub struct Initializer<'a, S: ReturnStack, B: Binary> {
-    state: &'a mut State<S>,
+pub struct Initializer<'a, S: ReturnStack, B: Binary<I>, I: Info> {
+    state: &'a mut State<S, I>,
     binary: &'a mut B,
 }
 
-impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
+impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
     /// Set an absolute address
     ///
     /// Set an absolute address and clear the inferred address.

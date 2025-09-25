@@ -24,6 +24,7 @@ use crate::instruction;
 use crate::types::trap;
 
 use error::Error;
+use instruction::info::Info;
 use stack::ReturnStack;
 
 /// Tracer
@@ -73,16 +74,22 @@ use stack::ReturnStack;
 ///     println!("PC: {:0x}", i.unwrap().pc());
 /// });
 /// ```
-pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
-    state: state::State<S>,
+pub struct Tracer<B, S = stack::NoStack, I = Option<instruction::Kind>>
+where
+    B: Binary<I>,
+    S: ReturnStack,
+    I: Info,
+{
+    state: state::State<S, I>,
     iter_state: IterationState,
     binary: B,
     address_mode: AddressMode,
     address_delta_width: core::num::NonZeroU8,
     version: Version,
+    phantom: core::marker::PhantomData<I>,
 }
 
-impl<B: Binary, S: ReturnStack> Tracer<B, S> {
+impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
     /// Process an [`Payload`]
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
@@ -273,7 +280,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         address: u64,
         reset_branch_map: bool,
         branch_taken: bool,
-    ) -> Result<state::Initializer<'_, S, B>, Error<B::Error>> {
+    ) -> Result<state::Initializer<'_, S, B, I>, Error<B::Error>> {
         use instruction::info::Info;
 
         let insn = self
@@ -298,8 +305,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     }
 }
 
-impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
-    type Item = Result<Item, Error<B::Error>>;
+impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Iterator for Tracer<B, S, I> {
+    type Item = Result<Item<I>, Error<B::Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter_state {
@@ -362,7 +369,7 @@ pub fn builder() -> Builder<binary::Empty> {
 /// For this purpose, [`Builder`] implements [`Copy`] and [`Clone`] as long as
 /// the [`Binary`] does.
 #[derive(Copy, Clone)]
-pub struct Builder<B: Binary = binary::Empty> {
+pub struct Builder<B = binary::Empty> {
     binary: B,
     max_stack_depth: usize,
     sequentially_inferred_jumps: bool,
@@ -378,7 +385,7 @@ impl Builder<binary::Empty> {
     }
 }
 
-impl<B: Binary> Builder<B> {
+impl<B> Builder<B> {
     /// Build the [`Tracer`] for encoders with the given [`config::Parameters`]
     ///
     /// New builders assume [`Default`] parameters.
@@ -402,7 +409,7 @@ impl<B: Binary> Builder<B> {
     ///
     /// New builders carry an empty or [`Default`] [`Binary`]. This is usually
     /// not what you want.
-    pub fn with_binary<C: Binary>(self, binary: C) -> Builder<C> {
+    pub fn with_binary<C>(self, binary: C) -> Builder<C> {
         Builder {
             binary,
             max_stack_depth: self.max_stack_depth,
@@ -431,9 +438,11 @@ impl<B: Binary> Builder<B> {
     }
 
     /// Build the [`Tracer`]
-    pub fn build<S>(self) -> Result<Tracer<B, S>, Error<B::Error>>
+    pub fn build<S, I>(self) -> Result<Tracer<B, S, I>, Error<B::Error>>
     where
+        B: Binary<I>,
         S: ReturnStack,
+        I: Info + Clone + Default,
     {
         let state = state::State::new(
             S::new(self.max_stack_depth)
@@ -447,11 +456,12 @@ impl<B: Binary> Builder<B> {
             address_mode: self.address_mode,
             address_delta_width: self.address_delta_width,
             version: self.version,
+            phantom: Default::default(),
         })
     }
 }
 
-impl<B: Binary + Default> Default for Builder<B> {
+impl<B: Default> Default for Builder<B> {
     fn default() -> Self {
         Self {
             binary: Default::default(),
