@@ -16,7 +16,15 @@ impl Map {
     pub const MAX_BRANCHES: u32 = u64::BITS;
 
     /// Create a new branch map
+    ///
+    /// # Note
+    ///
+    /// Panics if `count` is greater than [`MAX_BRANCHES`][Self::MAX_BRANCHES].
     pub(crate) fn new(count: u8, map: u64) -> Self {
+        assert!(
+            u32::from(count) < Self::MAX_BRANCHES,
+            "Attempt to create a branch map with {count} branches",
+        );
         Self { count, map }
     }
 
