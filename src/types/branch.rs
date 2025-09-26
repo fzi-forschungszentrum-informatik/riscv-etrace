@@ -32,16 +32,18 @@ impl Map {
     }
 
     /// Push a new branch information
-    pub fn push_branch_taken(&mut self, taken: bool) {
-        let count = self.count;
-        let bit = 1u64.checked_shl(count.into()).unwrap_or_default();
+    pub fn push_branch_taken(&mut self, taken: bool) -> Result<(), Error> {
+        let bit = 1u64
+            .checked_shl(self.count.into())
+            .ok_or(Error::TooManyBranches)?;
         self.map = if taken {
             self.map & !bit
         } else {
             self.map | bit
         };
 
-        self.count = count.saturating_add(1);
+        self.count += 1;
+        Ok(())
     }
 
     /// Append another branch map to this one
