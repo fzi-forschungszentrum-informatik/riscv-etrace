@@ -50,10 +50,15 @@ impl Map {
     ///
     /// The branches from the other map are considered newer than the existing
     /// ones.
-    pub fn append(&mut self, other: Self) {
-        let count = self.count;
-        self.map |= other.map.checked_shl(count.into()).unwrap_or_default();
-        self.count = count.saturating_add(other.count);
+    pub fn append(&mut self, other: Self) -> Result<(), Error> {
+        let total = self
+            .count
+            .checked_add(other.count)
+            .filter(|c| u32::from(*c) <= Self::MAX_BRANCHES)
+            .ok_or(Error::TooManyBranches)?;
+        self.map |= other.map << u32::from(self.count);
+        self.count = total;
+        Ok(())
     }
 
     /// Retrieve the number of branchs in the map
