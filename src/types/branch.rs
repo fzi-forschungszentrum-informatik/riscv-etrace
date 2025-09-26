@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Branch map utilities
 
+use core::fmt;
+
 /// A record of branches that are taken or not taken
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Map {
@@ -63,5 +65,25 @@ impl Map {
     /// represent branches not taken, unset bits represent taken branches.
     pub fn raw_map(&self) -> u64 {
         self.map
+    }
+}
+
+/// Errors produced by [`Map`]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Too many branches
+    ///
+    /// The operation could not be preformed because the result would exceed the
+    /// maximum number of branches a branch map may hold.
+    TooManyBranches,
+}
+
+impl core::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::TooManyBranches => write!(f, "Too many branches"),
+        }
     }
 }
