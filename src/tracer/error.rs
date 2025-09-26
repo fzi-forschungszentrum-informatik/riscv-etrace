@@ -4,6 +4,8 @@
 
 use core::fmt;
 
+use crate::types::branch;
+
 /// Tracing specific errors
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<I> {
@@ -17,6 +19,8 @@ pub enum Error<I> {
     ///
     /// The trace items need to be depleted before the operation.
     UnprocessedInstructions,
+    /// Branch(es) could not be added to a [`branch::Map`]
+    CannotAddBranches(branch::Error),
     /// Unprocessed branches left
     ///
     /// Some number of branches which should have been processed are still
@@ -40,6 +44,7 @@ where
 {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
+            Self::CannotAddBranches(inner) => Some(inner),
             Self::CannotGetInstruction(inner, _) => Some(inner),
             _ => None,
         }
@@ -52,6 +57,7 @@ impl<I> fmt::Display for Error<I> {
             Self::StartOfTrace => write!(f, "expected sync packet"),
             Self::UnsupportedFeature(feat) => write!(f, "feature \"{feat}\" not supported"),
             Self::UnprocessedInstructions => write!(f, "unprocessed instructions"),
+            Self::CannotAddBranches(_) => write!(f, "cannot add branches to branch map"),
             Self::UnprocessedBranches(c) => write!(f, "{c} unprocessed branches"),
             Self::UnexpectedUninferableDiscon => write!(f, "unexpected uninferable discontinuity"),
             Self::UnresolvableBranch => write!(f, "unresolvable branch"),

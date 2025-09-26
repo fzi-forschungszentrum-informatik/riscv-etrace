@@ -121,7 +121,10 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
             initer.set_stack_depth(payload.implicit_return_depth());
 
             if let InstructionTrace::Branch(branch) = payload {
-                initer.get_branch_map_mut().append(branch.branch_map);
+                initer
+                    .get_branch_map_mut()
+                    .append(branch.branch_map)
+                    .map_err(Error::CannotAddBranches)?;
             }
             if let Some(info) = payload.get_address_info() {
                 match self.address_mode {
@@ -296,7 +299,9 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
             *branch_map = Default::default();
         }
         if insn.is_branch() {
-            branch_map.push_branch_taken(branch_taken);
+            branch_map
+                .push_branch_taken(branch_taken)
+                .map_err(Error::CannotAddBranches)?;
         }
 
         initer.set_stack_depth(None);
