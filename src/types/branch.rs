@@ -10,6 +10,9 @@ pub struct Map {
 }
 
 impl Map {
+    /// Maximum number of branches a branch map can hold.
+    pub const MAX_BRANCHES: u32 = u64::BITS;
+
     /// Create a new branch map
     pub(crate) fn new(count: u8, map: u64) -> Self {
         Self { count, map }
