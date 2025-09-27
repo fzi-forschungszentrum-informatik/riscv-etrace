@@ -59,7 +59,7 @@ impl BranchCount {
             .last()
             .expect("Could not determine length");
         let mut map = decoder.read_bits(length)?;
-        map &= !0u64.checked_shl(self.0.into()).unwrap_or_default();
+        map &= !0u32.checked_shl(self.0.into()).unwrap_or_default();
         Ok(branch::Map::new(self.0, map))
     }
 

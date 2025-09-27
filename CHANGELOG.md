@@ -10,6 +10,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Adjust documenttion and impls of `intruction::info::Info` fns regarding the
   classification of jumps as calls or returns to be in line with the
   specification.
+- A `types::branch::Map` now holds at most 32 branches. This is reflected in a
+  changed value for `MAX_BRANCHES` and `raw_map` returning an `u32`.
 
 ### Added
 

@@ -8,19 +8,19 @@ use core::fmt;
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Map {
     count: u8,
-    map: u64,
+    map: u32,
 }
 
 impl Map {
     /// Maximum number of branches a branch map can hold.
-    pub const MAX_BRANCHES: u32 = u64::BITS;
+    pub const MAX_BRANCHES: u32 = u32::BITS;
 
     /// Create a new branch map
     ///
     /// # Note
     ///
     /// Panics if `count` is greater than [`MAX_BRANCHES`][Self::MAX_BRANCHES].
-    pub(crate) fn new(count: u8, map: u64) -> Self {
+    pub(crate) fn new(count: u8, map: u32) -> Self {
         assert!(
             u32::from(count) < Self::MAX_BRANCHES,
             "Attempt to create a branch map with {count} branches",
@@ -41,7 +41,7 @@ impl Map {
 
     /// Push a new branch information
     pub fn push_branch_taken(&mut self, taken: bool) -> Result<(), Error> {
-        let bit = 1u64
+        let bit = 1u32
             .checked_shl(self.count.into())
             .ok_or(Error::TooManyBranches)?;
         self.map = if taken {
@@ -78,7 +78,7 @@ impl Map {
     ///
     /// The lowest valued bit corresponds to the oldest branch. Set bits
     /// represent branches not taken, unset bits represent taken branches.
-    pub fn raw_map(&self) -> u64 {
+    pub fn raw_map(&self) -> u32 {
         self.map
     }
 }
