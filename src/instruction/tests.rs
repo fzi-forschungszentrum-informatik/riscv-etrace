@@ -152,6 +152,16 @@ mod fmt {
     format_test!(bltu, Kind::new_bltu(7, 11, 0x487), "bltu x7, x11, 0x487");
     format_test!(bgeu, Kind::new_bgeu(6, 14, 0x777), "bgeu x6, x14, 0x777");
     format_test!(c_ebreak, Kind::c_ebreak, "c.ebreak");
+    format_test!(ebreak, Kind::ebreak, "ebreak");
+    format_test!(fence_i, Kind::fence_i, "fence.i");
+    format_test!(ecall, Kind::ecall, "ecall");
+    format_test!(wfi, Kind::wfi, "wfi");
+    format_test!(sfence_vma, Kind::sfence_vma, "sfence.vma");
+    format_test!(fence, Kind::fence, "fence");
+    format_test!(mret, Kind::mret, "mret");
+    format_test!(sret, Kind::sret, "sret");
+    format_test!(uret, Kind::uret, "uret");
+    format_test!(dret, Kind::dret, "dret");
 }
 
 // Instruction type related tests
@@ -515,42 +525,43 @@ fn type_j() {
 }
 
 // Bits extraction tests
-
-#[test]
-fn bits_extract_16() {
-    let data = [0x14, 0x41, 0x11, 0x05];
-    assert_eq!(
-        Bits::extract(&data),
-        Some((Bits::Bit16(0x4114), [0x11, 0x05].as_slice())),
-    );
+macro_rules! bits_exract_test {
+    ($name:ident, $bytes:expr, $expected:expr, $remaining:expr) => {
+        #[test]
+        fn $name() {
+            let data = $bytes;
+            assert_eq!(
+                Bits::extract(&data),
+                Some(($expected, $remaining.as_slice()))
+            );
+        }
+    };
 }
 
-#[test]
-fn bits_extract_32() {
-    let data = [0x97, 0x06, 0x00, 0x00, 0x93, 0x86, 0x86, 0x05];
-    assert_eq!(
-        Bits::extract(&data),
-        Some((Bits::Bit32(0x00000697), [0x93, 0x86, 0x86, 0x05].as_slice())),
-    );
-}
-
-#[test]
-fn bits_extract_48() {
-    let data = [0x5F, 0x36, 0x98, 0x00, 0x45, 0xF1, 0x20, 0x37];
-    assert_eq!(
-        Bits::extract(&data),
-        Some((Bits::Bit48(0xF1450098365F), [0x20, 0x37].as_slice())),
-    );
-}
-
-#[test]
-fn bits_extract_64() {
-    let data = [0xBF, 0x2F, 0x15, 0x46, 0x52, 0x8C, 0x84, 0x23, 0xFE, 0x4B];
-    assert_eq!(
-        Bits::extract(&data),
-        Some((Bits::Bit64(0x23848C5246152FBF), [0xFE, 0x4B].as_slice())),
-    );
-}
+bits_exract_test!(
+    extract_16,
+    [0x14, 0x41, 0x11, 0x05],
+    Bits::Bit16(0x4114),
+    [0x11, 0x05]
+);
+bits_exract_test!(
+    extract_32,
+    [0x97, 0x06, 0x00, 0x00, 0x93, 0x86, 0x86, 0x05],
+    Bits::Bit32(0x00000697),
+    [0x93, 0x86, 0x86, 0x05]
+);
+bits_exract_test!(
+    extract_48,
+    [0x5F, 0x36, 0x98, 0x00, 0x45, 0xF1, 0x20, 0x37],
+    Bits::Bit48(0xF1450098365F),
+    [0x20, 0x37]
+);
+bits_exract_test!(
+    extract_64,
+    [0xBF, 0x2F, 0x15, 0x46, 0x52, 0x8C, 0x84, 0x23, 0xFE, 0x4B],
+    Bits::Bit64(0x23848C5246152FBF),
+    [0xFE, 0x4B]
+);
 
 #[test]
 fn bits_extract_none() {
@@ -559,56 +570,101 @@ fn bits_extract_none() {
 }
 
 #[test]
-fn decode_16() {
-    // c.jal instruction with func3 and op
-    let bits = Bits::Bit16(0b001_010_0010_0000_01);
+fn extract_test() {
+    // auipc imm 20 bits 31:12; 11:7 rd; 6:0 op: 0010111; immediate: 0001_0100_0100_0101_1100,  rd: 10000
+    let data: u32 = 0b_00010100010001011100_10000_0010111; // imm; rd; op
+    let bytes_reverse = data.to_le_bytes();
+    assert_eq!(bytes_reverse, [0x17, 0xC8, 0x45, 0x14]); // 14 45 C8 17
 
-    let instr = bits.decode(base::Set::Rv32I);
-    assert_eq!(instr.size, Size::Compressed);
+    // extract instruction
+    let (instruction, remaining) = Instruction::extract(&bytes_reverse,&Rv32I)
+        .expect("Cannot extract instruction from data stream!");
 
-    // rd is 0 and immediate needs to be shifted by 1 to left to match logic f. TypeJ instructions
-    assert_eq!(
-        instr.kind,
-        Some(Kind::new_c_jal(0, (0b_0000_0101_000) << 1))
-    );
+    // Ensure Instruction Size and Kind are correctly extracted
+    let size = instruction.size;
+    let info = instruction.info.expect("Instruction is unknown");
+    assert_eq!(size, Size::Normal);
+    assert_eq!(remaining, []);
+    assert_eq!(info, Kind::new_auipc(16, 0b0001_0100_0100_0101_1100 << 12));
+}
+
+macro_rules! decode_test {
+    ($name:ident, $bits:expr, $set:expr, None) => {
+        #[test]
+        fn $name() {
+            use info::Decode;
+            let bits = $bits;
+            let instruction = $set.decode_bits(bits);
+
+            assert_eq!(instruction, None);
+        }
+    };
+    ($name:ident, $bits:expr, $set:expr, $expected_kind:expr) => {
+        #[test]
+        fn $name() {
+            let bits = $bits;
+            let instruction = $set.decode_bits(bits);
+            assert_eq!(instruction, Some($expected_kind));
+        }
+    };
+}
+
+// rd is 0 and immediate needs to be shifted by 1 to left to match logic f. TypeJ instructions
+decode_test!(
+    decode_16,
+    Bits::Bit16(0b001_010_0010_0000_01),
+    base::Set::Rv32I,
+    Kind::new_c_jal(0, (0b_0000_0101_000) << 1)
+);
+decode_test!(
+    decode_32,
+    Bits::Bit32(0x35AA4163),
+    base::Set::Rv32I,
+    Kind::new_blt(20, 26, (0b0001_1010_0001) << 1)
+);
+decode_test!(
+    decode_48,
+    Bits::Bit48(0x63E3312B),
+    base::Set::Rv64I,
+    None
+);
+decode_test!(
+    decode_64,
+    Bits::Bit64(0x218A202D),
+    base::Set::Rv64I,
+    None
+);
+
+macro_rules! upper_immediate_test {
+    ($name:ident, $ctor:ident($rd:expr, $imm:expr), $expected:expr) => {
+        #[test]
+        fn $name() {
+            let kind = Kind::$ctor($rd, $imm);
+            let dummy_input = 0x500;
+            let result = kind.upper_immediate(dummy_input);
+
+            assert_eq!(result, $expected);
+        }
+    };
+}
+
+upper_immediate_test!(lui_ok, new_lui(5, 0x80010), Some((5, 0x80010)));
+
+// PC + imm for auipc
+upper_immediate_test!(auipc_ok, new_auipc(7, 0x55555), Some((7, (0x55A55))));
+upper_immediate_test!(c_lui_ok, new_c_lui(3, 0x20), Some((3, 0x20)));
+upper_immediate_test!(jal_ok, new_jal(3, 0x4359), None);
+
+#[test]
+fn is_call_test() {
+    let jalr = Kind::new_jalr(1, 3, 2792);
+    let lui = Kind::new_lui(4, 519603);
+    assert_eq!(true, jalr.is_call());
+    assert_ne!(true, lui.is_call());
 }
 
 #[test]
-fn decode_32() {
-    // blt; func3: 100, op: 1100011, rs1: 20, rs2: 26, imm: 0001_1010_0001
-    let bits = Bits::Bit32(0x35AA4163);
-    let instr = bits.decode(base::Set::Rv32I);
-
-    assert_eq!(instr.size, Size::Normal);
-    //shift to left by 1 to match imm. logic
-    assert_eq!(
-        instr.kind,
-        Some(Kind::new_blt(20, 26, (0b0001_1010_0001) << 1))
-    );
-}
-
-#[test]
-fn decode_48() {
-    let bits = Bits::Bit48(0x63E3312B);
-    let instr = bits.decode(base::Set::Rv64I);
-
-    assert_eq!(instr.size, Size::Wide);
-    assert_eq!(instr.kind, None);
-}
-
-#[test]
-fn decode_64() {
-    let bits = Bits::Bit64(0x218A202D);
-    let instr = bits.decode(base::Set::Rv64I);
-
-    assert_eq!(instr.size, Size::ExtraWide);
-    assert_eq!(instr.kind, None);
-}
-
-#[test]
-fn upper_immediate_lui() {
-    let kind = Kind::new_lui(5, 0x80010);
-    let result = kind.upper_immediate(20010556);
-
-    assert_eq!((result), Some((5, 0x80010)));
+fn is_return_test() {
+    let jalr = Kind::new_jal(2, 2450);
+    assert_eq!(false, jalr.is_return());
 }
