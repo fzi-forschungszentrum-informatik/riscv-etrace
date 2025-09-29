@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Fixed
+
+- 16bit instructions were previously decoded as `c.lui` regardless of the rd
+  (which needs to be neither `0` or `2`) due to an errorneous condition.
+
 ## 0.3.0 - 2025-08-16
 
 ### Added
