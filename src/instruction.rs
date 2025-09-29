@@ -301,7 +301,7 @@ impl Kind {
             (0b01, 0b001) => Some(Self::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);
-                if data.rd != 0 || data.rd != 2 {
+                if data.rd != 0 && data.rd != 2 {
                     Some(Self::c_lui(data))
                 } else {
                     None
