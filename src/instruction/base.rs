@@ -68,7 +68,7 @@ impl info::Decode<Option<Kind>> for Set {
             (0b01, 0b001) if *self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);
-                if data.rd != 0 || data.rd != 2 {
+                if data.rd != 0 && data.rd != 2 {
                     Some(Kind::c_lui(data))
                 } else {
                     None
