@@ -7,6 +7,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- A type `types::branch::Error` for errors emitted by fns associated to
+  `types::branch::Map`.
+- A constant `types::branch::Map::MAX_BRANCHES` for the maximum number of
+  branches a `types::branch::Map` can hold.
 - A new submodule `instruction::info` hosting the trait `Info` which provides
   instruction information and `Decode` for decoding an `Info`.
 - `instruction::info::Info` impls for `Option`, `instruction::Kind` and
@@ -20,6 +24,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `types::branch::Map::push_branch_taken` and `types::branch::Map::append` now
+  report an error on failure to add branches rather than silently ignoring the
+  condition.
+- `tracer::error::Error` has a new variant `CannotAddBranches` which is used for
+  communicating failures to add branches to a `types::branch::Map`.
 - `tracer::Tracer`, `tracer::item::Item` and `tracer::item::Kind` are now
   generic over the `instruction::info::Info` included in tracing items.
 - Moved constraint of `tracer::Builder`'s type parameter for the `binary::Binary`
