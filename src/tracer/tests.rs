@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
+use core::cell::LazyCell;
+
 use crate::binary;
 use crate::decoder::payload;
 use crate::instruction;
@@ -257,3 +259,28 @@ fn start_packet(address: u64) -> payload::InstructionTrace {
     }
     .into()
 }
+
+const TEST_BIN1: LazyCell<[(u64, instruction::Instruction); 17]> = LazyCell::new(|| {
+    [
+        (0x80000000, Kind::new_auipc(13, 0x0).into()),
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_auipc(1, 0x0).into()),
+        (0x80000010, UNCOMPRESSED),
+        // _copy_code
+        (0x80000014, COMPRESSED),
+        (0x80000016, COMPRESSED),
+        (0x80000018, COMPRESSED),
+        (0x8000001a, COMPRESSED),
+        (0x8000001c, Kind::new_bltu(11, 12, -8).into()),
+        (0x80000020, Kind::fence_i.into()),
+        (0x80000024, Kind::new_c_jr(1).into()),
+        // _entry
+        (0x80000026, UNCOMPRESSED),
+        (0x8000002a, UNCOMPRESSED),
+        (0x8000002e, COMPRESSED),
+        // _die
+        (0x80000030, Kind::wfi.into()),
+        (0x80000034, Kind::new_c_j(0, -4).into()),
+    ]
+});
