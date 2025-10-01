@@ -759,7 +759,7 @@ fn is_call_test() {
 #[test]
 fn is_return_test() {
     let jalr = Kind::new_jal(2, 2450);
-    assert_eq!(false, jalr.is_return());
+    assert!(!jalr.is_return());
 }
 
 macro_rules! from_kind_test {
