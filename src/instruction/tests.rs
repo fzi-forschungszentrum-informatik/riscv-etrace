@@ -1,5 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+#![allow(clippy::unusual_byte_groupings)]
 
 extern crate alloc;
 
