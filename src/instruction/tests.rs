@@ -1,5 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
+#![allow(clippy::unusual_byte_groupings)]
 
 extern crate alloc;
 
@@ -632,7 +633,7 @@ fn extract_test() {
     assert_eq!(bytes_reverse, [0x17, 0xC8, 0x45, 0x14]);
 
     // extract instruction
-    let (instruction, remaining) = Instruction::extract(&bytes_reverse,&Rv32I)
+    let (instruction, remaining) = Instruction::extract(&bytes_reverse, &Rv32I)
         .expect("Cannot extract instruction from data stream!");
 
     // Ensure Instruction Size and Kind are correctly extracted
@@ -677,18 +678,8 @@ decode_test!(
     base::Set::Rv32I,
     Kind::new_blt(20, 26, (0b0001_1010_0001) << 1)
 );
-decode_test!(
-    decode_48,
-    Bits::Bit48(0x63E3312B),
-    base::Set::Rv64I,
-    None
-);
-decode_test!(
-    decode_64,
-    Bits::Bit64(0x218A202D),
-    base::Set::Rv64I,
-    None
-);
+decode_test!(decode_48, Bits::Bit48(0x63E3312B), base::Set::Rv64I, None);
+decode_test!(decode_64, Bits::Bit64(0x218A202D), base::Set::Rv64I, None);
 
 decode_test!(
     decode_16_none_c,
@@ -751,14 +742,14 @@ upper_immediate_test!(jal_ok, new_jal(3, 0x4359), None);
 fn is_call_test() {
     let jalr = Kind::new_jalr(1, 3, 2792);
     let lui = Kind::new_lui(4, 519603);
-    assert_eq!(true, jalr.is_call());
-    assert_ne!(true, lui.is_call());
+    assert!(jalr.is_call());
+    assert!(!lui.is_call());
 }
 
 #[test]
 fn is_return_test() {
     let jalr = Kind::new_jal(2, 2450);
-    assert_eq!(false, jalr.is_return());
+    assert!(!jalr.is_return());
 }
 
 macro_rules! from_kind_test {
