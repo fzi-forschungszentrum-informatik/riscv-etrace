@@ -76,6 +76,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `instruction::base::Set::decode_48`. The associated functionality is now
   provided via its `instruction::info::Decode` impl.
 
+### Fixed
+
+- 16bit instructions were previously decoded as `c.lui` regardless of the rd
+  (which needs to be neither `0` or `2`) due to an errorneous condition.
+
 ## 0.4.0 - 2025-09-10
 
 ### Added
