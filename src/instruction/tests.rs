@@ -633,7 +633,7 @@ fn extract_test() {
     assert_eq!(bytes_reverse, [0x17, 0xC8, 0x45, 0x14]);
 
     // extract instruction
-    let (instruction, remaining) = Instruction::extract(&bytes_reverse,&Rv32I)
+    let (instruction, remaining) = Instruction::extract(&bytes_reverse, &Rv32I)
         .expect("Cannot extract instruction from data stream!");
 
     // Ensure Instruction Size and Kind are correctly extracted
@@ -678,18 +678,8 @@ decode_test!(
     base::Set::Rv32I,
     Kind::new_blt(20, 26, (0b0001_1010_0001) << 1)
 );
-decode_test!(
-    decode_48,
-    Bits::Bit48(0x63E3312B),
-    base::Set::Rv64I,
-    None
-);
-decode_test!(
-    decode_64,
-    Bits::Bit64(0x218A202D),
-    base::Set::Rv64I,
-    None
-);
+decode_test!(decode_48, Bits::Bit48(0x63E3312B), base::Set::Rv64I, None);
+decode_test!(decode_64, Bits::Bit64(0x218A202D), base::Set::Rv64I, None);
 
 decode_test!(
     decode_16_none_c,
