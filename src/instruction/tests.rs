@@ -752,8 +752,8 @@ upper_immediate_test!(jal_ok, new_jal(3, 0x4359), None);
 fn is_call_test() {
     let jalr = Kind::new_jalr(1, 3, 2792);
     let lui = Kind::new_lui(4, 519603);
-    assert_eq!(true, jalr.is_call());
-    assert_ne!(true, lui.is_call());
+    assert!(jalr.is_call());
+    assert!(!lui.is_call());
 }
 
 #[test]
