@@ -66,6 +66,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
   of the packet.
 
 ### Removed
+
 - Instruction info query fns `instruciton::Kind::branch_target`,
   `inferable_jump_target`, `uninferable_jump`, `upper_immediate`,
   `is_return_from_trap`, `is_uninferable_discon`, `is_ecall_or_ebreak`,
