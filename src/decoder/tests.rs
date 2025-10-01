@@ -3,8 +3,9 @@
 use super::*;
 
 use crate::types::{self, branch};
-
 use payload::AddressInfo;
+use util::read_implicit_return;
+use core::num::NonZeroU8;
 
 macro_rules! bitstream_test {
     ($n:ident, $b:literal, $d:expr) => {
@@ -171,3 +172,55 @@ fn encap_stop() {
         Err(Error::InsufficientData(NonZeroUsize::MIN)),
     );
 }
+
+#[test]
+fn implicit_return_test_none() {
+    let data = b"\x54\x42\x03\x00\x04\x00\x00\x80";
+
+    let builder = Builder::new();
+    let mut decoder = builder.build(data);
+    decoder.field_widths.stack_depth = Some(NonZeroU8::new(1).unwrap());
+    decoder
+        .read_bits::<u8>(5)
+        .expect("Tried read bit, but failed");
+    let result = read_implicit_return(&mut decoder);
+    assert_eq!(result, Ok(Some(1)));
+}
+
+#[test]
+fn implicit_return_test_empty() {
+    let data = b"";
+    let builder = Builder::new();
+    let mut decoder = builder.build(data);
+    let result = read_implicit_return(&mut decoder);
+    assert!(matches!(result, Err(Error::InsufficientData(_))));
+}
+
+#[test]
+fn implicit_return_error_depth() {
+    // let data = b"";
+    let data: &[u8] = &[]; // no bytes at all
+    let builder = Builder::new();
+    let mut decoder = builder.build(data);
+    decoder.field_widths.stack_depth = Some(NonZeroU8::new(16).unwrap());
+    let result = read_implicit_return(&mut decoder);
+    assert!(matches!(result, Err(Error::InsufficientData(_))));
+}
+
+/*fn truncate_test() {
+    let val : u16 = 0xBEEF;
+    assert_eq!(val.truncated(8), 0xEF);
+}*/
+macro_rules! truncate_test {
+    ($name: ident, $val:expr, $type:ty, $bytes:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            let val : $type = $val;
+            assert_eq!(val.truncated($bytes), $expected);
+        }
+    };
+}
+
+truncate_test!(truncate_u16, 0xBEEF, u16, 8, 0xEF );
+truncate_test!(truncate_u32, 0xFFBEEF, u32, 16, 0xBEEF);
+truncate_test!(truncate_i64, 0xBEEF00FF, i64, 0, 0);
