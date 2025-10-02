@@ -251,7 +251,17 @@ pub trait Decode<I: Info> {
 #[cfg(feature = "riscv-isa")]
 impl Decode<riscv_isa::Instruction> for riscv_isa::Target {
     fn decode_16(&self, insn: u16) -> riscv_isa::Instruction {
-        riscv_isa::decode_compressed(insn, self).into()
+        use riscv_isa::Compressed;
+
+        // Version 0.3.1 of `riscv-isa` wrongly decodes some instructions as
+        // `c.lui`, `c.jr` or `c.jalr`.
+        match riscv_isa::decode_compressed(insn, self) {
+            Compressed::C_LUI { rd: 0, .. } => Compressed::UNIMP,
+            Compressed::C_JR { rs1: 0, .. } => Compressed::UNIMP,
+            Compressed::C_JALR { rs1: 0, .. } => Compressed::UNIMP,
+            insn => insn,
+        }
+        .into()
     }
 
     fn decode_32(&self, insn: u32) -> riscv_isa::Instruction {
