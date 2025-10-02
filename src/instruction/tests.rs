@@ -400,17 +400,17 @@ fn type_u() {
         },
     );
     assert_eq!(
-        TypeU::from(0x003cu16),
+        TypeU::from(0x007cu16),
         TypeU {
             rd: 0x00,
-            imm: 0x000f000,
+            imm: 0x001f000,
         },
     );
     assert_eq!(
         TypeU::from(0x1000u16),
         TypeU {
             rd: 0x00,
-            imm: -0x0010000,
+            imm: -0x0020000,
         },
     );
 }
