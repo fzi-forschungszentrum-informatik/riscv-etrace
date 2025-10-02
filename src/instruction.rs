@@ -274,7 +274,7 @@ impl Kind {
                 0b111 => Some(Self::bgeu(insn.into())),
                 _ => None,
             },
-            OpCode::Jalr => Some(Self::jalr(insn.into())),
+            OpCode::Jalr if funct3 == 0 => Some(Self::jalr(insn.into())),
             OpCode::Jal => Some(Self::jal(insn.into())),
             OpCode::System => match insn >> 7 {
                 0b000000000000_00000_000_00000 => Some(Self::ecall),
