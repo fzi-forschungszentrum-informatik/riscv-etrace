@@ -802,6 +802,37 @@ macro_rules! compare_test {
     };
 }
 
+#[cfg(feature = "riscv-isa")]
+mod compare_riscv_isa {
+    use super::*;
+
+    compare_test!(
+        rv32i,
+        riscv_isa::Target {
+            xlen: riscv_isa::Xlen::Rv32,
+            privileged: true,
+            supervisor_mode: true,
+            c: true,
+            zicsr: true,
+            zifencei: true,
+            ..Default::default()
+        }
+    );
+
+    compare_test!(
+        rv64i,
+        riscv_isa::Target {
+            xlen: riscv_isa::Xlen::Rv64,
+            privileged: true,
+            supervisor_mode: true,
+            c: true,
+            zicsr: true,
+            zifencei: true,
+            ..Default::default()
+        }
+    );
+}
+
 /// Compare [`Info`] outputs for a range of decoded insns against a reference
 #[allow(dead_code)]
 fn compare_infos_16<D, I>(base: D)
