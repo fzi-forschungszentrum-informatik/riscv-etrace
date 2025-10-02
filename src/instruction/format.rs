@@ -187,10 +187,10 @@ impl From<u32> for TypeU {
 impl From<u16> for TypeU {
     fn from(insn: u16) -> Self {
         let insn: u32 = insn.into();
-        let imm = ((insn << (12 - 2)) & 0x0000f000) | ((insn << (16 - 12)) & 0x00010000);
+        let imm = ((insn << (12 - 2)) & 0x0001f000) | ((insn << (17 - 12)) & 0x00020000);
         Self {
             rd: rd_from(insn),
-            imm: sign_extend_u32(imm, 16),
+            imm: sign_extend_u32(imm, 17),
         }
     }
 }
