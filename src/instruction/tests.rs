@@ -636,6 +636,18 @@ fn bits_extract_none() {
 }
 
 #[test]
+fn bits_extract_size() {
+    for i in u8::MIN..=u8::MAX {
+        let data = [i, 0, 0, 0, 0, 0, 0, 0];
+        let Some((bits, rest)) = Bits::extract(&data) else {
+            continue;
+        };
+        let size = data.len() - rest.len();
+        assert_eq!(u64::from(bits.size()), size.try_into().unwrap());
+    }
+}
+
+#[test]
 fn extract_test() {
     // auipc imm 20 bits 31:12; 11:7 rd; 6:0 op: 0010111; immediate: 0001_0100_0100_0101_1100,  rd: 10000
     let data: u32 = 0b_00010100010001011100_10000_0010111; // imm; rd; op
