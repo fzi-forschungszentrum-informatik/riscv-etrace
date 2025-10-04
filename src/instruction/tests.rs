@@ -101,6 +101,8 @@ decode_test!(c_benz, 0xe6cdu16, Kind::new_c_bnez(13, 170), b, 170);
 decode_test!(auipc, 0xf2ab3697u32, Kind::new_auipc(13, -223662080));
 decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));
 decode_test!(c_lui, 0x7255u16, Kind::new_c_lui(4, -45056));
+decode_test!(c_lui_rd0, 0x7055u16, None);
+decode_test!(c_lui_rd2, 0x7155u16, None);
 decode_test!(jal, 0x1030d66fu32, Kind::new_jal(12, 55554), j, 55554);
 decode_test!(c_j, 0xab91u16, Kind::new_c_j(0, 1364), j, 1364);
 decode_test!(c_jr, 0x8602u16, Kind::new_c_jr(12), u, (12, 0));
