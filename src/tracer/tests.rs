@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
-use core::cell::LazyCell;
-
 use crate::binary;
 use crate::decoder::payload;
 use crate::instruction;
@@ -226,7 +224,7 @@ trace_test!(
 
 trace_test!(
     full_branch_map,
-    *TEST_BIN1,
+    test_bin_1(),
     start_packet(0x80000010) => {
         (0x80000010, Context::default()),
         (0x80000010, UNCOMPRESSED)
@@ -255,7 +253,7 @@ fn start_packet(address: u64) -> payload::InstructionTrace {
     .into()
 }
 
-const TEST_BIN1: LazyCell<[(u64, instruction::Instruction); 17]> = LazyCell::new(|| {
+fn test_bin_1() -> [(u64, instruction::Instruction); 17] {
     [
         (0x80000000, Kind::new_auipc(13, 0x0).into()),
         (0x80000004, UNCOMPRESSED),
@@ -278,4 +276,4 @@ const TEST_BIN1: LazyCell<[(u64, instruction::Instruction); 17]> = LazyCell::new
         (0x80000030, Kind::wfi.into()),
         (0x80000034, Kind::new_c_j(0, -4).into()),
     ]
-});
+}
