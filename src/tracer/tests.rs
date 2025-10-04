@@ -226,27 +226,22 @@ trace_test!(
 
 trace_test!(
     full_branch_map,
-    [
-        (0x80000028, COMPRESSED),
-        (0x8000002a, COMPRESSED),
-        (0x8000002c, Kind::new_c_beqz(10, -0x004).into()),
-        (0x8000002e, COMPRESSED),
-    ],
-    start_packet(0x80000028) => {
-        (0x80000028, Context::default()),
-        (0x80000028, COMPRESSED)
+    *TEST_BIN1,
+    start_packet(0x80000010) => {
+        (0x80000010, Context::default()),
+        (0x80000010, UNCOMPRESSED)
     }
     payload::Branch {
         branch_map: branch::Map::new(31, 0),
         address: None,
     } => {
-        (0x8000002a, COMPRESSED),
-        (0x8000002c, Kind::new_c_beqz(10, -0x004)),
         (
-            30,
-            (0x80000028, COMPRESSED),
-            (0x8000002a, COMPRESSED),
-            (0x8000002c, Kind::new_c_beqz(10, -0x004))
+            31,
+            (0x80000014, COMPRESSED),
+            (0x80000016, COMPRESSED),
+            (0x80000018, COMPRESSED),
+            (0x8000001a, COMPRESSED),
+            (0x8000001c, Kind::new_bltu(11, 12, -8))
         )
     }
 );
