@@ -122,6 +122,7 @@ decode_test!(
     j,
     1633
 );
+decode_test!(jalr_fake, 0x6616f867u32, None);
 
 mod c_jal {
     use super::*;
