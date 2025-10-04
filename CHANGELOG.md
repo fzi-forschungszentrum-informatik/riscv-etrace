@@ -7,6 +7,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- An optional dependency on `riscv-isa`.
+- `instruction::info::Info` impl for `riscv_isa::Instruction`.
+- `instruction::info::Decode<riscv_isa::Instruction>` impl for
+  `riscv_isa::Target`.
+- `From<riscv_isa::Target>` impl for `instruction::base::Set`.
 - A type `types::branch::Error` for errors emitted by fns associated to
   `types::branch::Map`.
 - A constant `types::branch::Map::MAX_BRANCHES` for the maximum number of

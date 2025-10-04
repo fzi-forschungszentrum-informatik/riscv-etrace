@@ -165,6 +165,64 @@ impl<T: Info> Info for Option<T> {
     }
 }
 
+#[cfg(feature = "riscv-isa")]
+impl Info for riscv_isa::Instruction {
+    type Register = u32;
+
+    fn branch_target(&self) -> Option<i16> {
+        match self {
+            Self::BEQ { offset, .. } => Some(*offset as i16),
+            Self::BNE { offset, .. } => Some(*offset as i16),
+            Self::BLT { offset, .. } => Some(*offset as i16),
+            Self::BGE { offset, .. } => Some(*offset as i16),
+            Self::BLTU { offset, .. } => Some(*offset as i16),
+            Self::BGEU { offset, .. } => Some(*offset as i16),
+            _ => None,
+        }
+    }
+
+    fn inferable_jump_target(&self) -> Option<i32> {
+        match self {
+            Self::JALR { rs1: 0, offset, .. } => Some(*offset),
+            Self::JAL { offset, .. } => Some(*offset),
+            _ => None,
+        }
+    }
+
+    fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
+        match self {
+            Self::JALR { rs1, offset, .. } => Some((*rs1, *offset as i16)),
+            _ => None,
+        }
+        .filter(|(r, _)| *r != 0)
+    }
+
+    fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
+        match self {
+            Self::LUI { rd, imm } => Some((*rd, 0, *imm as i32)),
+            Self::AUIPC { rd, imm } => Some((*rd, pc, *imm as i32)),
+            _ => None,
+        }
+        .map(|(r, b, o)| (r, b.wrapping_add_signed((o << 12).into())))
+    }
+
+    fn is_return_from_trap(&self) -> bool {
+        matches!(self, Self::SRET | Self::MRET)
+    }
+
+    fn is_ecall_or_ebreak(&self) -> bool {
+        matches!(self, Self::ECALL | Self::EBREAK)
+    }
+
+    fn is_call(&self) -> bool {
+        matches!(self, Self::JALR { rd: 1, .. } | Self::JAL { rd: 1, .. })
+    }
+
+    fn is_return(&self) -> bool {
+        matches!(self, Self::JALR { rd: 0, rs1: 1, .. })
+    }
+}
+
 /// Decode for instruction [`Info`]
 pub trait Decode<I: Info> {
     /// Decode a 16bit ("compressed") instruction [`Info`]
@@ -187,5 +245,34 @@ pub trait Decode<I: Info> {
             Bits::Bit48(bits) => self.decode_48(bits),
             Bits::Bit64(bits) => self.decode_64(bits),
         }
+    }
+}
+
+#[cfg(feature = "riscv-isa")]
+impl Decode<riscv_isa::Instruction> for riscv_isa::Target {
+    fn decode_16(&self, insn: u16) -> riscv_isa::Instruction {
+        use riscv_isa::Compressed;
+
+        // Version 0.3.1 of `riscv-isa` wrongly decodes some instructions as
+        // `c.lui`, `c.jr` or `c.jalr`.
+        match riscv_isa::decode_compressed(insn, self) {
+            Compressed::C_LUI { rd: 0, .. } => Compressed::UNIMP,
+            Compressed::C_JR { rs1: 0, .. } => Compressed::UNIMP,
+            Compressed::C_JALR { rs1: 0, .. } => Compressed::UNIMP,
+            insn => insn,
+        }
+        .into()
+    }
+
+    fn decode_32(&self, insn: u32) -> riscv_isa::Instruction {
+        riscv_isa::decode_full(insn, self)
+    }
+
+    fn decode_48(&self, _insn: u64) -> riscv_isa::Instruction {
+        riscv_isa::Instruction::UNIMP
+    }
+
+    fn decode_64(&self, _insn: u64) -> riscv_isa::Instruction {
+        riscv_isa::Instruction::UNIMP
     }
 }

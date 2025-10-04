@@ -19,6 +19,16 @@ pub enum Set {
     Rv64I,
 }
 
+#[cfg(feature = "riscv-isa")]
+impl From<riscv_isa::Target> for Set {
+    fn from(target: riscv_isa::Target) -> Self {
+        match target.xlen {
+            riscv_isa::Xlen::Rv32 => Self::Rv32I,
+            riscv_isa::Xlen::Rv64 => Self::Rv64I,
+        }
+    }
+}
+
 /// Decoding of instruction [`Kind`]s
 ///
 /// This [`info::Decode`] impl decodes [`Kind`] if possible, that is if that

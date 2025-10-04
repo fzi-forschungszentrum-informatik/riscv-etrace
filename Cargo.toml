@@ -13,6 +13,7 @@ alloc = []
 
 [dependencies]
 elf = { version = "0.7", optional = true }
+riscv-isa = { version = "0.3", optional = true }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
 
 [dev-dependencies]
