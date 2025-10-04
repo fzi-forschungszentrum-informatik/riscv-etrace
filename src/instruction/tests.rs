@@ -45,6 +45,13 @@ macro_rules! decode_test {
             decode_test!(Rv64I, rv64i, $l, $k, $tt, $t);
         }
     };
+    ($n:ident, $l:literal, None) => {
+        mod $n {
+            use super::*;
+            decode_test!(Rv32I, rv32i, $l, None);
+            decode_test!(Rv64I, rv64i, $l, None);
+        }
+    };
     ($n:ident, $l:literal, $k:expr) => {
         mod $n {
             use super::*;
