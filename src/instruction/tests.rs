@@ -45,6 +45,13 @@ macro_rules! decode_test {
             decode_test!(Rv64I, rv64i, $l, $k, $tt, $t);
         }
     };
+    ($n:ident, $l:literal, None) => {
+        mod $n {
+            use super::*;
+            decode_test!(Rv32I, rv32i, $l, None);
+            decode_test!(Rv64I, rv64i, $l, None);
+        }
+    };
     ($n:ident, $l:literal, $k:expr) => {
         mod $n {
             use super::*;
@@ -94,6 +101,8 @@ decode_test!(c_benz, 0xe6cdu16, Kind::new_c_bnez(13, 170), b, 170);
 decode_test!(auipc, 0xf2ab3697u32, Kind::new_auipc(13, -223662080));
 decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));
 decode_test!(c_lui, 0x7255u16, Kind::new_c_lui(4, -45056));
+decode_test!(c_lui_rd0, 0x7055u16, None);
+decode_test!(c_lui_rd2, 0x7155u16, None);
 decode_test!(jal, 0x1030d66fu32, Kind::new_jal(12, 55554), j, 55554);
 decode_test!(c_j, 0xab91u16, Kind::new_c_j(0, 1364), j, 1364);
 decode_test!(c_jr, 0x8602u16, Kind::new_c_jr(12), u, (12, 0));
@@ -113,6 +122,7 @@ decode_test!(
     j,
     1633
 );
+decode_test!(jalr_fake, 0x6616f867u32, None);
 
 mod c_jal {
     use super::*;
@@ -623,6 +633,18 @@ bits_exract_test!(
 fn bits_extract_none() {
     let data = [0xFF, 0x82, 0xCA, 0xF5, 0xEF];
     assert_eq!(Bits::extract(&data), None,)
+}
+
+#[test]
+fn bits_extract_size() {
+    for i in u8::MIN..=u8::MAX {
+        let data = [i, 0, 0, 0, 0, 0, 0, 0];
+        let Some((bits, rest)) = Bits::extract(&data) else {
+            continue;
+        };
+        let size = data.len() - rest.len();
+        assert_eq!(u64::from(bits.size()), size.try_into().unwrap());
+    }
 }
 
 #[test]
