@@ -29,6 +29,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The optional `elf` dependency was upgraded to version `0.8`.
 - `types::branch::Map::push_branch_taken` and `types::branch::Map::append` now
   report an error on failure to add branches rather than silently ignoring the
   condition.
