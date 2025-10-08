@@ -63,27 +63,6 @@ macro_rules! decode_test {
     };
 }
 
-/// Helper trait for using the correct decoding fn depending on a literal's type
-trait DecodeForTest: Sized {
-    fn decode(self, base: base::Set) -> Kind {
-        self.try_decode(base).expect("Could not decode")
-    }
-
-    fn try_decode(self, base: base::Set) -> Option<Kind>;
-}
-
-impl DecodeForTest for u16 {
-    fn try_decode(self, base: base::Set) -> Option<Kind> {
-        base.decode_16(self)
-    }
-}
-
-impl DecodeForTest for u32 {
-    fn try_decode(self, base: base::Set) -> Option<Kind> {
-        base.decode_32(self)
-    }
-}
-
 decode_test!(mret, 0x30200073u32, Kind::mret);
 decode_test!(sret, 0x10200073u32, Kind::sret);
 decode_test!(fence, 0x0ff0000fu32, Kind::fence);
