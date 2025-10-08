@@ -18,21 +18,22 @@ use super::{error, Binary};
 /// found in [`ElfBytes`] based on virtual address mapping. Neither
 /// decompression nor dynamic linking are supported.
 #[derive(Copy, Clone)]
-pub struct Elf<'d, E, P>
+pub struct Elf<'d, E, P, D = base::Set>
 where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
 {
     elf: E,
     last_segment: (u64, &'d [u8]),
-    base: base::Set,
+    base: D,
     phantom: core::marker::PhantomData<P>,
 }
 
-impl<'d, E, P> Elf<'d, E, P>
+impl<'d, E, P, D> Elf<'d, E, P, D>
 where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
+    D: info::MakeDecode,
 {
     /// Create a new ELF [`Binary`]
     pub fn new(elf: E) -> Result<Self, Error> {
@@ -64,17 +65,17 @@ where
     }
 
     /// Retrieve the [`base::Set`] of the instruction in this ELF
-    pub fn base_set(&self) -> &base::Set {
+    pub fn base_set(&self) -> &D {
         &self.base
     }
 }
 
-impl<'d, E, P, I> Binary<I> for Elf<'d, E, P>
+impl<'d, E, P, D, I> Binary<I> for Elf<'d, E, P, D>
 where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
     I: info::Info,
-    base::Set: info::Decode<I>,
+    D: info::Decode<I>,
 {
     type Error = Error;
 

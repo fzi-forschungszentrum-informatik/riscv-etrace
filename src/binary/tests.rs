@@ -135,10 +135,12 @@ retrieval_test!(
 retrieval_test!(
     elf,
     {
+        use instruction::base;
+
         let elf = include_bytes!("testfile.elf");
         let elf = ::elf::ElfBytes::<::elf::endian::LittleEndian>::minimal_parse(elf)
             .expect("Coult not parse ELF file");
-        elf::Elf::new(elf).expect("Could not construct binary from ELF file")
+        elf::Elf::<_, _, base::Set>::new(elf).expect("Could not construct binary from ELF file")
     },
     0x0,
     0xa0000000 => Ok(instruction::Kind::new_auipc(13, 0).into()),
