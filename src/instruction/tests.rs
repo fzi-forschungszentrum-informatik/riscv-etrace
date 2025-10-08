@@ -13,7 +13,8 @@ macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
         #[test]
         fn $n() {
-            let insn = DecodeForTest::decode($l, $s);
+            let insn = $l.try_into().expect("Could not decode");
+            let insn = $s.decode_bits(insn).expect("Could not decode");
             assert_eq!(insn, $k);
             assert_eq!(insn.branch_target(), $bt);
             assert_eq!(insn.inferable_jump_target(), $jt);
@@ -23,7 +24,8 @@ macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, None) => {
         #[test]
         fn $n() {
-            assert_eq!(DecodeForTest::try_decode($l, $s), None);
+            let insn = $l.try_into().expect("Could not decode");
+            assert_eq!($s.decode_bits(insn), None);
         }
     };
     ($s:ident, $n:ident, $l:literal, $k:expr, b, $t:expr) => {
