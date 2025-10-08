@@ -64,8 +64,8 @@ where
     }
 
     /// Retrieve the [`base::Set`] of the instruction in this ELF
-    pub fn base_set(&self) -> base::Set {
-        self.base
+    pub fn base_set(&self) -> &base::Set {
+        &self.base
     }
 }
 

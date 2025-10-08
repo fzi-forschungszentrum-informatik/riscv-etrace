@@ -80,7 +80,7 @@ fn main() {
                 .expect("Coult not parse ELF file");
             // We need to construct a `Binary`.
             let elf = binary::elf::Elf::new(elf).expect("Could not construct binary from ELF file");
-            base_set = elf.base_set();
+            base_set = *elf.base_set();
 
             // For PIE executables, we simply assume that they are placed at a known
             // offset. This only works it a single ELF is a PIE executable
