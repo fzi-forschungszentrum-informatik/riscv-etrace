@@ -296,3 +296,52 @@ pub trait MakeDecode {
     /// CPU.
     fn rv64i_full() -> Self;
 }
+
+#[cfg(feature = "riscv-isa")]
+impl MakeDecode for riscv_isa::Target {
+    fn rv32i_full() -> Self {
+        Self {
+            xlen: riscv_isa::Xlen::Rv32,
+            privileged: true,
+            supervisor_mode: true,
+            m: true,
+            a: true,
+            f: true,
+            d: true,
+            q: true,
+            c: true,
+            zicsr: true,
+            zifencei: true,
+            zawrs: true,
+            zfh: true,
+            zba: true,
+            zbb: true,
+            zbc: true,
+            zbkb: true,
+            zbs: true,
+        }
+    }
+
+    fn rv64i_full() -> Self {
+        Self {
+            xlen: riscv_isa::Xlen::Rv64,
+            privileged: true,
+            supervisor_mode: true,
+            m: true,
+            a: true,
+            f: true,
+            d: true,
+            q: true,
+            c: true,
+            zicsr: true,
+            zifencei: true,
+            zawrs: true,
+            zfh: true,
+            zba: true,
+            zbb: true,
+            zbc: true,
+            zbkb: true,
+            zbs: true,
+        }
+    }
+}
