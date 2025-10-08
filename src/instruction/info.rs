@@ -276,3 +276,23 @@ impl Decode<riscv_isa::Instruction> for riscv_isa::Target {
         riscv_isa::Instruction::UNIMP
     }
 }
+
+/// Make a [`Decode`]
+///
+/// This trait allows type agnostic creation of some [`Decode`] values, provided
+/// that the type it is implemented for functions as one.
+pub trait MakeDecode {
+    /// Create a [`Decode`] for RV32I with all extensions enabled
+    ///
+    /// The resulting [`Decode`] decodes any instruction based on RV32I known to
+    /// it. It is not configured according to limitations of a specific target
+    /// CPU.
+    fn rv32i_full() -> Self;
+
+    /// Create a [`Decode`] for RV64I with all extensions enabled
+    ///
+    /// The resulting [`Decode`] decodes any instruction based on RV64I known to
+    /// it. It is not configured according to limitations of a specific target
+    /// CPU.
+    fn rv64i_full() -> Self;
+}
