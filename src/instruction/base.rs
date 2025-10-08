@@ -110,6 +110,16 @@ impl info::Decode<Option<Kind>> for Set {
     }
 }
 
+impl info::MakeDecode for Set {
+    fn rv32i_full() -> Self {
+        Self::Rv32I
+    }
+
+    fn rv64i_full() -> Self {
+        Self::Rv64I
+    }
+}
+
 #[repr(u32)]
 #[derive(Eq, PartialEq)]
 enum OpCode {

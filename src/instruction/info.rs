@@ -276,3 +276,72 @@ impl Decode<riscv_isa::Instruction> for riscv_isa::Target {
         riscv_isa::Instruction::UNIMP
     }
 }
+
+/// Make a [`Decode`]
+///
+/// This trait allows type agnostic creation of some [`Decode`] values, provided
+/// that the type it is implemented for functions as one.
+pub trait MakeDecode {
+    /// Create a [`Decode`] for RV32I with all extensions enabled
+    ///
+    /// The resulting [`Decode`] decodes any instruction based on RV32I known to
+    /// it. It is not configured according to limitations of a specific target
+    /// CPU.
+    fn rv32i_full() -> Self;
+
+    /// Create a [`Decode`] for RV64I with all extensions enabled
+    ///
+    /// The resulting [`Decode`] decodes any instruction based on RV64I known to
+    /// it. It is not configured according to limitations of a specific target
+    /// CPU.
+    fn rv64i_full() -> Self;
+}
+
+#[cfg(feature = "riscv-isa")]
+impl MakeDecode for riscv_isa::Target {
+    fn rv32i_full() -> Self {
+        Self {
+            xlen: riscv_isa::Xlen::Rv32,
+            privileged: true,
+            supervisor_mode: true,
+            m: true,
+            a: true,
+            f: true,
+            d: true,
+            q: true,
+            c: true,
+            zicsr: true,
+            zifencei: true,
+            zawrs: true,
+            zfh: true,
+            zba: true,
+            zbb: true,
+            zbc: true,
+            zbkb: true,
+            zbs: true,
+        }
+    }
+
+    fn rv64i_full() -> Self {
+        Self {
+            xlen: riscv_isa::Xlen::Rv64,
+            privileged: true,
+            supervisor_mode: true,
+            m: true,
+            a: true,
+            f: true,
+            d: true,
+            q: true,
+            c: true,
+            zicsr: true,
+            zifencei: true,
+            zawrs: true,
+            zfh: true,
+            zba: true,
+            zbb: true,
+            zbc: true,
+            zbkb: true,
+            zbs: true,
+        }
+    }
+}

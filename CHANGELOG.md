@@ -9,15 +9,16 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - An optional dependency on `riscv-isa`.
 - `instruction::info::Info` impl for `riscv_isa::Instruction`.
-- `instruction::info::Decode<riscv_isa::Instruction>` impl for
-  `riscv_isa::Target`.
+- `instruction::info::Decode<riscv_isa::Instruction>` and
+  `instruction::MakeDecode` impl for `riscv_isa::Target`.
 - `From<riscv_isa::Target>` impl for `instruction::base::Set`.
 - A type `types::branch::Error` for errors emitted by fns associated to
   `types::branch::Map`.
 - A constant `types::branch::Map::MAX_BRANCHES` for the maximum number of
   branches a `types::branch::Map` can hold.
 - A new submodule `instruction::info` hosting the trait `Info` which provides
-  instruction information and `Decode` for decoding an `Info`.
+  instruction information, `Decode` for decoding an `Info` and `MakeDecode` for
+  constructing `Decode` for RV32I and RV64I.
 - `instruction::info::Info` impls for `Option`, `instruction::Kind` and
   `instruction::Instruction`.
 - `instruction::info::Decode<Option<instruction::Kind>>` impl for
@@ -29,6 +30,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- `binary::elf::Elf` is now generic over its `instruction::info::Decode`,
+  requireing `instruction::info::MakeDecode` for directly associated fns.
+- `binary::elf::elf::base_set` now returns a reference to its
+  `instruction::info::Decode` rather than a `instruction::base::Set` by value.
 - The optional `elf` dependency was upgraded to version `0.8`.
 - `types::branch::Map::push_branch_taken` and `types::branch::Map::append` now
   report an error on failure to add branches rather than silently ignoring the
