@@ -7,6 +7,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- `TryFrom<u16>`, `TryFrom<u32>` and `TryFrom<u64>` for
+  `instruction::bits::Bits`.
+- A fn `instruction::Instruction::decode` for decoding `instruction::bits::Bits`
+  into an `instruction::Instruction`.
 - An optional dependency on `riscv-isa`.
 - `instruction::info::Info` impl for `riscv_isa::Instruction`.
 - `instruction::info::Decode<riscv_isa::Instruction>` and
@@ -30,6 +34,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The simple example now rejects compressed instructions in reference CSV traces
+  if any of the upper bits (that cannot belong to the instruction) are set.
 - `binary::elf::Elf` is now generic over its `instruction::info::Decode`,
   requireing `instruction::info::MakeDecode` for directly associated fns.
 - `binary::elf::elf::base_set` now returns a reference to its

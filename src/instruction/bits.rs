@@ -54,3 +54,45 @@ impl Bits {
         }
     }
 }
+
+impl TryFrom<u16> for Bits {
+    type Error = u16;
+
+    fn try_from(num: u16) -> Result<Self, Self::Error> {
+        if num & 0b11 != 0b11 {
+            Ok(Self::Bit16(num))
+        } else {
+            Err(num)
+        }
+    }
+}
+
+impl TryFrom<u32> for Bits {
+    type Error = u32;
+
+    fn try_from(num: u32) -> Result<Self, Self::Error> {
+        if num & 0b11 != 0b11 {
+            num.try_into().map(Self::Bit16).map_err(|_| num)
+        } else if num & 0b11100 != 0b11100 {
+            Ok(Self::Bit32(num))
+        } else {
+            Err(num)
+        }
+    }
+}
+
+impl TryFrom<u64> for Bits {
+    type Error = u64;
+
+    fn try_from(num: u64) -> Result<Self, Self::Error> {
+        if num & 0x3f == 0x1f && num >> 48 == 0 {
+            Ok(Self::Bit48(num))
+        } else if num & 0x7f == 0x3f {
+            Ok(Self::Bit64(num))
+        } else {
+            num.try_into()
+                .map_err(|_| num)
+                .and_then(|n: u32| n.try_into().map_err(Into::into))
+        }
+    }
+}

@@ -13,7 +13,8 @@ macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, $k:expr, $bt:expr, $jt:expr, $uj:expr) => {
         #[test]
         fn $n() {
-            let insn = DecodeForTest::decode($l, $s);
+            let insn = $l.try_into().expect("Could not decode");
+            let insn = $s.decode_bits(insn).expect("Could not decode");
             assert_eq!(insn, $k);
             assert_eq!(insn.branch_target(), $bt);
             assert_eq!(insn.inferable_jump_target(), $jt);
@@ -23,7 +24,8 @@ macro_rules! decode_test {
     ($s:ident, $n:ident, $l:literal, None) => {
         #[test]
         fn $n() {
-            assert_eq!(DecodeForTest::try_decode($l, $s), None);
+            let insn = $l.try_into().expect("Could not decode");
+            assert_eq!($s.decode_bits(insn), None);
         }
     };
     ($s:ident, $n:ident, $l:literal, $k:expr, b, $t:expr) => {
@@ -61,27 +63,6 @@ macro_rules! decode_test {
     };
 }
 
-/// Helper trait for using the correct decoding fn depending on a literal's type
-trait DecodeForTest: Sized {
-    fn decode(self, base: base::Set) -> Kind {
-        self.try_decode(base).expect("Could not decode")
-    }
-
-    fn try_decode(self, base: base::Set) -> Option<Kind>;
-}
-
-impl DecodeForTest for u16 {
-    fn try_decode(self, base: base::Set) -> Option<Kind> {
-        base.decode_16(self)
-    }
-}
-
-impl DecodeForTest for u32 {
-    fn try_decode(self, base: base::Set) -> Option<Kind> {
-        base.decode_32(self)
-    }
-}
-
 decode_test!(mret, 0x30200073u32, Kind::mret);
 decode_test!(sret, 0x10200073u32, Kind::sret);
 decode_test!(fence, 0x0ff0000fu32, Kind::fence);
@@ -97,6 +78,7 @@ decode_test!(bge, 0x845f5fe3u32, Kind::new_bge(30, 5, -1954), b, -1954);
 decode_test!(bltu, 0x7f406fe3u32, Kind::new_bltu(0, 20, 4094), b, 4094);
 decode_test!(bgeu, 0x01467063u32, Kind::new_bgeu(12, 20, 0), b, 0);
 decode_test!(c_beqz, 0xca4du16, Kind::new_c_beqz(12, 178), b, 178);
+decode_test!(c_beqz_u32, 0xca4du32, Kind::new_c_beqz(12, 178), b, 178);
 decode_test!(c_benz, 0xe6cdu16, Kind::new_c_bnez(13, 170), b, 170);
 decode_test!(auipc, 0xf2ab3697u32, Kind::new_auipc(13, -223662080));
 decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));

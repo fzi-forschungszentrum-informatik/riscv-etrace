@@ -82,9 +82,9 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
             16,
         )
         .expect("Could not parse \"instruction\" field")
-        .to_le_bytes();
-        let (insn, _) =
-            Instruction::extract(&insn, &self.base).expect("Could not decode instruction");
+        .try_into()
+        .expect("Instruction has invalid instruction length encoding");
+        let insn = Instruction::decode(insn, &self.base);
         let privilege = fields
             .next()
             .expect("Could not extract \"privilege\" field")
