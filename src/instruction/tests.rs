@@ -97,6 +97,7 @@ decode_test!(bge, 0x845f5fe3u32, Kind::new_bge(30, 5, -1954), b, -1954);
 decode_test!(bltu, 0x7f406fe3u32, Kind::new_bltu(0, 20, 4094), b, 4094);
 decode_test!(bgeu, 0x01467063u32, Kind::new_bgeu(12, 20, 0), b, 0);
 decode_test!(c_beqz, 0xca4du16, Kind::new_c_beqz(12, 178), b, 178);
+decode_test!(c_beqz_u32, 0xca4du32, Kind::new_c_beqz(12, 178), b, 178);
 decode_test!(c_benz, 0xe6cdu16, Kind::new_c_bnez(13, 170), b, 170);
 decode_test!(auipc, 0xf2ab3697u32, Kind::new_auipc(13, -223662080));
 decode_test!(lui, 0xfff0f8b7u32, Kind::new_lui(17, -987136));
