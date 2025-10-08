@@ -324,10 +324,17 @@ impl<I: info::Info> Instruction<I> {
     /// decode them into an [`Instruction`]. See [`Bits::extract`] and
     /// [`info::Decode`] for details.
     pub fn extract<'d, D: info::Decode<I>>(data: &'d [u8], base: &D) -> Option<(Self, &'d [u8])> {
-        let (bits, rest) = Bits::extract(data)?;
+        Bits::extract(data).map(|(b, r)| (Self::decode(b, base), r))
+    }
+
+    /// Decode an instruction from the given [`Bits`]
+    ///
+    /// Decode the given [`Bits`] into an [`Instruction`] using the given
+    /// [`info::Decode`].
+    pub fn decode<D: info::Decode<I>>(bits: Bits, base: &D) -> Self {
         let size = bits.size();
         let info = base.decode_bits(bits);
-        Some((Self { size, info }, rest))
+        Self { size, info }
     }
 }
 
