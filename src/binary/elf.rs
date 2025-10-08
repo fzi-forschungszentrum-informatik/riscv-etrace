@@ -45,8 +45,8 @@ where
             Err(Error::UnsupportedEndianess)
         } else {
             let base = match hdr.class {
-                elf::file::Class::ELF32 => base::Set::Rv32I,
-                elf::file::Class::ELF64 => base::Set::Rv64I,
+                elf::file::Class::ELF32 => info::MakeDecode::rv32i_full(),
+                elf::file::Class::ELF64 => info::MakeDecode::rv64i_full(),
             };
 
             Ok(Self {
