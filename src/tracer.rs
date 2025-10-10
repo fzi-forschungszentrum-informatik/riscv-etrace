@@ -173,9 +173,10 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 };
                 if !trap.thaddr {
                     self.exception_previous = true;
-                    self.state
-                        .initializer(&mut self.binary)?
-                        .set_stack_depth(None);
+                    let mut initer = self.state.initializer(&mut self.binary)?;
+                    initer.set_stack_depth(None);
+                    initer.set_address(trap.address);
+                    initer.reset_to_address()?;
                 } else {
                     let version = self.version;
                     let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
