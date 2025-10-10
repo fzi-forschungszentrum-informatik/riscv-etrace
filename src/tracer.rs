@@ -154,6 +154,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     }
                     initer.reset_to_address()?;
                     self.iter_state = IterationState::ContextItem {
+                        pc: None,
                         context: start.ctx.into(),
                         follow_up: true,
                     };
@@ -192,6 +193,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     initer.set_context(ctx.into());
                 }
                 self.iter_state = IterationState::ContextItem {
+                    pc: None,
                     context: ctx.into(),
                     follow_up: false,
                 };
@@ -302,18 +304,28 @@ impl<B: Binary, S: ReturnStack> Iterator for Tracer<B, S> {
                 context,
                 follow_up,
             } => {
-                self.iter_state = IterationState::ContextItem { context, follow_up };
+                let pc = (!follow_up).then_some(epc);
+                self.iter_state = IterationState::ContextItem {
+                    pc,
+                    context,
+                    follow_up,
+                };
 
                 Some(Ok(Item::new(epc, info.into())))
             }
-            IterationState::ContextItem { context, follow_up } => {
+            IterationState::ContextItem {
+                pc,
+                context,
+                follow_up,
+            } => {
                 self.iter_state = if follow_up {
                     IterationState::SingleItem
                 } else {
                     IterationState::FollowExec
                 };
 
-                Some(Ok(Item::new(self.state.current_pc(), context.into())))
+                let pc = pc.unwrap_or(self.state.current_pc());
+                Some(Ok(Item::new(pc, context.into())))
             }
             IterationState::FollowExec | IterationState::Depleting => {
                 let res = self
@@ -464,6 +476,7 @@ enum IterationState {
     },
     /// We report a context update and optionally a single follow-up item
     ContextItem {
+        pc: Option<u64>,
         context: item::Context,
         follow_up: bool,
     },
