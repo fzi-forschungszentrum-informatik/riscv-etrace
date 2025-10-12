@@ -143,7 +143,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 let version = self.version;
 
                 let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
-                if is_tracing {
+                if is_tracing && !exception_previous {
                     let action = match version {
                         Version::V1 => state::SyncAction::Compare,
                         _ => state::SyncAction::Update,
