@@ -165,7 +165,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 }
             }
             Synchronization::Trap(trap) => {
-                let epc = if trap.info.is_exception() {
+                let epc = if trap.info.is_exception() && !exception_previous {
                     let epc = (!trap.thaddr).then_some(trap.address);
                     self.state.exception_address(&mut self.binary, epc)?
                 } else {
