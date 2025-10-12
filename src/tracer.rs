@@ -73,6 +73,7 @@ use stack::ReturnStack;
 pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
+    exception_previous: bool,
     binary: B,
     address_mode: AddressMode,
     address_delta_width: core::num::NonZeroU8,
@@ -93,6 +94,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         if let Payload::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
+            self.exception_previous = false;
             let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
@@ -133,6 +135,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     ) -> Result<(), Error<B::Error>> {
         use sync::Synchronization;
 
+        let exception_previous = self.exception_previous;
+        self.exception_previous = false;
         match sync {
             Synchronization::Start(start) => {
                 let is_tracing = self.iter_state.is_tracing();
@@ -168,6 +172,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     self.state.current_pc()
                 };
                 if !trap.thaddr {
+                    self.exception_previous = true;
                     self.state
                         .initializer(&mut self.binary)?
                         .set_stack_depth(None);
@@ -228,6 +233,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             return Err(Error::UnsupportedFeature("jump target cache"));
         }
 
+        self.exception_previous = false;
         let mut initer = self.state.initializer(&mut self.binary)?;
 
         if let Some(mode) = support.ioptions.address_mode() {
@@ -440,6 +446,7 @@ impl<B: Binary> Builder<B> {
         Ok(Tracer {
             state,
             iter_state: Default::default(),
+            exception_previous: false,
             binary: self.binary,
             address_mode: self.address_mode,
             address_delta_width: self.address_delta_width,
