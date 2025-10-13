@@ -161,6 +161,7 @@ trace_test!(
     }
 );
 
+// Test derived from the specification's Chaper 12, example 5
 trace_test!(
     complex,
     [
