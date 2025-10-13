@@ -233,6 +233,12 @@ pub enum QualStatus {
     EndedNtr,
 }
 
+impl Default for QualStatus {
+    fn default() -> Self {
+        Self::NoChange
+    }
+}
+
 impl<U> Decode<'_, '_, U> for QualStatus {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
