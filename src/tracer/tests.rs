@@ -273,6 +273,37 @@ trace_test!(
 );
 
 trace_test!(
+    exception_after_updiscon,
+    test_bin_1(),
+    start_packet(0x80000024) => {
+        (0x80000024, Context::default()),
+        (0x80000024, Kind::new_c_jr(1))
+    }
+    sync::Trap {
+        branch: true,
+        ctx: Default::default(),
+        thaddr: false,
+        address: 0x80000000,
+        info: trap::Info { ecause: 2, tval: Some(0) },
+    } => {
+        (0x80000000, trap::Info { ecause: 2, tval: Some(0) }),
+        (0x80000000, Context::default())
+    }
+    start_packet(0x80000030) => {
+        (0x80000030, Context::default()),
+        (0x80000030, Kind::wfi)
+    }
+    payload::AddressInfo {
+        address: 4,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000034, Kind::new_c_j(0, -4))
+    }
+);
+
+trace_test!(
     double_trap,
     test_bin_1(),
     start_packet(0x80000018) => {
