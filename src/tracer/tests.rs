@@ -3,7 +3,7 @@
 use super::*;
 
 use crate::binary;
-use crate::decoder::payload;
+use crate::decoder::{payload, unit};
 use crate::instruction;
 use crate::types::branch;
 
@@ -242,6 +242,60 @@ trace_test!(
             (0x8000001a, COMPRESSED),
             (0x8000001c, Kind::new_bltu(11, 12, -8))
         )
+    }
+);
+
+trace_test!(
+    full_address,
+    test_bin_1(),
+    sync::Support {
+        ienable: true,
+        ioptions: unit::ReferenceIOptions {
+            full_address: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    } => {}
+    sync::Start {
+        branch: true,
+        ctx: Default::default(),
+        address: 0x80000000,
+    } => {
+        (0x80000000, Context::default()),
+        (0x80000000, Kind::new_auipc(13, 0x0))
+    }
+    payload::Branch {
+        branch_map: branch::Map::new(1, 1),
+        address: Some(payload::AddressInfo {
+            address: 0x80000026,
+            notify: false,
+            updiscon: false,
+            irdepth: None,
+        }),
+    } => {
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_auipc(1, 0x0)),
+        (0x80000010, UNCOMPRESSED),
+        (0x80000014, COMPRESSED),
+        (0x80000016, COMPRESSED),
+        (0x80000018, COMPRESSED),
+        (0x8000001a, COMPRESSED),
+        (0x8000001c, Kind::new_bltu(11, 12, -8)),
+        (0x80000020, Kind::fence_i),
+        (0x80000024, Kind::new_c_jr(1)),
+        (0x80000026, UNCOMPRESSED)
+    }
+    payload::AddressInfo {
+        address: 0x80000034,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x8000002a, UNCOMPRESSED),
+        (0x8000002e, COMPRESSED),
+        (0x80000030, Kind::wfi),
+        (0x80000034, Kind::new_c_j(0, -4))
     }
 );
 
