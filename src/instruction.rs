@@ -166,7 +166,6 @@ impl Kind {
     }
 }
 
-/// Queries
 impl Info for Kind {
     type Register = Register;
 
