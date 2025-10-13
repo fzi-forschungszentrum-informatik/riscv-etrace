@@ -552,6 +552,20 @@ trace_test!(
     }
 );
 
+trace_test!(
+    ended_ntr,
+    test_bin_1(),
+    start_packet(0x80000014) => {
+        (0x80000014, Context::default()),
+        (0x80000014, COMPRESSED)
+    }
+    sync::Support {
+        ienable: true,
+        qual_status: sync::QualStatus::EndedNtr,
+        ..Default::default()
+    } => {}
+);
+
 fn start_packet(address: u64) -> payload::InstructionTrace {
     sync::Start {
         branch: true,
