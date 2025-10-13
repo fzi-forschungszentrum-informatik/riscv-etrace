@@ -251,6 +251,12 @@ pub enum EncoderMode {
     BranchTrace,
 }
 
+impl Default for EncoderMode {
+    fn default() -> Self {
+        Self::BranchTrace
+    }
+}
+
 impl TryFrom<u8> for EncoderMode {
     type Error = u8;
 
