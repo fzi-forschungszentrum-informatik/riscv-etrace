@@ -101,6 +101,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - 32bit instructions were previously decoded as `jalr` based solely on the
   opcode. The "funct3"-field, which must be `0` for `jalr`, was not considered.
 - Decoding of `c.lui` instructions' immediate was faulty.
+- When tracing double traps, we would report an incorrect EPC for the second
+  trap.
 
 ## 0.4.0 - 2025-09-10
 

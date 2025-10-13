@@ -82,6 +82,7 @@ where
 {
     state: state::State<S, I>,
     iter_state: IterationState,
+    exception_previous: bool,
     binary: B,
     address_mode: AddressMode,
     address_delta_width: core::num::NonZeroU8,
@@ -117,6 +118,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
         if let InstructionTrace::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
+            self.exception_previous = false;
             let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
@@ -160,13 +162,15 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
     ) -> Result<(), Error<B::Error>> {
         use sync::Synchronization;
 
+        let exception_previous = self.exception_previous;
+        self.exception_previous = false;
         match sync {
             Synchronization::Start(start) => {
                 let is_tracing = self.iter_state.is_tracing();
                 let version = self.version;
 
                 let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
-                if is_tracing {
+                if is_tracing && !exception_previous {
                     let action = match version {
                         Version::V1 => state::SyncAction::Compare,
                         _ => state::SyncAction::Update,
@@ -181,22 +185,25 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                     }
                     initer.reset_to_address()?;
                     self.iter_state = IterationState::ContextItem {
+                        pc: None,
                         context: start.ctx.into(),
                         follow_up: true,
                     };
                 }
             }
             Synchronization::Trap(trap) => {
-                let epc = if trap.info.is_exception() {
+                let epc = if trap.info.is_exception() && !exception_previous {
                     let epc = (!trap.thaddr).then_some(trap.address);
                     self.state.exception_address(&mut self.binary, epc)?
                 } else {
                     self.state.current_pc()
                 };
                 if !trap.thaddr {
-                    self.state
-                        .initializer(&mut self.binary)?
-                        .set_stack_depth(None);
+                    self.exception_previous = true;
+                    let mut initer = self.state.initializer(&mut self.binary)?;
+                    initer.set_stack_depth(None);
+                    initer.set_address(trap.address);
+                    initer.reset_to_address()?;
                 } else {
                     let version = self.version;
                     let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
@@ -219,6 +226,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                     initer.set_context(ctx.into());
                 }
                 self.iter_state = IterationState::ContextItem {
+                    pc: None,
                     context: ctx.into(),
                     follow_up: false,
                 };
@@ -253,6 +261,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
             return Err(Error::UnsupportedFeature("jump target cache"));
         }
 
+        self.exception_previous = false;
         let mut initer = self.state.initializer(&mut self.binary)?;
 
         if let Some(mode) = support.ioptions.address_mode() {
@@ -329,18 +338,28 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Iterator for Trace
                 context,
                 follow_up,
             } => {
-                self.iter_state = IterationState::ContextItem { context, follow_up };
+                let pc = (!follow_up).then_some(epc);
+                self.iter_state = IterationState::ContextItem {
+                    pc,
+                    context,
+                    follow_up,
+                };
 
                 Some(Ok(Item::new(epc, info.into())))
             }
-            IterationState::ContextItem { context, follow_up } => {
+            IterationState::ContextItem {
+                pc,
+                context,
+                follow_up,
+            } => {
                 self.iter_state = if follow_up {
                     IterationState::SingleItem
                 } else {
                     IterationState::FollowExec
                 };
 
-                Some(Ok(Item::new(self.state.current_pc(), context.into())))
+                let pc = pc.unwrap_or(self.state.current_pc());
+                Some(Ok(Item::new(pc, context.into())))
             }
             IterationState::FollowExec | IterationState::Depleting => {
                 let res = self
@@ -457,6 +476,7 @@ impl<B> Builder<B> {
         Ok(Tracer {
             state,
             iter_state: Default::default(),
+            exception_previous: false,
             binary: self.binary,
             address_mode: self.address_mode,
             address_delta_width: self.address_delta_width,
@@ -494,6 +514,7 @@ enum IterationState {
     },
     /// We report a context update and optionally a single follow-up item
     ContextItem {
+        pc: Option<u64>,
         context: item::Context,
         follow_up: bool,
     },
