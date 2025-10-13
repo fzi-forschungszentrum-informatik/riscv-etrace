@@ -183,7 +183,7 @@ impl<U> Decode<'_, '_, U> for Context {
 /// Supporting information for the decoder.
 ///
 /// Represents a format 3, subformat 3 packet.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Support<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     pub ienable: bool,
     pub encoder_mode: EncoderMode,
