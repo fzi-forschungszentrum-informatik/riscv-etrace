@@ -3,7 +3,21 @@
 //! Instruction disassembly/decoding and information
 //!
 //! This module provides utilities for decoding [`Instruction`]s and for
-//! extracting information relevant for tracing.
+//! extracting [information][info] relevant for tracing. Aside from the [`Size`]
+//! within the binary, an [`Instruction`] carries an [`Info`] which provides any
+//! information necessary for reconstructing discontinuities.
+//!
+//! The [`Info`] trait is implemented for [`Kind`], a representation of only
+//! instructions relevant for control flow reconstruction. In addition, it is
+//! (optionally) implemented for external types that may provide more
+//! information (e.g. [`riscv_isa::Instruction`]).
+//!
+//! # Instruction decode
+//!
+//! [`Instruction`]s are usually decoded by first extracting the [`Bits`]
+//! associated to an [`Instruction`] based on RISC-V's instruction length
+//! encoding and then decoding the [`Info`] using an [`info::Decode`] capturing
+//! decoding parameters such as [`base::Set`].
 
 pub mod base;
 pub mod bits;
