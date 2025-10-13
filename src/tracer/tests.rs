@@ -246,7 +246,7 @@ trace_test!(
 
 fn start_packet(address: u64) -> payload::InstructionTrace {
     sync::Start {
-        branch: false,
+        branch: true,
         ctx: Default::default(),
         address,
     }
