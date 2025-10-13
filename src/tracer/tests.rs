@@ -536,6 +536,22 @@ trace_test!(
     }
 );
 
+trace_test!(
+    resync,
+    test_bin_1(),
+    start_packet(0x80000000) => {
+        (0x80000000, Context::default()),
+        (0x80000000, Kind::new_auipc(13, 0x0))
+    }
+    start_packet(0x80000010) => {
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_auipc(1, 0x0)),
+        (0x80000010, Context::default()),
+        (0x80000010, UNCOMPRESSED)
+    }
+);
+
 fn start_packet(address: u64) -> payload::InstructionTrace {
     sync::Start {
         branch: true,
