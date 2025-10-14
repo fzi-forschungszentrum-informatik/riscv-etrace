@@ -246,11 +246,12 @@ impl Info for Kind {
     }
 
     fn is_return(&self) -> bool {
-        matches!(
-            self,
-            Self::jalr(format::TypeI { rd: 0, rs1: 1, .. })
-                | Self::c_jr(format::TypeR { rs1: 1, .. })
-        )
+        match self {
+            Self::jalr(format::TypeI { rd, rs1: 1, .. }) => *rd != 1 && *rd != 5,
+            Self::jalr(format::TypeI { rd, rs1: 5, .. }) => *rd != 1 && *rd != 5,
+            Self::c_jr(format::TypeR { rs1, .. }) => *rs1 == 1 || *rs1 == 5,
+            _ => false,
+        }
     }
 }
 
