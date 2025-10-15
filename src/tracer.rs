@@ -118,7 +118,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
         if let InstructionTrace::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
-            self.previous = None;
+            let previous = self.previous.take();
             let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
@@ -129,6 +129,8 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                     .map_err(Error::CannotAddBranches)?;
             }
             if let Some(info) = payload.get_address_info() {
+                let notify = info.notify;
+                self.previous = Some(Event::Address { notify });
                 match self.address_mode {
                     AddressMode::Full => initer.set_address(info.address),
                     AddressMode::Delta => {
@@ -142,7 +144,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                 }
 
                 initer.set_condition(StopCondition::Address {
-                    notify: info.notify,
+                    notify,
                     not_updiscon: !info.updiscon,
                 });
             } else {
@@ -542,6 +544,11 @@ impl IterationState {
 /// Categorization of a subset of all events communicated via [`payload::InstrucitonTrace`]
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Event {
+    /// The last event carried a [`payload::AddressInfo`]
+    Address {
+        /// Value of the [`payload::AddressInfo`]'s `notify`
+        notify: bool,
+    },
     /// The last event was a [`sync::Trap`]
     Trap {
         /// Value of the [`sync::Trap`]'s `thaddr`
