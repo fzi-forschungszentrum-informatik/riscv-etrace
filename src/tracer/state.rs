@@ -90,6 +90,11 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
         self.insn.clone()
     }
 
+    /// Retrieve the previous [`Instruction`] without advancing the state
+    pub fn previous_insn(&self) -> &Instruction<I> {
+        &self.last_insn
+    }
+
     /// Determine next [`ProtoItem`]
     ///
     /// Returns the next [`ProtoItem`] based on the given address as well as
