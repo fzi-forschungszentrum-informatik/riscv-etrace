@@ -111,12 +111,12 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             let (pc, insn, end) = self.next_pc(binary, address)?;
             if end {
                 self.inferred_address = None;
-                if self.stop_condition == StopCondition::NotInferred {
-                    self.stop_condition = StopCondition::Fused;
-                }
             }
 
             Ok(Some((pc, insn, None)))
+        } else if self.stop_condition == StopCondition::NotInferred {
+            self.stop_condition = StopCondition::Fused;
+            Ok(None)
         } else {
             let (pc, insn, end) = self.next_pc(binary, self.address)?;
 
