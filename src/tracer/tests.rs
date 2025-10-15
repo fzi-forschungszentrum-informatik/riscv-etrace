@@ -566,6 +566,27 @@ trace_test!(
     } => {}
 );
 
+trace_test!(
+    trace_notify,
+    test_bin_1(),
+    start_packet(0x80000000) => {
+        (0x80000000, Context::default()),
+        (0x80000000, Kind::new_auipc(13, 0x0))
+    }
+    payload::AddressInfo {
+        address: 0x14,
+        notify: true,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_auipc(1, 0x0)),
+        (0x80000010, UNCOMPRESSED),
+        (0x80000014, COMPRESSED)
+    }
+);
+
 fn start_packet(address: u64) -> payload::InstructionTrace {
     sync::Start {
         branch: true,
