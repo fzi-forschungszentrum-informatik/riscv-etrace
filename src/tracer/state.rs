@@ -381,6 +381,11 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
         self.set_address(self.state.address.wrapping_add(address));
     }
 
+    /// Make the state inferred based on the current address
+    pub fn set_inferred(&mut self) {
+        self.state.inferred_address = Some(self.state.pc);
+    }
+
     /// Update the inferred address
     ///
     /// If there is an inferred address present in the state, update it to the
