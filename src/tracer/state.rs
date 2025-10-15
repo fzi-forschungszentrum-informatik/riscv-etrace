@@ -88,6 +88,11 @@ impl<S: ReturnStack> State<S> {
         self.insn
     }
 
+    /// Retrieve the previous [`Instruction`] without advancing the state
+    pub fn previous_insn(&self) -> &Instruction {
+        &self.last_insn
+    }
+
     /// Determine next [`ProtoItem`]
     ///
     /// Returns the next [`ProtoItem`] based on the given address as well as
