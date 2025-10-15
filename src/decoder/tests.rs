@@ -14,17 +14,18 @@ macro_rules! bitstream_test {
             assert_eq!(Decode::decode(&mut decoder), Ok($d));
         }
     };
-    ($n:ident, $b:literal, $d:expr, $( $k:ident : $v:expr ),*) => {
+    ($n:ident, $b:literal, $d:expr, $c:expr) => {
         #[test]
         fn $n() {
-            let mut decoder = Builder::new()
-                .with_params(&config::Parameters {
-                    $($k: $v,)*
-                    ..Default::default()
-                })
-                .build($b);
+            let mut decoder = Builder::new().with_params($c).build($b);
             assert_eq!(Decode::decode(&mut decoder), Ok($d));
         }
+    };
+    ($n:ident, $b:literal, $d:expr, $( $k:ident : $v:expr ),*) => {
+        bitstream_test!($n, $b, $d, &config::Parameters {
+            $($k: $v,)*
+            ..Default::default()
+        });
     };
 }
 
