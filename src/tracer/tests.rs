@@ -620,3 +620,25 @@ fn test_bin_1() -> [(u64, instruction::Instruction); 17] {
         (0x80000034, Kind::new_c_j(0, -4).into()),
     ]
 }
+
+fn test_bin_jr_loop() -> [(u64, instruction::Instruction); 15] {
+    [
+        (0x8000000c, Kind::new_auipc(5, 0).into()),
+        (0x80000010, UNCOMPRESSED),
+        (0x80000014, Kind::new_auipc(11, 0).into()),
+        (0x80000018, UNCOMPRESSED),
+        (0x8000001c, COMPRESSED),
+        // _loop_entry
+        (0x8000001e, UNCOMPRESSED),
+        (0x80000022, COMPRESSED),
+        (0x80000024, UNCOMPRESSED),
+        (0x80000028, UNCOMPRESSED),
+        (0x8000002c, UNCOMPRESSED),
+        (0x80000030, UNCOMPRESSED),
+        (0x80000034, COMPRESSED),
+        (0x80000036, Kind::new_c_jr(5).into()),
+        // _die
+        (0x80000038, Kind::wfi.into()),
+        (0x8000003c, Kind::new_c_j(0, -4).into()),
+    ]
+}
