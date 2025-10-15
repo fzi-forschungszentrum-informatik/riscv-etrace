@@ -7,6 +7,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Added
 
+- `Default` impl for `decoder::sync::EncoderMode`, `decoder::sync::QualStatus`,
+  `decoder::sync::Support`, `decoder:: unit::ReferenceIOptions` and
+  `decoder:: unit::ReferenceDOptions`.
 - `TryFrom<u16>`, `TryFrom<u32>` and `TryFrom<u64>` for
   `instruction::bits::Bits`.
 - A fn `instruction::Instruction::decode` for decoding `instruction::bits::Bits`

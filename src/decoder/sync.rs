@@ -183,7 +183,7 @@ impl<U> Decode<'_, '_, U> for Context {
 /// Supporting information for the decoder.
 ///
 /// Represents a format 3, subformat 3 packet.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Support<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     pub ienable: bool,
     pub encoder_mode: EncoderMode,
@@ -233,6 +233,12 @@ pub enum QualStatus {
     EndedNtr,
 }
 
+impl Default for QualStatus {
+    fn default() -> Self {
+        Self::NoChange
+    }
+}
+
 impl<U> Decode<'_, '_, U> for QualStatus {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
@@ -249,6 +255,12 @@ impl<U> Decode<'_, '_, U> for QualStatus {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum EncoderMode {
     BranchTrace,
+}
+
+impl Default for EncoderMode {
+    fn default() -> Self {
+        Self::BranchTrace
+    }
 }
 
 impl TryFrom<u8> for EncoderMode {
