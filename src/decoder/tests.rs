@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
-use crate::types::{self, branch};
+use crate::{
+    decoder::sync::{Context, Start},
+    types::{self, branch},
+};
+use core::num::NonZeroU8;
 use payload::AddressInfo;
 use util::read_implicit_return;
-use core::num::NonZeroU8;
 
 macro_rules! bitstream_test {
     ($n:ident, $b:literal, $d:expr) => {
@@ -207,20 +210,119 @@ fn implicit_return_error_depth() {
     assert!(matches!(result, Err(Error::InsufficientData(_))));
 }
 
-/*fn truncate_test() {
-    let val : u16 = 0xBEEF;
-    assert_eq!(val.truncated(8), 0xEF);
-}*/
 macro_rules! truncate_test {
     ($name: ident, $val:expr, $type:ty, $bytes:expr, $expected:expr) => {
         #[test]
         fn $name() {
-            let val : $type = $val;
+            let val: $type = $val;
             assert_eq!(val.truncated($bytes), $expected);
         }
     };
 }
 
-truncate_test!(truncate_u16, 0xBEEF, u16, 8, 0xEF );
+truncate_test!(truncate_u16, 0xBEEF, u16, 8, 0xEF);
 truncate_test!(truncate_u32, 0xFFBEEF, u32, 16, 0xBEEF);
 truncate_test!(truncate_i64, 0xBEEF00FF, i64, 0, 0);
+
+/*
+Decoded packet: Packet { trace_type: 2, time_tag: None, hart: 0, payload: [115, 0, 0, 0, 0, 25, 65, 0, 8], .. }
+Payload: InstructionTrace(Synchronization(Start(Start { branch: true, ctx: Context { privilege: Machine, time: None, context: Some(0) }, address: 536937572 })))
+*/
+bitstream_test!(instruction_trace_sync_payload, b"\x73\x00\x00\x00\x00\x19\x41\x00\x08", InstructionTrace::Synchronization(
+            sync::Synchronization::Start(Start {
+                branch: true,
+                ctx: Context {
+                    privilege: types::Privilege::Machine,
+                    time: None,
+                    context: Some(0)
+                },
+                address: 536937572
+            }))
+        ,
+        cache_size_p: 0,
+        call_counter_size_p: 0,
+        context_width_p: NonZeroU8::new(32).unwrap(),
+        time_width_p: NonZeroU8::new(1).unwrap(),
+        ecause_width_p: NonZeroU8::new(5).unwrap(),
+        f0s_width_p: 0,
+        iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
+        iaddress_width_p: NonZeroU8::new(32).unwrap(),
+        nocontext_p: false,
+        notime_p: true,
+        privilege_width_p: NonZeroU8::new(2).unwrap(),
+        return_stack_size_p: 0,
+        sijump_p: false
+);
+/*#[test]
+
+fn decode_instruction_trace_sync_payload() {
+    let data = b"\x73\x00\x00\x00\x00\x19\x41\x00\x08";
+
+    let params = config::Parameters {
+        cache_size_p: 0,
+        call_counter_size_p: 0,
+        context_width_p: NonZeroU8::new(32).unwrap(),
+        time_width_p: NonZeroU8::new(1).unwrap(),
+        ecause_width_p: NonZeroU8::new(5).unwrap(),
+        f0s_width_p: 0,
+        iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
+        iaddress_width_p: NonZeroU8::new(32).unwrap(),
+        nocontext_p: false,
+        notime_p: true,
+        privilege_width_p: NonZeroU8::new(2).unwrap(),
+        return_stack_size_p: 0,
+        sijump_p: false,
+    };
+    let builder = Builder::new().with_params(&params);
+    let mut decoder = builder.build(data);
+    let instruction_trace = payload::InstructionTrace::decode(&mut decoder);
+    assert_eq!(
+        instruction_trace,
+        Ok(InstructionTrace::Synchronization(
+            sync::Synchronization::Start(Start {
+                branch: true,
+                ctx: Context {
+                    privilege: types::Privilege::Machine,
+                    time: None,
+                    context: Some(0)
+                },
+                address: 536937572
+            })
+        ))
+    );
+}
+
+#[test]
+/*
+Decoded packet: Packet { trace_type: 2, time_tag: None, hart: 0, payload: [1, 128, 0], .. }
+Payload: InstructionTrace(Branch(Branch { branch_map: Map { count: 31, map: 256 }, address: None }))
+*/
+fn decode_instruction_trace_branch_payload() {
+    let data = b"\x01\x80\x00";
+    let params = config::Parameters {
+        cache_size_p: 0,
+        call_counter_size_p: 0,
+        context_width_p: NonZeroU8::new(32).unwrap(),
+        time_width_p: NonZeroU8::new(1).unwrap(),
+        ecause_width_p: NonZeroU8::new(5).unwrap(),
+        f0s_width_p: 0,
+        iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
+        iaddress_width_p: NonZeroU8::new(32).unwrap(),
+        nocontext_p: false,
+        notime_p: true,
+        privilege_width_p: NonZeroU8::new(2).unwrap(),
+        return_stack_size_p: 0,
+        sijump_p: false,
+    };
+    let builder = Builder::new().with_params(&params);
+    let mut decoder = builder.build(data);
+    let instruction_trace = payload::InstructionTrace::decode(&mut decoder);
+
+    assert_eq!(
+        instruction_trace,
+        Ok(InstructionTrace::Branch(payload::Branch {
+            branch_map: branch::Map::new(31, 256),
+            address: None
+        }))
+    );
+}*/
