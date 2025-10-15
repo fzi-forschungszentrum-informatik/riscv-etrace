@@ -119,6 +119,10 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
             self.process_sync(sync)
         } else {
             let previous = self.previous.take();
+            let updiscon_prev = self.state.previous_insn().is_uninferable_discon();
+            let make_inferred =
+                !updiscon_prev && previous == Some(Event::Address { notify: false });
+
             let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
@@ -143,11 +147,17 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                     }
                 }
 
+                if make_inferred {
+                    initer.set_inferred();
+                }
                 initer.set_condition(StopCondition::Address {
                     notify,
                     not_updiscon: !info.updiscon,
                 });
             } else {
+                if make_inferred {
+                    initer.set_inferred();
+                }
                 initer.set_condition(StopCondition::LastBranch);
             }
             Ok(())
