@@ -14,6 +14,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Decoding of `c.lui` instructions' immediate was faulty.
 - When tracing double traps, we would report an incorrect EPC for the second
   trap.
+- We previously did not properly handle some edge-cases concerning reporting of
+  an address after an uninferable PC discontinuity.
 
 ## 0.3.0 - 2025-08-16
 

@@ -73,7 +73,7 @@ use stack::ReturnStack;
 pub struct Tracer<B: Binary, S: ReturnStack = stack::NoStack> {
     state: state::State<S>,
     iter_state: IterationState,
-    exception_previous: bool,
+    previous: Option<Event>,
     binary: B,
     address_mode: AddressMode,
     address_delta_width: core::num::NonZeroU8,
@@ -94,7 +94,16 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
         if let Payload::Synchronization(sync) = payload {
             self.process_sync(sync)
         } else {
-            self.exception_previous = false;
+            let previous = self.previous.take();
+            let updiscon_prev = self
+                .state
+                .previous_insn()
+                .kind
+                .map(instruction::Kind::is_uninferable_discon)
+                .unwrap_or(false);
+            let make_inferred =
+                !updiscon_prev && previous == Some(Event::Address { notify: false });
+
             let mut initer = self.state.initializer(&mut self.binary)?;
             initer.set_stack_depth(payload.implicit_return_depth());
 
@@ -102,6 +111,8 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 initer.get_branch_map_mut().append(branch.branch_map);
             }
             if let Some(info) = payload.get_address_info() {
+                let notify = info.notify;
+                self.previous = Some(Event::Address { notify });
                 match self.address_mode {
                     AddressMode::Full => initer.set_address(info.address),
                     AddressMode::Delta => {
@@ -114,11 +125,17 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     }
                 }
 
+                if make_inferred {
+                    initer.set_inferred();
+                }
                 initer.set_condition(StopCondition::Address {
-                    notify: info.notify,
+                    notify,
                     not_updiscon: !info.updiscon,
                 });
             } else {
+                if make_inferred {
+                    initer.set_inferred();
+                }
                 initer.set_condition(StopCondition::LastBranch);
             }
             Ok(())
@@ -135,15 +152,14 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
     ) -> Result<(), Error<B::Error>> {
         use sync::Synchronization;
 
-        let exception_previous = self.exception_previous;
-        self.exception_previous = false;
+        let previous = self.previous.take();
         match sync {
             Synchronization::Start(start) => {
                 let is_tracing = self.iter_state.is_tracing();
                 let version = self.version;
 
                 let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
-                if is_tracing && !exception_previous {
+                if is_tracing && previous != Some(Event::Trap { thaddr: false }) {
                     let action = match version {
                         Version::V1 => state::SyncAction::Compare,
                         _ => state::SyncAction::Update,
@@ -165,14 +181,17 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                 }
             }
             Synchronization::Trap(trap) => {
-                let epc = if trap.info.is_exception() && !exception_previous {
+                let thaddr = trap.thaddr;
+                self.previous = Some(Event::Trap { thaddr });
+                let epc = if trap.info.is_exception()
+                    && previous != Some(Event::Trap { thaddr: false })
+                {
                     let epc = (!trap.thaddr).then_some(trap.address);
                     self.state.exception_address(&mut self.binary, epc)?
                 } else {
                     self.state.current_pc()
                 };
-                if !trap.thaddr {
-                    self.exception_previous = true;
+                if !thaddr {
                     let mut initer = self.state.initializer(&mut self.binary)?;
                     initer.set_stack_depth(None);
                     initer.set_address(trap.address);
@@ -189,7 +208,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
                     epc,
                     info: trap.info,
                     context: trap.ctx.into(),
-                    follow_up: trap.thaddr,
+                    follow_up: thaddr,
                 };
             }
             Synchronization::Context(ctx) => {
@@ -234,7 +253,7 @@ impl<B: Binary, S: ReturnStack> Tracer<B, S> {
             return Err(Error::UnsupportedFeature("jump target cache"));
         }
 
-        self.exception_previous = false;
+        self.previous = None;
         let mut initer = self.state.initializer(&mut self.binary)?;
 
         if let Some(mode) = support.ioptions.address_mode() {
@@ -447,7 +466,7 @@ impl<B: Binary> Builder<B> {
         Ok(Tracer {
             state,
             iter_state: Default::default(),
-            exception_previous: false,
+            previous: Default::default(),
             binary: self.binary,
             address_mode: self.address_mode,
             address_delta_width: self.address_delta_width,
@@ -505,4 +524,19 @@ impl IterationState {
     pub fn is_tracing(&self) -> bool {
         !matches!(self, Self::Depleting)
     }
+}
+
+/// Categorization of a subset of all events communicated via [`payload::InstrucitonTrace`]
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum Event {
+    /// The last event carried a [`payload::AddressInfo`]
+    Address {
+        /// Value of the [`payload::AddressInfo`]'s `notify`
+        notify: bool,
+    },
+    /// The last event was a [`sync::Trap`]
+    Trap {
+        /// Value of the [`sync::Trap`]'s `thaddr`
+        thaddr: bool,
+    },
 }
