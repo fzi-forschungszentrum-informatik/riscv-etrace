@@ -88,6 +88,11 @@ impl<S: ReturnStack> State<S> {
         self.insn
     }
 
+    /// Retrieve the previous [`Instruction`] without advancing the state
+    pub fn previous_insn(&self) -> &Instruction {
+        &self.last_insn
+    }
+
     /// Determine next [`ProtoItem`]
     ///
     /// Returns the next [`ProtoItem`] based on the given address as well as
@@ -111,12 +116,12 @@ impl<S: ReturnStack> State<S> {
             let (pc, insn, end) = self.next_pc(binary, address)?;
             if end {
                 self.inferred_address = None;
-                if self.stop_condition == StopCondition::NotInferred {
-                    self.stop_condition = StopCondition::Fused;
-                }
             }
 
             Ok(Some((pc, insn, None)))
+        } else if self.stop_condition == StopCondition::NotInferred {
+            self.stop_condition = StopCondition::Fused;
+            Ok(None)
         } else {
             let (pc, insn, end) = self.next_pc(binary, self.address)?;
 
@@ -399,6 +404,11 @@ impl<S: ReturnStack, B: Binary> Initializer<'_, S, B> {
     /// Set a relative address and clear the inferred address.
     pub fn set_rel_address(&mut self, address: u64) {
         self.set_address(self.state.address.wrapping_add(address));
+    }
+
+    /// Make the state inferred based on the current address
+    pub fn set_inferred(&mut self) {
+        self.state.inferred_address = Some(self.state.pc);
     }
 
     /// Update the inferred address
