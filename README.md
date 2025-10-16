@@ -11,6 +11,14 @@ specification. It provides:
 * support for user-provided and external instruction types and
 * various utilities, including types for handling trace encoder parameters.
 
+## Supported packet formats
+
+The following packet formats are supported directly by this library:
+
+* [Unformatted Trace & Diagnostic Data Packet Encapsulation for
+  RISC-V](https://github.com/riscv-non-isa/e-trace-encap/) and
+* Siemens Messaging Infrastructure.
+
 ## Supported trace encoders
 
 Some aspects of support packets are defined by trace encoder implementations.
