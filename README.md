@@ -19,6 +19,13 @@ The following packet formats are supported directly by this library:
   RISC-V](https://github.com/riscv-non-isa/e-trace-encap/) and
 * Siemens Messaging Infrastructure.
 
+## Supported external instruction information types
+
+In addition to a built-in type for instruction information, the following
+libraries are supported:
+
+* [`riscv-isa`](https://crates.io/crates/riscv-isa).
+
 ## Supported trace encoders
 
 Some aspects of support packets are defined by trace encoder implementations.
