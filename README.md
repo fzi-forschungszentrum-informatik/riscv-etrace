@@ -3,11 +3,12 @@
 This library provides a decoder and a tracer for the instruction tracing
 defined in the [Efficient Trace for RISC-V](https://github.com/riscv-non-isa/riscv-trace-spec/)
 specification. It provides:
-* a decoder for instruction trace packets and the extraction from Siemens
-  Messaging Infrastructure (SMI) packets,
+* a decoder for instruction trace payloads and the extraction from a few packet
+  formats,
 * a tracer which processes these packets and generates a sequence of tracing
   items, each corresponding to a single traced instruction,
-* a specialized instruction database with limited decoding capabilities and
+* a specialized instruction database with limited decoding capabilities,
+* support for user-provided and external instruction types and
 * various utilities, including types for handling trace encoder parameters.
 
 ## Supported trace encoders
