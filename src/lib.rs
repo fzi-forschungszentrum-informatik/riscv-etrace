@@ -47,6 +47,8 @@
 //! * `alloc`: enables some features that require allocation
 //! * `elf`: enables the [`binary::elf`] module providing a
 //!   [`Binary`][binary::Binary] for static ELF files using the [`elf`] crate
+//! * `riscv-isa`: enables support for decoding and tracing
+//!   [`riscv_isa::Instruction`]s instead of [`instruction::Kind`].
 //! * `serde`: enables (de)serialization of configuration via [`serde`]
 //!
 //! # no_std
