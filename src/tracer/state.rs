@@ -387,7 +387,11 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
     /// Set a relative address
     ///
     /// Set a relative address and clear the inferred address.
-    pub fn set_rel_address(&mut self, address: u64) {
+    pub fn set_rel_address(&mut self, mut address: u64) {
+        let width = self.state.address_width.get();
+        if address >> (width - 1) != 0 {
+            address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
+        }
         self.set_address(self.state.address.wrapping_add(address));
     }
 

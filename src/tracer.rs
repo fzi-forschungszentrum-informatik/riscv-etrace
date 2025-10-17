@@ -135,14 +135,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                 self.previous = Some(Event::Address { notify });
                 match self.address_mode {
                     AddressMode::Full => initer.set_address(info.address),
-                    AddressMode::Delta => {
-                        let width = self.address_delta_width.get();
-                        let mut address = info.address;
-                        if address >> (width - 1) != 0 {
-                            address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
-                        }
-                        initer.set_rel_address(address);
-                    }
+                    AddressMode::Delta => initer.set_rel_address(info.address),
                 }
 
                 StopCondition::Address {
