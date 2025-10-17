@@ -3,7 +3,21 @@
 //! Instruction disassembly/decoding and information
 //!
 //! This module provides utilities for decoding [`Instruction`]s and for
-//! extracting information relevant for tracing.
+//! extracting [information][info] relevant for tracing. Aside from the [`Size`]
+//! within the binary, an [`Instruction`] carries an [`Info`] which provides any
+//! information necessary for reconstructing discontinuities.
+//!
+//! The [`Info`] trait is implemented for [`Kind`], a representation of only
+//! instructions relevant for control flow reconstruction. In addition, it is
+//! (optionally) implemented for external types that may provide more
+//! information (e.g. [`riscv_isa::Instruction`]).
+//!
+//! # Instruction decode
+//!
+//! [`Instruction`]s are usually decoded by first extracting the [`Bits`]
+//! associated to an [`Instruction`] based on RISC-V's instruction length
+//! encoding and then decoding the [`Info`] using an [`info::Decode`] capturing
+//! decoding parameters such as [`base::Set`].
 
 pub mod base;
 pub mod bits;
@@ -17,6 +31,7 @@ use core::fmt;
 
 use bits::Bits;
 use format::Register;
+use info::Info;
 
 /// Specific [`Instruction`] kinds relevant for tracing
 #[allow(non_camel_case_types)]
@@ -165,8 +180,7 @@ impl Kind {
     }
 }
 
-/// Queries
-impl info::Info for Kind {
+impl Info for Kind {
     type Register = Register;
 
     fn branch_target(&self) -> Option<i16> {
@@ -287,7 +301,7 @@ impl fmt::Display for Kind {
     }
 }
 
-/// Length of single RISC-V [`Instruction`]
+/// Length of a single RISC-V [`Instruction`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Size {
     Compressed = 2,
@@ -310,14 +324,14 @@ impl From<Size> for u64 {
 
 /// A single RISC-V instruction
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub struct Instruction<I: info::Info = Option<Kind>> {
+pub struct Instruction<I: Info = Option<Kind>> {
     /// [`Size`] of the instruction
     pub size: Size,
-    /// [`Info`][info::Info] associated to this instruction
+    /// [`Info`] associated to this instruction
     pub info: I,
 }
 
-impl<I: info::Info> Instruction<I> {
+impl<I: Info> Instruction<I> {
     /// Extract an instruction from a raw byte slice
     ///
     /// Try to extract [`Bits`] from the beginning of the given slice, then
@@ -360,7 +374,7 @@ impl From<Kind> for Instruction {
     }
 }
 
-impl<I: info::Info> info::Info for Instruction<I> {
+impl<I: Info> Info for Instruction<I> {
     type Register = I::Register;
 
     fn branch_target(&self) -> Option<i16> {
