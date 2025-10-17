@@ -11,14 +11,25 @@ use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use item::{Context, Item};
 
 macro_rules! trace_test {
-    ($n:ident, $b:expr, $($p:expr => { $($i:tt),* })*) => {
+    ($n:ident, $b:expr, $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
+        trace_test!($n, @builder { builder().with_binary(binary::from_sorted_map($b)) } $(@$k $v)* $($p => $i)*);
+    };
+    ($n:ident, @builder { $t:expr } @params { $($pk:ident: $pv:expr),* } $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
+        trace_test!(
+            $n,
+            @builder { $t }
+            @params (&config::Parameters { $($pk: $pv,)* ..Default::default() })
+            $(@$k $v)*
+            $($p => $i)*
+        );
+    };
+    ($n:ident, @builder { $t:expr } @params ($c:expr) $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
+        trace_test!($n, @builder { $t.with_params($c) } $(@$k $v)* $($p => $i)*);
+    };
+    ($n:ident, @builder { $t:expr } $($p:expr => { $($i:tt),* })*) => {
         #[test]
         fn $n() {
-            let code = binary::from_sorted_map($b);
-            let mut tracer: Tracer<_> = Builder::new()
-                .with_binary(code)
-                .build()
-                .expect("Could not build tracer");
+            let mut tracer: Tracer<_> = $t.build().expect("Could not build tracer");
             $(
                 let payload: InstructionTrace = $p.into();
                 tracer.process_te_inst(&payload).expect("Could not process packet");
