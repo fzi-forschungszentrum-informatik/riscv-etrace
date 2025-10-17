@@ -802,3 +802,23 @@ fn test_bin_jr_loop() -> [(u64, instruction::Instruction); 15] {
         (0x8000003c, Kind::new_c_j(0, -4).into()),
     ]
 }
+
+fn test_bin_fncalls() -> [(u64, instruction::Instruction); 13] {
+    [
+        (0x80000000, Kind::new_auipc(13, 0).into()),
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_c_jal(1, 0x14).into()),
+        (0x8000000e, Kind::new_auipc(13, 0).into()),
+        (0x80000012, Kind::new_jalr(1, 13, 0x12).into()),
+        (0x80000016, Kind::new_lui(13, 0x80000000u32 as i32).into()),
+        (0x8000001a, Kind::new_jalr(1, 13, 0x20).into()),
+        (0x8000001e, Kind::new_c_j(0, 0x6).into()),
+        // add
+        (0x80000020, COMPRESSED),
+        (0x80000022, Kind::new_c_jr(1).into()),
+        // _die
+        (0x80000024, Kind::wfi.into()),
+        (0x80000028, Kind::new_c_j(0, -4).into()),
+    ]
+}
