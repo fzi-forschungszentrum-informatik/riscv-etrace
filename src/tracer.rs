@@ -85,7 +85,6 @@ where
     previous: Option<Event>,
     binary: B,
     address_mode: AddressMode,
-    address_delta_width: core::num::NonZeroU8,
     version: Version,
     phantom: core::marker::PhantomData<I>,
 }
@@ -485,7 +484,6 @@ impl<B> Builder<B> {
             previous: Default::default(),
             binary: self.binary,
             address_mode: self.address_mode,
-            address_delta_width: self.address_delta_width,
             version: self.version,
             phantom: Default::default(),
         })
