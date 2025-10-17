@@ -402,7 +402,7 @@ pub struct Builder<B = binary::Empty> {
     max_stack_depth: usize,
     sequentially_inferred_jumps: bool,
     address_mode: AddressMode,
-    address_delta_width: core::num::NonZeroU8,
+    address_width: core::num::NonZeroU8,
     version: Version,
 }
 
@@ -428,7 +428,7 @@ impl<B> Builder<B> {
         Self {
             max_stack_depth,
             sequentially_inferred_jumps: config.sijump_p,
-            address_delta_width: config.iaddress_width_p,
+            address_width: config.iaddress_width_p,
             ..self
         }
     }
@@ -443,7 +443,7 @@ impl<B> Builder<B> {
             max_stack_depth: self.max_stack_depth,
             sequentially_inferred_jumps: self.sequentially_inferred_jumps,
             address_mode: self.address_mode,
-            address_delta_width: self.address_delta_width,
+            address_width: self.address_width,
             version: self.version,
         }
     }
@@ -475,7 +475,7 @@ impl<B> Builder<B> {
         let state = state::State::new(
             S::new(self.max_stack_depth)
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
-            self.address_delta_width,
+            self.address_width,
             self.sequentially_inferred_jumps,
         );
         Ok(Tracer {
@@ -497,7 +497,7 @@ impl<B: Default> Default for Builder<B> {
             max_stack_depth: Default::default(),
             sequentially_inferred_jumps: Default::default(),
             address_mode: Default::default(),
-            address_delta_width: core::num::NonZeroU8::MIN,
+            address_width: core::num::NonZeroU8::MIN,
             version: Default::default(),
         }
         .with_params(&Default::default())
