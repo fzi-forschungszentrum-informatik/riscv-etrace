@@ -210,8 +210,8 @@ fn main() {
         }
     }
 
-    if let Some(reference) = reference.as_mut() {
-        assert_eq!(reference.next(), None);
+    if let Some(item) = reference.and_then(|mut r| r.next()) {
+        panic!("Untraced item in reference: {item:?}");
     }
 
     eprintln!("Decoded {pcount} packets, traced {icount} items");

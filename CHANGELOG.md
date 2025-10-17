@@ -37,6 +37,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
+- The simple example is now more explicit when aborting due to untraced items
+  when run in reference mode.
 - The simple example now rejects compressed instructions in reference CSV traces
   if any of the upper bits (that cannot belong to the instruction) are set.
 - `binary::elf::Elf` is now generic over its `instruction::info::Decode`,
