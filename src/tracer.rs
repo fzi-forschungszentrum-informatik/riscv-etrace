@@ -483,6 +483,7 @@ impl<B> Builder<B> {
         let state = state::State::new(
             S::new(self.max_stack_depth)
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
+            self.address_delta_width,
             self.sequentially_inferred_jumps,
         );
         Ok(Tracer {

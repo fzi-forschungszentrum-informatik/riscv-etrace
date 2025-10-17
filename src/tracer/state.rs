@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execution tracing utilities
 
+use core::num::NonZeroU8;
+
 use crate::binary::Binary;
 use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
@@ -48,6 +50,9 @@ pub struct State<S: ReturnStack, I: Info> {
     /// Stack depth communicated by the current packet
     stack_depth: Option<usize>,
 
+    /// Width of the address bus
+    address_width: NonZeroU8,
+
     /// Flag indicating whether or not sequential jumps are to be followed
     sequential_jumps: bool,
 
@@ -57,7 +62,7 @@ pub struct State<S: ReturnStack, I: Info> {
 
 impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// Create a new, initial state for tracing
-    pub fn new(return_stack: S, sequential_jumps: bool) -> Self {
+    pub fn new(return_stack: S, address_width: NonZeroU8, sequential_jumps: bool) -> Self {
         Self {
             pc: 0,
             insn: Default::default(),
@@ -70,6 +75,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             privilege: Default::default(),
             return_stack,
             stack_depth: Default::default(),
+            address_width,
             sequential_jumps,
             implicit_return: false,
         }
