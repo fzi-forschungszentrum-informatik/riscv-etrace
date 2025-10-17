@@ -249,7 +249,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
         let after_pc = self.pc.wrapping_add(self.insn.size.into());
 
         let info = self.insn.info.clone();
-        let (next_pc, end) = self
+        let (mut next_pc, end) = self
             .inferable_jump_target(&info)
             .or_else(|| self.sequential_jump_target(&info).map(|t| (t, false)))
             .or_else(|| self.implicit_return_address(&info).map(|t| (t, false)))
@@ -264,6 +264,10 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             .or_else(|| self.taken_branch_target(&info).transpose())
             .transpose()?
             .unwrap_or((after_pc, false));
+
+        next_pc &= !(u64::MAX
+            .checked_shl(self.address_width.get().into())
+            .unwrap_or(0));
 
         if self.implicit_return && self.insn.is_call() {
             self.return_stack.push(after_pc);
