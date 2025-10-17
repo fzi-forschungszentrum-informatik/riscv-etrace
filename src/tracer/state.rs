@@ -258,7 +258,7 @@ impl<S: ReturnStack> State<S> {
         // The PC right after the current instruction
         let after_pc = self.pc.wrapping_add(self.insn.size.into());
 
-        let (next_pc, end) = self
+        let (mut next_pc, end) = self
             .insn
             .kind
             .and_then(|k| {
@@ -277,6 +277,10 @@ impl<S: ReturnStack> State<S> {
             })
             .transpose()?
             .unwrap_or((after_pc, false));
+
+        next_pc &= !(u64::MAX
+            .checked_shl(self.address_width.get().into())
+            .unwrap_or(0));
 
         if self.implicit_return
             && self
