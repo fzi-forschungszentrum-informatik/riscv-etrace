@@ -11,14 +11,25 @@ use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use item::{Context, Item};
 
 macro_rules! trace_test {
-    ($n:ident, $b:expr, $($p:expr => { $($i:tt),* })*) => {
+    ($n:ident, $b:expr, $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
+        trace_test!($n, @builder { builder().with_binary(binary::from_sorted_map($b)) } $(@$k $v)* $($p => $i)*);
+    };
+    ($n:ident, @builder { $t:expr } @params { $($pk:ident: $pv:expr),* } $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
+        trace_test!(
+            $n,
+            @builder { $t }
+            @params (&config::Parameters { $($pk: $pv,)* ..Default::default() })
+            $(@$k $v)*
+            $($p => $i)*
+        );
+    };
+    ($n:ident, @builder { $t:expr } @params ($c:expr) $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
+        trace_test!($n, @builder { $t.with_params($c) } $(@$k $v)* $($p => $i)*);
+    };
+    ($n:ident, @builder { $t:expr } $($p:expr => { $($i:tt),* })*) => {
         #[test]
         fn $n() {
-            let code = binary::from_sorted_map($b);
-            let mut tracer: Tracer<_> = Builder::new()
-                .with_binary(code)
-                .build()
-                .expect("Could not build tracer");
+            let mut tracer: Tracer<_> = $t.build().expect("Could not build tracer");
             $(
                 let payload: InstructionTrace = $p.into();
                 tracer.process_te_inst(&payload).expect("Could not process packet");
@@ -736,6 +747,127 @@ trace_test!(
     }
 );
 
+trace_test!(
+    fn_calls_baseline,
+    test_bin_fncalls(),
+    start_packet(0x80000000) => {
+        (0x80000000, Context::default()),
+        (0x80000000, Kind::new_auipc(13, 0x0))
+    }
+    payload::AddressInfo {
+        address: 0x0e,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_c_jal(1, 0x14)),
+        (0x80000020, COMPRESSED),
+        (0x80000022, Kind::new_c_jr(1)),
+        (0x8000000e, Kind::new_auipc(13, 0))
+    }
+    payload::AddressInfo {
+        address: 0x12,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000012, Kind::new_jalr(1, 13, 0x12)),
+        (0x80000020, COMPRESSED)
+    }
+    payload::AddressInfo {
+        address: 0x16u64.wrapping_sub(0x20),
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000022, Kind::new_c_jr(1)),
+        (0x80000016, Kind::new_lui(13,0x80000000u32 as i32))
+    }
+    payload::AddressInfo {
+        address: 0x20-0x16,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x8000001a, Kind::new_jalr(1, 13, 0x20)),
+        (0x80000020, COMPRESSED)
+    }
+    payload::AddressInfo {
+        address: 0x1eu64.wrapping_sub(0x20),
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000022, Kind::new_c_jr(1)),
+        (0x8000001e, Kind::new_c_j(0, 0x6))
+    }
+    payload::AddressInfo {
+        address: 0x24-0x1e,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000024, Kind::wfi)
+    }
+);
+
+trace_test!(
+    fn_calls_sijump,
+    test_bin_fncalls(),
+    @params {
+        sijump_p: true
+    }
+    start_packet(0x80000000) => {
+        (0x80000000, Context::default()),
+        (0x80000000, Kind::new_auipc(13, 0x0))
+    }
+    payload::AddressInfo {
+        address: 0x0e,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_c_jal(1, 0x14)),
+        (0x80000020, COMPRESSED),
+        (0x80000022, Kind::new_c_jr(1)),
+        (0x8000000e, Kind::new_auipc(13, 0))
+    }
+    payload::AddressInfo {
+        address: 0x16-0x0e,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000012, Kind::new_jalr(1, 13, 0x12)),
+        (0x80000020, COMPRESSED),
+        (0x80000022, Kind::new_c_jr(1)),
+        (0x80000016, Kind::new_lui(13,0x80000000u32 as i32))
+    }
+    payload::AddressInfo {
+        address: 0x1e-0x16,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x8000001a, Kind::new_jalr(1, 13, 0x20)),
+        (0x80000020, COMPRESSED),
+        (0x80000022, Kind::new_c_jr(1)),
+        (0x8000001e, Kind::new_c_j(0, 0x6))
+    }
+    payload::AddressInfo {
+        address: 0x24-0x1e,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000024, Kind::wfi)
+    }
+);
+
 fn start_packet(address: u64) -> payload::InstructionTrace {
     sync::Start {
         branch: true,
@@ -789,5 +921,25 @@ fn test_bin_jr_loop() -> [(u64, instruction::Instruction); 15] {
         // _die
         (0x80000038, Kind::wfi.into()),
         (0x8000003c, Kind::new_c_j(0, -4).into()),
+    ]
+}
+
+fn test_bin_fncalls() -> [(u64, instruction::Instruction); 13] {
+    [
+        (0x80000000, Kind::new_auipc(13, 0).into()),
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_c_jal(1, 0x14).into()),
+        (0x8000000e, Kind::new_auipc(13, 0).into()),
+        (0x80000012, Kind::new_jalr(1, 13, 0x12).into()),
+        (0x80000016, Kind::new_lui(13, 0x80000000u32 as i32).into()),
+        (0x8000001a, Kind::new_jalr(1, 13, 0x20).into()),
+        (0x8000001e, Kind::new_c_j(0, 0x6).into()),
+        // add
+        (0x80000020, COMPRESSED),
+        (0x80000022, Kind::new_c_jr(1).into()),
+        // _die
+        (0x80000024, Kind::wfi.into()),
+        (0x80000028, Kind::new_c_j(0, -4).into()),
     ]
 }
