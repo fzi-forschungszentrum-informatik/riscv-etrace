@@ -16,6 +16,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
   trap.
 - We previously did not properly handle some edge-cases concerning reporting of
   an address after an uninferable PC discontinuity.
+- Traced PCs are now restrained to the address width provided via encoder
+  parameters, resolving an issue with the computation of PCs for sequentially
+  inferred jumps.
 
 ## 0.3.0 - 2025-08-16
 
