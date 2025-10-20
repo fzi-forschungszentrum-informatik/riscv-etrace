@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execution tracing utilities
 
+use core::num::NonZeroU8;
+
 use crate::binary::Binary;
 use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
@@ -48,6 +50,9 @@ pub struct State<S: ReturnStack, I: Info> {
     /// Stack depth communicated by the current packet
     stack_depth: Option<usize>,
 
+    /// Width of the address bus
+    address_width: NonZeroU8,
+
     /// Flag indicating whether or not sequential jumps are to be followed
     sequential_jumps: bool,
 
@@ -57,7 +62,7 @@ pub struct State<S: ReturnStack, I: Info> {
 
 impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// Create a new, initial state for tracing
-    pub fn new(return_stack: S, sequential_jumps: bool) -> Self {
+    pub fn new(return_stack: S, address_width: NonZeroU8, sequential_jumps: bool) -> Self {
         Self {
             pc: 0,
             insn: Default::default(),
@@ -70,6 +75,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             privilege: Default::default(),
             return_stack,
             stack_depth: Default::default(),
+            address_width,
             sequential_jumps,
             implicit_return: false,
         }
@@ -243,7 +249,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
         let after_pc = self.pc.wrapping_add(self.insn.size.into());
 
         let info = self.insn.info.clone();
-        let (next_pc, end) = self
+        let (mut next_pc, end) = self
             .inferable_jump_target(&info)
             .or_else(|| self.sequential_jump_target(&info).map(|t| (t, false)))
             .or_else(|| self.implicit_return_address(&info).map(|t| (t, false)))
@@ -258,6 +264,10 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             .or_else(|| self.taken_branch_target(&info).transpose())
             .transpose()?
             .unwrap_or((after_pc, false));
+
+        next_pc &= !(u64::MAX
+            .checked_shl(self.address_width.get().into())
+            .unwrap_or(0));
 
         if self.implicit_return && self.insn.is_call() {
             self.return_stack.push(after_pc);
@@ -377,7 +387,11 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
     /// Set a relative address
     ///
     /// Set a relative address and clear the inferred address.
-    pub fn set_rel_address(&mut self, address: u64) {
+    pub fn set_rel_address(&mut self, mut address: u64) {
+        let width = self.state.address_width.get();
+        if address >> (width - 1) != 0 {
+            address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
+        }
         self.set_address(self.state.address.wrapping_add(address));
     }
 

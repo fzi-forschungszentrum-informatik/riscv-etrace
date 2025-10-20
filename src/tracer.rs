@@ -85,7 +85,6 @@ where
     previous: Option<Event>,
     binary: B,
     address_mode: AddressMode,
-    address_delta_width: core::num::NonZeroU8,
     version: Version,
     phantom: core::marker::PhantomData<I>,
 }
@@ -135,14 +134,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                 self.previous = Some(Event::Address { notify });
                 match self.address_mode {
                     AddressMode::Full => initer.set_address(info.address),
-                    AddressMode::Delta => {
-                        let width = self.address_delta_width.get();
-                        let mut address = info.address;
-                        if address >> (width - 1) != 0 {
-                            address |= u64::MAX.checked_shl(width.into()).unwrap_or(0);
-                        }
-                        initer.set_rel_address(address);
-                    }
+                    AddressMode::Delta => initer.set_rel_address(info.address),
                 }
 
                 StopCondition::Address {
@@ -410,7 +402,7 @@ pub struct Builder<B = binary::Empty> {
     max_stack_depth: usize,
     sequentially_inferred_jumps: bool,
     address_mode: AddressMode,
-    address_delta_width: core::num::NonZeroU8,
+    address_width: core::num::NonZeroU8,
     version: Version,
 }
 
@@ -436,7 +428,7 @@ impl<B> Builder<B> {
         Self {
             max_stack_depth,
             sequentially_inferred_jumps: config.sijump_p,
-            address_delta_width: config.iaddress_width_p,
+            address_width: config.iaddress_width_p,
             ..self
         }
     }
@@ -451,7 +443,7 @@ impl<B> Builder<B> {
             max_stack_depth: self.max_stack_depth,
             sequentially_inferred_jumps: self.sequentially_inferred_jumps,
             address_mode: self.address_mode,
-            address_delta_width: self.address_delta_width,
+            address_width: self.address_width,
             version: self.version,
         }
     }
@@ -483,6 +475,7 @@ impl<B> Builder<B> {
         let state = state::State::new(
             S::new(self.max_stack_depth)
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
+            self.address_width,
             self.sequentially_inferred_jumps,
         );
         Ok(Tracer {
@@ -491,7 +484,6 @@ impl<B> Builder<B> {
             previous: Default::default(),
             binary: self.binary,
             address_mode: self.address_mode,
-            address_delta_width: self.address_delta_width,
             version: self.version,
             phantom: Default::default(),
         })
@@ -505,7 +497,7 @@ impl<B: Default> Default for Builder<B> {
             max_stack_depth: Default::default(),
             sequentially_inferred_jumps: Default::default(),
             address_mode: Default::default(),
-            address_delta_width: core::num::NonZeroU8::MIN,
+            address_width: core::num::NonZeroU8::MIN,
             version: Default::default(),
         }
         .with_params(&Default::default())
