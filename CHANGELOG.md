@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Fixed
+
+- We now use `doc_cfg` rather than the deprecated `doc_auto_cfg` when building
+  docs on [docs.rs](https://docs.rs).
+
 ## 0.5.0 - 2025-10-20
 
 ### Added

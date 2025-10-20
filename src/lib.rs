@@ -107,7 +107,7 @@
 //! [etrace]: <https://github.com/riscv-non-isa/riscv-trace-spec/>
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 #![no_std]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
