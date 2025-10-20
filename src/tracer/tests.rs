@@ -21,8 +21,7 @@ macro_rules! trace_test {
                 .expect("Could not build tracer");
             $(
                 let payload: InstructionTrace = $p.into();
-                tracer.process_te_inst(&payload)
-                    .expect("Could not process packet");
+                tracer.process_te_inst(&payload).expect("Could not process packet");
                 trace_check_def!(tracer, $($i),*);
                 assert_eq!(tracer.next(), None);
             )*
