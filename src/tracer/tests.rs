@@ -23,9 +23,7 @@ macro_rules! trace_test {
                 let payload: InstructionTrace = $p.into();
                 tracer.process_te_inst(&payload)
                     .expect("Could not process packet");
-                $(
-                    trace_check_def!(tracer, $i);
-                )*
+                trace_check_def!(tracer, $($i),*);
                 assert_eq!(tracer.next(), None);
             )*
         }
@@ -38,11 +36,14 @@ macro_rules! trace_check_def {
     };
     ($t:ident, ($n:literal, $($i:tt),*)) => {
         (0..$n).for_each(|_| {
-            $(
-                trace_check_def!($t, $i);
-            )*
+            trace_check_def!($t, $($i),*);
         });
     };
+    ($t:ident, $($i:tt),*) => {
+        $(
+            trace_check_def!($t, $i);
+        )*
+    }
 }
 
 // Test derived from the specification's Chaper 12, examples 1 and 2
