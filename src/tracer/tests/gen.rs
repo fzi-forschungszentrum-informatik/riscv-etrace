@@ -4,26 +4,23 @@
 
 macro_rules! trace_test {
     ($n:ident, $b:expr, $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
-        trace_test!(
+        trace_test_helper!(
             $n,
-            @builder { builder().with_binary(binary::from_sorted_map($b)) }
-            $(@$k $v)*
-            $($p => $i)*
+            builder().with_binary(binary::from_sorted_map($b)),
+            [$($k $v)*]
+            [$($p => $i)*]
         );
     };
-    ($n:ident, @builder { $t:expr } @params { $($pk:ident: $pv:expr),* } $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
-        trace_test!(
-            $n,
-            @builder { $t }
-            @params (&config::Parameters { $($pk: $pv,)* ..Default::default() })
-            $(@$k $v)*
-            $($p => $i)*
-        );
+}
+
+macro_rules! trace_test_helper {
+    ($n:ident, $t:expr, params { $($pk:ident: $pv:expr),* } $c:tt $i:tt) => {
+        trace_test_helper!($n, $t, params (&config::Parameters { $($pk: $pv,)* ..Default::default() }) $c $i);
     };
-    ($n:ident, @builder { $t:expr } @params ($c:expr) $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
-        trace_test!($n, @builder { $t.with_params($c) } $(@$k $v)* $($p => $i)*);
+    ($n:ident, $t:expr, params ($p:expr) $c:tt $i:tt) => {
+        trace_test_helper!($n, $t.with_params($p), $c $i);
     };
-    ($n:ident, @builder { $t:expr } $($p:expr => { $($i:tt),* })*) => {
+    ($n:ident, $t:expr, [] [$($p:expr => { $($i:tt),* })*]) => {
         #[test]
         fn $n() {
             let mut tracer: Tracer<_> = $t.build().expect("Could not build tracer");
@@ -35,6 +32,9 @@ macro_rules! trace_test {
             )*
         }
     };
+    ($n:ident, $t:expr, [$k:ident $v:tt $($kr:ident $vr:tt)*] $i:tt) => {
+        trace_test_helper!($n, $t, $k $v [$($kr $vr)*] $i);
+    }
 }
 
 macro_rules! trace_check_def {
