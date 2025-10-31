@@ -477,6 +477,7 @@ impl<B> Builder<B> {
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
             self.address_width,
             self.sequentially_inferred_jumps,
+            false,
         );
         Ok(Tracer {
             state,

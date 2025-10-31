@@ -62,7 +62,12 @@ pub struct State<S: ReturnStack, I: Info> {
 
 impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// Create a new, initial state for tracing
-    pub fn new(return_stack: S, address_width: NonZeroU8, sequential_jumps: bool) -> Self {
+    pub fn new(
+        return_stack: S,
+        address_width: NonZeroU8,
+        sequential_jumps: bool,
+        implicit_return: bool,
+    ) -> Self {
         Self {
             pc: 0,
             insn: Default::default(),
@@ -77,7 +82,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             stack_depth: Default::default(),
             address_width,
             sequential_jumps,
-            implicit_return: false,
+            implicit_return,
         }
     }
 
