@@ -20,6 +20,12 @@ macro_rules! trace_test_helper {
     ($n:ident, $t:expr, params ($p:expr) $c:tt $i:tt) => {
         trace_test_helper!($n, $t.with_params($p), $c $i);
     };
+    ($n:ident, $t:expr, address_mode $m:ident $c:tt $i:tt) => {
+        trace_test_helper!($n, $t.with_address_mode(AddressMode::$m), $c $i);
+    };
+    ($n:ident, $t:expr, implicit_return $r:ident $c:tt $i:tt) => {
+        trace_test_helper!($n, $t.with_implicit_return($r), $c $i);
+    };
     ($n:ident, $t:expr, [] [$($p:expr => { $($i:tt),* })*]) => {
         #[test]
         fn $n() {
