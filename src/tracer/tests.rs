@@ -12,7 +12,7 @@ mod traps;
 use super::*;
 
 use crate::binary;
-use crate::decoder::{payload, unit};
+use crate::decoder::payload;
 use crate::instruction;
 use crate::types::branch;
 
@@ -44,14 +44,7 @@ trace_test!(
 trace_test!(
     full_address,
     test_bin_1(),
-    sync::Support {
-        ienable: true,
-        ioptions: unit::ReferenceIOptions {
-            full_address: true,
-            ..Default::default()
-        },
-        ..Default::default()
-    } => {}
+    @address_mode Full
     sync::Start {
         branch: true,
         ctx: Default::default(),
