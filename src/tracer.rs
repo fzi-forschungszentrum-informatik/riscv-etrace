@@ -401,6 +401,7 @@ pub struct Builder<B = binary::Empty> {
     binary: B,
     max_stack_depth: usize,
     sequentially_inferred_jumps: bool,
+    implicit_return: bool,
     address_mode: AddressMode,
     address_width: core::num::NonZeroU8,
     version: Version,
@@ -442,6 +443,7 @@ impl<B> Builder<B> {
             binary,
             max_stack_depth: self.max_stack_depth,
             sequentially_inferred_jumps: self.sequentially_inferred_jumps,
+            implicit_return: self.implicit_return,
             address_mode: self.address_mode,
             address_width: self.address_width,
             version: self.version,
@@ -454,6 +456,17 @@ impl<B> Builder<B> {
     pub fn with_address_mode(self, mode: AddressMode) -> Self {
         Self {
             address_mode: mode,
+            ..self
+        }
+    }
+
+    /// Build a [`Tracer`] with implicit return enabled or disabled
+    ///
+    /// New builders are configured for no implicit return. The option in a
+    /// [`Tracer`] is usually controlled via a [support payload][sync::Support].
+    pub fn with_implicit_return(self, implicit_return: bool) -> Self {
+        Self {
+            implicit_return,
             ..self
         }
     }
@@ -477,7 +490,7 @@ impl<B> Builder<B> {
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
             self.address_width,
             self.sequentially_inferred_jumps,
-            false,
+            self.implicit_return,
         );
         Ok(Tracer {
             state,
@@ -497,6 +510,7 @@ impl<B: Default> Default for Builder<B> {
             binary: Default::default(),
             max_stack_depth: Default::default(),
             sequentially_inferred_jumps: Default::default(),
+            implicit_return: Default::default(),
             address_mode: Default::default(),
             address_width: core::num::NonZeroU8::MIN,
             version: Default::default(),
