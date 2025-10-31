@@ -29,7 +29,9 @@ macro_rules! trace_test_helper {
     ($n:ident, $t:expr, [] [$($p:expr => { $($i:tt),* })*]) => {
         #[test]
         fn $n() {
-            let mut tracer: Tracer<_> = $t.build().expect("Could not build tracer");
+            let mut tracer: Tracer<_, stack::StaticStack<8>> = $t
+                .build()
+                .expect("Could not build tracer");
             $(
                 let payload: InstructionTrace = $p.into();
                 tracer.process_te_inst(&payload).expect("Could not process packet");
