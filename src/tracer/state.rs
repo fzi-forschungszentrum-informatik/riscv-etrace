@@ -157,16 +157,6 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
                 }
                 StopCondition::Sync {
                     context,
-                    action: SyncAction::Compare,
-                } if hit_address_and_branch
-                    && context.privilege == self.privilege
-                    && self.last_insn.is_return_from_trap() =>
-                {
-                    self.stop_condition = StopCondition::Fused;
-                    None
-                }
-                StopCondition::Sync {
-                    context,
                     action: SyncAction::Update,
                 } if hit_address_and_branch => {
                     self.privilege = context.privilege;
