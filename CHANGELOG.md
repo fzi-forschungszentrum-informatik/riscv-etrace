@@ -19,6 +19,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Traced PCs are now restrained to the address width provided via encoder
   parameters, resolving an issue with the computation of PCs for sequentially
   inferred jumps.
+- Removed likely faulty and superfluous logic for handling version 1 traces. As
+  a result, the version setting for `tracer::Tracer` currently has no effect.
 
 ## 0.3.0 - 2025-08-16
 
