@@ -474,15 +474,6 @@ pub enum StopCondition {
     Fused,
 }
 
-/// Synchronization action
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum SyncAction {
-    /// Stop only if the sync context matches the [`State`]'s context
-    Compare,
-    /// Update the [`State`]'s context from the sync context
-    Update,
-}
-
 impl Default for StopCondition {
     fn default() -> Self {
         Self::Fused
