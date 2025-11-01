@@ -155,10 +155,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
                     self.stop_condition = StopCondition::Fused;
                     None
                 }
-                StopCondition::Sync {
-                    context,
-                    action: SyncAction::Update,
-                } if hit_address_and_branch => {
+                StopCondition::Sync { context } if hit_address_and_branch => {
                     self.privilege = context.privilege;
                     self.stop_condition = StopCondition::Fused;
                     Some(context)
@@ -472,12 +469,7 @@ pub enum StopCondition {
     /// Stop when reaching a condition provided by an address packet
     Address { notify: bool, not_updiscon: bool },
     /// Stop at synchonization point (defined in sync packet)
-    Sync {
-        /// Context given in the sync packet
-        context: Context,
-        /// Action to perform at the synchronization point
-        action: SyncAction,
-    },
+    Sync { context: Context },
     /// The state is already fused and shall not be advanced
     Fused,
 }

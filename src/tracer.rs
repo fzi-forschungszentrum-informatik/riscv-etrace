@@ -172,7 +172,6 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                 if is_tracing && previous != Some(Event::Trap { thaddr: false }) {
                     initer.set_condition(state::StopCondition::Sync {
                         context: start.ctx.into(),
-                        action: state::SyncAction::Update,
                     });
                 } else {
                     initer.set_context(start.ctx.into());
