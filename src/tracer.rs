@@ -446,7 +446,9 @@ impl<B> Builder<B> {
 
     /// Build a [`Tracer`] for the given version of the tracing specification
     ///
-    /// New builders are configured for [`Version::V2`].
+    /// New builders are configured for [`Version::V2`]. This setting doesn't
+    /// currently have any effect as version 2 tracing also allows processing
+    /// version 1 traces.
     pub fn with_version(self, version: Version) -> Self {
         Self { version, ..self }
     }
