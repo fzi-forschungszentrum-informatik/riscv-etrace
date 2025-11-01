@@ -1,6 +1,7 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 //! Tests for extraction of [`Instruction`]s or instruction [`Bits`]
+#![allow(clippy::unusual_byte_groupings)]
 
 use super::*;
 
