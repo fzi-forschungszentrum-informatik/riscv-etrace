@@ -2,8 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
-use crate::types::{self, branch};
+use crate::{
+    decoder::{self},
+    types::{self, branch},
+};
 use core::num::NonZeroU8;
+use decoder::sync;
 use payload::AddressInfo;
 use util::read_implicit_return;
 
@@ -257,7 +261,7 @@ Decoded packet: Packet { trace_type: 2, time_tag: None, hart: 0, payload: [115, 
 Payload: InstructionTrace(Synchronization(Start(Start { branch: true, ctx: Context { privilege: Machine, time: None, context: Some(0) }, address: 536937572 })))
 */
 bitstream_test!(
-    instruction_trace_sync_payload,
+    decode_instruction_trace_sync_payload,
     b"\x73\x00\x00\x00\x00\x19\x41\x00\x08",
     InstructionTrace::Synchronization(sync::Synchronization::Start(sync::Start {
         branch: true,
@@ -298,4 +302,150 @@ bitstream_test!(
         irdepth: None
     }),
     &PARAMS_64
+);
+
+macro_rules! branch_taken_test {
+    ($name: ident, $data:expr, $params:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            let mut decoder = Builder::new().with_params($params).build($data);
+            let instruction_trace: payload::InstructionTrace =
+                Decode::decode(&mut decoder).unwrap();
+            let sync_trace: sync::Synchronization = match instruction_trace {
+                InstructionTrace::Synchronization(s) => s,
+                _ => panic!("expected synchronization packet"),
+            };
+
+            assert_eq!(sync_trace.branch_not_taken(), $expected);
+        }
+    };
+}
+
+// Format 3 subformat 0 - Synchronisation; 1100; first 2 hex:  0110 | 0011; last 0 in 0110,  indicates branch is taken therefore false
+branch_taken_test!(
+    sync_start_format,
+    b"\x63\x00\x00\x00\x00\x19\x41\x00\x08",
+    &PARAMS_32,
+    Some(false)
+);
+// Format 3 subformat 1 - Trap; 1101; first 2 hex:  0111 | 0111, expected 1011 for reversed format, but encodes none
+branch_taken_test!(
+    sync_trap_format,
+    b"\x77\x00\x00\x00\x00\x19\x41\x00\x08",
+    &PARAMS_32,
+    Some(true)
+);
+// Format 3 subformat 3 - Support; 1111; first 2 hex: 0101 | 1111
+branch_taken_test!(
+    sync_supp_format,
+    b"\x5F\x00\x00\x00\x00\x19\x41\x00\x08",
+    &PARAMS_32,
+    None
+);
+
+macro_rules! as_context_test {
+    ($name: ident, $data:expr, $params:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            let mut decoder = Builder::new().with_params($params).build($data);
+            let instruction_trace: payload::InstructionTrace =
+                Decode::decode(&mut decoder).unwrap();
+            let sync_trace: sync::Synchronization = match instruction_trace {
+                InstructionTrace::Synchronization(s) => s,
+                _ => panic!("expected synchronization packet"),
+            };
+
+            assert_eq!(sync_trace.as_context(), $expected);
+        }
+    };
+}
+
+as_context_test!(
+    sync_start_packet,
+    b"\x63\x00\x00\x00\x00\x19\x41\x00\x08",
+    &PARAMS_32,
+    Some(&sync::Context {
+        privilege: types::Privilege::Machine,
+        time: None,
+        context: Some(0)
+    })
+);
+
+// fmt: 11, subfmt: 10, priv: 11, time: 0, ctx: 0 -> 0011 | 1011 = 3Bh
+as_context_test!(
+    sync_ctx_packet,
+    b"\x3B\x00",
+    &PARAMS_32,
+    Some(&sync::Context {
+        privilege: types::Privilege::Machine,
+        time: None,
+        context: Some(0)
+    })
+);
+
+// Fmt: 11, subfmt: 01, branch: 1, priv: 11, time: (non-existent), ctx: 1 -> 1111 | 0111 = F7h
+as_context_test!(
+    sync_trap_packet,
+    b"\xF7\x00\x00\x00\x00\x19\x41\x00\x08",
+    &PARAMS_32,
+    Some(&sync::Context {
+        privilege: types::Privilege::Machine,
+        time: None,
+        context: Some(1)
+    })
+);
+// Fmt: 11, subfmt: 11, ienable: 1, !enc_mode: 0, qual_stat: 00
+as_context_test!(sync_supp_packet, b"\x1F\x00", &PARAMS_32, None);
+
+// Ok(Synchronization(Support(Support { ienable: true, encoder_mode: BranchTrace, qual_status: TraceLost, ioptions: ReferenceIOptions { implicit_return: false, implicit_exception: false, full_address: false, jump_target_cache: false, branch_prediction: false }, denable: false, dloss: false, doptions: ReferenceDOptions { no_address: false, no_data: false, full_address: false, full_data: false } })))
+bitstream_test!(
+    decode_qualstat_trace_lost,
+    b"\x9F\x00\x00\x00\x00\x19\x41\x00\x08",
+    InstructionTrace::Synchronization(sync::Synchronization::Support(sync::Support {
+        ienable: true,
+        encoder_mode: sync::EncoderMode::BranchTrace,
+        qual_status: sync::QualStatus::TraceLost,
+        ioptions: decoder::unit::ReferenceIOptions {
+            implicit_return: false,
+            implicit_exception: false,
+            full_address: false,
+            jump_target_cache: false,
+            branch_prediction: false
+        },
+        denable: false,
+        dloss: false,
+        doptions: decoder::unit::ReferenceDOptions {
+            no_address: false,
+            no_data: false,
+            full_address: false,
+            full_data: false
+        }
+    })),
+    &PARAMS_32
+);
+
+bitstream_test!(
+    decode_qualstat_ended_ntr,
+    b"\xDF\x00\x00\x00\x00\x19\x41\x00\x08",
+    InstructionTrace::Synchronization(sync::Synchronization::Support(sync::Support {
+        ienable: true,
+        encoder_mode: sync::EncoderMode::BranchTrace,
+        qual_status: sync::QualStatus::EndedNtr,
+        ioptions: decoder::unit::ReferenceIOptions {
+            implicit_return: false,
+            implicit_exception: false,
+            full_address: false,
+            jump_target_cache: false,
+            branch_prediction: false
+        },
+        denable: false,
+        dloss: false,
+        doptions: decoder::unit::ReferenceDOptions {
+            no_address: false,
+            no_data: false,
+            full_address: false,
+            full_data: false
+        }
+    })),
+    &PARAMS_32
 );
