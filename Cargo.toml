@@ -2,7 +2,7 @@
 name = "riscv-etrace"
 description = "Decoder and tracer for RISC-V efficient instruction tracing"
 license = "Apache-2.0"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 keywords = ["riscv", "tracing"]
 categories = ["no-std", "parser-implementations"]
