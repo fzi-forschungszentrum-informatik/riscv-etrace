@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Fixed
+
+- Removed likely faulty and superfluous logic for handling version 1 traces. As
+  a result, the version setting for `tracer::Tracer` currently has no effect.
+
 ## 0.5.1 - 2025-10-20
 
 ### Fixed

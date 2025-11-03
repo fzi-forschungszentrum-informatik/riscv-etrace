@@ -85,7 +85,6 @@ where
     previous: Option<Event>,
     binary: B,
     address_mode: AddressMode,
-    version: Version,
     phantom: core::marker::PhantomData<I>,
 }
 
@@ -168,22 +167,14 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
         match sync {
             Synchronization::Start(start) => {
                 let is_tracing = self.iter_state.is_tracing();
-                let version = self.version;
 
                 let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
                 if is_tracing && previous != Some(Event::Trap { thaddr: false }) {
-                    let action = match version {
-                        Version::V1 => state::SyncAction::Compare,
-                        _ => state::SyncAction::Update,
-                    };
                     initer.set_condition(state::StopCondition::Sync {
                         context: start.ctx.into(),
-                        action,
                     });
                 } else {
-                    if version != Version::V1 {
-                        initer.set_context(start.ctx.into());
-                    }
+                    initer.set_context(start.ctx.into());
                     initer.reset_to_address()?;
                     self.iter_state = IterationState::ContextItem {
                         pc: None,
@@ -209,11 +200,8 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                     initer.set_address(trap.address);
                     initer.reset_to_address()?;
                 } else {
-                    let version = self.version;
                     let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
-                    if version != Version::V1 {
-                        initer.set_context(trap.ctx.into());
-                    }
+                    initer.set_context(trap.ctx.into());
                     initer.reset_to_address()?;
                 }
                 self.iter_state = IterationState::TrapItem {
@@ -226,9 +214,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
             Synchronization::Context(ctx) => {
                 let mut initer = self.state.initializer(&mut self.binary)?;
                 initer.set_stack_depth(None);
-                if self.version != Version::V1 {
-                    initer.set_context(ctx.into());
-                }
+                initer.set_context(ctx.into());
                 self.iter_state = IterationState::ContextItem {
                     pc: None,
                     context: ctx.into(),
@@ -460,7 +446,9 @@ impl<B> Builder<B> {
 
     /// Build a [`Tracer`] for the given version of the tracing specification
     ///
-    /// New builders are configured for [`Version::V2`].
+    /// New builders are configured for [`Version::V2`]. This setting doesn't
+    /// currently have any effect as version 2 tracing also allows processing
+    /// version 1 traces.
     pub fn with_version(self, version: Version) -> Self {
         Self { version, ..self }
     }
@@ -484,7 +472,6 @@ impl<B> Builder<B> {
             previous: Default::default(),
             binary: self.binary,
             address_mode: self.address_mode,
-            version: self.version,
             phantom: Default::default(),
         })
     }
