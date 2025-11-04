@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- A fn `tracer::Builder::with_implicit_return` for initially (un)setting the
+  initial return option.
+
 ## 0.5.2 - 2025-11-03
 
 ### Fixed
