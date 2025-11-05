@@ -10,9 +10,6 @@ pub mod item;
 pub mod stack;
 mod state;
 
-#[cfg(test)]
-mod tests;
-
 pub use item::Item;
 
 use crate::binary::{self, Binary};

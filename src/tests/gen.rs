@@ -6,7 +6,7 @@ macro_rules! trace_test {
     ($n:ident, $b:expr, $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
         trace_test_helper!(
             $n,
-            builder().with_binary(binary::from_sorted_map($b)),
+            tracer::builder().with_binary(binary::from_sorted_map($b)),
             [$($k $v)*]
             [$($p => $i)*]
         );
@@ -21,7 +21,7 @@ macro_rules! trace_test_helper {
         trace_test_helper!($n, $t.with_params($p), $c $i);
     };
     ($n:ident, $t:expr, address_mode $m:ident $c:tt $i:tt) => {
-        trace_test_helper!($n, $t.with_address_mode(AddressMode::$m), $c $i);
+        trace_test_helper!($n, $t.with_address_mode(config::AddressMode::$m), $c $i);
     };
     ($n:ident, $t:expr, implicit_return $r:ident $c:tt $i:tt) => {
         trace_test_helper!($n, $t.with_implicit_return($r), $c $i);
@@ -32,11 +32,11 @@ macro_rules! trace_test_helper {
 
             #[test]
             fn decode() {
-                let mut tracer: Tracer<_, stack::StaticStack<8>> = $t
+                let mut tracer: tracer::Tracer<_, tracer::stack::StaticStack<8>> = $t
                     .build()
                     .expect("Could not build tracer");
                 $(
-                    let payload: InstructionTrace = $p.into();
+                    let payload: payload::InstructionTrace = $p.into();
                     tracer.process_te_inst(&payload).expect("Could not process packet");
                     trace_check_def!(tracer, $($i),*);
                     assert_eq!(tracer.next(), None);
@@ -45,11 +45,11 @@ macro_rules! trace_test_helper {
 
             #[test]
             fn size_hint() {
-                let mut tracer: Tracer<_, stack::StaticStack<8>> = $t
+                let mut tracer: tracer::Tracer<_, tracer::stack::StaticStack<8>> = $t
                     .build()
                     .expect("Could not build tracer");
                 $(
-                    let payload: InstructionTrace = $p.into();
+                    let payload: payload::InstructionTrace = $p.into();
                     let mut items = trace_item_count!($($i),*);
                     tracer.process_te_inst(&payload).expect("Could not process packet");
                     while items > 0 {

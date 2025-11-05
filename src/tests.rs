@@ -9,15 +9,15 @@ mod jumps;
 mod section762;
 mod traps;
 
-use super::*;
-
 use crate::binary;
-use crate::decoder::payload;
+use crate::config;
+use crate::decoder::{payload, sync};
 use crate::instruction;
-use crate::types::branch;
+use crate::tracer;
+use crate::types::{branch, trap};
 
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
-use item::{Context, Item};
+use tracer::item::{Context, Item};
 
 trace_test!(
     full_branch_map,

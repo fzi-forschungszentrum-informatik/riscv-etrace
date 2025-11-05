@@ -112,6 +112,9 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(test)]
+mod tests;
+
 pub mod binary;
 pub mod config;
 pub mod decoder;
