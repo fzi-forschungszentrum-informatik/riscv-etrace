@@ -78,15 +78,18 @@ pub trait Info {
     /// Determine whether this instruction can be considered a function call
     ///
     /// Returns `true` if [`Self`] refers to an instruction that we consider a
-    /// function call, that is a jump-and-link instruction with `ra` (the return
-    /// address register) as `rd`.
+    /// function call, that is a jump-and-link instruction with either `ra`/`x1`
+    /// (the return address register) or `x5` (alternative return address) as
+    /// `rd`. See section 4.1.1 of the specification for details.
     fn is_call(&self) -> bool;
 
     /// Determine whether this instruction can be considered a function return
     ///
     /// Returns `true` if [`Self`] refers to an instruction that we consider a
-    /// function return, that is a jump register instruction with `ra` (the
-    /// return address register) as `rs1`.
+    /// function return, that is a jump register instruction with either
+    /// `ra`/`x1` (the return address register) or `x5` (alternative return
+    /// address) as `rs1` and neither as `rd`. See section 4.1.1 of the
+    /// specification for details.
     fn is_return(&self) -> bool;
 
     /// Determin whether this instruction is a branch instruction
@@ -215,11 +218,20 @@ impl Info for riscv_isa::Instruction {
     }
 
     fn is_call(&self) -> bool {
-        matches!(self, Self::JALR { rd: 1, .. } | Self::JAL { rd: 1, .. })
+        match self {
+            Self::JALR { rd: 1, rs1, .. } => *rs1 != 5,
+            Self::JALR { rd: 5, rs1, .. } => *rs1 != 1,
+            Self::JAL { rd, .. } => *rd == 1 || *rd == 5,
+            _ => false,
+        }
     }
 
     fn is_return(&self) -> bool {
-        matches!(self, Self::JALR { rd: 0, rs1: 1, .. })
+        match self {
+            Self::JALR { rd, rs1: 1, .. } => *rd != 1 && *rd != 5,
+            Self::JALR { rd, rs1: 5, .. } => *rd != 1 && *rd != 5,
+            _ => false,
+        }
     }
 }
 

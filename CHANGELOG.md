@@ -5,6 +5,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Changed
+
+- Adjust documenttion and impls of `intruction::info::Info` fns regarding the
+  classification of jumps as calls or returns to be in line with the
+  specification.
+
 ### Added
 
 - A fn `tracer::Builder::with_implicit_return` for initially (un)setting the
