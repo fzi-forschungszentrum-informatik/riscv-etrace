@@ -493,7 +493,7 @@ fn decode_encap_null_idle() {
         .build(data);
     let encap_data: decoder::encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 1);
-    assert_eq!(encap_data.is_null(), true);
+    assert!(encap_data.is_null());
     assert_eq!(encap_data.into_normal(), None);
 }
 
