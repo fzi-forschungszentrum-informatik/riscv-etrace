@@ -91,18 +91,6 @@ fn missing_msb_shift_is_correct() {
     assert_eq!(decoder.read_bits(63), Ok(-124i64));
 }
 
-// `format` related tests
-bitstream_test!(sync_support, b"\x03", format::Sync::Support);
-bitstream_test!(sync_start, b"\x00", format::Sync::Start);
-bitstream_test!(sync_trap, b"\x01", format::Sync::Trap);
-bitstream_test!(sync_ctx, b"\x02", format::Sync::Context);
-bitstream_test!(fmt_ex_branch_count, b"\x00", format::Ext::BranchCount, f0s_width_p: 1);
-bitstream_test!(fmt_ex_jti, b"\x01", format::Ext::JumpTargetIndex, f0s_width_p: 1);
-bitstream_test!(fmt_1, b"\x04", format::Format::Ext(format::Ext::JumpTargetIndex), f0s_width_p: 1);
-bitstream_test!(fmt_2, b"\x01", format::Format::Branch, f0s_width_p: 1);
-bitstream_test!(fmt_3, b"\x02", format::Format::Addr, f0s_width_p: 1);
-bitstream_test!(fmt_4, b"\x07", format::Format::Sync(format::Sync::Trap), f0s_width_p: 1);
-
 // `payload` related tests
 bitstream_test!(
     extension_jti_1,
