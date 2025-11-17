@@ -75,6 +75,18 @@ impl<I, D> From<Support<I, D>> for Synchronization<I, D> {
     }
 }
 
+impl<U: Unit> Decode<'_, '_, U> for Synchronization<U::IOptions, U::DOptions> {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        match decoder.read_bits::<u8>(2)? {
+            0b00 => Start::decode(decoder).map(Into::into),
+            0b01 => Trap::decode(decoder).map(Into::into),
+            0b10 => Context::decode(decoder).map(Into::into),
+            0b11 => Support::decode(decoder).map(Into::into),
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Start of trace
 ///
 /// Represents a format 3, subformat 0 packet. It is sent by the encoder for the
