@@ -7,7 +7,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ### Changed
 
-- Adjust documenttion and impls of `intruction::info::Info` fns regarding the
+- Adjust documentation and impls of `intruction::info::Info` fns regarding the
   classification of jumps as calls or returns to be in line with the
   specification.
 - A `types::branch::Map` now holds at most 32 branches. This is reflected in a
