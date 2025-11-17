@@ -161,7 +161,7 @@ trace_test!(
     payload::Branch {
         branch_map: branch::Map::new(2, 0b10),
         address: Some(payload::AddressInfo {
-            address: 0xffff_ffff_ffff_fef4,
+            address: 0x1110 - 0x121c,
             notify: false,
             updiscon: false,
             irdepth: None,

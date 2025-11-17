@@ -294,14 +294,14 @@ impl<U> Decode<'_, '_, U> for Branch {
 /// address. It is sent by the encoder when the address of an instruction
 /// must be reported, and there is no unreported branch information. The
 /// address is differential (i.e. relative to the last reported address)
-/// unless full address mode is enabled, but _not_ sign extended.
+/// unless full address mode is enabled. The address is always sign extended.
 ///
 /// Inaddition to being a payload on its own, it also is used as part of other
 /// payloads.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AddressInfo {
     /// Differential instruction address.
-    pub address: u64,
+    pub address: i64,
 
     /// A notification was requested by a trigger
     ///
