@@ -130,7 +130,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
                 self.previous = Some(Event::Address { notify });
                 match self.address_mode {
                     AddressMode::Full => initer.set_address(0u64.wrapping_add_signed(info.address)),
-                    AddressMode::Delta => initer.set_rel_address(info.address as u64),
+                    AddressMode::Delta => initer.set_rel_address(info.address),
                 }
 
                 StopCondition::Address {
