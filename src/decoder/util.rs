@@ -2,19 +2,28 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Utilities for decoding specific items of packets/payloads
 
+use core::ops;
+
 use crate::types::branch;
 
-use super::{Decode, Decoder, Error};
+use super::{truncate, Decode, Decoder, Error};
 
-/// Read an address as `u64`
+/// Read an address
 ///
-/// Read an address as an `u64`, honouring the address width and lsb offset
-/// specified in the `decoder`'s protocol configuration. Since it is read as an
-/// `u64`, it is not sign extended.
-pub fn read_address<U>(decoder: &mut Decoder<U>) -> Result<u64, Error> {
+/// Read an address, honouring the address width and lsb offset specified in the
+/// [`Decoder`]'s protocol configuration.
+pub fn read_address<U, T>(decoder: &mut Decoder<U>) -> Result<T, Error>
+where
+    T: From<u8>
+        + ops::Shl<u8, Output = T>
+        + ops::Shl<usize, Output = T>
+        + ops::Shr<usize, Output = T>
+        + ops::BitOrAssign<T>
+        + truncate::TruncateNum,
+{
     let lsb = decoder.field_widths.iaddress_lsb.get();
     let width = decoder.field_widths.iaddress.get().saturating_sub(lsb);
-    decoder.read_bits::<u64>(width).map(|v| v << lsb)
+    decoder.read_bits::<T>(width).map(|v| v << lsb)
 }
 
 /// Read the `irreport` and `irdepth` fields

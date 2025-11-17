@@ -34,7 +34,7 @@ trace_test!(
         (0x80000020, COMPRESSED)
     }
     payload::AddressInfo {
-        address: 0x16u64.wrapping_sub(0x20),
+        address: 0x16 - 0x20,
         notify: false,
         updiscon: false,
         irdepth: None,
@@ -52,7 +52,7 @@ trace_test!(
         (0x80000020, COMPRESSED)
     }
     payload::AddressInfo {
-        address: 0x1eu64.wrapping_sub(0x20),
+        address: 0x1e - 0x20,
         notify: false,
         updiscon: false,
         irdepth: None,

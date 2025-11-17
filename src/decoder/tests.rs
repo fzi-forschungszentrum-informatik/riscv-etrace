@@ -282,7 +282,7 @@ bitstream_test!(
     decode_instruction_trace_address_payload,
     b"\xFA\xFB",
     InstructionTrace::Address(AddressInfo {
-        address: 18446744073709551100,
+        address: -0x204,
         notify: false,
         updiscon: false,
         irdepth: None
