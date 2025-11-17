@@ -405,7 +405,7 @@ bitstream_test!(
         ienable: true,
         encoder_mode: sync::EncoderMode::BranchTrace,
         qual_status: sync::QualStatus::TraceLost,
-        ioptions: decoder::unit::ReferenceIOptions {
+        ioptions: unit::ReferenceIOptions {
             implicit_return: false,
             implicit_exception: false,
             full_address: false,
@@ -414,7 +414,7 @@ bitstream_test!(
         },
         denable: false,
         dloss: false,
-        doptions: decoder::unit::ReferenceDOptions {
+        doptions: unit::ReferenceDOptions {
             no_address: false,
             no_data: false,
             full_address: false,
@@ -431,7 +431,7 @@ bitstream_test!(
         ienable: true,
         encoder_mode: sync::EncoderMode::BranchTrace,
         qual_status: sync::QualStatus::EndedNtr,
-        ioptions: decoder::unit::ReferenceIOptions {
+        ioptions: unit::ReferenceIOptions {
             implicit_return: false,
             implicit_exception: false,
             full_address: false,
@@ -440,7 +440,7 @@ bitstream_test!(
         },
         denable: false,
         dloss: false,
-        doptions: decoder::unit::ReferenceDOptions {
+        doptions: unit::ReferenceDOptions {
             no_address: false,
             no_data: false,
             full_address: false,
@@ -461,7 +461,7 @@ fn decode_encap_packet() {
         .with_timestamp_width(1)
         .with_hart_index_width(8)
         .build(data);
-    let encap_packet: decoder::encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
+    let encap_packet: encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_packet.flow(), 2);
     let normal_encap = encap_packet.into_normal().unwrap();
     assert_eq!(normal_encap.flow(), 2);
@@ -469,7 +469,7 @@ fn decode_encap_packet() {
     assert_eq!(normal_encap.timestamp(), Some(0x8D));
     assert_eq!(
         normal_encap.payload().unwrap(),
-        decoder::payload::Payload::InstructionTrace(InstructionTrace::Synchronization(
+        payload::Payload::InstructionTrace(InstructionTrace::Synchronization(
             sync::Synchronization::Start(sync::Start {
                 branch: true,
                 ctx: sync::Context {
@@ -491,7 +491,7 @@ fn decode_encap_null_idle() {
         .with_params(&PARAMS_32)
         .with_hart_index_width(8)
         .build(data);
-    let encap_data: decoder::encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
+    let encap_data: encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 1);
     assert!(encap_data.is_null());
     assert_eq!(encap_data.into_normal(), None);
@@ -505,6 +505,6 @@ fn decode_encap_null_align() {
         .with_params(&PARAMS_32)
         .with_timestamp_width(1)
         .build(data);
-    let encap_data: decoder::encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
+    let encap_data: encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 3);
 }
