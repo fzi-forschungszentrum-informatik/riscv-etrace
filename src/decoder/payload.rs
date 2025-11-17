@@ -4,7 +4,7 @@
 
 use crate::types::branch;
 
-use super::{format, sync, unit, util, Decode, Decoder, Error};
+use super::{sync, unit, util, Decode, Decoder, Error};
 
 /// An E-Trace payload
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -87,7 +87,13 @@ pub enum InstructionTrace<I = unit::ReferenceIOptions, D = unit::ReferenceDOptio
 
 impl<U: unit::Unit> Decode<'_, '_, U> for InstructionTrace<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        format::Format::decode(decoder)?.decode_payload(decoder)
+        match decoder.read_bits::<u8>(2)? {
+            0b00 => Extension::decode(decoder).map(Into::into),
+            0b01 => Branch::decode(decoder).map(Into::into),
+            0b10 => AddressInfo::decode(decoder).map(Into::into),
+            0b11 => sync::Synchronization::decode(decoder).map(Into::into),
+            _ => unreachable!(),
+        }
     }
 }
 
