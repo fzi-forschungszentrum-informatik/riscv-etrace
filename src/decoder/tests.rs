@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
-use crate::{
-    decoder::{self},
-    types::{self, branch},
-};
 use core::num::NonZeroU8;
-use decoder::sync;
+
+use crate::types::{self, branch};
+
 use payload::AddressInfo;
 use util::read_implicit_return;
 
