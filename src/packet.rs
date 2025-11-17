@@ -112,7 +112,7 @@ impl<U> Builder<U> {
     }
 
     /// Build a [`Decoder`][decoder::Decoder] for the given data
-    pub fn build(self, data: &[u8]) -> decoder::Decoder<'_, U> {
+    pub fn decoder(self, data: &[u8]) -> decoder::Decoder<'_, U> {
         let mut res = decoder::Decoder::new(
             self.field_widths,
             self.unit,

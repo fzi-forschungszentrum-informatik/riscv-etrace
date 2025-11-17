@@ -15,7 +15,7 @@ fn implicit_return_test_none() {
             call_counter_size_p: 1,
             ..Default::default()
         })
-        .build(data);
+        .decoder(data);
     decoder
         .read_bits::<u8>(5)
         .expect("Tried read bit, but failed");
@@ -27,7 +27,7 @@ fn implicit_return_test_none() {
 fn implicit_return_test_empty() {
     let data = b"";
     let builder = Builder::new();
-    let mut decoder = builder.build(data);
+    let mut decoder = builder.decoder(data);
     let result = read_implicit_return(&mut decoder);
     assert!(matches!(result, Err(Error::InsufficientData(_))));
 }
@@ -42,7 +42,7 @@ fn implicit_return_error_depth() {
             call_counter_size_p: 1,
             ..Default::default()
         })
-        .build(data);
+        .decoder(data);
     let result = read_implicit_return(&mut decoder);
     assert!(matches!(result, Err(Error::InsufficientData(_))));
 }
@@ -51,7 +51,7 @@ macro_rules! branch_taken_test {
     ($name: ident, $data:expr, $params:expr, $expected:expr) => {
         #[test]
         fn $name() {
-            let mut decoder = Builder::new().with_params($params).build($data);
+            let mut decoder = Builder::new().with_params($params).decoder($data);
             let instruction_trace: payload::InstructionTrace =
                 Decode::decode(&mut decoder).unwrap();
             let sync_trace: sync::Synchronization = match instruction_trace {
@@ -90,7 +90,7 @@ macro_rules! as_context_test {
     ($name: ident, $data:expr, $params:expr, $expected:expr) => {
         #[test]
         fn $name() {
-            let mut decoder = Builder::new().with_params($params).build($data);
+            let mut decoder = Builder::new().with_params($params).decoder($data);
             let instruction_trace: payload::InstructionTrace =
                 Decode::decode(&mut decoder).unwrap();
             let sync_trace: sync::Synchronization = match instruction_trace {

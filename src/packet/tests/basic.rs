@@ -9,7 +9,7 @@ macro_rules! basic_test {
     ($n:ident, $b:literal, $($t:tt)*) => {
         #[test]
         fn $n() {
-            let mut decoder = Builder::new().build($b);
+            let mut decoder = Builder::new().decoder($b);
             $(decode_test!(decoder, $t);)*
         }
     };

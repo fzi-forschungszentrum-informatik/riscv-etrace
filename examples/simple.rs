@@ -144,7 +144,7 @@ fn main() {
         .unwrap_or_default()
         .for_unit(unit)
         .with_params(&params)
-        .build(trace_data.as_ref());
+        .decoder(trace_data.as_ref());
     let mut tracer: Tracer<_> = tracer::builder()
         .with_binary(binary::Multi::from(binary))
         .with_params(&params)

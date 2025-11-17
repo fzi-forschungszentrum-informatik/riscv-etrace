@@ -43,7 +43,7 @@ use super::{encap, smi};
 /// # let trace_data = b"\x45\x73\x0a\x00";
 /// # let trace_data_next = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
 /// let builder = packet::builder().with_params(&parameters);
-/// let mut decoder = builder.build(trace_data);
+/// let mut decoder = builder.decoder(trace_data);
 /// loop {
 ///     let packet = match decoder.decode_encap_packet() {
 ///         Ok(packet) => packet,
@@ -52,7 +52,7 @@ use super::{encap, smi};
 ///     };
 ///     // ...
 /// }
-/// let mut decoder = builder.build(trace_data_next);
+/// let mut decoder = builder.decoder(trace_data_next);
 /// loop {
 ///     let packet = match decoder.decode_encap_packet() {
 ///         Ok(packet) => packet,
@@ -113,7 +113,7 @@ impl<'d, U> Decoder<'d, U> {
     /// use riscv_etrace::packet;
     ///
     /// # let trace_data = &[];
-    /// let mut decoder = packet::builder().build(trace_data);
+    /// let mut decoder = packet::builder().decoder(trace_data);
     /// assert_eq!(decoder.byte_pos(), 0);
     /// ```
     pub fn byte_pos(&self) -> usize {
