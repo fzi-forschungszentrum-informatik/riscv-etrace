@@ -4,13 +4,13 @@
 
 use std::io::BufRead;
 
-use riscv_etrace::decoder;
 use riscv_etrace::instruction;
+use riscv_etrace::packet;
 use riscv_etrace::tracer::item::{self, Item};
 use riscv_etrace::types::Privilege;
 
-use decoder::payload::InstructionTrace;
 use instruction::base;
+use packet::payload::InstructionTrace;
 
 /// Reference flow spike CSV trace
 ///
@@ -165,10 +165,10 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
 pub fn check_reference(
     reference: &mut std::iter::Peekable<impl Iterator<Item = Item>>,
     item: &Item,
-    payload: &InstructionTrace<impl decoder::unit::IOptions, impl std::any::Any>,
+    payload: &InstructionTrace<impl packet::unit::IOptions, impl std::any::Any>,
     icount: u64,
 ) {
-    use decoder::sync::Synchronization;
+    use packet::sync::Synchronization;
 
     let refitem = reference.peek().expect("Reference trace ended");
     if item != refitem {

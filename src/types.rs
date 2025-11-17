@@ -1,6 +1,6 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Types not specific to [decoder][crate::decoder] or [tracer][crate::tracer]
+//! Types not specific to [packets][crate::packet] or [tracer][crate::tracer]
 
 pub mod branch;
 pub mod trap;

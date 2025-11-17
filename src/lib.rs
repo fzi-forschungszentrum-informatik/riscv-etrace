@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! # Decoder and tracer for RISC-V E-Traces
 //!
-//! This library provides a [decoder] and a [tracer] for the instruction tracing
-//! defined in the [Efficient Trace for RISC-V][etrace] specification. Given
-//! trace packets previously retrieved from an encoder and the traced program,
-//! these allow reconstruction of the execution path.
+//! This library provides a [`packet::Decoder`] and a [tracer] for the
+//! instruction tracing defined in the [Efficient Trace for RISC-V][etrace]
+//! specification. Given trace packets previously retrieved from an encoder and
+//! the traced program, these allow reconstruction of the execution path.
 //!
 //! This library also features a limited [instruction] database with decoding
 //! functionality. Currently, only decoding of RV32IC and RV64IC instructions
@@ -14,12 +14,12 @@
 //!
 //! # Tracing flow
 //!
-//! Raw trace data needs to be decoded via [`Decoder`][decoder::Decoder]s,
-//! which are constructed via a [`decoder::Builder`]. A builder is usually
-//! configured for a trace [`Unit`][decoder::unit::Unit] implementation with
-//! specific [`config::Parameters`].
+//! Raw trace data needs to be decoded via [`packet::Decoder`]s, which are
+//! constructed via a [`packet::Builder`]. A builder is usually configured for a
+//! trace [`Unit`][packet::unit::Unit] implementation with specific
+//! [`config::Parameters`].
 //!
-//! A decoded packet or [`Payload`][decoder::payload::Payload] payload needs to
+//! A decoded packet or [`Payload`][packet::payload::Payload] payload needs to
 //! be dispatched to the [`Tracer`][tracer::Tracer] for that RISC-V hart. It is
 //! the responsibility of the library user to do so.
 //!
@@ -65,7 +65,7 @@
 //!
 //! ```
 //! use riscv_etrace::binary::{self, Binary};
-//! use riscv_etrace::decoder;
+//! use riscv_etrace::packet;
 //! use riscv_etrace::instruction::{base, Instruction};
 //! use riscv_etrace::tracer::{self, Tracer};
 //!
@@ -77,7 +77,7 @@
 //!     .with_offset(binary_offset);
 //!
 //! let parameters = Default::default();
-//! let mut decoder = decoder::builder()
+//! let mut decoder = packet::builder()
 //!     .with_params(&parameters)
 //!     .build(trace_data);
 //! let mut tracer: Tracer<_> = tracer::builder()
@@ -117,7 +117,7 @@ mod tests;
 
 pub mod binary;
 pub mod config;
-pub mod decoder;
 pub mod instruction;
+pub mod packet;
 pub mod tracer;
 pub mod types;

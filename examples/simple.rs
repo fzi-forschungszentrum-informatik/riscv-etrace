@@ -16,7 +16,7 @@ mod spike;
 
 use std::path::PathBuf;
 
-use riscv_etrace::decoder;
+use riscv_etrace::packet;
 
 fn main() {
     use riscv_etrace::binary::{self, Binary};
@@ -135,12 +135,12 @@ fn main() {
 
     // Finally, construct decoder and tracer...
     let unit = matches
-        .get_one::<decoder::unit::Plug>("unit")
+        .get_one::<packet::unit::Plug>("unit")
         .cloned()
         .unwrap_or_default();
     let mut decoder = matches
         .get_one("hart-index-width")
-        .map(|w| decoder::builder().with_hart_index_width(*w))
+        .map(|w| packet::builder().with_hart_index_width(*w))
         .unwrap_or_default()
         .for_unit(unit)
         .with_params(&params)
@@ -221,7 +221,7 @@ fn main() {
 struct TraceUnitParser;
 
 impl clap::builder::TypedValueParser for TraceUnitParser {
-    type Value = decoder::unit::Plug;
+    type Value = packet::unit::Plug;
 
     fn parse_ref(
         &self,
@@ -231,7 +231,7 @@ impl clap::builder::TypedValueParser for TraceUnitParser {
     ) -> Result<Self::Value, clap::Error> {
         use clap::error::{ContextKind, ContextValue};
 
-        decoder::unit::PLUGS
+        packet::unit::PLUGS
             .iter()
             .find(|(n, _)| *n == value)
             .map(|(_, p)| p())

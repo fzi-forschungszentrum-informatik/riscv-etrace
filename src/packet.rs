@@ -53,17 +53,17 @@ use truncate::TruncateNum;
 /// to be [`Copy`] in this case.
 ///
 /// ```
-/// use riscv_etrace::decoder;
+/// use riscv_etrace::packet;
 ///
 /// # let parameters = Default::default();
 /// # let trace_data = b"\x45\x73\x0a\x00";
 /// # let trace_data_next = b"\x45\x73\x0a\x00\x00\x20\x41\x01";
-/// let builder = decoder::builder().with_params(&parameters);
+/// let builder = packet::builder().with_params(&parameters);
 /// let mut decoder = builder.build(trace_data);
 /// loop {
 ///     let packet = match decoder.decode_encap_packet() {
 ///         Ok(packet) => packet,
-///         Err(decoder::Error::InsufficientData(_)) => break,
+///         Err(packet::Error::InsufficientData(_)) => break,
 ///         Err(e) => panic!("{e:?}"),
 ///     };
 ///     // ...
@@ -72,7 +72,7 @@ use truncate::TruncateNum;
 /// loop {
 ///     let packet = match decoder.decode_encap_packet() {
 ///         Ok(packet) => packet,
-///         Err(decoder::Error::InsufficientData(_)) => break,
+///         Err(packet::Error::InsufficientData(_)) => break,
 ///         Err(e) => panic!("{e:?}"),
 ///     };
 ///     // ...
@@ -107,10 +107,10 @@ impl<'d, U> Decoder<'d, U> {
     /// # Example
     ///
     /// ```
-    /// use riscv_etrace::decoder;
+    /// use riscv_etrace::packet;
     ///
     /// # let trace_data = &[];
-    /// let mut decoder = decoder::builder().build(trace_data);
+    /// let mut decoder = packet::builder().build(trace_data);
     /// assert_eq!(decoder.byte_pos(), 0);
     /// ```
     pub fn byte_pos(&self) -> usize {

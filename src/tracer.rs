@@ -14,10 +14,10 @@ pub use item::Item;
 
 use crate::binary::{self, Binary};
 use crate::config::{self, AddressMode, Version};
-use crate::decoder::payload::{InstructionTrace, Payload};
-use crate::decoder::sync;
-use crate::decoder::unit::IOptions;
 use crate::instruction;
+use crate::packet::payload::{InstructionTrace, Payload};
+use crate::packet::sync;
+use crate::packet::unit::IOptions;
 use crate::types::trap;
 
 use error::Error;
@@ -56,10 +56,10 @@ use stack::ReturnStack;
 ///     .build()
 ///     .unwrap();
 ///
-/// # use riscv_etrace::decoder;
-/// # use decoder::payload::{InstructionTrace, Payload};
+/// # use riscv_etrace::packet;
+/// # use packet::payload::{InstructionTrace, Payload};
 /// # let payload: Payload = InstructionTrace::from(
-/// #   decoder::sync::Start {
+/// #   packet::sync::Start {
 /// #       branch: false,
 /// #       ctx: Default::default(),
 /// #       address: 0x28,

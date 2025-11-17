@@ -11,8 +11,8 @@ mod traps;
 
 use crate::binary;
 use crate::config;
-use crate::decoder::{payload, sync};
 use crate::instruction;
+use crate::packet::{payload, sync};
 use crate::tracer;
 use crate::types::{branch, trap};
 
