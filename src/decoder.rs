@@ -7,7 +7,6 @@
 
 pub mod encap;
 pub mod error;
-mod format;
 pub mod payload;
 pub mod smi;
 pub mod sync;
