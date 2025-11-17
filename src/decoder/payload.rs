@@ -198,6 +198,16 @@ pub enum Extension {
     JumpTargetIndex(JumpTargetIndex),
 }
 
+impl<U> Decode<'_, '_, U> for Extension {
+    fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
+        match decoder.read_bits(decoder.field_widths.format0_subformat)? {
+            0 => BranchCount::decode(decoder).map(Self::BranchCount),
+            1 => JumpTargetIndex::decode(decoder).map(Self::JumpTargetIndex),
+            s => Err(Error::UnknownFmt(0, Some(s))),
+        }
+    }
+}
+
 /// Branch count payload
 ///
 /// Represents a format 0, subformat 0 packet. It informs about the number of
