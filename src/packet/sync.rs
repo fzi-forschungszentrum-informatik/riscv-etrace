@@ -171,16 +171,16 @@ pub struct Context {
 impl<U> Decode<'_, '_, U> for Context {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let privilege = decoder
-            .read_bits::<u8>(decoder.field_widths.privilege.get())?
+            .read_bits::<u8>(decoder.widths().privilege.get())?
             .try_into()
             .map_err(Error::UnknownPrivilege)?;
         let time = decoder
-            .field_widths
+            .widths()
             .time
             .map(|w| decoder.read_bits(w.get()))
             .transpose()?;
         let context = decoder
-            .field_widths
+            .widths()
             .context
             .map(|w| decoder.read_bits(w.get()))
             .transpose()?;
