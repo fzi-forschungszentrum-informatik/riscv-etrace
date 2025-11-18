@@ -21,8 +21,9 @@ where
         + ops::BitOrAssign<T>
         + truncate::TruncateNum,
 {
-    let lsb = decoder.field_widths.iaddress_lsb.get();
-    let width = decoder.field_widths.iaddress.get().saturating_sub(lsb);
+    let widths = decoder.widths();
+    let lsb = widths.iaddress_lsb.get();
+    let width = widths.iaddress.get().saturating_sub(lsb);
     decoder.read_bits::<T>(width).map(|v| v << lsb)
 }
 
