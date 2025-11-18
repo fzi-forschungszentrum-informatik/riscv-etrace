@@ -137,14 +137,14 @@ impl<U> Decode<'_, '_, U> for Trap {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
-        let ecause = decoder.read_bits(decoder.field_widths.ecause.get())?;
+        let ecause = decoder.read_bits(decoder.widths().ecause.get())?;
         let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
         let address = util::read_address(decoder)?;
         let tval = if interrupt {
             None
         } else {
-            Some(decoder.read_bits(decoder.field_widths.iaddress.get())?)
+            Some(decoder.read_bits(decoder.widths().iaddress.get())?)
         };
         Ok(Trap {
             branch,
