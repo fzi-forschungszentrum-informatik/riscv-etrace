@@ -206,7 +206,7 @@ pub enum Extension {
 
 impl<U> Decode<'_, '_, U> for Extension {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        match decoder.read_bits(decoder.field_widths.format0_subformat)? {
+        match decoder.read_bits(decoder.widths().format0_subformat)? {
             0 => BranchCount::decode(decoder).map(Self::BranchCount),
             1 => JumpTargetIndex::decode(decoder).map(Self::JumpTargetIndex),
             s => Err(Error::UnknownFmt(0, Some(s))),
@@ -258,7 +258,7 @@ pub struct JumpTargetIndex {
 
 impl<U> Decode<'_, '_, U> for JumpTargetIndex {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        let index = decoder.read_bits(decoder.field_widths.cache_index)?;
+        let index = decoder.read_bits(decoder.widths().cache_index)?;
         let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
         let irdepth = util::read_implicit_return(decoder)?;
         Ok(JumpTargetIndex {
