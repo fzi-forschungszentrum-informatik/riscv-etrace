@@ -38,18 +38,18 @@ fn read_u64() {
         .build(b"\x5f\x5f\x92\xf1\xf0\xf0\xf0\xf0\xf0\xff\x7f\x01\x00\x00\x00\x00\x00\x00\xf0");
     // testing for bit position
     assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
-    assert_eq!(decoder.bit_pos, 6);
+    assert_eq!(decoder.byte_pos(), 0);
     assert_eq!(decoder.read_bits(2), Ok(0b01u64));
-    assert_eq!(decoder.bit_pos, 8);
+    assert_eq!(decoder.byte_pos(), 1);
     assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
-    assert_eq!(decoder.bit_pos, 14);
+    assert_eq!(decoder.byte_pos(), 1);
     // read over byte boundary
     assert_eq!(decoder.read_bits(10), Ok(0b1001001001u64));
-    assert_eq!(decoder.bit_pos, 24);
+    assert_eq!(decoder.byte_pos(), 3);
     assert_eq!(decoder.read_bits(62), Ok(0x3FFF_F0F0_F0F0_F0F1u64));
-    assert_eq!(decoder.bit_pos, 86);
+    assert_eq!(decoder.byte_pos(), 10);
     assert_eq!(decoder.read_bits(64), Ok(0xC000_0000_0000_0005u64));
-    assert_eq!(decoder.bit_pos, 150);
+    assert_eq!(decoder.byte_pos(), 18);
 }
 
 #[test]
