@@ -6,7 +6,8 @@ use core::ops;
 
 use crate::types::branch;
 
-use super::{truncate, Decode, Decoder, Error};
+use super::decoder::{Decode, Decoder};
+use super::{truncate, Error};
 
 /// Read an address
 ///

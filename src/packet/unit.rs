@@ -12,7 +12,8 @@ use core::fmt;
 
 use crate::config;
 
-use super::{Decode, Decoder, Error};
+use super::decoder::{Decode, Decoder};
+use super::error::Error;
 
 use config::AddressMode;
 

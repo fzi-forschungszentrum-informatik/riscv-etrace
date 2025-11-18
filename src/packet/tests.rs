@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 
-use core::num::NonZeroU8;
+use core::num::{NonZeroU8, NonZeroUsize};
 
 use crate::types::{self, branch};
 
-use payload::AddressInfo;
+use decoder::Decode;
+use payload::{AddressInfo, InstructionTrace};
+use truncate::TruncateNum;
 use util::read_implicit_return;
 
 macro_rules! bitstream_test {

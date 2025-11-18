@@ -8,8 +8,9 @@
 
 use crate::types::{trap, Privilege};
 
+use super::decoder::{Decode, Decoder};
 use super::unit::{self, Unit};
-use super::{util, Decode, Decoder, Error};
+use super::{util, Error};
 
 /// Synchronization payload
 ///

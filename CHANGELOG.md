@@ -13,6 +13,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A `types::branch::Map` now holds at most 32 branches. This is reflected in a
   changed value for `MAX_BRANCHES` and `raw_map` returning an `u32`.
 - The `decoder` module was renamed to `packet`.
+- The `packet::Decoder` was moved to a new, dedicated module `packet::decoder`.
 - `packet::payload::AddressInfo::address` is now an `i64` which is always
   sign-extended.
 - `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.

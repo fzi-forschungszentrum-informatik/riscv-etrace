@@ -10,7 +10,8 @@
 
 use core::fmt;
 
-use super::{payload, unit, Decode, Decoder, Error};
+use super::decoder::{Decode, Decoder};
+use super::{payload, unit, Error};
 
 /// RISC-V Packet Encapsulation
 ///

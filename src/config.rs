@@ -11,8 +11,8 @@ use core::num::NonZeroU8;
 ///
 /// These parameters to the encoder are defined in the specification. They
 /// define the widths, and in some cases the presence or absence, of various
-/// fields in packets decoded by the [decoder][crate::packet::Decoder] and
-/// sizes of state that needs to be preserved by the [tracer][crate::tracer].
+/// fields in [packets and payloads][crate::packet] and sizes of state that
+/// needs to be preserved by the [tracer][crate::tracer].
 ///
 /// # Serde
 ///

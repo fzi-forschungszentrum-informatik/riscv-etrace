@@ -4,7 +4,8 @@
 
 use crate::types::branch;
 
-use super::{sync, unit, util, Decode, Decoder, Error};
+use super::decoder::{Decode, Decoder};
+use super::{sync, unit, util, Error};
 
 /// An E-Trace payload
 #[derive(Copy, Clone, Debug, PartialEq)]
