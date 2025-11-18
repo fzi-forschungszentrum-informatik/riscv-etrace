@@ -210,7 +210,7 @@ impl<U: Unit> Decode<'_, '_, U> for Support<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
         let encoder_mode = decoder
-            .read_bits::<u8>(decoder.unit.encoder_mode_width())?
+            .read_bits::<u8>(decoder.unit().encoder_mode_width())?
             .try_into()
             .map_err(Error::UnknownEncoderMode)?;
         let qual_status = QualStatus::decode(decoder)?;
