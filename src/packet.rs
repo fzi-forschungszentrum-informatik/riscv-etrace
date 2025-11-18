@@ -90,6 +90,25 @@ pub struct Decoder<'d, U> {
 }
 
 impl<'d, U> Decoder<'d, U> {
+    /// Create a new decoder
+    fn new(
+        field_widths: width::Widths,
+        unit: U,
+        hart_index_width: u8,
+        timestamp_width: u8,
+        trace_type_width: u8,
+    ) -> Self {
+        Self {
+            data: &[],
+            bit_pos: 0,
+            field_widths,
+            unit,
+            hart_index_width,
+            timestamp_width,
+            trace_type_width,
+        }
+    }
+
     /// Retrieve the number of bytes left in this decoder's data
     ///
     /// If the decoder is currently not at a byte boundary, the number returned
@@ -373,15 +392,15 @@ impl<U> Builder<U> {
 
     /// Build a [`Decoder`] for the given data
     pub fn build(self, data: &[u8]) -> Decoder<'_, U> {
-        Decoder {
-            data,
-            bit_pos: 0,
-            field_widths: self.field_widths,
-            unit: self.unit,
-            hart_index_width: self.hart_index_width,
-            timestamp_width: self.timestamp_width,
-            trace_type_width: self.trace_type_width,
-        }
+        let mut res = Decoder::new(
+            self.field_widths,
+            self.unit,
+            self.hart_index_width,
+            self.timestamp_width,
+            self.trace_type_width,
+        );
+        res.reset(data);
+        res
     }
 }
 
