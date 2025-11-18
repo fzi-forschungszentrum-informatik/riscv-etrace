@@ -168,8 +168,12 @@ fn implicit_return_test_none() {
     let data = b"\x54\x42\x03\x00\x04\x00\x00\x80";
 
     let builder = Builder::new();
-    let mut decoder = builder.build(data);
-    decoder.field_widths.stack_depth = Some(NonZeroU8::new(1).unwrap());
+    let mut decoder = builder
+        .with_params(&config::Parameters {
+            call_counter_size_p: 1,
+            ..Default::default()
+        })
+        .build(data);
     decoder
         .read_bits::<u8>(5)
         .expect("Tried read bit, but failed");
@@ -191,8 +195,12 @@ fn implicit_return_error_depth() {
     // let data = b"";
     let data: &[u8] = &[]; // no bytes at all
     let builder = Builder::new();
-    let mut decoder = builder.build(data);
-    decoder.field_widths.stack_depth = Some(NonZeroU8::new(16).unwrap());
+    let mut decoder = builder
+        .with_params(&config::Parameters {
+            call_counter_size_p: 1,
+            ..Default::default()
+        })
+        .build(data);
     let result = read_implicit_return(&mut decoder);
     assert!(matches!(result, Err(Error::InsufficientData(_))));
 }
