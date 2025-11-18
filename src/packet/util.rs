@@ -37,7 +37,7 @@ pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>
     // unconditionally in order to keep the overall width read constant.
     let report = decoder.read_differential_bit()?;
     let depth = decoder
-        .field_widths
+        .widths()
         .stack_depth
         .map(|w| decoder.read_bits(w.get()))
         .transpose()?;
