@@ -162,6 +162,26 @@ impl<'d, U> Decoder<'d, U> {
         &self.unit
     }
 
+    /// Retrieve the payload field widths
+    fn widths(&self) -> &width::Widths {
+        &self.field_widths
+    }
+
+    /// Retrieve the hart index width
+    fn hart_index_width(&self) -> u8 {
+        self.hart_index_width
+    }
+
+    /// Retrieve the width of the timestamp used in packet headers
+    fn timestamp_width(&self) -> u8 {
+        self.timestamp_width
+    }
+
+    /// Retrieve the trace type width
+    fn trace_type_width(&self) -> u8 {
+        self.trace_type_width
+    }
+
     /// Advance the position to the next byte boundary
     fn advance_to_byte(&mut self) {
         if self.bit_pos & 0x7 != 0 {
