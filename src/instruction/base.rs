@@ -119,34 +119,3 @@ impl info::MakeDecode for Set {
         Self::Rv64I
     }
 }
-
-#[repr(u32)]
-#[derive(Eq, PartialEq)]
-enum OpCode {
-    MiscMem = 0b0001111,
-    Lui = 0b0110111,
-    Auipc = 0b0010111,
-    Branch = 0b1100011,
-    Jalr = 0b1100111,
-    Jal = 0b1101111,
-    System = 0b1110011,
-    Ignored,
-}
-
-impl From<u32> for OpCode {
-    fn from(value: u32) -> Self {
-        use OpCode::*;
-
-        const MASK: u32 = 0x7F;
-        match value & MASK {
-            x if x == Auipc as u32 => Auipc,
-            x if x == Lui as u32 => Lui,
-            x if x == MiscMem as u32 => MiscMem,
-            x if x == Branch as u32 => Branch,
-            x if x == Jalr as u32 => Jalr,
-            x if x == Jal as u32 => Jal,
-            x if x == System as u32 => System,
-            _ => Ignored,
-        }
-    }
-}
