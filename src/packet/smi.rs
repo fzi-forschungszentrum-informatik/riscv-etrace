@@ -108,7 +108,7 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
             .read_bit()?
             .then(|| decoder.read_bits(16))
             .transpose()?;
-        let hart = decoder.read_bits(decoder.hart_index_width)?;
+        let hart = decoder.read_bits(decoder.hart_index_width())?;
         decoder.advance_to_byte();
         decoder
             .split_data(decoder.byte_pos() + payload_len)

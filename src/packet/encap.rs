@@ -72,9 +72,9 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
 
         match core::num::NonZeroU8::new(length) {
             Some(length) => {
-                let src_id = decoder.read_bits(decoder.hart_index_width)?;
+                let src_id = decoder.read_bits(decoder.hart_index_width())?;
                 let timestamp = extend
-                    .then(|| decoder.read_bits(8 * decoder.timestamp_width))
+                    .then(|| decoder.read_bits(8 * decoder.timestamp_width()))
                     .transpose()?;
                 decoder
                     .split_data(decoder.byte_pos() + length.get() as usize)
@@ -136,7 +136,7 @@ impl<'a, 'd, U> Normal<'a, 'd, U> {
 impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
     /// Decode the packet's E-Trace payload
     pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
-        let width = self.decoder.trace_type_width;
+        let width = self.decoder.trace_type_width();
         match self.decoder.read_bits::<u8>(width)? {
             0 => Decode::decode(self.decoder).map(payload::Payload::InstructionTrace),
             1 => Ok(payload::Payload::DataTrace),

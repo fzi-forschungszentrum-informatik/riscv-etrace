@@ -137,14 +137,14 @@ impl<U> Decode<'_, '_, U> for Trap {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
-        let ecause = decoder.read_bits(decoder.field_widths.ecause.get())?;
+        let ecause = decoder.read_bits(decoder.widths().ecause.get())?;
         let interrupt = decoder.read_bit()?;
         let thaddr = decoder.read_bit()?;
         let address = util::read_address(decoder)?;
         let tval = if interrupt {
             None
         } else {
-            Some(decoder.read_bits(decoder.field_widths.iaddress.get())?)
+            Some(decoder.read_bits(decoder.widths().iaddress.get())?)
         };
         Ok(Trap {
             branch,
@@ -171,16 +171,16 @@ pub struct Context {
 impl<U> Decode<'_, '_, U> for Context {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let privilege = decoder
-            .read_bits::<u8>(decoder.field_widths.privilege.get())?
+            .read_bits::<u8>(decoder.widths().privilege.get())?
             .try_into()
             .map_err(Error::UnknownPrivilege)?;
         let time = decoder
-            .field_widths
+            .widths()
             .time
             .map(|w| decoder.read_bits(w.get()))
             .transpose()?;
         let context = decoder
-            .field_widths
+            .widths()
             .context
             .map(|w| decoder.read_bits(w.get()))
             .transpose()?;
@@ -210,7 +210,7 @@ impl<U: Unit> Decode<'_, '_, U> for Support<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
         let encoder_mode = decoder
-            .read_bits::<u8>(decoder.unit.encoder_mode_width())?
+            .read_bits::<u8>(decoder.unit().encoder_mode_width())?
             .try_into()
             .map_err(Error::UnknownEncoderMode)?;
         let qual_status = QualStatus::decode(decoder)?;

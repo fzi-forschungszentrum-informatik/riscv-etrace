@@ -21,8 +21,9 @@ where
         + ops::BitOrAssign<T>
         + truncate::TruncateNum,
 {
-    let lsb = decoder.field_widths.iaddress_lsb.get();
-    let width = decoder.field_widths.iaddress.get().saturating_sub(lsb);
+    let widths = decoder.widths();
+    let lsb = widths.iaddress_lsb.get();
+    let width = widths.iaddress.get().saturating_sub(lsb);
     decoder.read_bits::<T>(width).map(|v| v << lsb)
 }
 
@@ -36,7 +37,7 @@ pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>
     // unconditionally in order to keep the overall width read constant.
     let report = decoder.read_differential_bit()?;
     let depth = decoder
-        .field_widths
+        .widths()
         .stack_depth
         .map(|w| decoder.read_bits(w.get()))
         .transpose()?;
