@@ -45,6 +45,7 @@ impl info::Decode<Option<Kind>> for Set {
                 0b001 => Some(Kind::fence_i),
                 _ => None,
             },
+            0b0010011 if insn >> 7 == 0 => Some(Kind::nop),
             0b0110111 => Some(Kind::lui(insn.into())),
             0b0010111 => Some(Kind::auipc(insn.into())),
             0b1100011 => match funct3 {
@@ -75,6 +76,7 @@ impl info::Decode<Option<Kind>> for Set {
         let op = insn & 0x3;
         let func3 = insn >> 13;
         match (op, func3) {
+            (0b01, 0b000) if insn == 1 => Some(Kind::c_nop),
             (0b01, 0b001) if *self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);

@@ -76,6 +76,9 @@ pub enum Kind {
     c_ebreak,
     // I
     jalr(format::TypeI),
+
+    nop,
+    c_nop,
 }
 
 /// Construction
@@ -299,6 +302,8 @@ impl fmt::Display for Kind {
             Self::sret => write!(f, "sret"),
             Self::uret => write!(f, "uret"),
             Self::dret => write!(f, "dret"),
+            Self::nop => write!(f, "nop"),
+            Self::c_nop => write!(f, "c_nop"),
         }
     }
 }
@@ -368,6 +373,8 @@ impl From<Kind> for Instruction {
             Kind::c_j(_) | Kind::c_jal(_) | Kind::c_jr(_) | Kind::c_jalr(_) => Size::Compressed,
             Kind::c_lui(_) => Size::Compressed,
             Kind::c_ebreak => Size::Compressed,
+            Kind::nop => Size::Normal,
+            Kind::c_nop => Size::Compressed,
         };
         Self {
             info: Some(kind),
