@@ -10,6 +10,9 @@ pub trait TruncateNum {
     /// be sign-extended, preserving only the lower `bit_count` bits from the
     /// original value.
     fn truncated(self, bit_count: u8) -> Self;
+
+    /// Retrieve the least significant byte of this value
+    fn lsb(self) -> u8;
 }
 
 macro_rules! unsigned_truncate {
@@ -17,6 +20,10 @@ macro_rules! unsigned_truncate {
         impl TruncateNum for $t {
             fn truncated(self, bit_count: u8) -> Self {
                 self & !((!<$t>::MIN).checked_shl(bit_count.into()).unwrap_or(0))
+            }
+
+            fn lsb(self) -> u8 {
+                self as u8
             }
         }
     };
@@ -40,5 +47,9 @@ impl TruncateNum for i64 {
         } else {
             self | upper_bits
         }
+    }
+
+    fn lsb(self) -> u8 {
+        self as u8
     }
 }
