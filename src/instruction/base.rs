@@ -39,15 +39,15 @@ impl info::Decode<Option<Kind>> for Set {
     fn decode_32(&self, insn: u32) -> Option<Kind> {
         let funct3 = (insn >> 12) & 0x7;
 
-        match OpCode::from(insn) {
-            OpCode::MiscMem => match funct3 {
+        match insn & 0x7f {
+            0b0001111 => match funct3 {
                 0b000 => Some(Kind::fence),
                 0b001 => Some(Kind::fence_i),
                 _ => None,
             },
-            OpCode::Lui => Some(Kind::lui(insn.into())),
-            OpCode::Auipc => Some(Kind::auipc(insn.into())),
-            OpCode::Branch => match funct3 {
+            0b0110111 => Some(Kind::lui(insn.into())),
+            0b0010111 => Some(Kind::auipc(insn.into())),
+            0b1100011 => match funct3 {
                 0b000 => Some(Kind::beq(insn.into())),
                 0b001 => Some(Kind::bne(insn.into())),
                 0b100 => Some(Kind::blt(insn.into())),
@@ -56,9 +56,9 @@ impl info::Decode<Option<Kind>> for Set {
                 0b111 => Some(Kind::bgeu(insn.into())),
                 _ => None,
             },
-            OpCode::Jalr if funct3 == 0 => Some(Kind::jalr(insn.into())),
-            OpCode::Jal => Some(Kind::jal(insn.into())),
-            OpCode::System => match insn >> 7 {
+            0b1100111 if funct3 == 0 => Some(Kind::jalr(insn.into())),
+            0b1101111 => Some(Kind::jal(insn.into())),
+            0b1110011 => match insn >> 7 {
                 0b000000000000_00000_000_00000 => Some(Kind::ecall),
                 0b000000000001_00000_000_00000 => Some(Kind::ebreak),
                 0b000100000010_00000_000_00000 => Some(Kind::sret),
