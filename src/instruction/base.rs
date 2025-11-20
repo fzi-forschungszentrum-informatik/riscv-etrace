@@ -39,15 +39,16 @@ impl info::Decode<Option<Kind>> for Set {
     fn decode_32(&self, insn: u32) -> Option<Kind> {
         let funct3 = (insn >> 12) & 0x7;
 
-        match OpCode::from(insn) {
-            OpCode::MiscMem => match funct3 {
+        match insn & 0x7f {
+            0b0001111 => match funct3 {
                 0b000 => Some(Kind::fence),
                 0b001 => Some(Kind::fence_i),
                 _ => None,
             },
-            OpCode::Lui => Some(Kind::lui(insn.into())),
-            OpCode::Auipc => Some(Kind::auipc(insn.into())),
-            OpCode::Branch => match funct3 {
+            0b0010011 if insn >> 7 == 0 => Some(Kind::nop),
+            0b0110111 => Some(Kind::lui(insn.into())),
+            0b0010111 => Some(Kind::auipc(insn.into())),
+            0b1100011 => match funct3 {
                 0b000 => Some(Kind::beq(insn.into())),
                 0b001 => Some(Kind::bne(insn.into())),
                 0b100 => Some(Kind::blt(insn.into())),
@@ -56,9 +57,9 @@ impl info::Decode<Option<Kind>> for Set {
                 0b111 => Some(Kind::bgeu(insn.into())),
                 _ => None,
             },
-            OpCode::Jalr if funct3 == 0 => Some(Kind::jalr(insn.into())),
-            OpCode::Jal => Some(Kind::jal(insn.into())),
-            OpCode::System => match insn >> 7 {
+            0b1100111 if funct3 == 0 => Some(Kind::jalr(insn.into())),
+            0b1101111 => Some(Kind::jal(insn.into())),
+            0b1110011 => match insn >> 7 {
                 0b000000000000_00000_000_00000 => Some(Kind::ecall),
                 0b000000000001_00000_000_00000 => Some(Kind::ebreak),
                 0b000100000010_00000_000_00000 => Some(Kind::sret),
@@ -75,6 +76,7 @@ impl info::Decode<Option<Kind>> for Set {
         let op = insn & 0x3;
         let func3 = insn >> 13;
         match (op, func3) {
+            (0b01, 0b000) if insn == 1 => Some(Kind::c_nop),
             (0b01, 0b001) if *self == Self::Rv32I => Some(Kind::c_jal(insn.into())),
             (0b01, 0b011) => {
                 let data = format::TypeU::from(insn);
@@ -117,36 +119,5 @@ impl info::MakeDecode for Set {
 
     fn rv64i_full() -> Self {
         Self::Rv64I
-    }
-}
-
-#[repr(u32)]
-#[derive(Eq, PartialEq)]
-enum OpCode {
-    MiscMem = 0b0001111,
-    Lui = 0b0110111,
-    Auipc = 0b0010111,
-    Branch = 0b1100011,
-    Jalr = 0b1100111,
-    Jal = 0b1101111,
-    System = 0b1110011,
-    Ignored,
-}
-
-impl From<u32> for OpCode {
-    fn from(value: u32) -> Self {
-        use OpCode::*;
-
-        const MASK: u32 = 0x7F;
-        match value & MASK {
-            x if x == Auipc as u32 => Auipc,
-            x if x == Lui as u32 => Lui,
-            x if x == MiscMem as u32 => MiscMem,
-            x if x == Branch as u32 => Branch,
-            x if x == Jalr as u32 => Jalr,
-            x if x == Jal as u32 => Jal,
-            x if x == System as u32 => System,
-            _ => Ignored,
-        }
     }
 }

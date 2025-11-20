@@ -101,6 +101,8 @@ decode_test!(
     1633
 );
 decode_test!(jalr_fake, 0x6616f867u32, None);
+decode_test!(nop, 0x00000013u32, Kind::nop);
+decode_test!(c_nop, 0x0001u16, Kind::c_nop);
 
 mod c_jal {
     use super::*;

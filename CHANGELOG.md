@@ -15,6 +15,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - The `decoder` module was renamed to `packet`.
 - `packet::payload::AddressInfo::address` is now an `i64` which is always
   sign-extended.
+- `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
 
 ### Added
 
