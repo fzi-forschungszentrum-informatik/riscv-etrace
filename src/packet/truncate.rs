@@ -12,35 +12,21 @@ pub trait TruncateNum {
     fn truncated(self, bit_count: u8) -> Self;
 }
 
-impl TruncateNum for u8 {
-    fn truncated(self, bit_count: u8) -> Self {
-        self & !((!0u8).checked_shl(bit_count.into()).unwrap_or(0))
-    }
+macro_rules! unsigned_truncate {
+    ($t:ty) => {
+        impl TruncateNum for $t {
+            fn truncated(self, bit_count: u8) -> Self {
+                self & !((!<$t>::MIN).checked_shl(bit_count.into()).unwrap_or(0))
+            }
+        }
+    };
 }
 
-impl TruncateNum for u16 {
-    fn truncated(self, bit_count: u8) -> Self {
-        self & !((!0u16).checked_shl(bit_count.into()).unwrap_or(0))
-    }
-}
-
-impl TruncateNum for u32 {
-    fn truncated(self, bit_count: u8) -> Self {
-        self & !((!0u32).checked_shl(bit_count.into()).unwrap_or(0))
-    }
-}
-
-impl TruncateNum for u64 {
-    fn truncated(self, bit_count: u8) -> Self {
-        self & !((!0u64).checked_shl(bit_count.into()).unwrap_or(0))
-    }
-}
-
-impl TruncateNum for usize {
-    fn truncated(self, bit_count: u8) -> Self {
-        self & !((!0usize).checked_shl(bit_count.into()).unwrap_or(0))
-    }
-}
+unsigned_truncate!(u8);
+unsigned_truncate!(u16);
+unsigned_truncate!(u32);
+unsigned_truncate!(u64);
+unsigned_truncate!(usize);
 
 impl TruncateNum for i64 {
     fn truncated(self, bit_count: u8) -> Self {
