@@ -7,6 +7,7 @@
 
 pub mod decoder;
 pub mod encap;
+pub mod encoder;
 pub mod error;
 pub mod payload;
 pub mod smi;
