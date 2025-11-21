@@ -364,6 +364,27 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Iterator for Trace
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.iter_state {
+            // Depending on follow at least 1 or 2, up to infinite
+            IterationState::TrapItem { follow_up, .. } => {
+                let n = if follow_up { 2 } else { 1 };
+                (n, None)
+            }
+            IterationState::ContextItem { follow_up, .. } => {
+                let n = if follow_up { 2 } else { 1 };
+                (n, None)
+            }
+
+            // Single Item
+            IterationState::SingleItem => (1, Some(1)),
+
+            // Minimum 1 item, but could also be infinite
+            IterationState::FollowExec => (1, None),
+            IterationState::Depleting => (1, None),
+        }
+    }
 }
 
 /// Create a new [`Builder`] for [`Tracer`]s

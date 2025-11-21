@@ -30,6 +30,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
   to a simple accessor fn.
 - The `tracer::stack` module was moved to `types`.
+- `Iterator::size_hint` is now implemented explicitly (and not as a provided fn)
+  for `tracer::Tracer`.
 
 ### Added
 
