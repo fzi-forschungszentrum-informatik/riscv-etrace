@@ -20,6 +20,7 @@ pub struct Encoder<B: AsMut<[u8]>, U> {
     hart_index_width: u8,
     timestamp_width: u8,
     trace_type_width: u8,
+    compress: bool,
 }
 
 impl<B: AsMut<[u8]>, U> Encoder<B, U> {
@@ -31,6 +32,7 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
         hart_index_width: u8,
         timestamp_width: u8,
         trace_type_width: u8,
+        compress: bool,
     ) -> Self {
         Self {
             data,
@@ -41,6 +43,7 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
             hart_index_width,
             timestamp_width,
             trace_type_width,
+            compress,
         }
     }
 
@@ -168,7 +171,7 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
             .split_at_mut_checked(self.bytes_committed)
             .and_then(|(c, f)| c.last().map(|e| (e & 0x80 != 0, f)))
         {
-            if matches!((byte, extend), (0x00, false) | (0xff, true)) {
+            if self.compress && matches!((byte, extend), (0x00, false) | (0xff, true)) {
                 return Ok(());
             }
             fill.fill(if extend { 0xff } else { 0x00 });
