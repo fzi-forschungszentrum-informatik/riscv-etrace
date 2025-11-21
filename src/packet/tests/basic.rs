@@ -7,10 +7,24 @@ use truncate::TruncateNum;
 
 macro_rules! basic_test {
     ($n:ident, $b:literal, $($t:tt)*) => {
-        #[test]
-        fn $n() {
-            let mut decoder = Builder::new().decoder($b);
-            $(decode_test!(decoder, $t);)*
+        mod $n {
+            use super::*;
+
+            #[test]
+            fn decode() {
+                let mut decoder = Builder::new().decoder($b);
+                $(decode_test!(decoder, $t);)*
+            }
+
+            #[test]
+            fn encode() {
+                let mut buffer = alloc::vec::Vec::new();
+                buffer.resize($b.len(), 0);
+                let mut encoder = Builder::new().encoder(buffer.as_mut());
+                $(encode_test!(encoder, $t);)*
+                let len = $b.len() - encoder.uncommitted();
+                assert_eq!(&buffer[..len], $b.as_ref());
+            }
         }
     };
 }
@@ -27,6 +41,19 @@ macro_rules! decode_test {
     ($d:ident, (diff $v:expr $(, $p:literal)?)) => {
         assert_eq!($d.read_differential_bit(), Ok($v));
         $(assert_eq!($d.byte_pos(), $p);)?
+    };
+}
+
+macro_rules! encode_test {
+    ($e:ident, (bits $i:literal, $v:expr $(, $p:literal)?)) => {
+        $e.write_bits($v, $i).expect("Could not write value");
+    };
+    ($e:ident, (bit $v:expr $(, $p:literal)?)) => {
+        $e.write_bit($v).expect("Could not write value");
+    };
+    ($e:ident, (diff $v:expr $(, $p:literal)?)) => {
+        $e.write_differential_bit($v)
+            .expect("Could not write value");
     };
 }
 
