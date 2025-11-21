@@ -43,6 +43,7 @@ pub struct Builder<U = unit::Reference> {
     hart_index_width: u8,
     timestamp_width: u8,
     trace_type_width: u8,
+    no_compress: bool,
 }
 
 impl Builder<unit::Reference> {
@@ -69,6 +70,7 @@ impl<U> Builder<U> {
             hart_index_width: self.hart_index_width,
             timestamp_width: self.timestamp_width,
             trace_type_width: self.trace_type_width,
+            no_compress: self.no_compress,
         }
     }
 
@@ -122,5 +124,23 @@ impl<U> Builder<U> {
         );
         res.reset(data);
         res
+    }
+
+    /// Build an [`Encoder`][encoder::Encoder] for this configuration
+    pub fn encoder<B: AsMut<[u8]>>(self, buffer: B) -> encoder::Encoder<B, U> {
+        encoder::Encoder::new(
+            buffer,
+            self.field_widths,
+            self.unit,
+            self.hart_index_width,
+            self.timestamp_width,
+            self.trace_type_width,
+            !self.no_compress,
+        )
+    }
+
+    /// Build an [`Encoder`][encoder::Encoder] with a [`Default`] buffer
+    pub fn default_encoder<B: AsMut<[u8]> + Default>(self) -> encoder::Encoder<B, U> {
+        self.encoder(Default::default())
     }
 }
