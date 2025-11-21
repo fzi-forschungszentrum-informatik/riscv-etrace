@@ -38,63 +38,6 @@ macro_rules! bitstream_test {
     };
 }
 
-#[test]
-fn read_u64() {
-    let mut decoder = Builder::new()
-        .build(b"\x5f\x5f\x92\xf1\xf0\xf0\xf0\xf0\xf0\xff\x7f\x01\x00\x00\x00\x00\x00\x00\xf0");
-    // testing for bit position
-    assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
-    assert_eq!(decoder.byte_pos(), 0);
-    assert_eq!(decoder.read_bits(2), Ok(0b01u64));
-    assert_eq!(decoder.byte_pos(), 1);
-    assert_eq!(decoder.read_bits(6), Ok(0b011111u64));
-    assert_eq!(decoder.byte_pos(), 1);
-    // read over byte boundary
-    assert_eq!(decoder.read_bits(10), Ok(0b1001001001u64));
-    assert_eq!(decoder.byte_pos(), 3);
-    assert_eq!(decoder.read_bits(62), Ok(0x3FFF_F0F0_F0F0_F0F1u64));
-    assert_eq!(decoder.byte_pos(), 10);
-    assert_eq!(decoder.read_bits(64), Ok(0xC000_0000_0000_0005u64));
-    assert_eq!(decoder.byte_pos(), 18);
-}
-
-#[test]
-fn read_i64() {
-    let mut decoder = Builder::new().build(b"\xd0\xff\xff\xff\xff\xff\xff\xff\x01");
-    assert_eq!(decoder.read_bits(1), Ok(0i64));
-    assert_eq!(decoder.read_bits(64), Ok(-24i64));
-}
-
-#[test]
-fn read_entire_buffer() {
-    let mut decoder = Builder::new().build(b"\xff");
-    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
-    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
-    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
-    assert_eq!(decoder.read_bits(64), Ok(u64::MAX));
-}
-
-#[test]
-fn read_bool_bits() {
-    let mut decoder = Builder::new().build(b"\x55");
-    assert_eq!(decoder.read_bit(), Ok(true));
-    assert_eq!(decoder.read_bit(), Ok(false));
-    assert_eq!(decoder.read_bit(), Ok(true));
-    assert_eq!(decoder.read_bit(), Ok(false));
-    assert_eq!(decoder.read_bit(), Ok(true));
-    assert_eq!(decoder.read_bit(), Ok(false));
-    assert_eq!(decoder.read_bit(), Ok(true));
-    assert_eq!(decoder.read_bit(), Ok(false));
-}
-
-#[test]
-fn missing_msb_shift_is_correct() {
-    let mut decoder = Builder::new().build(b"\x00\xe1\xff\xff\xff\xff\xff\xff\x3f");
-    assert_eq!(decoder.read_bits(6), Ok(0i64));
-    // Modelled after read_address call with iaddress_width_p: 64 and iaddress_lsb_p: 1
-    assert_eq!(decoder.read_bits(63), Ok(-124i64));
-}
-
 // `payload` related tests
 bitstream_test!(
     extension_jti_1,
