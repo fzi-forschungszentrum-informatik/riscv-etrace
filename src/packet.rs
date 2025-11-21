@@ -113,6 +113,18 @@ impl<U> Builder<U> {
         }
     }
 
+    /// Activate or deactivate compression for [`Enocder`][encoder::Encoder]s
+    ///
+    /// Set whether or not [`Enocder`][encoder::Encoder]s build by this builder
+    /// are configured to transparently compress data. Compression is activated
+    /// by default.
+    pub fn with_compression(self, compress: bool) -> Self {
+        Self {
+            no_compress: !compress,
+            ..self
+        }
+    }
+
     /// Build a [`Decoder`][decoder::Decoder] for the given data
     pub fn decoder(self, data: &[u8]) -> decoder::Decoder<'_, U> {
         let mut res = decoder::Decoder::new(
