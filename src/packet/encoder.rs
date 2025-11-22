@@ -62,6 +62,31 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
         (self.data, len)
     }
 
+    /// Retrieve this encoder's unit
+    pub fn unit(&self) -> &U {
+        &self.unit
+    }
+
+    /// Retrieve the payload field widths
+    pub(super) fn widths(&self) -> &Widths {
+        &self.field_widths
+    }
+
+    /// Retrieve the hart index width
+    pub(super) fn hart_index_width(&self) -> u8 {
+        self.hart_index_width
+    }
+
+    /// Retrieve the width of the timestamp used in packet headers
+    pub(super) fn timestamp_width(&self) -> u8 {
+        self.timestamp_width
+    }
+
+    /// Retrieve the trace type width
+    pub(super) fn trace_type_width(&self) -> u8 {
+        self.trace_type_width
+    }
+
     /// Write a single bit
     pub(super) fn write_bit(&mut self, bit: bool) -> Result<(), Error> {
         let byte_pos = self.bit_pos >> 3;
