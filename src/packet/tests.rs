@@ -12,7 +12,6 @@ use crate::types::{self, branch};
 
 use decoder::Decode;
 use payload::{AddressInfo, InstructionTrace};
-use truncate::TruncateNum;
 use util::read_implicit_return;
 
 macro_rules! bitstream_test {
@@ -137,20 +136,6 @@ fn implicit_return_error_depth() {
     let result = read_implicit_return(&mut decoder);
     assert!(matches!(result, Err(Error::InsufficientData(_))));
 }
-
-macro_rules! truncate_test {
-    ($name: ident, $val:expr, $type:ty, $bytes:expr, $expected:expr) => {
-        #[test]
-        fn $name() {
-            let val: $type = $val;
-            assert_eq!(val.truncated($bytes), $expected);
-        }
-    };
-}
-
-truncate_test!(truncate_u16, 0xBEEF, u16, 8, 0xEF);
-truncate_test!(truncate_u32, 0xFFBEEF, u32, 16, 0xBEEF);
-truncate_test!(truncate_i64, 0xBEEF00FF, i64, 0, 0);
 
 const PARAMS_32: config::Parameters = config::Parameters {
     cache_size_p: 0,

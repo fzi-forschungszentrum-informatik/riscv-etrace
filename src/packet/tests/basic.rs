@@ -3,6 +3,8 @@
 //! Basic decoder tests
 use super::*;
 
+use truncate::TruncateNum;
+
 macro_rules! basic_test {
     ($n:ident, $b:literal, $($t:tt)*) => {
         #[test]
@@ -86,3 +88,17 @@ basic_test!(
     (bits 6, 0i64)
     (bits 63, -124i64)
 );
+
+macro_rules! truncate_test {
+    ($name: ident, $val:expr, $type:ty, $bytes:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            let val: $type = $val;
+            assert_eq!(val.truncated($bytes), $expected);
+        }
+    };
+}
+
+truncate_test!(truncate_u16, 0xBEEF, u16, 8, 0xEF);
+truncate_test!(truncate_u32, 0xFFBEEF, u32, 16, 0xBEEF);
+truncate_test!(truncate_i64, 0xBEEF00FF, i64, 0, 0);
