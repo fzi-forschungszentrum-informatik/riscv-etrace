@@ -1,11 +1,11 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Decoder-specific error types and utilities
+//! Packet-specific error types and utilities
 
 use core::fmt;
 use core::num::NonZeroUsize;
 
-/// Decoder errors
+/// Packet decode/encode errors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// The trace type is not known to us
