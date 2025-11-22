@@ -87,6 +87,13 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
         self.trace_type_width
     }
 
+    /// Advance the position to the next byte boundary
+    pub(super) fn advance_to_byte(&mut self) {
+        if self.bit_pos & 0x7 != 0 {
+            self.bit_pos = (self.bit_pos & !0x7usize) + 8;
+        }
+    }
+
     /// Write a single bit
     pub(super) fn write_bit(&mut self, bit: bool) -> Result<(), Error> {
         let byte_pos = self.bit_pos >> 3;
