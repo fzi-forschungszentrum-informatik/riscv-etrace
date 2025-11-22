@@ -95,37 +95,6 @@ bitstream_test!(
     iaddress_lsb_p: 1.try_into().unwrap()
 );
 
-const PARAMS_32: config::Parameters = config::Parameters {
-    cache_size_p: 0,
-    call_counter_size_p: 0,
-    context_width_p: NonZeroU8::new(32).unwrap(),
-    time_width_p: NonZeroU8::new(1).unwrap(),
-    ecause_width_p: NonZeroU8::new(5).unwrap(),
-    f0s_width_p: 0,
-    iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
-    iaddress_width_p: NonZeroU8::new(32).unwrap(),
-    nocontext_p: false,
-    notime_p: true,
-    privilege_width_p: NonZeroU8::new(2).unwrap(),
-    return_stack_size_p: 0,
-    sijump_p: false,
-};
-
-const PARAMS_64: config::Parameters = config::Parameters {
-    cache_size_p: 0,
-    call_counter_size_p: 0,
-    context_width_p: NonZeroU8::new(32).unwrap(),
-    time_width_p: NonZeroU8::new(1).unwrap(),
-    ecause_width_p: NonZeroU8::new(5).unwrap(),
-    f0s_width_p: 0,
-    iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
-    iaddress_width_p: NonZeroU8::new(64).unwrap(),
-    nocontext_p: false,
-    notime_p: true,
-    privilege_width_p: NonZeroU8::new(2).unwrap(),
-    return_stack_size_p: 0,
-    sijump_p: false,
-};
 /*
 Decoded packet: Packet { trace_type: 2, time_tag: None, hart: 0, payload: [115, 0, 0, 0, 0, 25, 65, 0, 8], .. }
 Payload: InstructionTrace(Synchronization(Start(Start { branch: true, ctx: Context { privilege: Machine, time: None, context: Some(0) }, address: 536937572 })))
@@ -226,3 +195,35 @@ bitstream_test!(
     })),
     &PARAMS_32
 );
+
+const PARAMS_32: config::Parameters = config::Parameters {
+    cache_size_p: 0,
+    call_counter_size_p: 0,
+    context_width_p: NonZeroU8::new(32).unwrap(),
+    time_width_p: NonZeroU8::new(1).unwrap(),
+    ecause_width_p: NonZeroU8::new(5).unwrap(),
+    f0s_width_p: 0,
+    iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
+    iaddress_width_p: NonZeroU8::new(32).unwrap(),
+    nocontext_p: false,
+    notime_p: true,
+    privilege_width_p: NonZeroU8::new(2).unwrap(),
+    return_stack_size_p: 0,
+    sijump_p: false,
+};
+
+const PARAMS_64: config::Parameters = config::Parameters {
+    cache_size_p: 0,
+    call_counter_size_p: 0,
+    context_width_p: NonZeroU8::new(32).unwrap(),
+    time_width_p: NonZeroU8::new(1).unwrap(),
+    ecause_width_p: NonZeroU8::new(5).unwrap(),
+    f0s_width_p: 0,
+    iaddress_lsb_p: NonZeroU8::new(1).unwrap(),
+    iaddress_width_p: NonZeroU8::new(64).unwrap(),
+    nocontext_p: false,
+    notime_p: true,
+    privilege_width_p: NonZeroU8::new(2).unwrap(),
+    return_stack_size_p: 0,
+    sijump_p: false,
+};
