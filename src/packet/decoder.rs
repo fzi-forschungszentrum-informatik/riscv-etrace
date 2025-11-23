@@ -329,6 +329,21 @@ impl<U> fmt::Debug for Scoped<'_, '_, U> {
     }
 }
 
+/// Compare two scoped decoders
+///
+/// # Note
+///
+/// Scoped decoders are considered equal if the data within the scope is equal.
+/// Comparison is only guranteed to work if the sub-byte alignment matches.
+impl<U> PartialEq for Scoped<'_, '_, U> {
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(
+            self.decoder.remaining_data(),
+            other.decoder.remaining_data(),
+        )
+    }
+}
+
 impl<'a, 'd, U> Drop for Scoped<'a, 'd, U> {
     fn drop(&mut self) {
         self.decoder.reset(self.remaining);
