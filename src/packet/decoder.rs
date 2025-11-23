@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Packet decoder
 
+use core::fmt;
 use core::num::NonZeroUsize;
 use core::ops;
 
@@ -317,6 +318,14 @@ impl<'a, 'd, U> Scoped<'a, 'd, U> {
     /// Retrieve the wrapped decoder
     pub fn decoder_mut(&mut self) -> &mut Decoder<'d, U> {
         self.decoder
+    }
+}
+
+impl<U> fmt::Debug for Scoped<'_, '_, U> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Scoped")
+            .field("unaligned_data", &self.decoder.remaining_data())
+            .finish_non_exhaustive()
     }
 }
 
