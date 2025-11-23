@@ -291,3 +291,37 @@ impl<'d, U> Decoder<'d, U> {
 pub(super) trait Decode<'a, 'd, U>: Sized {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
 }
+
+/// Scoped decoder
+///
+/// This type wraps a mutable reference to a [`Decoder`]. The [`Decoder`] is
+/// restricted to a predefined length and reset to the rest of the buffer after
+/// the wrapper is dropped.
+pub struct Scoped<'a, 'd, U> {
+    decoder: &'a mut Decoder<'d, U>,
+    remaining: &'d [u8],
+}
+
+impl<'a, 'd, U> Scoped<'a, 'd, U> {
+    /// Create a new scoped decoder
+    ///
+    /// The given decoder is restricted to `length` past the current byte
+    /// position and will be reset to the remaining data after the scoped
+    /// decoder is dropped.
+    pub fn new(decoder: &'a mut Decoder<'d, U>, length: usize) -> Result<Self, Error> {
+        decoder
+            .split_data(decoder.byte_pos().saturating_add(length))
+            .map(|remaining| Self { decoder, remaining })
+    }
+
+    /// Retrieve the wrapped decoder
+    pub fn decoder_mut(&mut self) -> &mut Decoder<'d, U> {
+        self.decoder
+    }
+}
+
+impl<'a, 'd, U> Drop for Scoped<'a, 'd, U> {
+    fn drop(&mut self) {
+        self.decoder.reset(self.remaining);
+    }
+}
