@@ -317,6 +317,20 @@ impl<U> Decode<'_, '_, U> for Branch {
     }
 }
 
+impl<U> Encode<'_, U> for Branch {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        if let Some(address) = self.address.as_ref() {
+            let count = util::BranchCount(self.branch_map.count());
+            encoder.encode(&count)?;
+            encoder.write_bits(self.branch_map.raw_map(), count.field_length())?;
+            encoder.encode(address)
+        } else {
+            encoder.encode(&util::BranchCount(0))?;
+            encoder.write_bits(self.branch_map.raw_map(), 31)
+        }
+    }
+}
+
 /// Address info payload
 ///
 /// Represents a format 2 packet. This payload contains only an instruction
