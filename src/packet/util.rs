@@ -7,6 +7,7 @@ use core::ops;
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::Encoder;
 use super::{truncate, Error};
 
 /// Read an address
@@ -26,6 +27,25 @@ where
     let lsb = widths.iaddress_lsb.get();
     let width = widths.iaddress.get().saturating_sub(lsb);
     decoder.read_bits::<T>(width).map(|v| v << lsb)
+}
+
+/// Write an address
+///
+/// Write an address, honouring the address width and lsb offset specified in the
+/// [`Encoder`]'s protocol configuration.
+pub fn write_address<B, U, T>(encoder: &mut Encoder<B, U>, address: T) -> Result<(), Error>
+where
+    B: AsMut<[u8]>,
+    T: Copy
+        + ops::Shl<usize, Output = T>
+        + ops::Shr<usize, Output = T>
+        + ops::BitOrAssign<T>
+        + truncate::TruncateNum,
+{
+    let widths = encoder.widths();
+    let lsb = widths.iaddress_lsb.get();
+    let width = widths.iaddress.get().saturating_sub(lsb);
+    encoder.write_bits(address >> lsb.into(), width)
 }
 
 /// Read the `irreport` and `irdepth` fields
