@@ -232,6 +232,29 @@ impl<U: Unit> Decode<'_, '_, U> for Support<U::IOptions, U::DOptions> {
     }
 }
 
+impl<'d, U> Encode<'d, U> for Support<U::IOptions, U::DOptions>
+where
+    U: Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        encoder.write_bit(self.ienable)?;
+        encoder.write_bits(
+            u8::from(self.encoder_mode),
+            encoder.unit().encoder_mode_width(),
+        )?;
+        encoder.encode(&self.qual_status)?;
+        encoder.encode(&self.ioptions)?;
+        encoder.write_bit(self.denable)?;
+        if self.denable {
+            encoder.write_bit(self.dloss)?;
+            encoder.encode(&self.doptions)?;
+        }
+        Ok(())
+    }
+}
+
 /// Representation of a change to the filter qualification
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QualStatus {
