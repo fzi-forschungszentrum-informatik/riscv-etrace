@@ -170,7 +170,7 @@ fn main() {
 
         // and dispatch it to the tracer tracing the specified hart.
         if packet.hart() == target_hart {
-            let payload = packet.payload().expect("Could not decode payload");
+            let payload = packet.decode_payload().expect("Could not decode payload");
             if debug {
                 eprintln!("Payload: {payload:?}");
             }
