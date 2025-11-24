@@ -282,6 +282,16 @@ impl<U> Decode<'_, '_, U> for JumpTargetIndex {
     }
 }
 
+impl<U> Encode<'_, U> for JumpTargetIndex {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bits(self.index, encoder.widths().cache_index)?;
+        let count = util::BranchCount(self.branch_map.count());
+        encoder.encode(&count)?;
+        encoder.write_bits(self.branch_map.raw_map(), count.field_length())?;
+        util::write_implicit_return(encoder, self.irdepth)
+    }
+}
+
 /// Branch payload
 ///
 /// Represents a format 1 packet. This packet includes branch information. It is
