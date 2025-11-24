@@ -7,7 +7,7 @@ use core::ops;
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
-use super::encoder::Encoder;
+use super::encoder::{Encode, Encoder};
 use super::{truncate, Error};
 
 /// Read an address
@@ -120,5 +120,11 @@ impl BranchCount {
 impl<U> Decode<'_, '_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         decoder.read_bits(5).map(Self)
+    }
+}
+
+impl<B: AsMut<[u8]>, U> Encode<B, U> for BranchCount {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bits(self.0, 5)
     }
 }
