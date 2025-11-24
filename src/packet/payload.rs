@@ -256,6 +256,17 @@ impl<U> Decode<'_, '_, U> for BranchCount {
     }
 }
 
+impl<U> Encode<'_, U> for BranchCount {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bits(self.branch_count + 31, 32)?;
+        encoder.encode(&self.branch_fmt)?;
+        if let Some(address) = self.address.as_ref() {
+            encoder.encode(address)?;
+        }
+        Ok(())
+    }
+}
+
 /// Jump target index payload
 ///
 /// Represents a format 0, subformat 1 packet.
