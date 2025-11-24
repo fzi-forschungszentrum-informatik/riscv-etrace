@@ -89,6 +89,34 @@ impl<U: Unit> Decode<'_, '_, U> for Synchronization<U::IOptions, U::DOptions> {
     }
 }
 
+impl<'d, U> Encode<'d, U> for Synchronization<U::IOptions, U::DOptions>
+where
+    U: Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        match self {
+            Self::Start(start) => {
+                encoder.write_bits(0b00u8, 2)?;
+                encoder.encode(start)
+            }
+            Self::Trap(trap) => {
+                encoder.write_bits(0b01u8, 2)?;
+                encoder.encode(trap)
+            }
+            Self::Context(ctx) => {
+                encoder.write_bits(0b10u8, 2)?;
+                encoder.encode(ctx)
+            }
+            Self::Support(support) => {
+                encoder.write_bits(0b11u8, 2)?;
+                encoder.encode(support)
+            }
+        }
+    }
+}
+
 /// Start of trace
 ///
 /// Represents a format 3, subformat 0 packet. It is sent by the encoder for the
