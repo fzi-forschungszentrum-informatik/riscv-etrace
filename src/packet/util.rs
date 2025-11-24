@@ -100,13 +100,17 @@ impl BranchCount {
 
     /// Read a branch map with this count
     pub fn read_branch_map<U>(self, decoder: &mut Decoder<U>) -> Result<branch::Map, Error> {
-        let length = core::iter::successors(Some(31), |l| (*l > 0).then_some(l >> 1))
-            .take_while(|l| *l >= self.0)
-            .last()
-            .expect("Could not determine length");
-        let mut map = decoder.read_bits(length)?;
+        let mut map = decoder.read_bits(self.field_length())?;
         map &= !0u32.checked_shl(self.0.into()).unwrap_or_default();
         Ok(branch::Map::new(self.0, map))
+    }
+
+    /// Determine the field length
+    pub fn field_length(self) -> u8 {
+        core::iter::successors(Some(31), |l| (*l > 0).then_some(l >> 1))
+            .take_while(|l| *l >= self.0)
+            .last()
+            .expect("Could not determine length")
     }
 
     /// Count for a full branch map
