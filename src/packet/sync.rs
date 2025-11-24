@@ -158,6 +158,20 @@ impl<U> Decode<'_, '_, U> for Trap {
     }
 }
 
+impl<U> Encode<'_, U> for Trap {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bit(self.branch)?;
+        encoder.encode(&self.ctx)?;
+        encoder.write_bits(self.info.ecause, encoder.widths().ecause.get())?;
+        encoder.write_bit(self.info.tval.is_none())?;
+        encoder.write_bit(self.thaddr)?;
+        if let Some(tval) = self.info.tval {
+            encoder.write_bits(tval, encoder.widths().iaddress.get())?;
+        }
+        Ok(())
+    }
+}
+
 /// Context packet
 ///
 /// Represents a format 3, subformat 2 packet. It informs about a changed
