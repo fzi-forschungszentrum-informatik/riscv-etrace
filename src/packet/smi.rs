@@ -14,14 +14,14 @@ use super::{payload, unit, Error};
 /// specification. A packet consists of SMI specific header information, and an
 /// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
 #[derive(Debug, PartialEq)]
-pub struct Packet<'a, 'd, U> {
+pub struct Packet<P> {
     trace_type: u8,
     time_tag: Option<u16>,
     hart: u64,
-    payload: decoder::Scoped<'a, 'd, U>,
+    payload: P,
 }
 
-impl<U> Packet<'_, '_, U> {
+impl<P> Packet<P> {
     /// Retrieve the [`TraceType`] of this packet's payload
     ///
     /// Returns [`None`] if the trace type is unknown.
@@ -49,7 +49,7 @@ impl<U> Packet<'_, '_, U> {
     }
 }
 
-impl<U: unit::Unit> Packet<'_, '_, U> {
+impl<U: unit::Unit> Packet<decoder::Scoped<'_, '_, U>> {
     /// Decode the packet's E-Trace payload
     pub fn payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let trace_type = self
@@ -65,7 +65,7 @@ impl<U: unit::Unit> Packet<'_, '_, U> {
     }
 }
 
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
+impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
         let trace_type = decoder.read_bits::<u8>(2)?;
