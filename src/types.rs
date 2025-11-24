@@ -31,3 +31,13 @@ impl TryFrom<u8> for Privilege {
         }
     }
 }
+
+impl From<Privilege> for u8 {
+    fn from(p: Privilege) -> Self {
+        match p {
+            Privilege::User => 0b00,
+            Privilege::Supervisor => 0b01,
+            Privilege::Machine => 0b11,
+        }
+    }
+}

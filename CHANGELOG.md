@@ -22,6 +22,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - A fn `tracer::Builder::with_implicit_return` for initially (un)setting the
   initial return option.
+- `From<types::Privilege>` impl for `u8`.
 
 ## 0.5.2 - 2025-11-03
 
