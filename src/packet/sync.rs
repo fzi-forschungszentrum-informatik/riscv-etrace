@@ -116,6 +116,14 @@ impl<U> Decode<'_, '_, U> for Start {
     }
 }
 
+impl<U> Encode<'_, U> for Start {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bit(self.branch)?;
+        encoder.encode(&self.ctx)?;
+        util::write_address(encoder, self.address)
+    }
+}
+
 /// Trap packet
 ///
 /// Represents a format 3, subformat 1 packet. It is sent by the encoder
