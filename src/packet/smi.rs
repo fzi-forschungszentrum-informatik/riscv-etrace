@@ -4,7 +4,7 @@
 
 use core::fmt;
 
-use super::decoder::{Decode, Decoder};
+use super::decoder::{self, Decode, Decoder};
 use super::{payload, unit, Error};
 
 /// A Siemens Messaging Infrastructure (SMI) Packet
@@ -13,12 +13,12 @@ use super::{payload, unit, Error};
 /// as described in Chapter 7. Instruction Trace Encoder Output Packets of the
 /// specification. A packet consists of SMI specific header information, and an
 /// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
+#[derive(Debug, PartialEq)]
 pub struct Packet<'a, 'd, U> {
     trace_type: u8,
     time_tag: Option<u16>,
     hart: u64,
-    decoder: &'a mut Decoder<'d, U>,
-    remaining: &'d [u8],
+    payload: decoder::Scoped<'a, 'd, U>,
 }
 
 impl<U> Packet<'_, '_, U> {
@@ -51,53 +51,17 @@ impl<U> Packet<'_, '_, U> {
 
 impl<U: unit::Unit> Packet<'_, '_, U> {
     /// Decode the packet's E-Trace payload
-    pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+    pub fn payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let trace_type = self
             .raw_trace_type()
             .try_into()
             .map_err(Error::UnknownTraceType)?;
         match trace_type {
             TraceType::Instruction => {
-                Decode::decode(self.decoder).map(payload::Payload::InstructionTrace)
+                Decode::decode(self.payload.decoder_mut()).map(payload::Payload::InstructionTrace)
             }
             TraceType::Data => Ok(payload::Payload::DataTrace),
         }
-    }
-}
-
-impl<U> fmt::Debug for Packet<'_, '_, U> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Packet")
-            .field("trace_type", &self.trace_type)
-            .field("time_tag", &self.time_tag)
-            .field("hart", &self.hart)
-            .field("payload", &self.decoder.remaining_data())
-            .finish_non_exhaustive()
-    }
-}
-
-impl<U> PartialEq for Packet<'_, '_, U> {
-    fn eq(&self, other: &Self) -> bool {
-        PartialEq::eq(
-            &(
-                self.trace_type,
-                self.time_tag,
-                self.hart,
-                self.decoder.remaining_data(),
-            ),
-            &(
-                other.trace_type,
-                other.time_tag,
-                other.hart,
-                other.decoder.remaining_data(),
-            ),
-        )
-    }
-}
-
-impl<U> Drop for Packet<'_, '_, U> {
-    fn drop(&mut self) {
-        self.decoder.reset(self.remaining);
     }
 }
 
@@ -111,15 +75,12 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
             .transpose()?;
         let hart = decoder.read_bits(decoder.hart_index_width())?;
         decoder.advance_to_byte();
-        decoder
-            .split_data(decoder.byte_pos() + payload_len)
-            .map(|remaining| Self {
-                trace_type,
-                time_tag,
-                hart,
-                decoder,
-                remaining,
-            })
+        decoder::Scoped::new(decoder, payload_len).map(|payload| Self {
+            trace_type,
+            time_tag,
+            hart,
+            payload,
+        })
     }
 }
 
