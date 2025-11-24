@@ -110,6 +110,24 @@ pub struct Normal<P> {
 }
 
 impl<P> Normal<P> {
+    /// Create a new "Normal Encapsulation Structure"
+    pub fn new(flow: u8, src_id: u16, payload: P) -> Self {
+        Self {
+            flow,
+            src_id,
+            timestamp: None,
+            payload,
+        }
+    }
+
+    /// Attach a timestamp to this encapsulation structure
+    pub fn with_timestamp(self, timestamp: u64) -> Self {
+        Self {
+            timestamp: Some(timestamp),
+            ..self
+        }
+    }
+
     /// Retrieve the flow indicator of this packet
     pub fn flow(&self) -> u8 {
         self.flow
