@@ -15,7 +15,7 @@ use super::{payload, unit, Error};
 ///
 /// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
 /// of the Encapsulation specification.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Packet<P> {
     NullIdle { flow: u8 },
     NullAlign { flow: u8 },
@@ -101,7 +101,7 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
 /// boundary following the packet. Thus, the packet's data will be consumed
 /// regardless of whether the payload was decoded or not and even if an error
 /// occurred while decoding the payload.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Normal<P> {
     flow: u8,
     src_id: u16,
