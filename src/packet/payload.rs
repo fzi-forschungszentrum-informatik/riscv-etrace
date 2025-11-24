@@ -227,6 +227,15 @@ impl<U> Decode<'_, '_, U> for Extension {
     }
 }
 
+impl<U> Encode<'_, U> for Extension {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        match self {
+            Self::BranchCount(branch) => encoder.encode(branch),
+            Self::JumpTargetIndex(jti) => encoder.encode(jti),
+        }
+    }
+}
+
 /// Branch count payload
 ///
 /// Represents a format 0, subformat 0 packet. It informs about the number of
