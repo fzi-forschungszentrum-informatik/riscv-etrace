@@ -434,4 +434,10 @@ impl<U> Decode<'_, '_, U> for NoOptions {
     }
 }
 
+impl<B: AsMut<[u8]>, U> Encode<B, U> for NoOptions {
+    fn encode(&self, _encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
 impl IOptions for NoOptions {}
