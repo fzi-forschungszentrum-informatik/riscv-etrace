@@ -69,6 +69,21 @@ pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>
     }
 }
 
+/// Write the `irreport` and `irdepth` fields
+///
+/// This fn reads the `irreport` and `irdepth` fields. The former is written
+/// differentially, and is `true` if `irdepth` is not `None`.
+pub fn write_implicit_return<B: AsMut<[u8]>, U>(
+    encoder: &mut Encoder<B, U>,
+    irdepth: Option<usize>,
+) -> Result<(), Error> {
+    encoder.write_differential_bit(irdepth.is_some())?;
+    Option::zip(irdepth, encoder.widths().stack_depth)
+        .map(|(v, w)| encoder.write_bits(v, w.get()))
+        .transpose()?;
+    Ok(())
+}
+
 /// Utility for decoding branch maps
 ///
 /// Branch maps consist of a count and the map data, wtih a field length derived
