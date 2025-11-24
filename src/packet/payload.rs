@@ -5,6 +5,7 @@
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::{sync, unit, util, Error};
 
 /// An E-Trace payload
@@ -74,6 +75,17 @@ impl<U> Decode<'_, '_, U> for BranchFmt {
             0b11 => Ok(BranchFmt::AddrFail),
             _ => unreachable!(),
         }
+    }
+}
+
+impl<U> Encode<'_, U> for BranchFmt {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        let value: u8 = match self {
+            Self::NoAddr => 0b00,
+            Self::Addr => 0b10,
+            Self::AddrFail => 0b11,
+        };
+        encoder.write_bits(value, 2)
     }
 }
 
