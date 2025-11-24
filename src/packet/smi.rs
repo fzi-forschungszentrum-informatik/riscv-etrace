@@ -22,6 +22,24 @@ pub struct Packet<P> {
 }
 
 impl<P> Packet<P> {
+    /// Create a new SMI packet
+    pub fn new(trace_type: u8, hart: u64, payload: P) -> Self {
+        Self {
+            trace_type,
+            time_tag: None,
+            hart,
+            payload,
+        }
+    }
+
+    /// Attach a time tag to this packet
+    pub fn with_time_tag(self, time_tag: u16) -> Self {
+        Self {
+            time_tag: time_tag.into(),
+            ..self
+        }
+    }
+
     /// Retrieve the [`TraceType`] of this packet's payload
     ///
     /// Returns [`None`] if the trace type is unknown.
