@@ -13,7 +13,7 @@ use super::{payload, unit, Error};
 /// as described in Chapter 7. Instruction Trace Encoder Output Packets of the
 /// specification. A packet consists of SMI specific header information, and an
 /// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Packet<P> {
     trace_type: u8,
     time_tag: Option<u16>,
