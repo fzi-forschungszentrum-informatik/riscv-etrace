@@ -365,3 +365,12 @@ impl<U> Decode<'_, '_, U> for AddressInfo {
         })
     }
 }
+
+impl<U> Encode<'_, U> for AddressInfo {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        util::write_address(encoder, self.address)?;
+        encoder.write_differential_bit(self.notify)?;
+        encoder.write_differential_bit(self.updiscon)?;
+        util::write_implicit_return(encoder, self.irdepth)
+    }
+}
