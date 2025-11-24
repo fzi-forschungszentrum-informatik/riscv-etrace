@@ -13,6 +13,7 @@ use core::fmt;
 use crate::config;
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::error::Error;
 
 use config::AddressMode;
@@ -175,6 +176,16 @@ impl<U> Decode<'_, '_, U> for ReferenceIOptions {
             jump_target_cache,
             branch_prediction,
         })
+    }
+}
+
+impl<B: AsMut<[u8]>, U> Encode<B, U> for ReferenceIOptions {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bit(self.implicit_return)?;
+        encoder.write_bit(self.implicit_exception)?;
+        encoder.write_bit(self.full_address)?;
+        encoder.write_bit(self.jump_target_cache)?;
+        encoder.write_bit(self.branch_prediction)
     }
 }
 
