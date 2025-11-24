@@ -16,13 +16,13 @@ use super::{payload, unit, Error};
 /// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
 /// of the Encapsulation specification.
 #[derive(Debug, PartialEq)]
-pub enum Packet<'a, 'd, U> {
+pub enum Packet<P> {
     NullIdle { flow: u8 },
     NullAlign { flow: u8 },
-    Normal(Normal<'a, 'd, U>),
+    Normal(Normal<P>),
 }
 
-impl<'a, 'd, U> Packet<'a, 'd, U> {
+impl<P> Packet<P> {
     /// Retrieve the flow indicator of this packet
     pub fn flow(&self) -> u8 {
         match self {
@@ -43,7 +43,7 @@ impl<'a, 'd, U> Packet<'a, 'd, U> {
     /// Transform into a [`Normal`] Encapsulation Structure
     ///
     /// Returns [`None`] if this packet is a null packet.
-    pub fn into_normal(self) -> Option<Normal<'a, 'd, U>> {
+    pub fn into_normal(self) -> Option<Normal<P>> {
         match self {
             Self::Normal(n) => Some(n),
             _ => None,
@@ -51,13 +51,13 @@ impl<'a, 'd, U> Packet<'a, 'd, U> {
     }
 }
 
-impl<'a, 'd, U> From<Normal<'a, 'd, U>> for Packet<'a, 'd, U> {
-    fn from(normal: Normal<'a, 'd, U>) -> Self {
+impl<P> From<Normal<P>> for Packet<P> {
+    fn from(normal: Normal<P>) -> Self {
         Self::Normal(normal)
     }
 }
 
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
+impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
             // We need to make sure we don't decode a series of `null` packets
@@ -102,14 +102,14 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
 /// regardless of whether the payload was decoded or not and even if an error
 /// occurred while decoding the payload.
 #[derive(Debug, PartialEq)]
-pub struct Normal<'a, 'd, U> {
+pub struct Normal<P> {
     flow: u8,
     src_id: u16,
     timestamp: Option<u64>,
-    payload: decoder::Scoped<'a, 'd, U>,
+    payload: P,
 }
 
-impl<'a, 'd, U> Normal<'a, 'd, U> {
+impl<P> Normal<P> {
     /// Retrieve the flow indicator of this packet
     pub fn flow(&self) -> u8 {
         self.flow
@@ -129,7 +129,7 @@ impl<'a, 'd, U> Normal<'a, 'd, U> {
     }
 }
 
-impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
+impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
     /// Decode the packet's E-Trace payload
     pub fn payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let decoder = self.payload.decoder_mut();
