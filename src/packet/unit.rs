@@ -301,6 +301,18 @@ impl<U> Decode<'_, '_, U> for PULPIOptions {
     }
 }
 
+impl<B: AsMut<[u8]>, U> Encode<B, U> for PULPIOptions {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bit(self.jump_target_cache)?;
+        encoder.write_bit(self.branch_prediction)?;
+        encoder.write_bit(self.implicit_return)?;
+        encoder.write_bit(self.sijump)?;
+        encoder.write_bit(self.implicit_exception)?;
+        encoder.write_bit(self.full_address)?;
+        encoder.write_bit(self.delta_address)
+    }
+}
+
 impl IOptions for PULPIOptions {
     fn address_mode(&self) -> Option<AddressMode> {
         match (self.delta_address, self.full_address) {
