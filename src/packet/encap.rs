@@ -127,6 +127,11 @@ impl<P> Normal<P> {
     pub fn timestamp(&self) -> Option<u64> {
         self.timestamp
     }
+
+    /// Retrieve the packet's payload
+    pub fn payload(&self) -> &P {
+        &self.payload
+    }
 }
 
 impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
