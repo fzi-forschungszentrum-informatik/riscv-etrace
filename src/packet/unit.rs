@@ -235,6 +235,15 @@ impl<U> Decode<'_, '_, U> for ReferenceDOptions {
     }
 }
 
+impl<B: AsMut<[u8]>, U> Encode<B, U> for ReferenceDOptions {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bit(self.no_address)?;
+        encoder.write_bit(self.no_data)?;
+        encoder.write_bit(self.full_address)?;
+        encoder.write_bit(self.full_data)
+    }
+}
+
 /// PULP trace [`Unit`]
 ///
 /// Supports the [PULP rv tracer](https://github.com/pulp-platform/rv_tracer)
