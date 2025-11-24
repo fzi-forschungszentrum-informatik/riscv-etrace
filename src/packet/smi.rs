@@ -127,9 +127,18 @@ impl TryFrom<u8> for TraceType {
     }
 }
 
+impl From<TraceType> for u8 {
+    fn from(t: TraceType) -> Self {
+        match t {
+            TraceType::Instruction => 0b10,
+            TraceType::Data => 0b11,
+        }
+    }
+}
+
 impl PartialEq<u8> for TraceType {
     fn eq(&self, other: &u8) -> bool {
-        Self::try_from(*other).map(|o| *self == o).unwrap_or(false)
+        u8::from(*self) == *other
     }
 }
 
