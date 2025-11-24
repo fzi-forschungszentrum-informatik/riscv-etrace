@@ -47,6 +47,11 @@ impl<P> Packet<P> {
     pub fn hart(&self) -> u64 {
         self.hart
     }
+
+    /// Retrieve the packet's payload
+    pub fn payload(&self) -> &P {
+        &self.payload
+    }
 }
 
 impl<U: unit::Unit> Packet<decoder::Scoped<'_, '_, U>> {
