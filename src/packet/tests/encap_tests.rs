@@ -37,7 +37,7 @@ fn decode_packet() {
     assert_eq!(normal_encap.src_id(), 0x31);
     assert_eq!(normal_encap.timestamp(), Some(0x8D));
     assert_eq!(
-        normal_encap.payload().unwrap(),
+        normal_encap.decode_payload().unwrap(),
         payload::Payload::InstructionTrace(InstructionTrace::Synchronization(
             sync::Synchronization::Start(sync::Start {
                 branch: true,

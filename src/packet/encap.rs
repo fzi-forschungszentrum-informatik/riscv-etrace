@@ -131,7 +131,7 @@ impl<P> Normal<P> {
 
 impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
     /// Decode the packet's E-Trace payload
-    pub fn payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let decoder = self.payload.decoder_mut();
         let width = decoder.trace_type_width();
         match decoder.read_bits::<u8>(width)? {
