@@ -194,6 +194,19 @@ impl<U> Decode<'_, '_, U> for Context {
     }
 }
 
+impl<U> Encode<'_, U> for Context {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bits(u8::from(self.privilege), encoder.widths().privilege.get())?;
+        if let Some(width) = encoder.widths().time {
+            encoder.write_bits(self.time.unwrap_or_default(), width.get())?;
+        }
+        if let Some(width) = encoder.widths().context {
+            encoder.write_bits(self.context.unwrap_or_default(), width.get())?;
+        }
+        Ok(())
+    }
+}
+
 /// Supporting information for the decoder.
 ///
 /// Represents a format 3, subformat 3 packet.
