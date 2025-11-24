@@ -9,6 +9,7 @@
 use crate::types::{trap, Privilege};
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::unit::{self, Unit};
 use super::{util, Error};
 
@@ -261,6 +262,18 @@ impl<U> Decode<'_, '_, U> for QualStatus {
             0b11 => QualStatus::EndedNtr,
             _ => unreachable!(),
         })
+    }
+}
+
+impl<U> Encode<'_, U> for QualStatus {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        let value: u8 = match self {
+            Self::NoChange => 0b00,
+            Self::EndedRep => 0b01,
+            Self::TraceLost => 0b10,
+            Self::EndedNtr => 0b11,
+        };
+        encoder.write_bits(value, 2)
     }
 }
 
