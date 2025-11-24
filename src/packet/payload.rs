@@ -110,6 +110,34 @@ impl<U: unit::Unit> Decode<'_, '_, U> for InstructionTrace<U::IOptions, U::DOpti
     }
 }
 
+impl<'d, U> Encode<'d, U> for InstructionTrace<U::IOptions, U::DOptions>
+where
+    U: unit::Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        match self {
+            Self::Extension(ext) => {
+                encoder.write_bits(0b00u8, 2)?;
+                encoder.encode(ext)
+            }
+            Self::Branch(branch) => {
+                encoder.write_bits(0b01u8, 2)?;
+                encoder.encode(branch)
+            }
+            Self::Address(addr) => {
+                encoder.write_bits(0b10u8, 2)?;
+                encoder.encode(addr)
+            }
+            Self::Synchronization(sync) => {
+                encoder.write_bits(0b11u8, 2)?;
+                encoder.encode(sync)
+            }
+        }
+    }
+}
+
 impl<I, D> InstructionTrace<I, D> {
     /// Retrieve the [`AddressInfo`] in this payload
     ///
