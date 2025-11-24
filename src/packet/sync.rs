@@ -286,3 +286,11 @@ impl TryFrom<u8> for EncoderMode {
         }
     }
 }
+
+impl From<EncoderMode> for u8 {
+    fn from(mode: EncoderMode) -> Self {
+        match mode {
+            EncoderMode::BranchTrace => 0,
+        }
+    }
+}
