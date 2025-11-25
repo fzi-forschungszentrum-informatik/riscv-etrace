@@ -21,10 +21,24 @@ macro_rules! bitstream_test {
         bitstream_test!($n, $b, $d, &Default::default());
     };
     ($n:ident, $b:literal, $d:expr, $c:expr) => {
-        #[test]
-        fn $n() {
-            let mut decoder = Builder::new().with_params($c).decoder($b);
-            assert_eq!(Decode::decode(&mut decoder), Ok($d));
+        mod $n {
+            use super::*;
+
+            #[test]
+            fn decode() {
+                let mut decoder = Builder::new().with_params($c).decoder($b);
+                assert_eq!(Decode::decode(&mut decoder), Ok($d));
+            }
+
+            #[test]
+            fn encode() {
+                let mut buffer = alloc::vec::Vec::new();
+                buffer.resize($b.len(), 0);
+                let mut encoder = Builder::new().with_params($c).encoder(buffer.as_mut());
+                encoder.encode(&$d).expect("Could not encode item");
+                let len = $b.len() - encoder.uncommitted();
+                assert_eq!(&buffer[..len], $b.as_ref());
+            }
         }
     };
     ($n:ident, $b:literal, $d:expr, $( $k:ident : $v:expr ),*) => {
