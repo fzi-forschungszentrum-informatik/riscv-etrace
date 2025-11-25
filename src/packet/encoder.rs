@@ -100,6 +100,25 @@ impl<'d, U> Encoder<'d, U> {
         }
     }
 
+    /// Extract a mutable chunk from the beginning of the uncommitted region
+    ///
+    /// Returns a chunk of fixed size from the beginning of the uncommitted
+    /// region and resets the encoder to the remaining buffer after that chunk
+    /// on success. On failure, the encoder is left with an empty buffer.
+    pub(super) fn first_uncommitted_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<&'d mut [u8; N], Error> {
+        let (chunk, data) = core::mem::take(&mut self.data)
+            .split_at_mut_checked(self.bytes_committed)
+            .and_then(|(_, d)| d.split_first_chunk_mut())
+            .ok_or_else(|| {
+                self.reset(&mut []);
+                Error::BufferTooSmall
+            })?;
+        self.reset(data);
+        Ok(chunk)
+    }
+
     /// Write a single bit
     pub(super) fn write_bit(&mut self, bit: bool) -> Result<(), Error> {
         let byte_pos = self.bit_pos >> 3;
