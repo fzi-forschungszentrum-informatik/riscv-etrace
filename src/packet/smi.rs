@@ -5,6 +5,7 @@
 use core::fmt;
 
 use super::decoder::{self, Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::{payload, unit, Error};
 
 /// A Siemens Messaging Infrastructure (SMI) Packet
@@ -104,6 +105,28 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
             hart,
             payload,
         })
+    }
+}
+
+impl<'d, U, P: Encode<'d, U>> Encode<'d, U> for Packet<P> {
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        let head = &mut encoder.first_uncommitted_chunk::<1>()?[0];
+        if let Some(time_tag) = self.time_tag() {
+            *encoder.first_uncommitted_chunk()? = time_tag.to_le_bytes();
+        }
+        let original_uncommitted = encoder.uncommitted();
+        encoder.encode(&self.payload)?;
+
+        let len = original_uncommitted - encoder.uncommitted();
+        let len: u8 = len
+            .try_into()
+            .ok()
+            .filter(|l| *l < 32)
+            .ok_or(Error::PayloadTooBig(len))?;
+        let trace_type = (self.trace_type & 0x3) << 5;
+        let time_tag = if self.time_tag.is_some() { 0x80 } else { 0 };
+        *head = len | trace_type | time_tag;
+        Ok(())
     }
 }
 
