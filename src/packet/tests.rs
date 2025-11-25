@@ -47,7 +47,7 @@ bitstream_test!(
     cache_size_p: 10
 );
 bitstream_test!(
-    branch,
+    branches,
     b"\x47\x0b",
     payload::Branch {
         branch_map: branch::Map::new(7, 0b101_1010),
