@@ -37,6 +37,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
   trait.
 - Fns `packet::Builder::encoder` and `packet::Builder::default_encoder` for
   building `packet::encoder::Encoder`s.
+- `encoder::Encode` impl for `packet::unit::ReferenceIOptions`,
+  `packet::unit::ReferenceDOptions`, `packet::unit::PULPIOptions` and
+  `packet::unit::NoOptions`.
 - A fn `packet::Builder::with_compression` for controlling whether
   `packet::encoder::Encoder` created through the `packet::Builder` compress.
 - A fn `packet::smi::Packet::payload` for accessing the packet's payload as is.

@@ -13,6 +13,7 @@ use core::fmt;
 use crate::config;
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::error::Error;
 
 use config::AddressMode;
@@ -178,6 +179,16 @@ impl<U> Decode<'_, '_, U> for ReferenceIOptions {
     }
 }
 
+impl<B: AsMut<[u8]>, U> Encode<B, U> for ReferenceIOptions {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bit(self.implicit_return)?;
+        encoder.write_bit(self.implicit_exception)?;
+        encoder.write_bit(self.full_address)?;
+        encoder.write_bit(self.jump_target_cache)?;
+        encoder.write_bit(self.branch_prediction)
+    }
+}
+
 impl IOptions for ReferenceIOptions {
     fn address_mode(&self) -> Option<AddressMode> {
         Some(AddressMode::from_full(self.full_address))
@@ -221,6 +232,15 @@ impl<U> Decode<'_, '_, U> for ReferenceDOptions {
             full_address,
             full_data,
         })
+    }
+}
+
+impl<B: AsMut<[u8]>, U> Encode<B, U> for ReferenceDOptions {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bit(self.no_address)?;
+        encoder.write_bit(self.no_data)?;
+        encoder.write_bit(self.full_address)?;
+        encoder.write_bit(self.full_data)
     }
 }
 
@@ -278,6 +298,18 @@ impl<U> Decode<'_, '_, U> for PULPIOptions {
             branch_prediction,
             jump_target_cache,
         })
+    }
+}
+
+impl<B: AsMut<[u8]>, U> Encode<B, U> for PULPIOptions {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bit(self.jump_target_cache)?;
+        encoder.write_bit(self.branch_prediction)?;
+        encoder.write_bit(self.implicit_return)?;
+        encoder.write_bit(self.sijump)?;
+        encoder.write_bit(self.implicit_exception)?;
+        encoder.write_bit(self.full_address)?;
+        encoder.write_bit(self.delta_address)
     }
 }
 
@@ -399,6 +431,12 @@ pub struct NoOptions;
 impl<U> Decode<'_, '_, U> for NoOptions {
     fn decode(_decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(Self)
+    }
+}
+
+impl<B: AsMut<[u8]>, U> Encode<B, U> for NoOptions {
+    fn encode(&self, _encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        Ok(())
     }
 }
 
