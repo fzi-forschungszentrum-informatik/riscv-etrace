@@ -1,11 +1,11 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Decoder-specific error types and utilities
+//! Packet-specific error types and utilities
 
 use core::fmt;
 use core::num::NonZeroUsize;
 
-/// Decoder errors
+/// Packet decode/encode errors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// The trace type is not known to us
@@ -16,6 +16,8 @@ pub enum Error {
     BadBranchFmt,
     /// Some more bytes of data are required for the operation to succeed
     InsufficientData(NonZeroUsize),
+    /// The target buffer is too small for the encoded data
+    BufferTooSmall,
     /// The privilege level is not known. You might want to implement it
     UnknownPrivilege(u8),
     /// Encountered an unknown encoder mode
@@ -32,6 +34,7 @@ impl fmt::Display for Error {
             Self::UnknownFmt(t, Some(s)) => write!(f, "Unknown format,subformat {t},{s}"),
             Self::BadBranchFmt => write!(f, "Malformed branch format"),
             Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
+            Self::BufferTooSmall => write!(f, "Reached end of buffer while encoding"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
             Self::UnknownEncoderMode(m) => write!(f, "Unknown encoder mode {m}"),
         }

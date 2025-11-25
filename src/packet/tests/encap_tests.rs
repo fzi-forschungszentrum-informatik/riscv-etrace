@@ -5,7 +5,7 @@ use super::*;
 
 #[test]
 fn encap_stop() {
-    let mut decoder = Builder::new().build(b"\x00\x00\x00\x00");
+    let mut decoder = Builder::new().decoder(b"\x00\x00\x00\x00");
     for _ in 0..4 {
         assert_eq!(
             decoder.decode_encap_packet(),
@@ -29,7 +29,7 @@ fn decode_packet() {
         .with_params(&PARAMS_32)
         .with_timestamp_width(1)
         .with_hart_index_width(8)
-        .build(data);
+        .decoder(data);
     let encap_packet: encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_packet.flow(), 2);
     let normal_encap = encap_packet.into_normal().unwrap();
@@ -59,7 +59,7 @@ fn decode_null_idle() {
     let mut decoder = Builder::new()
         .with_params(&PARAMS_32)
         .with_hart_index_width(8)
-        .build(data);
+        .decoder(data);
     let encap_data: encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 1);
     assert!(encap_data.is_null());
@@ -73,7 +73,7 @@ fn decode_null_align() {
     let mut decoder = Builder::new()
         .with_params(&PARAMS_32)
         .with_timestamp_width(1)
-        .build(data);
+        .decoder(data);
     let encap_data: encap::Packet<'_, '_, _> = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 3);
 }

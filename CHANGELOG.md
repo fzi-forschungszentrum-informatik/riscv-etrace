@@ -16,6 +16,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - The `packet::Decoder` was moved to a new, dedicated module `packet::decoder`.
 - `packet::payload::AddressInfo::address` is now an `i64` which is always
   sign-extended.
+- `packet::Builder::build` was renamed to `decoder`.
+- `packet::error::Error` now has a new variant `BufferTooSmall` which may be
+  emitted during encoding attempts.
 - `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
 
 ### Added
@@ -26,6 +29,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A type `packet::decoder::Scoped` for scoped `packet::decoder::Decoder`s, i.e.
   `Decoder`s that are restricted and reset to the rest of the original buffer if
   the `Scoped` is dropped.
+- A submodule `packet::encoder` providing the `Encoder` type and the `Encode`
+  trait.
+- Fns `packet::Builder::encoder` and `packet::Builder::default_encoder` for
+  building `packet::encoder::Encoder`s.
+- A fn `packet::Builder::with_compression` for controlling whether
+  `packet::encoder::Encoder` created through the `packet::Builder` compress.
 
 ## 0.5.2 - 2025-11-03
 

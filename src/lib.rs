@@ -79,7 +79,7 @@
 //! let parameters = Default::default();
 //! let mut decoder = packet::builder()
 //!     .with_params(&parameters)
-//!     .build(trace_data);
+//!     .decoder(trace_data);
 //! let mut tracer: Tracer<_> = tracer::builder()
 //!     .with_binary(binary)
 //!     .with_params(&parameters)
