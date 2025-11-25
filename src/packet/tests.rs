@@ -146,7 +146,7 @@ bitstream_test!(
 // Ok(Synchronization(Support(Support { ienable: true, encoder_mode: BranchTrace, qual_status: TraceLost, ioptions: ReferenceIOptions { implicit_return: false, implicit_exception: false, full_address: false, jump_target_cache: false, branch_prediction: false }, denable: false, dloss: false, doptions: ReferenceDOptions { no_address: false, no_data: false, full_address: false, full_data: false } })))
 bitstream_test!(
     decode_qualstat_trace_lost,
-    b"\x9F\x00\x00\x00\x00\x19\x41\x00\x08",
+    b"\x9F\x00",
     InstructionTrace::Synchronization(sync::Synchronization::Support(sync::Support {
         ienable: true,
         encoder_mode: sync::EncoderMode::BranchTrace,
@@ -172,7 +172,7 @@ bitstream_test!(
 
 bitstream_test!(
     decode_qualstat_ended_ntr,
-    b"\xDF\x00\x00\x00\x00\x19\x41\x00\x08",
+    b"\xDF\x00",
     InstructionTrace::Synchronization(sync::Synchronization::Support(sync::Support {
         ienable: true,
         encoder_mode: sync::EncoderMode::BranchTrace,
