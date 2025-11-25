@@ -150,9 +150,4 @@ impl<U> Builder<U> {
             !self.no_compress,
         )
     }
-
-    /// Build an [`Encoder`][encoder::Encoder] with a [`Default`] buffer
-    pub fn default_encoder<B: AsMut<[u8]> + Default>(self) -> encoder::Encoder<B, U> {
-        self.encoder(Default::default())
-    }
 }
