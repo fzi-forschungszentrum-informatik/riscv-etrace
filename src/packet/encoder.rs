@@ -46,6 +46,13 @@ impl<'d, U> Encoder<'d, U> {
         }
     }
 
+    /// Reset the inner data to the given byte slice
+    pub fn reset(&mut self, data: &'d mut [u8]) {
+        self.data = data;
+        self.bit_pos = 0;
+        self.bytes_committed = 0;
+    }
+
     /// Encode one entity
     pub fn encode(&mut self, data: &impl Encode<'d, U>) -> Result<(), Error> {
         data.encode(self)
