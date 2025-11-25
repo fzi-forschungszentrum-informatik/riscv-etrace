@@ -139,7 +139,7 @@ impl<U> Builder<U> {
     }
 
     /// Build an [`Encoder`][encoder::Encoder] for this configuration
-    pub fn encoder<B: AsMut<[u8]>>(self, buffer: B) -> encoder::Encoder<B, U> {
+    pub fn encoder(self, buffer: &mut [u8]) -> encoder::Encoder<'_, U> {
         encoder::Encoder::new(
             buffer,
             self.field_widths,

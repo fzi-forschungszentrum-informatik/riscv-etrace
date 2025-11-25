@@ -179,8 +179,8 @@ impl<U> Decode<'_, '_, U> for ReferenceIOptions {
     }
 }
 
-impl<B: AsMut<[u8]>, U> Encode<B, U> for ReferenceIOptions {
-    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+impl<U> Encode<'_, U> for ReferenceIOptions {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bit(self.implicit_return)?;
         encoder.write_bit(self.implicit_exception)?;
         encoder.write_bit(self.full_address)?;
@@ -235,8 +235,8 @@ impl<U> Decode<'_, '_, U> for ReferenceDOptions {
     }
 }
 
-impl<B: AsMut<[u8]>, U> Encode<B, U> for ReferenceDOptions {
-    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+impl<U> Encode<'_, U> for ReferenceDOptions {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bit(self.no_address)?;
         encoder.write_bit(self.no_data)?;
         encoder.write_bit(self.full_address)?;
@@ -301,8 +301,8 @@ impl<U> Decode<'_, '_, U> for PULPIOptions {
     }
 }
 
-impl<B: AsMut<[u8]>, U> Encode<B, U> for PULPIOptions {
-    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+impl<U> Encode<'_, U> for PULPIOptions {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bit(self.jump_target_cache)?;
         encoder.write_bit(self.branch_prediction)?;
         encoder.write_bit(self.implicit_return)?;
@@ -434,8 +434,8 @@ impl<U> Decode<'_, '_, U> for NoOptions {
     }
 }
 
-impl<B: AsMut<[u8]>, U> Encode<B, U> for NoOptions {
-    fn encode(&self, _encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+impl<U> Encode<'_, U> for NoOptions {
+    fn encode(&self, _encoder: &mut Encoder<U>) -> Result<(), Error> {
         Ok(())
     }
 }

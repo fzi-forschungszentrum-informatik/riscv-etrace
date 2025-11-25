@@ -10,9 +10,8 @@ use super::truncate::TruncateNum;
 use super::width::Widths;
 
 /// Am encoder for packets and/or [payloads][super::payload]
-#[derive(Clone)]
-pub struct Encoder<B: AsMut<[u8]>, U> {
-    data: B,
+pub struct Encoder<'d, U> {
+    data: &'d mut [u8],
     bit_pos: usize,
     bytes_committed: usize,
     field_widths: Widths,
@@ -23,10 +22,10 @@ pub struct Encoder<B: AsMut<[u8]>, U> {
     compress: bool,
 }
 
-impl<B: AsMut<[u8]>, U> Encoder<B, U> {
+impl<'d, U> Encoder<'d, U> {
     /// Create a new encoder
     pub(super) fn new(
-        data: B,
+        data: &'d mut [u8],
         field_widths: Widths,
         unit: U,
         hart_index_width: u8,
@@ -48,12 +47,12 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
     }
 
     /// Encode one entity
-    pub fn encode(&mut self, data: &impl Encode<B, U>) -> Result<(), Error> {
+    pub fn encode(&mut self, data: &impl Encode<'d, U>) -> Result<(), Error> {
         data.encode(self)
     }
 
     /// Finish the encoding process
-    pub fn finish(self) -> (B, usize) {
+    pub fn finish(self) -> (&'d mut [u8], usize) {
         let len = if self.bit_pos == 0 {
             0
         } else {
@@ -171,13 +170,16 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
     /// If the position is past the boundary of committed bytes, the result of
     /// expanding the committed sequence will be returned.
     fn get_byte(&mut self, byte_pos: usize) -> Result<u8, Error> {
-        let data = self.data.as_mut();
         if byte_pos < self.bytes_committed {
-            return data.get(byte_pos).copied().ok_or(Error::BufferTooSmall);
+            return self
+                .data
+                .get(byte_pos)
+                .copied()
+                .ok_or(Error::BufferTooSmall);
         }
 
         let last_committed = self.bytes_committed.saturating_sub(1);
-        let last_committed = data.get(last_committed).ok_or(Error::BufferTooSmall)?;
+        let last_committed = self.data.get(last_committed).ok_or(Error::BufferTooSmall)?;
         if last_committed & 0x80 != 0 {
             Ok(0xff)
         } else {
@@ -189,7 +191,7 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
     ///
     /// The committed bytes will be expanded if necessary.
     fn write_byte(&mut self, byte: u8, byte_pos: usize) -> Result<(), Error> {
-        let data = self.data.as_mut();
+        let data: &mut [u8] = self.data;
         let split = data
             .split_at_mut_checked(byte_pos)
             .map(|(d, t)| (d, t.first_mut()));
@@ -218,7 +220,7 @@ impl<B: AsMut<[u8]>, U> Encoder<B, U> {
 /// Encodable item
 ///
 /// Items implementing this trait may be encoded using an [`Encoder`].
-pub trait Encode<B: AsMut<[u8]>, U>: Sized {
+pub trait Encode<'d, U>: Sized {
     /// Encode this item
-    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error>;
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error>;
 }
