@@ -4,7 +4,7 @@
 
 use core::fmt;
 
-use super::decoder::{Decode, Decoder};
+use super::decoder::{self, Decode, Decoder};
 use super::{payload, unit, Error};
 
 /// A Siemens Messaging Infrastructure (SMI) Packet
@@ -13,15 +13,33 @@ use super::{payload, unit, Error};
 /// as described in Chapter 7. Instruction Trace Encoder Output Packets of the
 /// specification. A packet consists of SMI specific header information, and an
 /// SMI-independent [`InstructionTrace`][payload::InstructionTrace] payload.
-pub struct Packet<'a, 'd, U> {
+#[derive(Clone, Debug, PartialEq)]
+pub struct Packet<P> {
     trace_type: u8,
     time_tag: Option<u16>,
     hart: u64,
-    decoder: &'a mut Decoder<'d, U>,
-    remaining: &'d [u8],
+    payload: P,
 }
 
-impl<U> Packet<'_, '_, U> {
+impl<P> Packet<P> {
+    /// Create a new SMI packet
+    pub fn new(trace_type: u8, hart: u64, payload: P) -> Self {
+        Self {
+            trace_type,
+            time_tag: None,
+            hart,
+            payload,
+        }
+    }
+
+    /// Attach a time tag to this packet
+    pub fn with_time_tag(self, time_tag: u16) -> Self {
+        Self {
+            time_tag: time_tag.into(),
+            ..self
+        }
+    }
+
     /// Retrieve the [`TraceType`] of this packet's payload
     ///
     /// Returns [`None`] if the trace type is unknown.
@@ -47,61 +65,30 @@ impl<U> Packet<'_, '_, U> {
     pub fn hart(&self) -> u64 {
         self.hart
     }
+
+    /// Retrieve the packet's payload
+    pub fn payload(&self) -> &P {
+        &self.payload
+    }
 }
 
-impl<U: unit::Unit> Packet<'_, '_, U> {
+impl<U: unit::Unit> Packet<decoder::Scoped<'_, '_, U>> {
     /// Decode the packet's E-Trace payload
-    pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let trace_type = self
             .raw_trace_type()
             .try_into()
             .map_err(Error::UnknownTraceType)?;
         match trace_type {
             TraceType::Instruction => {
-                Decode::decode(self.decoder).map(payload::Payload::InstructionTrace)
+                Decode::decode(self.payload.decoder_mut()).map(payload::Payload::InstructionTrace)
             }
             TraceType::Data => Ok(payload::Payload::DataTrace),
         }
     }
 }
 
-impl<U> fmt::Debug for Packet<'_, '_, U> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Packet")
-            .field("trace_type", &self.trace_type)
-            .field("time_tag", &self.time_tag)
-            .field("hart", &self.hart)
-            .field("payload", &self.decoder.remaining_data())
-            .finish_non_exhaustive()
-    }
-}
-
-impl<U> PartialEq for Packet<'_, '_, U> {
-    fn eq(&self, other: &Self) -> bool {
-        PartialEq::eq(
-            &(
-                self.trace_type,
-                self.time_tag,
-                self.hart,
-                self.decoder.remaining_data(),
-            ),
-            &(
-                other.trace_type,
-                other.time_tag,
-                other.hart,
-                other.decoder.remaining_data(),
-            ),
-        )
-    }
-}
-
-impl<U> Drop for Packet<'_, '_, U> {
-    fn drop(&mut self) {
-        self.decoder.reset(self.remaining);
-    }
-}
-
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
+impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
         let trace_type = decoder.read_bits::<u8>(2)?;
@@ -111,15 +98,12 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
             .transpose()?;
         let hart = decoder.read_bits(decoder.hart_index_width())?;
         decoder.advance_to_byte();
-        decoder
-            .split_data(decoder.byte_pos() + payload_len)
-            .map(|remaining| Self {
-                trace_type,
-                time_tag,
-                hart,
-                decoder,
-                remaining,
-            })
+        decoder::Scoped::new(decoder, payload_len).map(|payload| Self {
+            trace_type,
+            time_tag,
+            hart,
+            payload,
+        })
     }
 }
 
@@ -143,9 +127,18 @@ impl TryFrom<u8> for TraceType {
     }
 }
 
+impl From<TraceType> for u8 {
+    fn from(t: TraceType) -> Self {
+        match t {
+            TraceType::Instruction => 0b10,
+            TraceType::Data => 0b11,
+        }
+    }
+}
+
 impl PartialEq<u8> for TraceType {
     fn eq(&self, other: &u8) -> bool {
-        Self::try_from(*other).map(|o| *self == o).unwrap_or(false)
+        u8::from(*self) == *other
     }
 }
 

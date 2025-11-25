@@ -20,6 +20,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `packet::error::Error` now has a new variant `BufferTooSmall` which may be
   emitted during encoding attempts.
 - `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
+- `packet::smi::Packet` is now generic over its payload.
+- `packet::smi::Packet::payload` as renamed to `decode_payload` and is only
+  availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
+  to a simple accessor fn.
 
 ### Added
 
@@ -35,6 +39,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
   building `packet::encoder::Encoder`s.
 - A fn `packet::Builder::with_compression` for controlling whether
   `packet::encoder::Encoder` created through the `packet::Builder` compress.
+- A fn `packet::smi::Packet::payload` for accessing the packet's payload as is.
+- `Clone` impl for `packet::smi::Packet`.
+- `From<packet::smi::TraceType>` impl for `u8`.
 
 ## 0.5.2 - 2025-11-03
 
