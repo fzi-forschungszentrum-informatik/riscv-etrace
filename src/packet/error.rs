@@ -18,6 +18,8 @@ pub enum Error {
     InsufficientData(NonZeroUsize),
     /// The target buffer is too small for the encoded data
     BufferTooSmall,
+    /// The payload is too big for the packet format
+    PayloadTooBig(usize),
     /// The privilege level is not known. You might want to implement it
     UnknownPrivilege(u8),
     /// Encountered an unknown encoder mode
@@ -35,6 +37,7 @@ impl fmt::Display for Error {
             Self::BadBranchFmt => write!(f, "Malformed branch format"),
             Self::InsufficientData(n) => write!(f, "At least {n} more bytes of data are required"),
             Self::BufferTooSmall => write!(f, "Reached end of buffer while encoding"),
+            Self::PayloadTooBig(s) => write!(f, "Payload is too large: {s} bytes"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
             Self::UnknownEncoderMode(m) => write!(f, "Unknown encoder mode {m}"),
         }
