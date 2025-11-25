@@ -53,6 +53,11 @@ impl<'d, U> Encoder<'d, U> {
         self.bytes_committed = 0;
     }
 
+    /// Retrieve the number of bytes in the buffer that are not committed
+    pub fn uncommitted(&self) -> usize {
+        self.data.len() - self.bytes_committed
+    }
+
     /// Encode one entity
     pub fn encode(&mut self, data: &impl Encode<'d, U>) -> Result<(), Error> {
         data.encode(self)
