@@ -7,6 +7,7 @@ use core::ops;
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::{truncate, Error};
 
 /// Read an address
@@ -26,6 +27,25 @@ where
     let lsb = widths.iaddress_lsb.get();
     let width = widths.iaddress.get().saturating_sub(lsb);
     decoder.read_bits::<T>(width).map(|v| v << lsb)
+}
+
+/// Write an address
+///
+/// Write an address, honouring the address width and lsb offset specified in the
+/// [`Encoder`]'s protocol configuration.
+pub fn write_address<B, U, T>(encoder: &mut Encoder<B, U>, address: T) -> Result<(), Error>
+where
+    B: AsMut<[u8]>,
+    T: Copy
+        + ops::Shl<usize, Output = T>
+        + ops::Shr<usize, Output = T>
+        + ops::BitOrAssign<T>
+        + truncate::TruncateNum,
+{
+    let widths = encoder.widths();
+    let lsb = widths.iaddress_lsb.get();
+    let width = widths.iaddress.get().saturating_sub(lsb);
+    encoder.write_bits(address >> lsb.into(), width)
 }
 
 /// Read the `irreport` and `irdepth` fields
@@ -49,6 +69,21 @@ pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>
     }
 }
 
+/// Write the `irreport` and `irdepth` fields
+///
+/// This fn reads the `irreport` and `irdepth` fields. The former is written
+/// differentially, and is `true` if `irdepth` is not `None`.
+pub fn write_implicit_return<B: AsMut<[u8]>, U>(
+    encoder: &mut Encoder<B, U>,
+    irdepth: Option<usize>,
+) -> Result<(), Error> {
+    encoder.write_differential_bit(irdepth.is_some())?;
+    Option::zip(irdepth, encoder.widths().stack_depth)
+        .map(|(v, w)| encoder.write_bits(v, w.get()))
+        .transpose()?;
+    Ok(())
+}
+
 /// Utility for decoding branch maps
 ///
 /// Branch maps consist of a count and the map data, wtih a field length derived
@@ -65,13 +100,17 @@ impl BranchCount {
 
     /// Read a branch map with this count
     pub fn read_branch_map<U>(self, decoder: &mut Decoder<U>) -> Result<branch::Map, Error> {
-        let length = core::iter::successors(Some(31), |l| (*l > 0).then_some(l >> 1))
-            .take_while(|l| *l >= self.0)
-            .last()
-            .expect("Could not determine length");
-        let mut map = decoder.read_bits(length)?;
+        let mut map = decoder.read_bits(self.field_length())?;
         map &= !0u32.checked_shl(self.0.into()).unwrap_or_default();
         Ok(branch::Map::new(self.0, map))
+    }
+
+    /// Determine the field length
+    pub fn field_length(self) -> u8 {
+        core::iter::successors(Some(31), |l| (*l > 0).then_some(l >> 1))
+            .take_while(|l| *l >= self.0)
+            .last()
+            .expect("Could not determine length")
     }
 
     /// Count for a full branch map
@@ -81,5 +120,11 @@ impl BranchCount {
 impl<U> Decode<'_, '_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         decoder.read_bits(5).map(Self)
+    }
+}
+
+impl<B: AsMut<[u8]>, U> Encode<B, U> for BranchCount {
+    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+        encoder.write_bits(self.0, 5)
     }
 }
