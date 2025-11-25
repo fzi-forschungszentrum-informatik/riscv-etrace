@@ -23,6 +23,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `tracer::Builder::with_implicit_return` for initially (un)setting the
   initial return option.
 - `From<types::Privilege>` impl for `u8`.
+- A type `packet::decoder::Scoped` for scoped `packet::decoder::Decoder`s, i.e.
+  `Decoder`s that are restricted and reset to the rest of the original buffer if
+  the `Scoped` is dropped.
 
 ## 0.5.2 - 2025-11-03
 

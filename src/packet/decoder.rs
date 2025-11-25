@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Packet decoder
 
+use core::fmt;
 use core::num::NonZeroUsize;
 use core::ops;
 
@@ -290,4 +291,61 @@ impl<'d, U> Decoder<'d, U> {
 
 pub(super) trait Decode<'a, 'd, U>: Sized {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
+}
+
+/// Scoped decoder
+///
+/// This type wraps a mutable reference to a [`Decoder`]. The [`Decoder`] is
+/// restricted to a predefined length and reset to the rest of the buffer after
+/// the wrapper is dropped.
+pub struct Scoped<'a, 'd, U> {
+    decoder: &'a mut Decoder<'d, U>,
+    remaining: &'d [u8],
+}
+
+impl<'a, 'd, U> Scoped<'a, 'd, U> {
+    /// Create a new scoped decoder
+    ///
+    /// The given decoder is restricted to `length` past the current byte
+    /// position and will be reset to the remaining data after the scoped
+    /// decoder is dropped.
+    pub fn new(decoder: &'a mut Decoder<'d, U>, length: usize) -> Result<Self, Error> {
+        decoder
+            .split_data(decoder.byte_pos().saturating_add(length))
+            .map(|remaining| Self { decoder, remaining })
+    }
+
+    /// Retrieve the wrapped decoder
+    pub fn decoder_mut(&mut self) -> &mut Decoder<'d, U> {
+        self.decoder
+    }
+}
+
+impl<U> fmt::Debug for Scoped<'_, '_, U> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Scoped")
+            .field("unaligned_data", &self.decoder.remaining_data())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Compare two scoped decoders
+///
+/// # Note
+///
+/// Scoped decoders are considered equal if the data within the scope is equal.
+/// Comparison is only guranteed to work if the sub-byte alignment matches.
+impl<U> PartialEq for Scoped<'_, '_, U> {
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(
+            self.decoder.remaining_data(),
+            other.decoder.remaining_data(),
+        )
+    }
+}
+
+impl<'a, 'd, U> Drop for Scoped<'a, 'd, U> {
+    fn drop(&mut self) {
+        self.decoder.reset(self.remaining);
+    }
 }
