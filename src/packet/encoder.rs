@@ -62,16 +62,6 @@ impl<'d, U> Encoder<'d, U> {
         data.encode(self)
     }
 
-    /// Finish the encoding process
-    pub fn finish(self) -> (&'d mut [u8], usize) {
-        let len = if self.bit_pos == 0 {
-            0
-        } else {
-            self.bytes_committed
-        };
-        (self.data, len)
-    }
-
     /// Retrieve this encoder's unit
     pub fn unit(&self) -> &U {
         &self.unit
