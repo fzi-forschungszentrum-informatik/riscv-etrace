@@ -1,6 +1,8 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
 
+extern crate alloc;
+
 mod basic;
 mod encap_tests;
 mod parts;
@@ -16,11 +18,7 @@ use payload::{AddressInfo, InstructionTrace};
 
 macro_rules! bitstream_test {
     ($n:ident, $b:literal, $d:expr) => {
-        #[test]
-        fn $n() {
-            let mut decoder = Builder::new().decoder($b);
-            assert_eq!(Decode::decode(&mut decoder), Ok($d));
-        }
+        bitstream_test!($n, $b, $d, &Default::default());
     };
     ($n:ident, $b:literal, $d:expr, $c:expr) => {
         #[test]
@@ -51,7 +49,7 @@ bitstream_test!(
     cache_size_p: 10
 );
 bitstream_test!(
-    branch,
+    branches,
     b"\x47\x0b",
     payload::Branch {
         branch_map: branch::Map::new(7, 0b101_1010),
@@ -146,7 +144,7 @@ bitstream_test!(
 // Ok(Synchronization(Support(Support { ienable: true, encoder_mode: BranchTrace, qual_status: TraceLost, ioptions: ReferenceIOptions { implicit_return: false, implicit_exception: false, full_address: false, jump_target_cache: false, branch_prediction: false }, denable: false, dloss: false, doptions: ReferenceDOptions { no_address: false, no_data: false, full_address: false, full_data: false } })))
 bitstream_test!(
     decode_qualstat_trace_lost,
-    b"\x9F\x00\x00\x00\x00\x19\x41\x00\x08",
+    b"\x9F\x00",
     InstructionTrace::Synchronization(sync::Synchronization::Support(sync::Support {
         ienable: true,
         encoder_mode: sync::EncoderMode::BranchTrace,
@@ -172,7 +170,7 @@ bitstream_test!(
 
 bitstream_test!(
     decode_qualstat_ended_ntr,
-    b"\xDF\x00\x00\x00\x00\x19\x41\x00\x08",
+    b"\xDF\x00",
     InstructionTrace::Synchronization(sync::Synchronization::Support(sync::Support {
         ienable: true,
         encoder_mode: sync::EncoderMode::BranchTrace,
