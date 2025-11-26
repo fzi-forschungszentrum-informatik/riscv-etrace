@@ -176,6 +176,28 @@ impl<P> Normal<P> {
     }
 }
 
+impl<'d, U> TryFrom<Normal<decoder::Scoped<'_, 'd, U>>>
+    for Normal<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    type Error = Error;
+
+    fn try_from(normal: Normal<decoder::Scoped<'_, 'd, U>>) -> Result<Self, Self::Error> {
+        let flow = normal.flow();
+        let src_id = normal.src_id();
+        let timestamp = normal.timestamp();
+        let res = Self::new(flow, src_id, normal.decode_payload()?);
+        if let Some(timestamp) = timestamp {
+            Ok(res.with_timestamp(timestamp))
+        } else {
+            Ok(res)
+        }
+    }
+}
+
 impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
     /// Decode the packet's E-Trace payload
     pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
