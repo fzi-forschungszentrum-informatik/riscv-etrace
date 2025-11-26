@@ -9,6 +9,7 @@
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 
 use super::decoder::{self, Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::{payload, unit, Error};
 
 /// RISC-V Packet Encapsulation
@@ -167,5 +168,49 @@ impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
             1 => Ok(payload::Payload::DataTrace),
             unknown => Err(Error::UnknownTraceType(unknown)),
         }
+    }
+}
+
+impl<'d, U> Encode<'d, U> for Normal<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        let head = &mut encoder.first_uncommitted_chunk::<1>()?[0];
+
+        let mut original_uncommitted = encoder
+            .uncommitted()
+            .checked_sub((encoder.hart_index_width() >> 3).into())
+            .ok_or(Error::BufferTooSmall)?;
+        encoder.write_bits(self.src_id(), encoder.hart_index_width())?;
+        if let Some(timestamp) = self.timestamp() {
+            original_uncommitted = original_uncommitted
+                .checked_sub(encoder.timestamp_width().into())
+                .ok_or(Error::BufferTooSmall)?;
+            encoder.write_bits(timestamp, 8 * encoder.timestamp_width())?;
+        }
+
+        match self.payload() {
+            payload::Payload::InstructionTrace(p) => {
+                encoder.write_bits(0u8, encoder.trace_type_width())?;
+                encoder.encode(p)?;
+            }
+            payload::Payload::DataTrace => {
+                encoder.write_bits(1u8, encoder.trace_type_width())?;
+            }
+        }
+
+        let len = original_uncommitted - encoder.uncommitted();
+        let len: u8 = len
+            .try_into()
+            .ok()
+            .filter(|l| *l < 32)
+            .ok_or(Error::PayloadTooBig(len))?;
+        let flow = (self.flow() & 0x3) << 5;
+        let extend = if self.timestamp().is_some() { 0x80 } else { 0 };
+        *head = len | flow | extend;
+        Ok(())
     }
 }
