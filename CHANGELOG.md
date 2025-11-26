@@ -43,9 +43,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `packet::Builder::encoder` for building `packet::encoder::Encoder`s.
 - `encoder::Encode` impl for `packet::unit::ReferenceIOptions`,
   `packet::unit::ReferenceDOptions`, `packet::unit::PULPIOptions`,
-  `packet::unit::NoOptions` and `packet::smi::Packet`.
+  `packet::unit::NoOptions`, `packet::sync::QualStatus`,
+  `packet::sync::Support`, `packet::sync::Context`, `packet::sync::Trap`,
+  `packet::sync::Start`, `packet::sync::Synchronization` and
+  `packet::smi::Packet`.
 - A fn `packet::Builder::with_compression` for controlling whether
   `packet::encoder::Encoder` created through the `packet::Builder` compress.
+- `From<packet::sync::EncoderMode>` impl for `u8`
 - A fn `packet::smi::Packet::payload` for accessing the packet's payload as is.
 - `Clone` impl for `packet::smi::Packet`.
 - `From<packet::smi::TraceType>` impl for `u8`.

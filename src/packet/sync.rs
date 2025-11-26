@@ -9,6 +9,7 @@
 use crate::types::{trap, Privilege};
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::unit::{self, Unit};
 use super::{util, Error};
 
@@ -88,6 +89,34 @@ impl<U: Unit> Decode<'_, '_, U> for Synchronization<U::IOptions, U::DOptions> {
     }
 }
 
+impl<'d, U> Encode<'d, U> for Synchronization<U::IOptions, U::DOptions>
+where
+    U: Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        match self {
+            Self::Start(start) => {
+                encoder.write_bits(0b00u8, 2)?;
+                encoder.encode(start)
+            }
+            Self::Trap(trap) => {
+                encoder.write_bits(0b01u8, 2)?;
+                encoder.encode(trap)
+            }
+            Self::Context(ctx) => {
+                encoder.write_bits(0b10u8, 2)?;
+                encoder.encode(ctx)
+            }
+            Self::Support(support) => {
+                encoder.write_bits(0b11u8, 2)?;
+                encoder.encode(support)
+            }
+        }
+    }
+}
+
 /// Start of trace
 ///
 /// Represents a format 3, subformat 0 packet. It is sent by the encoder for the
@@ -112,6 +141,14 @@ impl<U> Decode<'_, '_, U> for Start {
             ctx,
             address,
         })
+    }
+}
+
+impl<U> Encode<'_, U> for Start {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bit(self.branch)?;
+        encoder.encode(&self.ctx)?;
+        util::write_address(encoder, self.address)
     }
 }
 
@@ -157,6 +194,20 @@ impl<U> Decode<'_, '_, U> for Trap {
     }
 }
 
+impl<U> Encode<'_, U> for Trap {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bit(self.branch)?;
+        encoder.encode(&self.ctx)?;
+        encoder.write_bits(self.info.ecause, encoder.widths().ecause.get())?;
+        encoder.write_bit(self.info.tval.is_none())?;
+        encoder.write_bit(self.thaddr)?;
+        if let Some(tval) = self.info.tval {
+            encoder.write_bits(tval, encoder.widths().iaddress.get())?;
+        }
+        Ok(())
+    }
+}
+
 /// Context packet
 ///
 /// Represents a format 3, subformat 2 packet. It informs about a changed
@@ -190,6 +241,19 @@ impl<U> Decode<'_, '_, U> for Context {
             time,
             context,
         })
+    }
+}
+
+impl<U> Encode<'_, U> for Context {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bits(u8::from(self.privilege), encoder.widths().privilege.get())?;
+        if let Some(width) = encoder.widths().time {
+            encoder.write_bits(self.time.unwrap_or_default(), width.get())?;
+        }
+        if let Some(width) = encoder.widths().context {
+            encoder.write_bits(self.context.unwrap_or_default(), width.get())?;
+        }
+        Ok(())
     }
 }
 
@@ -231,6 +295,29 @@ impl<U: Unit> Decode<'_, '_, U> for Support<U::IOptions, U::DOptions> {
     }
 }
 
+impl<'d, U> Encode<'d, U> for Support<U::IOptions, U::DOptions>
+where
+    U: Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        encoder.write_bit(self.ienable)?;
+        encoder.write_bits(
+            u8::from(self.encoder_mode),
+            encoder.unit().encoder_mode_width(),
+        )?;
+        encoder.encode(&self.qual_status)?;
+        encoder.encode(&self.ioptions)?;
+        encoder.write_bit(self.denable)?;
+        if self.denable {
+            encoder.write_bit(self.dloss)?;
+            encoder.encode(&self.doptions)?;
+        }
+        Ok(())
+    }
+}
+
 /// Representation of a change to the filter qualification
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QualStatus {
@@ -264,6 +351,18 @@ impl<U> Decode<'_, '_, U> for QualStatus {
     }
 }
 
+impl<U> Encode<'_, U> for QualStatus {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        let value: u8 = match self {
+            Self::NoChange => 0b00,
+            Self::EndedRep => 0b01,
+            Self::TraceLost => 0b10,
+            Self::EndedNtr => 0b11,
+        };
+        encoder.write_bits(value, 2)
+    }
+}
+
 /// Mode the encoder is operating in
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum EncoderMode {
@@ -283,6 +382,14 @@ impl TryFrom<u8> for EncoderMode {
         match num {
             0 => Ok(Self::BranchTrace),
             e => Err(e),
+        }
+    }
+}
+
+impl From<EncoderMode> for u8 {
+    fn from(mode: EncoderMode) -> Self {
+        match mode {
+            EncoderMode::BranchTrace => 0,
         }
     }
 }
