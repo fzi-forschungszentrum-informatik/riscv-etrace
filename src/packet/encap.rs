@@ -8,23 +8,21 @@
 //!
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 
-use core::fmt;
-
-use super::decoder::{Decode, Decoder};
+use super::decoder::{self, Decode, Decoder};
 use super::{payload, unit, Error};
 
 /// RISC-V Packet Encapsulation
 ///
 /// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
 /// of the Encapsulation specification.
-#[derive(Debug, PartialEq)]
-pub enum Packet<'a, 'd, U> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Packet<P> {
     NullIdle { flow: u8 },
     NullAlign { flow: u8 },
-    Normal(Normal<'a, 'd, U>),
+    Normal(Normal<P>),
 }
 
-impl<'a, 'd, U> Packet<'a, 'd, U> {
+impl<P> Packet<P> {
     /// Retrieve the flow indicator of this packet
     pub fn flow(&self) -> u8 {
         match self {
@@ -45,7 +43,7 @@ impl<'a, 'd, U> Packet<'a, 'd, U> {
     /// Transform into a [`Normal`] Encapsulation Structure
     ///
     /// Returns [`None`] if this packet is a null packet.
-    pub fn into_normal(self) -> Option<Normal<'a, 'd, U>> {
+    pub fn into_normal(self) -> Option<Normal<P>> {
         match self {
             Self::Normal(n) => Some(n),
             _ => None,
@@ -53,13 +51,13 @@ impl<'a, 'd, U> Packet<'a, 'd, U> {
     }
 }
 
-impl<'a, 'd, U> From<Normal<'a, 'd, U>> for Packet<'a, 'd, U> {
-    fn from(normal: Normal<'a, 'd, U>) -> Self {
+impl<P> From<Normal<P>> for Packet<P> {
+    fn from(normal: Normal<P>) -> Self {
         Self::Normal(normal)
     }
 }
 
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
+impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
             // We need to make sure we don't decode a series of `null` packets
@@ -77,18 +75,15 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
                 let timestamp = extend
                     .then(|| decoder.read_bits(8 * decoder.timestamp_width()))
                     .transpose()?;
-                decoder
-                    .split_data(decoder.byte_pos() + length.get() as usize)
-                    .map(|remaining| {
-                        Normal {
-                            flow,
-                            src_id,
-                            timestamp,
-                            decoder,
-                            remaining,
-                        }
-                        .into()
-                    })
+                decoder::Scoped::new(decoder, length.get().into()).map(|payload| {
+                    Normal {
+                        flow,
+                        src_id,
+                        timestamp,
+                        payload,
+                    }
+                    .into()
+                })
             }
             _ if extend => Ok(Self::NullAlign { flow }),
             _ => Ok(Self::NullIdle { flow }),
@@ -106,15 +101,33 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
 /// boundary following the packet. Thus, the packet's data will be consumed
 /// regardless of whether the payload was decoded or not and even if an error
 /// occurred while decoding the payload.
-pub struct Normal<'a, 'd, U> {
+#[derive(Clone, Debug, PartialEq)]
+pub struct Normal<P> {
     flow: u8,
     src_id: u16,
     timestamp: Option<u64>,
-    decoder: &'a mut Decoder<'d, U>,
-    remaining: &'d [u8],
+    payload: P,
 }
 
-impl<'a, 'd, U> Normal<'a, 'd, U> {
+impl<P> Normal<P> {
+    /// Create a new "Normal Encapsulation Structure"
+    pub fn new(flow: u8, src_id: u16, payload: P) -> Self {
+        Self {
+            flow,
+            src_id,
+            timestamp: None,
+            payload,
+        }
+    }
+
+    /// Attach a timestamp to this encapsulation structure
+    pub fn with_timestamp(self, timestamp: u64) -> Self {
+        Self {
+            timestamp: Some(timestamp),
+            ..self
+        }
+    }
+
     /// Retrieve the flow indicator of this packet
     pub fn flow(&self) -> u8 {
         self.flow
@@ -132,57 +145,22 @@ impl<'a, 'd, U> Normal<'a, 'd, U> {
     pub fn timestamp(&self) -> Option<u64> {
         self.timestamp
     }
+
+    /// Retrieve the packet's payload
+    pub fn payload(&self) -> &P {
+        &self.payload
+    }
 }
 
-impl<'a, 'd, U: unit::Unit> Normal<'a, 'd, U> {
+impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
     /// Decode the packet's E-Trace payload
-    pub fn payload(self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
-        let width = self.decoder.trace_type_width();
-        match self.decoder.read_bits::<u8>(width)? {
-            0 => Decode::decode(self.decoder).map(payload::Payload::InstructionTrace),
+    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+        let decoder = self.payload.decoder_mut();
+        let width = decoder.trace_type_width();
+        match decoder.read_bits::<u8>(width)? {
+            0 => Decode::decode(decoder).map(payload::Payload::InstructionTrace),
             1 => Ok(payload::Payload::DataTrace),
             unknown => Err(Error::UnknownTraceType(unknown)),
         }
-    }
-}
-
-impl<U> fmt::Debug for Normal<'_, '_, U> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Normal")
-            .field("flow", &self.flow)
-            .field("src_id", &self.src_id)
-            .field("timestamp", &self.timestamp)
-            .field("unaligned_payload", &self.decoder.remaining_data())
-            .finish_non_exhaustive()
-    }
-}
-
-/// Compare two normal encapsulation structures
-///
-/// # Note
-///
-/// Comparison is only guranteed to work if the sub-byte alignment matches.
-impl<U> PartialEq for Normal<'_, '_, U> {
-    fn eq(&self, other: &Self) -> bool {
-        PartialEq::eq(
-            &(
-                self.flow,
-                self.src_id,
-                self.timestamp,
-                self.decoder.remaining_data(),
-            ),
-            &(
-                other.flow,
-                other.src_id,
-                other.timestamp,
-                other.decoder.remaining_data(),
-            ),
-        )
-    }
-}
-
-impl<'a, 'd, U> Drop for Normal<'a, 'd, U> {
-    fn drop(&mut self) {
-        self.decoder.reset(self.remaining);
     }
 }

@@ -133,7 +133,7 @@ impl<'d, U> Decoder<'d, U> {
     /// data from the input when [dropped][Drop::drop], leaving the decoder at
     /// the byte boundary following the packet. If an error is returned, the
     /// decoder may be in an unspecified state.
-    pub fn decode_encap_packet(&mut self) -> Result<encap::Packet<'_, 'd, U>, Error> {
+    pub fn decode_encap_packet(&mut self) -> Result<encap::Packet<Scoped<'_, 'd, U>>, Error> {
         Decode::decode(self)
     }
 

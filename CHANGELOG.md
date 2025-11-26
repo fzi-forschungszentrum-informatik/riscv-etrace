@@ -21,7 +21,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
   emitted during encoding attempts.
 - `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
 - `packet::smi::Packet` is now generic over its payload.
-- `packet::smi::Packet::payload` as renamed to `decode_payload` and is only
+- `packet::smi::Packet::payload` was renamed to `decode_payload` and is only
+  availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
+  to a simple accessor fn.
+- `packet::encap::Packet` and `packet::encap::Normal` are now generic over their
+  payload.
+- `packet::encap::Normal::payload` was renamed to `decode_payload` and is only
   availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
   to a simple accessor fn.
 
@@ -45,6 +50,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `packet::smi::Packet::payload` for accessing the packet's payload as is.
 - `Clone` impl for `packet::smi::Packet`.
 - `From<packet::smi::TraceType>` impl for `u8`.
+- A fn `packet::encap::Normal::payload` for accessing the packet's payload as
+  is.
+- `Clone` impls for `packet::encap::Packet` and `packet::encap::Normal`.
 
 ## 0.5.2 - 2025-11-03
 

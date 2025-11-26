@@ -89,7 +89,7 @@
 //! while decoder.bytes_left() > 0 {
 //!     let packet = decoder.decode_encap_packet().unwrap().into_normal();
 //!     if let Some(packet) = packet.filter(|p| p.src_id() == hart_to_trace) {
-//!         let payload = packet.payload().unwrap();
+//!         let payload = packet.decode_payload().unwrap();
 //!         eprintln!("{payload:?}");
 //!         tracer.process_payload(&payload).unwrap();
 //!         tracer.by_ref().for_each(|i| {
