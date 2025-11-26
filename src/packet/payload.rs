@@ -5,6 +5,7 @@
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
+use super::encoder::{Encode, Encoder};
 use super::{sync, unit, util, Error};
 
 /// An E-Trace payload
@@ -77,6 +78,17 @@ impl<U> Decode<'_, '_, U> for BranchFmt {
     }
 }
 
+impl<U> Encode<'_, U> for BranchFmt {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        let value: u8 = match self {
+            Self::NoAddr => 0b00,
+            Self::Addr => 0b10,
+            Self::AddrFail => 0b11,
+        };
+        encoder.write_bits(value, 2)
+    }
+}
+
 /// An instruction trace payload
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum InstructionTrace<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
@@ -94,6 +106,34 @@ impl<U: unit::Unit> Decode<'_, '_, U> for InstructionTrace<U::IOptions, U::DOpti
             0b10 => AddressInfo::decode(decoder).map(Into::into),
             0b11 => sync::Synchronization::decode(decoder).map(Into::into),
             _ => unreachable!(),
+        }
+    }
+}
+
+impl<'d, U> Encode<'d, U> for InstructionTrace<U::IOptions, U::DOptions>
+where
+    U: unit::Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        match self {
+            Self::Extension(ext) => {
+                encoder.write_bits(0b00u8, 2)?;
+                encoder.encode(ext)
+            }
+            Self::Branch(branch) => {
+                encoder.write_bits(0b01u8, 2)?;
+                encoder.encode(branch)
+            }
+            Self::Address(addr) => {
+                encoder.write_bits(0b10u8, 2)?;
+                encoder.encode(addr)
+            }
+            Self::Synchronization(sync) => {
+                encoder.write_bits(0b11u8, 2)?;
+                encoder.encode(sync)
+            }
         }
     }
 }
@@ -215,6 +255,15 @@ impl<U> Decode<'_, '_, U> for Extension {
     }
 }
 
+impl<U> Encode<'_, U> for Extension {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        match self {
+            Self::BranchCount(branch) => encoder.encode(branch),
+            Self::JumpTargetIndex(jti) => encoder.encode(jti),
+        }
+    }
+}
+
 /// Branch count payload
 ///
 /// Represents a format 0, subformat 0 packet. It informs about the number of
@@ -244,6 +293,17 @@ impl<U> Decode<'_, '_, U> for BranchCount {
     }
 }
 
+impl<U> Encode<'_, U> for BranchCount {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bits(self.branch_count + 31, 32)?;
+        encoder.encode(&self.branch_fmt)?;
+        if let Some(address) = self.address.as_ref() {
+            encoder.encode(address)?;
+        }
+        Ok(())
+    }
+}
+
 /// Jump target index payload
 ///
 /// Represents a format 0, subformat 1 packet.
@@ -267,6 +327,16 @@ impl<U> Decode<'_, '_, U> for JumpTargetIndex {
             branch_map,
             irdepth,
         })
+    }
+}
+
+impl<U> Encode<'_, U> for JumpTargetIndex {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        encoder.write_bits(self.index, encoder.widths().cache_index)?;
+        let count = util::BranchCount(self.branch_map.count());
+        encoder.encode(&count)?;
+        encoder.write_bits(self.branch_map.raw_map(), count.field_length())?;
+        util::write_implicit_return(encoder, self.irdepth)
     }
 }
 
@@ -301,6 +371,20 @@ impl<U> Decode<'_, '_, U> for Branch {
                 branch_map,
                 address: Some(address),
             })
+        }
+    }
+}
+
+impl<U> Encode<'_, U> for Branch {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        if let Some(address) = self.address.as_ref() {
+            let count = util::BranchCount(self.branch_map.count());
+            encoder.encode(&count)?;
+            encoder.write_bits(self.branch_map.raw_map(), count.field_length())?;
+            encoder.encode(address)
+        } else {
+            encoder.encode(&util::BranchCount(0))?;
+            encoder.write_bits(self.branch_map.raw_map(), 31)
         }
     }
 }
@@ -351,5 +435,14 @@ impl<U> Decode<'_, '_, U> for AddressInfo {
             updiscon,
             irdepth,
         })
+    }
+}
+
+impl<U> Encode<'_, U> for AddressInfo {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
+        util::write_address(encoder, self.address)?;
+        encoder.write_differential_bit(self.notify)?;
+        encoder.write_differential_bit(self.updiscon)?;
+        util::write_implicit_return(encoder, self.irdepth)
     }
 }

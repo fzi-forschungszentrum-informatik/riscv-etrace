@@ -45,8 +45,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::unit::ReferenceDOptions`, `packet::unit::PULPIOptions`,
   `packet::unit::NoOptions`, `packet::sync::QualStatus`,
   `packet::sync::Support`, `packet::sync::Context`, `packet::sync::Trap`,
-  `packet::sync::Start`, `packet::sync::Synchronization` and
-  `packet::smi::Packet`.
+  `packet::sync::Start`, `packet::sync::Synchronization`,
+  `packet::payload::BranchFmt`, `packet::payload::AddressInfo`,
+  `packet::payload::Branch`, `packet::payload::JumpTargetIndex`,
+  `packet::payload::BranchCount`, `packet::payload::Extension`,
+  `packet::payload::InstructionTrace` and `packet::smi::Packet`.
 - A fn `packet::Builder::with_compression` for controlling whether
   `packet::encoder::Encoder` created through the `packet::Builder` compress.
 - `From<packet::sync::EncoderMode>` impl for `u8`
