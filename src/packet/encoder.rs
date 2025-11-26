@@ -25,7 +25,6 @@ pub struct Encoder<'d, U> {
 impl<'d, U> Encoder<'d, U> {
     /// Create a new encoder
     pub(super) fn new(
-        data: &'d mut [u8],
         field_widths: Widths,
         unit: U,
         hart_index_width: u8,
@@ -34,7 +33,7 @@ impl<'d, U> Encoder<'d, U> {
         compress: bool,
     ) -> Self {
         Self {
-            data,
+            data: &mut [],
             bit_pos: 0,
             bytes_committed: 0,
             field_widths,

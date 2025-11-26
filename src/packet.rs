@@ -140,14 +140,15 @@ impl<U> Builder<U> {
 
     /// Build an [`Encoder`][encoder::Encoder] for this configuration
     pub fn encoder(self, buffer: &mut [u8]) -> encoder::Encoder<'_, U> {
-        encoder::Encoder::new(
-            buffer,
+        let mut res = encoder::Encoder::new(
             self.field_widths,
             self.unit,
             self.hart_index_width,
             self.timestamp_width,
             self.trace_type_width,
             !self.no_compress,
-        )
+        );
+        res.reset(buffer);
+        res
     }
 }
