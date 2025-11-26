@@ -87,13 +87,6 @@ impl<'d, U> Encoder<'d, U> {
         self.trace_type_width
     }
 
-    /// Advance the position to the next byte boundary
-    pub(super) fn advance_to_byte(&mut self) {
-        if self.bit_pos & 0x7 != 0 {
-            self.bit_pos = (self.bit_pos & !0x7usize) + 8;
-        }
-    }
-
     /// Extract a mutable chunk from the beginning of the uncommitted region
     ///
     /// Returns a chunk of fixed size from the beginning of the uncommitted
