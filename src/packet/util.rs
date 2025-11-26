@@ -33,9 +33,8 @@ where
 ///
 /// Write an address, honouring the address width and lsb offset specified in the
 /// [`Encoder`]'s protocol configuration.
-pub fn write_address<B, U, T>(encoder: &mut Encoder<B, U>, address: T) -> Result<(), Error>
+pub fn write_address<U, T>(encoder: &mut Encoder<'_, U>, address: T) -> Result<(), Error>
 where
-    B: AsMut<[u8]>,
     T: Copy
         + ops::Shl<usize, Output = T>
         + ops::Shr<usize, Output = T>
@@ -73,8 +72,8 @@ pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>
 ///
 /// This fn reads the `irreport` and `irdepth` fields. The former is written
 /// differentially, and is `true` if `irdepth` is not `None`.
-pub fn write_implicit_return<B: AsMut<[u8]>, U>(
-    encoder: &mut Encoder<B, U>,
+pub fn write_implicit_return<U>(
+    encoder: &mut Encoder<U>,
     irdepth: Option<usize>,
 ) -> Result<(), Error> {
     encoder.write_differential_bit(irdepth.is_some())?;
@@ -123,8 +122,8 @@ impl<U> Decode<'_, '_, U> for BranchCount {
     }
 }
 
-impl<B: AsMut<[u8]>, U> Encode<B, U> for BranchCount {
-    fn encode(&self, encoder: &mut Encoder<B, U>) -> Result<(), Error> {
+impl<U> Encode<'_, U> for BranchCount {
+    fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bits(self.0, 5)
     }
 }

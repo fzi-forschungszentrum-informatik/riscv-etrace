@@ -17,8 +17,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `packet::payload::AddressInfo::address` is now an `i64` which is always
   sign-extended.
 - `packet::Builder::build` was renamed to `decoder`.
-- `packet::error::Error` now has a new variant `BufferTooSmall` which may be
-  emitted during encoding attempts.
+- `packet::error::Error` now has two new variants `BufferTooSmall` and
+  `PayloadTooBig`, which may be emitted during encoding attempts.
 - `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
 - `packet::smi::Packet` is now generic over its payload.
 - `packet::smi::Packet::payload` was renamed to `decode_payload` and is only
@@ -40,8 +40,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
   the `Scoped` is dropped.
 - A submodule `packet::encoder` providing the `Encoder` type and the `Encode`
   trait.
-- Fns `packet::Builder::encoder` and `packet::Builder::default_encoder` for
-  building `packet::encoder::Encoder`s.
+- A fn `packet::Builder::encoder` for building `packet::encoder::Encoder`s.
 - `encoder::Encode` impl for `packet::unit::ReferenceIOptions`,
   `packet::unit::ReferenceDOptions`, `packet::unit::PULPIOptions` and
   `packet::unit::NoOptions`.

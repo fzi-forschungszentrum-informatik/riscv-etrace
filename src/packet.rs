@@ -139,20 +139,16 @@ impl<U> Builder<U> {
     }
 
     /// Build an [`Encoder`][encoder::Encoder] for this configuration
-    pub fn encoder<B: AsMut<[u8]>>(self, buffer: B) -> encoder::Encoder<B, U> {
-        encoder::Encoder::new(
-            buffer,
+    pub fn encoder(self, buffer: &mut [u8]) -> encoder::Encoder<'_, U> {
+        let mut res = encoder::Encoder::new(
             self.field_widths,
             self.unit,
             self.hart_index_width,
             self.timestamp_width,
             self.trace_type_width,
             !self.no_compress,
-        )
-    }
-
-    /// Build an [`Encoder`][encoder::Encoder] with a [`Default`] buffer
-    pub fn default_encoder<B: AsMut<[u8]> + Default>(self) -> encoder::Encoder<B, U> {
-        self.encoder(Default::default())
+        );
+        res.reset(buffer);
+        res
     }
 }
