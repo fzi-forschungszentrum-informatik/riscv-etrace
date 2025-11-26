@@ -58,6 +58,24 @@ impl<P> From<Normal<P>> for Packet<P> {
     }
 }
 
+impl<'d, U> TryFrom<Packet<decoder::Scoped<'_, 'd, U>>>
+    for Packet<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    type Error = Error;
+
+    fn try_from(packet: Packet<decoder::Scoped<'_, 'd, U>>) -> Result<Self, Self::Error> {
+        match packet {
+            Packet::NullIdle { flow } => Ok(Self::NullIdle { flow }),
+            Packet::NullAlign { flow } => Ok(Self::NullAlign { flow }),
+            Packet::Normal(p) => p.try_into().map(Self::Normal),
+        }
+    }
+}
+
 impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
