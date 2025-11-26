@@ -97,6 +97,24 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     }
 }
 
+impl<'d, U, P> Encode<'d, U> for Packet<P>
+where
+    U: unit::Unit,
+    Normal<P>: Encode<'d, U>,
+{
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        let (flow, extend) = match self {
+            Self::NullIdle { flow } => (flow, 0x00),
+            Self::NullAlign { flow } => (flow, 0x80),
+            Self::Normal(n) => return encoder.encode(n),
+        };
+
+        encoder
+            .first_uncommitted_chunk::<1>()
+            .map(|h| h[0] = ((flow & 0x3) << 5) | extend)
+    }
+}
+
 /// Normal RISC-V Encapsulation [Packet]
 ///
 /// This datatype represents a "Normal Encapsulation Structure" as describes in
