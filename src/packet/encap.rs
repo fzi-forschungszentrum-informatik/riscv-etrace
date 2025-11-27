@@ -76,6 +76,17 @@ where
     }
 }
 
+impl<'d, U> Decode<'_, 'd, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+    U::IOptions: Encode<'d, U>,
+    U::DOptions: Encode<'d, U>,
+{
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
+        Packet::<decoder::Scoped<_>>::decode(decoder).and_then(TryFrom::try_from)
+    }
+}
+
 impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
