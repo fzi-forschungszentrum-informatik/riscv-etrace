@@ -23,13 +23,21 @@ use payload::{AddressInfo, InstructionTrace};
 bitstream_test!(
     extension_jti_1,
     b"\x00\x7f\x05",
-    payload::JumpTargetIndex { index: 768, branch_map: branch::Map::new(31, 10), irdepth: None },
+    payload::JumpTargetIndex {
+        index: 768,
+        branch_map: branch::Map::new(31, 10),
+        irdepth: None
+    },
     params { cache_size_p: 10 }
 );
 bitstream_test!(
     extension_jti_2,
     b"\xff\x03",
-    payload::JumpTargetIndex { index: 1023, branch_map: Default::default(), irdepth: None },
+    payload::JumpTargetIndex {
+        index: 1023,
+        branch_map: Default::default(),
+        irdepth: None
+    },
     params { cache_size_p: 10 }
 );
 bitstream_test!(
@@ -37,7 +45,12 @@ bitstream_test!(
     b"\x47\x0b",
     payload::Branch {
         branch_map: branch::Map::new(7, 0b101_1010),
-        address: Some(AddressInfo { address: 0, notify: false, updiscon: false, irdepth: None }),
+        address: Some(AddressInfo {
+            address: 0,
+            notify: false,
+            updiscon: false,
+            irdepth: None
+        }),
     },
     params { cache_size_p: 10 }
 );
@@ -52,17 +65,26 @@ bitstream_test!(
 bitstream_test!(
     address_absolute,
     b"\x01\x00\x00\x00\x00\x00\x00\xc0",
-    payload::AddressInfo { address: 4, notify: true, updiscon: false, irdepth: None },
+    payload::AddressInfo {
+        address: 4,
+        notify: true,
+        updiscon: false,
+        irdepth: None
+    },
     params {
         iaddress_width_p: 64.try_into().unwrap(),
         iaddress_lsb_p: 2.try_into().unwrap()
     }
-
 );
 bitstream_test!(
     address_differential,
     b"\x01\x00\x00\x00\x00\x00\x00\x80",
-    payload::AddressInfo { address: 4, notify: false, updiscon: true, irdepth: None },
+    payload::AddressInfo {
+        address: 4,
+        notify: false,
+        updiscon: true,
+        irdepth: None
+    },
     params {
         iaddress_width_p: 64.try_into().unwrap(),
         iaddress_lsb_p: 2.try_into().unwrap()
@@ -73,7 +95,11 @@ bitstream_test!(
     b"\xff",
     sync::Start {
         branch: true,
-        ctx: sync::Context { privilege: types::Privilege::Machine, time: None, context: None },
+        ctx: sync::Context {
+            privilege: types::Privilege::Machine,
+            time: None,
+            context: None
+        },
         address: 0xffff_ffff_ffff_fffe,
     },
     params {
