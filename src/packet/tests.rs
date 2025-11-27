@@ -3,6 +3,9 @@
 
 extern crate alloc;
 
+#[macro_use]
+mod gen;
+
 mod basic;
 mod encap_tests;
 mod parts;
@@ -16,60 +19,40 @@ use crate::types::{self, branch};
 use decoder::Decode;
 use payload::{AddressInfo, InstructionTrace};
 
-macro_rules! bitstream_test {
-    ($n:ident, $b:literal, $d:expr) => {
-        bitstream_test!($n, $b, $d, &Default::default());
-    };
-    ($n:ident, $b:literal, $d:expr, $c:expr) => {
-        mod $n {
-            use super::*;
-
-            #[test]
-            fn decode() {
-                let mut decoder = Builder::new().with_params($c).decoder($b);
-                assert_eq!(Decode::decode(&mut decoder), Ok($d));
-            }
-
-            #[test]
-            fn encode() {
-                let mut buffer = alloc::vec::Vec::new();
-                buffer.resize($b.len(), 0);
-                let mut encoder = Builder::new().with_params($c).encoder(buffer.as_mut());
-                encoder.encode(&$d).expect("Could not encode item");
-                let len = $b.len() - encoder.uncommitted();
-                assert_eq!(&buffer[..len], $b.as_ref());
-            }
-        }
-    };
-    ($n:ident, $b:literal, $d:expr, $( $k:ident : $v:expr ),*) => {
-        bitstream_test!($n, $b, $d, &config::Parameters {
-            $($k: $v,)*
-            ..Default::default()
-        });
-    };
-}
-
 // `payload` related tests
 bitstream_test!(
     extension_jti_1,
     b"\x00\x7f\x05",
-    payload::JumpTargetIndex { index: 768, branch_map: branch::Map::new(31, 10), irdepth: None },
-    cache_size_p: 10
+    payload::JumpTargetIndex {
+        index: 768,
+        branch_map: branch::Map::new(31, 10),
+        irdepth: None
+    },
+    params { cache_size_p: 10 }
 );
 bitstream_test!(
     extension_jti_2,
     b"\xff\x03",
-    payload::JumpTargetIndex { index: 1023, branch_map: Default::default(), irdepth: None },
-    cache_size_p: 10
+    payload::JumpTargetIndex {
+        index: 1023,
+        branch_map: Default::default(),
+        irdepth: None
+    },
+    params { cache_size_p: 10 }
 );
 bitstream_test!(
     branches,
     b"\x47\x0b",
     payload::Branch {
         branch_map: branch::Map::new(7, 0b101_1010),
-        address: Some(AddressInfo { address: 0, notify: false, updiscon: false, irdepth: None }),
+        address: Some(AddressInfo {
+            address: 0,
+            notify: false,
+            updiscon: false,
+            irdepth: None
+        }),
     },
-    cache_size_p: 10
+    params { cache_size_p: 10 }
 );
 bitstream_test!(
     branch_with_zero_branches,
@@ -82,29 +65,47 @@ bitstream_test!(
 bitstream_test!(
     address_absolute,
     b"\x01\x00\x00\x00\x00\x00\x00\xc0",
-    payload::AddressInfo { address: 4, notify: true, updiscon: false, irdepth: None },
-    iaddress_width_p: 64.try_into().unwrap(),
-    iaddress_lsb_p: 2.try_into().unwrap()
-
+    payload::AddressInfo {
+        address: 4,
+        notify: true,
+        updiscon: false,
+        irdepth: None
+    },
+    params {
+        iaddress_width_p: 64.try_into().unwrap(),
+        iaddress_lsb_p: 2.try_into().unwrap()
+    }
 );
 bitstream_test!(
     address_differential,
     b"\x01\x00\x00\x00\x00\x00\x00\x80",
-    payload::AddressInfo { address: 4, notify: false, updiscon: true, irdepth: None },
-    iaddress_width_p: 64.try_into().unwrap(),
-    iaddress_lsb_p: 2.try_into().unwrap()
-
+    payload::AddressInfo {
+        address: 4,
+        notify: false,
+        updiscon: true,
+        irdepth: None
+    },
+    params {
+        iaddress_width_p: 64.try_into().unwrap(),
+        iaddress_lsb_p: 2.try_into().unwrap()
+    }
 );
 bitstream_test!(
     synchronization_start,
     b"\xff",
     sync::Start {
         branch: true,
-        ctx: sync::Context { privilege: types::Privilege::Machine, time: None, context: None },
+        ctx: sync::Context {
+            privilege: types::Privilege::Machine,
+            time: None,
+            context: None
+        },
         address: 0xffff_ffff_ffff_fffe,
     },
-    iaddress_width_p: 64.try_into().unwrap(),
-    iaddress_lsb_p: 1.try_into().unwrap()
+    params {
+        iaddress_width_p: 64.try_into().unwrap(),
+        iaddress_lsb_p: 1.try_into().unwrap()
+    }
 );
 
 /*
@@ -123,7 +124,7 @@ bitstream_test!(
         },
         address: 536937572
     })),
-    &PARAMS_32
+    params(&PARAMS_32)
 );
 
 /*
@@ -136,8 +137,8 @@ bitstream_test!(
     InstructionTrace::Branch(payload::Branch {
         branch_map: branch::Map::new(31, 256),
         address: None
-    },),
-    &PARAMS_32
+    }),
+    params(&PARAMS_32)
 );
 /*
 Decoded packet: Packet { trace_type: 2, time_tag: None, hart: 0, payload: [250, 251], .. }
@@ -152,7 +153,7 @@ bitstream_test!(
         updiscon: false,
         irdepth: None
     }),
-    &PARAMS_64
+    params(&PARAMS_64)
 );
 
 // Ok(Synchronization(Support(Support { ienable: true, encoder_mode: BranchTrace, qual_status: TraceLost, ioptions: ReferenceIOptions { implicit_return: false, implicit_exception: false, full_address: false, jump_target_cache: false, branch_prediction: false }, denable: false, dloss: false, doptions: ReferenceDOptions { no_address: false, no_data: false, full_address: false, full_data: false } })))
@@ -179,7 +180,7 @@ bitstream_test!(
             full_data: false
         }
     })),
-    &PARAMS_32
+    params(&PARAMS_32)
 );
 
 bitstream_test!(
@@ -205,7 +206,7 @@ bitstream_test!(
             full_data: false
         }
     })),
-    &PARAMS_32
+    params(&PARAMS_32)
 );
 
 const PARAMS_32: config::Parameters = config::Parameters {
