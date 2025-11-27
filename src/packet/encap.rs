@@ -71,19 +71,24 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
 
         match core::num::NonZeroU8::new(length) {
             Some(length) => {
-                let src_id = decoder.read_bits(decoder.hart_index_width())?;
+                let src_id_width = decoder.hart_index_width();
+                let timestamp_width = decoder.timestamp_width();
+                let length = usize::from(length.get())
+                    + usize::from(src_id_width >> 3)
+                    + usize::from(timestamp_width);
+
+                let mut payload = decoder::Scoped::new(decoder, length)?;
+                let src_id = payload.decoder_mut().read_bits(src_id_width)?;
                 let timestamp = extend
-                    .then(|| decoder.read_bits(8 * decoder.timestamp_width()))
+                    .then(|| payload.decoder_mut().read_bits(8 * timestamp_width))
                     .transpose()?;
-                decoder::Scoped::new(decoder, length.get().into()).map(|payload| {
-                    Normal {
-                        flow,
-                        src_id,
-                        timestamp,
-                        payload,
-                    }
-                    .into()
-                })
+                Ok(Normal {
+                    flow,
+                    src_id,
+                    timestamp,
+                    payload,
+                }
+                .into())
             }
             _ if extend => Ok(Self::NullAlign { flow }),
             _ => Ok(Self::NullIdle { flow }),
