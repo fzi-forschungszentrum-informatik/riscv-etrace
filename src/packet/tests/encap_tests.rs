@@ -60,7 +60,7 @@ fn decode_null_idle() {
         .with_params(&PARAMS_32)
         .with_hart_index_width(8)
         .decoder(data);
-    let encap_data: encap::Packet<_> = Decode::decode(&mut decoder).unwrap();
+    let encap_data: encap::Packet = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 1);
     assert!(encap_data.is_null());
     assert_eq!(encap_data.into_normal(), None);
@@ -74,6 +74,6 @@ fn decode_null_align() {
         .with_params(&PARAMS_32)
         .with_timestamp_width(1)
         .decoder(data);
-    let encap_data: encap::Packet<_> = Decode::decode(&mut decoder).unwrap();
+    let encap_data: encap::Packet = Decode::decode(&mut decoder).unwrap();
     assert_eq!(encap_data.flow(), 3);
 }
