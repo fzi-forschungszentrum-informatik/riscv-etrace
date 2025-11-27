@@ -17,6 +17,18 @@ macro_rules! bitstream_test {
     ($b:tt ($c:expr) params ($p:expr) $($k:ident $v:tt)*) => {
         bitstream_test!($b ($c.with_params($p)) $($k $v)*);
     };
+    ($b:tt ($c:expr) hart_index_width ($w:expr) $($k:ident $v:tt)*) => {
+        bitstream_test!($b ($c.with_hart_index_width($w)) $($k $v)*);
+    };
+    ($b:tt ($c:expr) timestamp_width ($w:expr) $($k:ident $v:tt)*) => {
+        bitstream_test!($b ($c.with_timestamp_width($w)) $($k $v)*);
+    };
+    ($b:tt ($c:expr) trace_type_width ($w:expr) $($k:ident $v:tt)*) => {
+        bitstream_test!($b ($c.with_trace_type_width($w)) $($k $v)*);
+    };
+    ($b:tt ($c:expr) compression ($w:expr) $($k:ident $v:tt)*) => {
+        bitstream_test!($b ($c.with_compression($w)) $($k $v)*);
+    };
     ([$n:ident, $b:literal, $d:expr] ($c:expr)) => {
         mod $n {
             use super::*;
