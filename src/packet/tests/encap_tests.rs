@@ -53,6 +53,33 @@ bitstream_test!(
     hart_index_width(8)
 );
 
+bitstream_test!(
+    normal_support_small_srcid,
+    b"\xCA\xD3\x38\x07\x00\x00\x00\x90\x11\x04\x80\x00",
+    encap::Packet::from(
+        encap::Normal::new(
+            2,
+            3,
+            payload::Payload::InstructionTrace(
+                sync::Start {
+                    branch: true,
+                    ctx: sync::Context {
+                        privilege: types::Privilege::Machine,
+                        time: None,
+                        context: Some(0)
+                    },
+                    address: 536937572
+                }
+                .into()
+            )
+        )
+        .with_timestamp(0x8D)
+    ),
+    params(&PARAMS_32),
+    timestamp_width(1),
+    hart_index_width(4)
+);
+
 // header reverse: 0010 | 0000, srdId: 0001 | 0000;
 bitstream_test!(
     null_idle,
