@@ -49,7 +49,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::payload::BranchFmt`, `packet::payload::AddressInfo`,
   `packet::payload::Branch`, `packet::payload::JumpTargetIndex`,
   `packet::payload::BranchCount`, `packet::payload::Extension`,
-  `packet::payload::InstructionTrace` and `packet::smi::Packet`.
+  `packet::payload::InstructionTrace`, `packet::encap::Normal`,
+  `packet::encap::Packet` and `packet::smi::Packet`.
 - A fn `packet::Builder::with_compression` for controlling whether
   `packet::encoder::Encoder` created through the `packet::Builder` compress.
 - `From<packet::sync::EncoderMode>` impl for `u8`
@@ -59,6 +60,16 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `packet::encap::Normal::payload` for accessing the packet's payload as
   is.
 - `Clone` impls for `packet::encap::Packet` and `packet::encap::Normal`.
+- `TryFrom` impls for `packet::encap::Packet` and `packet::encap::Normal`
+  allowing conversion from ephemeral (containing a `packet::decoder::Scoped`) to
+  concrete packets (that contain a decoded `packet::payload::Payload`).
+- `packet::decoder::Decode` impl for concrete packets (containing a decoded
+  `packet::payload::Payload`).
+
+### Fixed
+
+- `packet::encap::Packet`s were not correctly decoded if the width of the srcID
+  field was not a multiple of 8 bits.
 
 ## 0.5.2 - 2025-11-03
 
