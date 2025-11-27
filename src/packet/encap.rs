@@ -17,7 +17,7 @@ use super::{payload, unit, Error};
 /// This datatype represents a "Packet Encapsulation" as describes in Chapter 2
 /// of the Encapsulation specification.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Packet<P> {
+pub enum Packet<P = payload::Payload> {
     NullIdle { flow: u8 },
     NullAlign { flow: u8 },
     Normal(Normal<P>),
