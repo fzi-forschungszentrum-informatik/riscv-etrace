@@ -72,22 +72,23 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<'a, 'd, U> {
 
         match core::num::NonZeroU8::new(length) {
             Some(length) => {
+                let length = usize::from(length.get())
+                    + usize::from(decoder.hart_index_width >> 3)
+                    + usize::from(decoder.timestamp_width);
+
+                let remaining = decoder.split_data(decoder.byte_pos() + length)?;
                 let src_id = decoder.read_bits(decoder.hart_index_width)?;
                 let timestamp = extend
                     .then(|| decoder.read_bits(8 * decoder.timestamp_width))
                     .transpose()?;
-                decoder
-                    .split_data(decoder.byte_pos() + length.get() as usize)
-                    .map(|remaining| {
-                        Normal {
-                            flow,
-                            src_id,
-                            timestamp,
-                            decoder,
-                            remaining,
-                        }
-                        .into()
-                    })
+                Ok(Normal {
+                    flow,
+                    src_id,
+                    timestamp,
+                    decoder,
+                    remaining,
+                }
+                .into())
             }
             _ if extend => Ok(Self::NullAlign { flow }),
             _ => Ok(Self::NullIdle { flow }),
