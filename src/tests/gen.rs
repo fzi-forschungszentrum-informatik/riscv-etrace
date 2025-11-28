@@ -32,7 +32,7 @@ macro_rules! trace_test_helper {
 
             #[test]
             fn decode() {
-                let mut tracer: tracer::Tracer<_, tracer::stack::StaticStack<8>> = $t
+                let mut tracer: tracer::Tracer<_, stack::StaticStack<8>> = $t
                     .build()
                     .expect("Could not build tracer");
                 $(
@@ -45,7 +45,7 @@ macro_rules! trace_test_helper {
 
             #[test]
             fn size_hint() {
-                let mut tracer: tracer::Tracer<_, tracer::stack::StaticStack<8>> = $t
+                let mut tracer: tracer::Tracer<_, stack::StaticStack<8>> = $t
                     .build()
                     .expect("Could not build tracer");
                 $(

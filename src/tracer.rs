@@ -7,7 +7,6 @@
 
 pub mod error;
 pub mod item;
-pub mod stack;
 mod state;
 
 pub use item::Item;
@@ -18,7 +17,7 @@ use crate::instruction;
 use crate::packet::payload::{InstructionTrace, Payload};
 use crate::packet::sync;
 use crate::packet::unit::IOptions;
-use crate::types::trap;
+use crate::types::{stack, trap};
 
 use error::Error;
 use instruction::info::Info;

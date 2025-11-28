@@ -3,6 +3,7 @@
 //! Types not specific to [packets][crate::packet] or [tracer][crate::tracer]
 
 pub mod branch;
+pub mod stack;
 pub mod trap;
 
 /// RISC-V priviledge levels

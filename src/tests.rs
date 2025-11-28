@@ -14,7 +14,7 @@ use crate::config;
 use crate::instruction;
 use crate::packet::{payload, sync};
 use crate::tracer;
-use crate::types::{branch, trap};
+use crate::types::{branch, stack, trap};
 
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use tracer::item::{Context, Item};

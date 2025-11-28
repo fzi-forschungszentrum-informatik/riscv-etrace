@@ -29,6 +29,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `packet::encap::Normal::payload` was renamed to `decode_payload` and is only
   availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
   to a simple accessor fn.
+- The `tracer::stack` module was moved to `types`.
 
 ### Added
 
