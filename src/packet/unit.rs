@@ -95,6 +95,36 @@ pub trait IOptions {
     fn jump_target_cache(&self) -> Option<bool> {
         None
     }
+
+    /// Update the active [`Features`][config::Features] based on these ioptions
+    ///
+    /// On success, the given [`Features`][config::Features] reflect the
+    /// configuration conveyed by these ioptions. If any of the activated
+    /// options is not supported, the name of the feature is returned as an
+    /// error. It is the responsibility of the caller to wrap that `&str` into
+    /// an appropriate error type if neccessary.
+    fn update_features(&self, features: &mut config::Features) -> Result<(), &'static str> {
+        // Before touching any state, we need to assert no unsupported option is
+        // active.
+        if self.implicit_exception() == Some(true) {
+            return Err("implicit exceptions");
+        }
+        if self.branch_prediction() == Some(true) {
+            return Err("branch prediction");
+        }
+        if self.jump_target_cache() == Some(true) {
+            return Err("jump target cache");
+        }
+
+        if let Some(jumps) = self.sequentially_inferred_jumps() {
+            features.sequentially_inferred_jumps = jumps;
+        }
+        if let Some(returns) = self.implicit_return() {
+            features.implicit_returns = returns;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(feature = "alloc")]
