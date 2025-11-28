@@ -71,6 +71,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   concrete packets (that contain a decoded `packet::payload::Payload`).
 - `packet::decoder::Decode` impl for concrete packets (containing a decoded
   `packet::payload::Payload`).
+- A fn `types::branch::Map::take` for extracting branches into a new
+  `branch::Map`.
 
 ### Fixed
 

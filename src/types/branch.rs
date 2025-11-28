@@ -39,6 +39,18 @@ impl Map {
         Some(res)
     }
 
+    /// Transfer a maximum number of branches to a new branch map
+    pub fn take(&mut self, mut count: u8) -> Self {
+        if count > self.count {
+            count = self.count;
+        }
+
+        let map = self.map;
+        self.map >>= count;
+        self.count -= count;
+        Self { count, map }
+    }
+
     /// Push a new branch information
     pub fn push_branch_taken(&mut self, taken: bool) -> Result<(), Error> {
         let bit = 1u32
