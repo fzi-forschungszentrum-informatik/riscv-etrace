@@ -5,6 +5,7 @@
 use core::num::NonZeroU8;
 
 use crate::binary::Binary;
+use crate::config::Features;
 use crate::instruction::{self, Instruction};
 use crate::types::{branch, Privilege};
 
@@ -53,21 +54,13 @@ pub struct State<S: ReturnStack, I: Info> {
     /// Width of the address bus
     address_width: NonZeroU8,
 
-    /// Flag indicating whether or not sequential jumps are to be followed
-    sequential_jumps: bool,
-
-    /// Flag indicating whether or not to infer fn returns
-    implicit_return: bool,
+    /// Feature selection
+    features: Features,
 }
 
 impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// Create a new, initial state for tracing
-    pub fn new(
-        return_stack: S,
-        address_width: NonZeroU8,
-        sequential_jumps: bool,
-        implicit_return: bool,
-    ) -> Self {
+    pub fn new(return_stack: S, address_width: NonZeroU8, features: Features) -> Self {
         Self {
             pc: 0,
             insn: Default::default(),
@@ -81,8 +74,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             return_stack,
             stack_depth: Default::default(),
             address_width,
-            sequential_jumps,
-            implicit_return,
+            features,
         }
     }
 
@@ -261,7 +253,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             .checked_shl(self.address_width.get().into())
             .unwrap_or(0));
 
-        if self.implicit_return && self.insn.is_call() {
+        if self.features.implicit_returns && self.insn.is_call() {
             self.return_stack.push(after_pc);
         }
 
@@ -292,7 +284,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// This roughly corresponds to a combination of `is_sequential_jump` and
     /// `sequential_jump_target` of the reference implementation.
     fn sequential_jump_target(&self, insn: &I) -> Option<u64> {
-        if !self.sequential_jumps {
+        if !self.features.sequentially_inferred_jumps {
             return None;
         }
 
@@ -307,7 +299,7 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
     /// This roughly corresponds to a combination of `is_implicit_return` and
     /// `pop_return_stack` of the reference implementation.
     fn implicit_return_address(&mut self, insn: &I) -> Option<u64> {
-        if self.implicit_return
+        if self.features.implicit_returns
             && insn.is_return()
             && self.stack_depth != Some(self.return_stack.depth())
         {
@@ -418,12 +410,12 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
 
     /// Set whether or not to infer sequential jumps
     pub fn set_sequential_jumps(&mut self, sequential_jumps: bool) {
-        self.state.sequential_jumps = sequential_jumps;
+        self.state.features.sequentially_inferred_jumps = sequential_jumps;
     }
 
     /// Set whether or not to infer function returns
     pub fn set_implicit_return(&mut self, implicit_return: bool) {
-        self.state.implicit_return = implicit_return;
+        self.state.features.implicit_returns = implicit_return;
     }
 
     /// Set a [`StopCondition`]

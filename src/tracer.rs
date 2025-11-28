@@ -12,7 +12,7 @@ mod state;
 pub use item::Item;
 
 use crate::binary::{self, Binary};
-use crate::config::{self, AddressMode, Version};
+use crate::config::{self, AddressMode, Features, Version};
 use crate::instruction;
 use crate::packet::payload::{InstructionTrace, Payload};
 use crate::packet::sync;
@@ -473,8 +473,10 @@ impl<B> Builder<B> {
             S::new(self.max_stack_depth)
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
             self.address_width,
-            self.sequentially_inferred_jumps,
-            self.implicit_return,
+            Features {
+                sequentially_inferred_jumps: self.sequentially_inferred_jumps,
+                implicit_returns: self.implicit_return,
+            },
         );
         Ok(Tracer {
             state,
