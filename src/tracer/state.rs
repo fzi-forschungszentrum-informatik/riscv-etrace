@@ -408,6 +408,11 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
         self.state.stack_depth = depth;
     }
 
+    /// Get a mutable refetence to the [`State`]'s enabled [`Features`]
+    pub fn get_features_mut(&mut self) -> &mut Features {
+        &mut self.state.features
+    }
+
     /// Set whether or not to infer sequential jumps
     pub fn set_sequential_jumps(&mut self, sequential_jumps: bool) {
         self.state.features.sequentially_inferred_jumps = sequential_jumps;
