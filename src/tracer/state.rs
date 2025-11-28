@@ -418,16 +418,6 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
         &mut self.state.features
     }
 
-    /// Set whether or not to infer sequential jumps
-    pub fn set_sequential_jumps(&mut self, sequential_jumps: bool) {
-        self.state.features.sequentially_inferred_jumps = sequential_jumps;
-    }
-
-    /// Set whether or not to infer function returns
-    pub fn set_implicit_return(&mut self, implicit_return: bool) {
-        self.state.features.implicit_returns = implicit_return;
-    }
-
     /// Set a [`StopCondition`]
     ///
     /// This operation concludes the configuration.
