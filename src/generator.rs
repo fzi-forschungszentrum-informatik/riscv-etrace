@@ -3,4 +3,5 @@
 //! Payload generators
 
 pub mod error;
+pub mod hart2enc;
 pub mod state;
