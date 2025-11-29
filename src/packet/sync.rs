@@ -6,7 +6,7 @@
 //! defined in section 7.1 Format 3 packets of the specification. This includes
 //! the [`Synchronization`] type which may hold any of the subformats.
 
-use crate::types::{trap, Privilege};
+use crate::types::{self, trap, Privilege};
 
 use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
@@ -218,6 +218,21 @@ pub struct Context {
     pub privilege: Privilege,
     pub time: Option<u64>,
     pub context: Option<u64>,
+}
+
+impl From<&Context> for types::Context {
+    fn from(ctx: &Context) -> Self {
+        Self {
+            privilege: ctx.privilege,
+            context: ctx.context.unwrap_or_default(),
+        }
+    }
+}
+
+impl From<Context> for types::Context {
+    fn from(ctx: Context) -> Self {
+        (&ctx).into()
+    }
 }
 
 impl<U> Decode<'_, '_, U> for Context {

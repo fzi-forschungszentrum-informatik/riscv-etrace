@@ -7,7 +7,7 @@ use std::io::BufRead;
 use riscv_etrace::instruction;
 use riscv_etrace::packet;
 use riscv_etrace::tracer::item::{self, Item};
-use riscv_etrace::types::Privilege;
+use riscv_etrace::types::{Context, Privilege};
 
 use instruction::base;
 use packet::payload::InstructionTrace;
@@ -119,7 +119,7 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
             if self.last_priv != Some(privilege) {
                 self.last_priv = Some(privilege);
                 self.intermediate = Some(item);
-                let ctx = item::Context {
+                let ctx = Context {
                     privilege,
                     context: Default::default(),
                 };

@@ -17,7 +17,7 @@ use crate::instruction;
 use crate::packet::payload::{InstructionTrace, Payload};
 use crate::packet::sync;
 use crate::packet::unit::IOptions;
-use crate::types::{stack, trap};
+use crate::types::{self, stack, trap};
 
 use error::Error;
 use instruction::info::Info;
@@ -532,13 +532,13 @@ enum IterationState {
     TrapItem {
         epc: u64,
         info: trap::Info,
-        context: item::Context,
+        context: types::Context,
         follow_up: bool,
     },
     /// We report a context update and optionally a single follow-up item
     ContextItem {
         pc: Option<u64>,
-        context: item::Context,
+        context: types::Context,
         follow_up: bool,
     },
     /// We follow the execution path based on the current packet's data

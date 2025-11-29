@@ -42,3 +42,12 @@ impl From<Privilege> for u8 {
         }
     }
 }
+
+/// Execution context
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct Context {
+    /// The privilege level under which code is executed
+    pub privilege: Privilege,
+    /// The context of the execution
+    pub context: u64,
+}

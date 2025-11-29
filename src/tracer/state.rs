@@ -6,10 +6,9 @@ use core::num::NonZeroU8;
 
 use crate::binary::Binary;
 use crate::instruction::{self, Instruction};
-use crate::types::{branch, Privilege};
+use crate::types::{branch, Context, Privilege};
 
 use super::error::Error;
-use super::item::Context;
 use super::stack::ReturnStack;
 
 use instruction::info::Info;
