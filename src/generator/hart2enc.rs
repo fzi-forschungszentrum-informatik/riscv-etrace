@@ -104,3 +104,42 @@ impl JumpType {
         matches!(self, Self::InferCall | Self::InferJump | Self::InferOther)
     }
 }
+
+/// Context change reporting
+///
+/// This type represents the `ctype` defined in Section 4.2. Instruction trace
+/// interface of the specification.
+///
+/// The type implements `TryFrom<u8>`, allowing conversion from the numerical
+/// representations mandated by the specification.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CType {
+    /// The change is not reported
+    Unreported,
+    /// The change is reported imprecisely
+    Imprecisely,
+    /// The change is reported precisely
+    Precisely,
+    /// The change is reported as an asynchronous discontinuity
+    AsyncDiscon,
+}
+
+impl Default for CType {
+    fn default() -> Self {
+        Self::Unreported
+    }
+}
+
+impl TryFrom<u8> for CType {
+    type Error = u8;
+
+    fn try_from(num: u8) -> Result<Self, Self::Error> {
+        match num {
+            0 => Ok(Self::Unreported),
+            1 => Ok(Self::Imprecisely),
+            2 => Ok(Self::Precisely),
+            3 => Ok(Self::AsyncDiscon),
+            n => Err(n),
+        }
+    }
+}
