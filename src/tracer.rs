@@ -85,6 +85,11 @@ where
 }
 
 impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
+    /// Retrieve the current selection of optional [Features]
+    pub fn features(&self) -> Features {
+        self.state.features()
+    }
+
     /// Process an [`Payload`]
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of

@@ -215,6 +215,11 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
             .ok_or(Error::UnprocessedInstructions)
     }
 
+    /// Retrieve the current selection of optional [Features]
+    pub fn features(&self) -> Features {
+        self.features
+    }
+
     /// Determine the next PC
     ///
     /// Determines the next PC based on the given address as well as information
