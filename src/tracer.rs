@@ -382,8 +382,7 @@ pub fn builder() -> Builder<binary::Empty> {
 pub struct Builder<B = binary::Empty> {
     binary: B,
     max_stack_depth: usize,
-    sequentially_inferred_jumps: bool,
-    implicit_return: bool,
+    features: Features,
     address_mode: AddressMode,
     address_width: core::num::NonZeroU8,
     version: Version,
@@ -410,8 +409,11 @@ impl<B> Builder<B> {
         };
         Self {
             max_stack_depth,
-            sequentially_inferred_jumps: config.sijump_p,
             address_width: config.iaddress_width_p,
+            features: Features {
+                sequentially_inferred_jumps: config.sijump_p,
+                ..self.features
+            },
             ..self
         }
     }
@@ -424,10 +426,9 @@ impl<B> Builder<B> {
         Builder {
             binary,
             max_stack_depth: self.max_stack_depth,
-            sequentially_inferred_jumps: self.sequentially_inferred_jumps,
-            implicit_return: self.implicit_return,
             address_mode: self.address_mode,
             address_width: self.address_width,
+            features: self.features,
             version: self.version,
         }
     }
@@ -446,9 +447,12 @@ impl<B> Builder<B> {
     ///
     /// New builders are configured for no implicit return. The option in a
     /// [`Tracer`] is usually controlled via a [support payload][sync::Support].
-    pub fn with_implicit_return(self, implicit_return: bool) -> Self {
+    pub fn with_implicit_return(self, implicit_returns: bool) -> Self {
         Self {
-            implicit_return,
+            features: Features {
+                implicit_returns,
+                ..self.features
+            },
             ..self
         }
     }
@@ -473,10 +477,7 @@ impl<B> Builder<B> {
             S::new(self.max_stack_depth)
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
             self.address_width,
-            Features {
-                sequentially_inferred_jumps: self.sequentially_inferred_jumps,
-                implicit_returns: self.implicit_return,
-            },
+            self.features,
         );
         Ok(Tracer {
             state,
@@ -494,8 +495,7 @@ impl<B: Default> Default for Builder<B> {
         Self {
             binary: Default::default(),
             max_stack_depth: Default::default(),
-            sequentially_inferred_jumps: Default::default(),
-            implicit_return: Default::default(),
+            features: Default::default(),
             address_mode: Default::default(),
             address_width: core::num::NonZeroU8::MIN,
             version: Default::default(),
