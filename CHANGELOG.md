@@ -33,6 +33,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `Iterator::size_hint` is now implemented explicitly (and not as a provided fn)
   for `tracer::Tracer`.
 - `tracer::item::Context` was moved to `types`.
+- `packet::sync::Context::context` is now a plain `u64` which is decoded as `0`
+  if the field is absent.
 
 ### Added
 

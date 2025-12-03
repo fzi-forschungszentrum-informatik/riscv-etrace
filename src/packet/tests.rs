@@ -98,7 +98,7 @@ bitstream_test!(
         ctx: sync::Context {
             privilege: types::Privilege::Machine,
             time: None,
-            context: None
+            context: 0
         },
         address: 0xffff_ffff_ffff_fffe,
     },
@@ -120,7 +120,7 @@ bitstream_test!(
         ctx: sync::Context {
             privilege: types::Privilege::Machine,
             time: None,
-            context: Some(0)
+            context: 0
         },
         address: 536937572
     })),

@@ -217,14 +217,14 @@ pub struct Context {
     /// The privilege level of the reported instruction.
     pub privilege: Privilege,
     pub time: Option<u64>,
-    pub context: Option<u64>,
+    pub context: u64,
 }
 
 impl From<&Context> for types::Context {
     fn from(ctx: &Context) -> Self {
         Self {
             privilege: ctx.privilege,
-            context: ctx.context.unwrap_or_default(),
+            context: ctx.context,
         }
     }
 }
@@ -246,11 +246,8 @@ impl<U> Decode<'_, '_, U> for Context {
             .time
             .map(|w| decoder.read_bits(w.get()))
             .transpose()?;
-        let context = decoder
-            .widths()
-            .context
-            .map(|w| decoder.read_bits(w.get()))
-            .transpose()?;
+        let context_width = decoder.widths().context.map(Into::into).unwrap_or_default();
+        let context = decoder.read_bits(context_width)?;
         Ok(Context {
             privilege,
             time,
@@ -266,7 +263,7 @@ impl<U> Encode<'_, U> for Context {
             encoder.write_bits(self.time.unwrap_or_default(), width.get())?;
         }
         if let Some(width) = encoder.widths().context {
-            encoder.write_bits(self.context.unwrap_or_default(), width.get())?;
+            encoder.write_bits(self.context, width.get())?;
         }
         Ok(())
     }

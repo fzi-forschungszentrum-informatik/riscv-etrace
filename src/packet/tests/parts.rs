@@ -110,7 +110,7 @@ as_context_test!(
     Some(&sync::Context {
         privilege: types::Privilege::Machine,
         time: None,
-        context: Some(0)
+        context: 0,
     })
 );
 
@@ -122,7 +122,7 @@ as_context_test!(
     Some(&sync::Context {
         privilege: types::Privilege::Machine,
         time: None,
-        context: Some(0)
+        context: 0,
     })
 );
 
@@ -134,7 +134,7 @@ as_context_test!(
     Some(&sync::Context {
         privilege: types::Privilege::Machine,
         time: None,
-        context: Some(1)
+        context: 1,
     })
 );
 // Fmt: 11, subfmt: 11, ienable: 1, !enc_mode: 0, qual_stat: 00
