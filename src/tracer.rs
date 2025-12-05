@@ -12,7 +12,7 @@ mod state;
 pub use item::Item;
 
 use crate::binary::{self, Binary};
-use crate::config::{self, AddressMode, Version};
+use crate::config::{self, AddressMode, Features, Version};
 use crate::instruction;
 use crate::packet::payload::{InstructionTrace, Payload};
 use crate::packet::sync;
@@ -85,6 +85,11 @@ where
 }
 
 impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
+    /// Retrieve the current selection of optional [Features]
+    pub fn features(&self) -> Features {
+        self.state.features()
+    }
+
     /// Process an [`Payload`]
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
@@ -235,29 +240,16 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
     ) -> Result<(), Error<B::Error>> {
         use sync::QualStatus;
 
-        // Before touching any state, we need to assert no unsupported option is
-        // active.
-        if support.ioptions.implicit_exception() == Some(true) {
-            return Err(Error::UnsupportedFeature("implicit exceptions"));
-        }
-        if support.ioptions.branch_prediction() == Some(true) {
-            return Err(Error::UnsupportedFeature("branch prediction"));
-        }
-        if support.ioptions.jump_target_cache() == Some(true) {
-            return Err(Error::UnsupportedFeature("jump target cache"));
-        }
-
         self.previous = None;
+
         let mut initer = self.state.initializer(&mut self.binary)?;
+        support
+            .ioptions
+            .update_features(initer.get_features_mut())
+            .map_err(Error::UnsupportedFeature)?;
 
         if let Some(mode) = support.ioptions.address_mode() {
             self.address_mode = mode;
-        }
-        if let Some(jumps) = support.ioptions.sequentially_inferred_jumps() {
-            initer.set_sequential_jumps(jumps);
-        }
-        if let Some(returns) = support.ioptions.implicit_return() {
-            initer.set_implicit_return(returns);
         }
 
         initer.set_stack_depth(None);
@@ -403,8 +395,7 @@ pub fn builder() -> Builder<binary::Empty> {
 pub struct Builder<B = binary::Empty> {
     binary: B,
     max_stack_depth: usize,
-    sequentially_inferred_jumps: bool,
-    implicit_return: bool,
+    features: Features,
     address_mode: AddressMode,
     address_width: core::num::NonZeroU8,
     version: Version,
@@ -431,8 +422,11 @@ impl<B> Builder<B> {
         };
         Self {
             max_stack_depth,
-            sequentially_inferred_jumps: config.sijump_p,
             address_width: config.iaddress_width_p,
+            features: Features {
+                sequentially_inferred_jumps: config.sijump_p,
+                ..self.features
+            },
             ..self
         }
     }
@@ -445,10 +439,9 @@ impl<B> Builder<B> {
         Builder {
             binary,
             max_stack_depth: self.max_stack_depth,
-            sequentially_inferred_jumps: self.sequentially_inferred_jumps,
-            implicit_return: self.implicit_return,
             address_mode: self.address_mode,
             address_width: self.address_width,
+            features: self.features,
             version: self.version,
         }
     }
@@ -467,9 +460,12 @@ impl<B> Builder<B> {
     ///
     /// New builders are configured for no implicit return. The option in a
     /// [`Tracer`] is usually controlled via a [support payload][sync::Support].
-    pub fn with_implicit_return(self, implicit_return: bool) -> Self {
+    pub fn with_implicit_return(self, implicit_returns: bool) -> Self {
         Self {
-            implicit_return,
+            features: Features {
+                implicit_returns,
+                ..self.features
+            },
             ..self
         }
     }
@@ -494,8 +490,7 @@ impl<B> Builder<B> {
             S::new(self.max_stack_depth)
                 .ok_or(Error::CannotConstructIrStack(self.max_stack_depth))?,
             self.address_width,
-            self.sequentially_inferred_jumps,
-            self.implicit_return,
+            self.features,
         );
         Ok(Tracer {
             state,
@@ -513,8 +508,7 @@ impl<B: Default> Default for Builder<B> {
         Self {
             binary: Default::default(),
             max_stack_depth: Default::default(),
-            sequentially_inferred_jumps: Default::default(),
-            implicit_return: Default::default(),
+            features: Default::default(),
             address_mode: Default::default(),
             address_width: core::num::NonZeroU8::MIN,
             version: Default::default(),

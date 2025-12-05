@@ -65,6 +65,27 @@ pub const PARAMETERS: Parameters = Parameters {
     sijump_p: false,
 };
 
+/// Optional feature selection
+///
+/// This type represents the selection of active optional E-Trace features.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct Features {
+    /// Sequentially inferred jumps
+    ///
+    /// Jumps with a target that depends on a register (other than the `zero`
+    /// register) can not be inferred on the instruction alone. This flag being
+    /// `true` indicates that those jumps are inferred if the jump is preceeded
+    /// directly by an `lui`, `c.lui` or `auipc` instruction initializing the
+    /// register the jump target depends on.
+    pub sequentially_inferred_jumps: bool,
+    /// Implicit returns
+    ///
+    /// A value of `true` indicates that function returns may be inferred based
+    /// on the assumption that the traces program is well-behaved and follows
+    /// the common risc-v calling conventions.
+    pub implicit_returns: bool,
+}
+
 /// Address mode
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AddressMode {

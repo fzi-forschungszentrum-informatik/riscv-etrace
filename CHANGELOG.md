@@ -73,6 +73,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::payload::Payload`).
 - A fn `types::branch::Map::take` for extracting branches into a new
   `branch::Map`.
+- A type `config::Features` representing optional feature selection.
+- A provided fn `packet::unit::IOptions::update_features` for extracting and/or
+  updating a selection of `Features`.
+- A fn `tracer::Tracer::features` for retrieving the current selection of
+  `Features`.
 
 ### Fixed
 
