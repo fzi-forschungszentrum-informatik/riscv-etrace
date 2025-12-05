@@ -135,8 +135,7 @@ impl PayloadBuilder<'_> {
     /// Issue a payload reporting the current address
     pub fn report_address<I, D>(
         self,
-        notify: bool,
-        updiscon: bool,
+        reason: Reason,
     ) -> Result<payload::InstructionTrace<I, D>, Error> {
         let offset = match self.state.address_mode {
             AddressMode::Full => 0,
@@ -149,8 +148,8 @@ impl PayloadBuilder<'_> {
             .wrapping_sub_unsigned(offset);
         let address = payload::AddressInfo {
             address,
-            notify,
-            updiscon,
+            notify: reason == Reason::Notify,
+            updiscon: reason == Reason::Updiscon,
             irdepth: None,
         };
 
@@ -187,4 +186,18 @@ impl PayloadBuilder<'_> {
             true
         }
     }
+}
+
+/// Reason an address payload is issued
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Reason {
+    /// A notification was requested for the current address
+    Notify,
+    /// The current lies between an updiscon and a sync payload being issued
+    ///
+    /// The current instruction is immediately following an uninferable PC
+    /// discontinuity and is the instruction just before an exception, privilege
+    /// change or resync.
+    Updiscon,
+    Other,
 }
