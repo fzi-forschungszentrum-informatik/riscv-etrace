@@ -77,3 +77,37 @@ pub enum Kind {
         sequentially_inferable: bool,
     },
 }
+
+impl Kind {
+    /// Determine whether this is a trap without simultaneous retirement
+    ///
+    /// Returns `true` if this step kind refers to an "exception" (trap) without
+    /// simultaneous retirement, `false` otherwise.
+    pub fn is_exc_only(self) -> bool {
+        matches!(
+            self,
+            Kind::Trap {
+                insn_size: None,
+                ..
+            }
+        )
+    }
+
+    /// Determint whether this is an uninferable PC dicontinuity
+    ///
+    /// Returns `true` if this step kind refers to an uninferable PC
+    /// discontinuity, i.e. a jump. Sequentially inferable jumps are considered
+    /// uninferable unless `true` if passed for `infer_sequentially`.
+    pub fn is_updiscon(self, infer_sequentially: bool) -> bool {
+        if let Self::Jump {
+            kind,
+            sequentially_inferable,
+            ..
+        } = self
+        {
+            !(kind.is_inferable() || (infer_sequentially && sequentially_inferable))
+        } else {
+            false
+        }
+    }
+}
