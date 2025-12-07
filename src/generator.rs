@@ -8,7 +8,7 @@ pub mod state;
 pub mod step;
 
 use crate::config::Features;
-use crate::packet::{payload, unit};
+use crate::packet::{payload, sync, unit};
 use crate::types::Privilege;
 
 use error::Error;
@@ -30,6 +30,36 @@ where
 }
 
 impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I, D> {
+    /// Begin qualification, generating a [`sync::Support`] payload
+    ///
+    /// Extracts the selection of optional [`Features`] and the [`AddressMode`]
+    /// from the `ioptions`. If all features are supported, this fn feturns a
+    /// [`sync::Support`] payload with the given `ioptions` and `doptions`.
+    /// Otherwise an error is returned.
+    pub fn begin_qualification(
+        &mut self,
+        ioptions: I,
+        doptions: D,
+    ) -> Result<sync::Support<I, D>, Error> {
+        ioptions
+            .update_features(&mut self.features)
+            .map_err(Error::UnsupportedFeature)?;
+        if let Some(mode) = ioptions.address_mode() {
+            self.state.set_address_mode(mode);
+        }
+
+        self.options = Some((ioptions.clone(), doptions.clone()));
+        Ok(sync::Support {
+            ienable: true,
+            encoder_mode: sync::EncoderMode::BranchTrace,
+            qual_status: sync::QualStatus::NoChange,
+            ioptions,
+            denable: false,
+            dloss: false,
+            doptions,
+        })
+    }
+
     /// Process a single [Step][step::Step], potentially producing a payload
     ///
     /// Drives the inner state, feeding the given `step` and optional `event`
