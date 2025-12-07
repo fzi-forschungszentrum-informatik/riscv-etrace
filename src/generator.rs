@@ -60,6 +60,19 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
         })
     }
 
+    /// End qualifiation, returning an [`Iterator`] over remaining payloads
+    ///
+    /// Ends qualification and returns an [`Iterator`] over at most one payload
+    /// indicating an address and one [`sync::Support`] payload with the given
+    /// `ienable` value.
+    pub fn end_qualification(&mut self, ienable: bool) -> Drain<'_, S, I, D> {
+        Drain {
+            gen: self,
+            ienable,
+            payload_generated: false,
+        }
+    }
+
     /// Process a single [Step][step::Step], potentially producing a payload
     ///
     /// Drives the inner state, feeding the given `step` and optional `event`
@@ -248,5 +261,50 @@ impl<I: unit::IOptions, D> From<payload::InstructionTrace<I, D>> for Option<Step
 impl<'s, I: unit::IOptions, D> From<state::PayloadBuilder<'s>> for Option<StepOutput<'s, I, D>> {
     fn from(builder: state::PayloadBuilder<'s>) -> Self {
         Some(StepOutput::Builder(builder))
+    }
+}
+
+/// Payload draining [`Iterator`]
+#[derive(Debug)]
+pub struct Drain<'g, S: step::Step, I: unit::IOptions, D> {
+    gen: &'g mut Generator<S, I, D>,
+    ienable: bool,
+    payload_generated: bool,
+}
+
+impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Drain<'_, S, I, D> {
+    type Item = Result<payload::InstructionTrace<I, D>, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.gen.do_step(None, None) {
+            Ok(Some(StepOutput::Payload(p))) => {
+                self.payload_generated = true;
+                Some(Ok(p))
+            }
+            Ok(Some(StepOutput::Builder(b))) => {
+                self.payload_generated = false;
+                Some(b.report_address(state::Reason::Other))
+            }
+            Ok(None) => {
+                let qual_status = if self.payload_generated {
+                    sync::QualStatus::EndedNtr
+                } else {
+                    sync::QualStatus::EndedRep
+                };
+                self.gen.options.take().map(|(ioptions, doptions)| {
+                    Ok(sync::Support {
+                        ienable: self.ienable,
+                        encoder_mode: sync::EncoderMode::BranchTrace,
+                        qual_status,
+                        ioptions,
+                        denable: false,
+                        dloss: false,
+                        doptions,
+                    }
+                    .into())
+                })
+            }
+            Err(e) => Some(Err(e)),
+        }
     }
 }
