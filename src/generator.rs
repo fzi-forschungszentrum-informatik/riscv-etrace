@@ -30,6 +30,29 @@ where
 }
 
 impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I, D> {
+    /// Process a single [Step][step::Step], potentially producing a payload
+    ///
+    /// Drives the inner state, feeding the given `step` and optional `event`
+    /// for the next step. If a payload is produced for the current step, that
+    /// payload is returned.
+    pub fn process_step(
+        &mut self,
+        step: S,
+        event: Option<Event>,
+    ) -> Result<Option<payload::InstructionTrace<I, D>>, Error> {
+        if let Some(current) = self.current.as_mut() {
+            current.refine(&step);
+        }
+
+        self.do_step(Some(step), event).map(|p| {
+            if let Some(StepOutput::Payload(payload)) = p {
+                Some(payload)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Drive the inner state by a single step, potentially producing a payload
     fn do_step(
         &mut self,
