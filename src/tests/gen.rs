@@ -2,6 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Generator macros for tracer test
 
+use crate::generator;
+use crate::instruction::{self, Instruction};
+use crate::types::{trap, Context};
+
+use generator::hart2enc::CType;
+use generator::step;
+use instruction::info::Info;
+
 macro_rules! trace_test {
     ($n:ident, $b:expr, $(@$k:ident $v:tt)* $($p:expr => $i:tt)*) => {
         trace_test_helper!(
@@ -107,4 +115,57 @@ pub struct ItemHints {
     pub branch_taken: bool,
     /// Integrate this item with the next one
     pub integrate_next: bool,
+}
+
+/// [`step::Step`] impl for testing
+#[derive(Copy, Clone, Debug)]
+pub struct TestStep {
+    address: u64,
+    insn: Option<Instruction>,
+    trap: Option<trap::Info>,
+    ctype: CType,
+    context: Context,
+    branch_taken: bool,
+    prev_upper_immediate: Option<<instruction::Kind as Info>::Register>,
+}
+
+impl step::Step for TestStep {
+    fn address(&self) -> u64 {
+        self.address
+    }
+
+    fn kind(&self) -> step::Kind {
+        if let Some(insn) = self.insn {
+            let insn_size = insn.size;
+            if let Some(info) = self.trap {
+                step::Kind::Trap {
+                    insn_size: Some(insn_size),
+                    info,
+                }
+            } else {
+                step::Kind::from_instruction(insn, self.branch_taken, self.prev_upper_immediate)
+            }
+        } else {
+            step::Kind::Trap {
+                insn_size: None,
+                info: self.trap.expect("No insn nor trap in cycle"),
+            }
+        }
+    }
+
+    fn ctype(&self) -> CType {
+        self.ctype
+    }
+
+    fn context(&self) -> Context {
+        self.context
+    }
+
+    fn refine(&mut self, next: &Self) {
+        use instruction::info::Info;
+
+        if let Some(target) = self.insn.branch_target().filter(|_| next.insn.is_some()) {
+            self.branch_taken = self.address.wrapping_add_signed(target.into()) == next.address;
+        }
+    }
 }
