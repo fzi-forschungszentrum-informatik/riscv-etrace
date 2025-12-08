@@ -7,7 +7,7 @@ pub mod hart2enc;
 pub mod state;
 pub mod step;
 
-use crate::config::Features;
+use crate::config::{self, AddressMode, Features};
 use crate::packet::{payload, sync, unit};
 use crate::types::Privilege;
 
@@ -261,6 +261,74 @@ impl<I: unit::IOptions, D> From<payload::InstructionTrace<I, D>> for Option<Step
 impl<'s, I: unit::IOptions, D> From<state::PayloadBuilder<'s>> for Option<StepOutput<'s, I, D>> {
     fn from(builder: state::PayloadBuilder<'s>) -> Self {
         Some(StepOutput::Builder(builder))
+    }
+}
+
+/// Create a new [`Builder`] for [`Generator`]s
+pub fn builder() -> Builder {
+    Default::default()
+}
+
+/// Builder for [`Generator`]s
+#[derive(Copy, Clone, Default)]
+pub struct Builder {
+    features: Features,
+    address_mode: AddressMode,
+}
+
+impl Builder {
+    /// Build the [`Generator`] with the given [`config::Parameters`]
+    ///
+    /// New builders assume [`Default`] parameters.
+    pub fn with_params(self, config: &config::Parameters) -> Self {
+        Self {
+            features: Features {
+                sequentially_inferred_jumps: config.sijump_p,
+                ..self.features
+            },
+            ..self
+        }
+    }
+
+    /// Build a [`Generator`] in the given [`AddressMode`]
+    ///
+    /// New builders are configured for [`AddressMode::Delta`].
+    pub fn with_address_mode(self, mode: AddressMode) -> Self {
+        Self {
+            address_mode: mode,
+            ..self
+        }
+    }
+
+    /// Build a [`Generator`] with implicit return enabled or disabled
+    ///
+    /// New builders are configured for no implicit return.
+    pub fn with_implicit_return(self, implicit_returns: bool) -> Self {
+        Self {
+            features: Features {
+                implicit_returns,
+                ..self.features
+            },
+            ..self
+        }
+    }
+
+    /// Build a [`Generator`]
+    pub fn build<S, I, D>(&self) -> Result<Generator<S, I, D>, Error>
+    where
+        S: step::Step,
+        I: unit::IOptions,
+    {
+        let state = state::State::new(self.address_mode);
+        Ok(Generator {
+            state,
+            features: self.features,
+            options: None,
+            current: None,
+            previous: None,
+            reported_exception: false,
+            event: None,
+        })
     }
 }
 
