@@ -4,6 +4,7 @@
 
 use crate::generator;
 use crate::instruction::{self, Instruction};
+use crate::tracer::item;
 use crate::types::{trap, Context};
 
 use generator::hart2enc::CType;
@@ -115,6 +116,68 @@ pub struct ItemHints {
     pub branch_taken: bool,
     /// Integrate this item with the next one
     pub integrate_next: bool,
+}
+
+/// Helper for constructing [`TestStep`]s from trace item definitions
+#[derive(Default)]
+pub struct ItemConverter {
+    trap: Option<trap::Info>,
+    ctype: CType,
+    context: Context,
+    upper_immediate: Option<<instruction::Kind as Info>::Register>,
+}
+
+impl ItemConverter {
+    /// Feed a trace item definition, potentially producing a [`TestStep`]
+    pub fn feed_item(
+        &mut self,
+        address: u64,
+        kind: item::Kind,
+        hints: ItemHints,
+    ) -> Option<TestStep> {
+        use item::Kind;
+
+        let ctype = self.ctype;
+        self.ctype = CType::Unreported;
+
+        let prev_upper_immediate = self.upper_immediate.take();
+
+        match kind {
+            Kind::Regular(insn) => {
+                self.upper_immediate = insn.upper_immediate(address).map(|(r, _)| r);
+                let cycle = TestStep {
+                    address,
+                    insn: Some(insn),
+                    trap: self.trap.take(),
+                    ctype,
+                    context: self.context,
+                    branch_taken: hints.branch_taken,
+                    prev_upper_immediate,
+                };
+                Some(cycle)
+            }
+            Kind::Trap(info) => {
+                self.trap = Some(info);
+                None
+            }
+            Kind::Context(context) => {
+                self.context = context;
+                if hints.integrate_next {
+                    None
+                } else {
+                    self.trap.take().map(|trap| TestStep {
+                        address,
+                        insn: None,
+                        trap: Some(trap),
+                        ctype,
+                        context,
+                        branch_taken: false,
+                        prev_upper_immediate,
+                    })
+                }
+            }
+        }
+    }
 }
 
 /// [`step::Step`] impl for testing
