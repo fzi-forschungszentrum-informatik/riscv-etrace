@@ -16,6 +16,8 @@ macro_rules! trace_test {
         trace_test_helper!(
             $n,
             tracer::builder().with_binary(binary::from_sorted_map($b)),
+            generator::builder(),
+            true,
             [$($k $v)*]
             [$($p => $i)*]
         );
@@ -23,22 +25,27 @@ macro_rules! trace_test {
 }
 
 macro_rules! trace_test_helper {
-    ($n:ident, $t:expr, params { $($pk:ident: $pv:expr),* } $c:tt $i:tt) => {
-        trace_test_helper!($n, $t, params (&config::Parameters { $($pk: $pv,)* ..Default::default() }) $c $i);
+    ($n:ident, $t:expr, $g:expr, $e:ident, params { $($pk:ident: $pv:expr),* } $c:tt $i:tt) => {
+        trace_test_helper!($n, $t, $g, $e, params (&config::Parameters { $($pk: $pv,)* ..Default::default() }) $c $i);
     };
-    ($n:ident, $t:expr, params ($p:expr) $c:tt $i:tt) => {
-        trace_test_helper!($n, $t.with_params($p), $c $i);
+    ($n:ident, $t:expr, $g:expr, $e:ident, params ($p:expr) $c:tt $i:tt) => {
+        trace_test_helper!($n, $t.with_params($p), $g.with_params($p), $e, $c $i);
     };
-    ($n:ident, $t:expr, address_mode $m:ident $c:tt $i:tt) => {
-        trace_test_helper!($n, $t.with_address_mode(config::AddressMode::$m), $c $i);
+    ($n:ident, $t:expr, $g:expr, $e:ident, address_mode $m:ident $c:tt $i:tt) => {
+        trace_test_helper!(
+            $n,
+            $t.with_address_mode(config::AddressMode::$m),
+            $g.with_address_mode(config::AddressMode::$m),
+            $e, $c $i
+        );
     };
-    ($n:ident, $t:expr, implicit_return $r:ident $c:tt $i:tt) => {
-        trace_test_helper!($n, $t.with_implicit_return($r), $c $i);
+    ($n:ident, $t:expr, $g:expr, $e:ident, implicit_return $r:ident $c:tt $i:tt) => {
+        trace_test_helper!($n, $t.with_implicit_return($r), $g.with_implicit_return($r), $e, $c $i);
     };
-    ($n:ident, $t:expr, encode $r:ident $c:tt $i:tt) => {
-        trace_test_helper!($n, $t, $c $i);
+    ($n:ident, $t:expr, $g:expr, $e:ident, encode $v:ident $c:tt $i:tt) => {
+        trace_test_helper!($n, $t, $g, $v, $c $i);
     };
-    ($n:ident, $t:expr, [] [$($p:expr => { $($i:tt),* })*]) => {
+    ($n:ident, $t:expr, $g:expr, $e:ident, [] [$($p:expr => { $($i:tt),* })*]) => {
         mod $n {
             use super::*;
 
@@ -79,10 +86,12 @@ macro_rules! trace_test_helper {
                     assert_eq!(tracer.next(), None);
                 )*
             }
+
+            generator_test!($g, $e, $($p => { $($i),* })*);
         }
     };
-    ($n:ident, $t:expr, [$k:ident $v:tt $($kr:ident $vr:tt)*] $i:tt) => {
-        trace_test_helper!($n, $t, $k $v [$($kr $vr)*] $i);
+    ($n:ident, $t:expr, $g:expr, $e:ident, [$k:ident $v:tt $($kr:ident $vr:tt)*] $i:tt) => {
+        trace_test_helper!($n, $t, $g, $e, $k $v [$($kr $vr)*] $i);
     }
 }
 
@@ -106,6 +115,74 @@ macro_rules! trace_item_count {
     (($a:literal, $i:expr $(, $h:ident)*)) => { 1 };
     ([$($i:tt),*; $n:literal]) => { $n * trace_item_count!($($i),*) };
     ($($i:tt),*) => { 0usize $( + trace_item_count!($i) )* };
+}
+
+macro_rules! generator_test {
+    ($g:expr, true, $($p:expr => { $($i:tt),* })*) => {
+        #[test]
+        fn encode() {
+            let mut generator: generator::Generator<TestStep> = $g
+                .build()
+                .expect("Could not build generator");
+            let mut converter = ItemConverter::default();
+            let packets: [payload::InstructionTrace; _] = [
+                $($p.into(),)*
+            ];
+            let mut packets: &[_] = &packets;
+            if let Some(
+                payload::InstructionTrace::Synchronization(
+                    sync::Synchronization::Support(sync::Support { ioptions, doptions, .. })
+                )
+            ) = packets.last() {
+                generator
+                    .begin_qualification(ioptions.clone(), doptions.clone())
+                    .expect("Could not start qualification");
+            }
+            $(
+                generator_check_def!(generator, converter, packets, $($i),*);
+            )*
+            for packet in generator.end_qualification(true) {
+                assert_eq!(
+                    Some(&packet.expect("Could not drain packet")),
+                    packets.split_off_first(),
+                );
+            }
+            assert_eq!(packets, &[]);
+        }
+    };
+    ($g:expr, false, $($p:expr => { $($i:tt),* })*) => {};
+}
+
+macro_rules! generator_check_def {
+    ($g:ident, $c:ident, $p:ident, ($a:literal, $i:expr $(, $h:ident)*)) => {
+        let hints = ItemHints {
+            $($h: true,)*
+            ..Default::default()
+        };
+        let event = if hints.sync {
+            Some(generator::Event::ReSync)
+        } else if hints.notify {
+            Some(generator::Event::Notify)
+        } else {
+            None
+        };
+        let packet = $c
+            .feed_item($a, $i.into(), hints)
+            .and_then(|c| $g.process_step(c, event).expect("Could not process step"));
+        if let Some(packet) = packet {
+            assert_eq!(Some(&packet), $p.split_off_first());
+        }
+    };
+    ($g:ident, $c:ident, $p:ident, [$($i:tt),*; $n:literal]) => {
+        (0..$n).for_each(|_| {
+            generator_check_def!($g, $c, $p, $($i),*);
+        });
+    };
+    ($g:ident, $c:ident, $p:ident, $($i:tt),*) => {
+        $(
+            generator_check_def!($g, $c, $p, $i);
+        )*
+    }
 }
 
 /// Hints attached to individual test items
