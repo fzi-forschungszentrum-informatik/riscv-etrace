@@ -35,6 +35,9 @@ macro_rules! trace_test_helper {
     ($n:ident, $t:expr, implicit_return $r:ident $c:tt $i:tt) => {
         trace_test_helper!($n, $t.with_implicit_return($r), $c $i);
     };
+    ($n:ident, $t:expr, encode $r:ident $c:tt $i:tt) => {
+        trace_test_helper!($n, $t, $c $i);
+    };
     ($n:ident, $t:expr, [] [$($p:expr => { $($i:tt),* })*]) => {
         mod $n {
             use super::*;
