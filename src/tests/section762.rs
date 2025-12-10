@@ -274,7 +274,7 @@ trace_test!(
         (0x80000014, Kind::new_auipc(11, 0)),
         (0x80000018, UNCOMPRESSED),
         (0x8000001c, COMPRESSED),
-        (0x8000001e, UNCOMPRESSED)
+        (0x8000001e, UNCOMPRESSED, notify)
     }
     payload::AddressInfo {
         address: 0,
@@ -310,7 +310,7 @@ trace_test!(
         (0x80000014, Kind::new_auipc(11, 0)),
         (0x80000018, UNCOMPRESSED),
         (0x8000001c, COMPRESSED),
-        (0x8000001e, UNCOMPRESSED)
+        (0x8000001e, UNCOMPRESSED, notify)
     }
     sync::Support {
         ienable: true,
@@ -336,7 +336,7 @@ trace_test!(
         (0x80000014, Kind::new_auipc(11, 0)),
         (0x80000018, UNCOMPRESSED),
         (0x8000001c, COMPRESSED),
-        (0x8000001e, UNCOMPRESSED)
+        (0x8000001e, UNCOMPRESSED, notify)
     }
     sync::Support {
         ienable: true,
