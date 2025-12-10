@@ -177,7 +177,7 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
                             || !matches!(n.ctype(), CType::Unreported)
                             || current.context().privilege != n.context().privilege
                     })
-                    .unwrap_or(true)
+                    .unwrap_or(self.options.is_some())
                 {
                     state::Reason::Updiscon
                 } else {
