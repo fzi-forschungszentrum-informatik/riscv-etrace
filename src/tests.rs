@@ -109,7 +109,7 @@ trace_test!(
         (0x80000008, UNCOMPRESSED),
         (0x8000000c, Kind::new_auipc(1, 0x0)),
         (0x80000010, Context::default()),
-        (0x80000010, UNCOMPRESSED)
+        (0x80000010, UNCOMPRESSED, sync)
     }
 );
 
