@@ -43,7 +43,7 @@ trace_test!(
         (0x8000001c, Kind::new_bltu(11, 12, -8))
     }
     sync::Trap {
-        branch: false,
+        branch: true,
         ctx: Default::default(),
         thaddr: true,
         address: 0x80000030,
