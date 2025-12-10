@@ -16,6 +16,7 @@ use crate::packet::{payload, sync};
 use crate::tracer;
 use crate::types::{branch, stack, trap, Context};
 
+use gen::ItemHints;
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use tracer::item::Item;
 
