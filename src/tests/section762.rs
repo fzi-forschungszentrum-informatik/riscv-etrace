@@ -163,6 +163,40 @@ trace_test!(
     } => {}
 );
 
+trace_test!(
+    updiscon_ntr,
+    test_bin_jr_loop(),
+    start_packet(0x8000000c) => {
+        (0x8000000c, Context::default()),
+        (0x8000000c, Kind::new_auipc(5, 0x0))
+    }
+    payload::AddressInfo {
+        address: 18,
+        notify: false,
+        updiscon: true,
+        irdepth: None,
+    } => {
+        (0x80000010, UNCOMPRESSED),
+        (0x80000014, Kind::new_auipc(11, 0)),
+        (0x80000018, UNCOMPRESSED),
+        (0x8000001c, COMPRESSED),
+        (0x8000001e, UNCOMPRESSED),
+        (0x80000022, COMPRESSED),
+        (0x80000024, UNCOMPRESSED),
+        (0x80000028, UNCOMPRESSED),
+        (0x8000002c, UNCOMPRESSED),
+        (0x80000030, UNCOMPRESSED),
+        (0x80000034, COMPRESSED),
+        (0x80000036, Kind::new_c_jr(5)),
+        (0x8000001e, UNCOMPRESSED)
+    }
+    sync::Support {
+        ienable: true,
+        qual_status: sync::QualStatus::EndedNtr,
+        ..Default::default()
+    } => {}
+);
+
 // Scenario 3
 trace_test!(
     exception,
@@ -260,7 +294,7 @@ trace_test!(
 );
 
 trace_test!(
-    notify_ntr,
+    notify_rep,
     test_bin_jr_loop(),
     start_packet(0x8000000c) => {
         (0x8000000c, Context::default()),
@@ -281,6 +315,32 @@ trace_test!(
     sync::Support {
         ienable: true,
         qual_status: sync::QualStatus::EndedRep,
+        ..Default::default()
+    } => {}
+);
+
+trace_test!(
+    notify_ntr,
+    test_bin_jr_loop(),
+    start_packet(0x8000000c) => {
+        (0x8000000c, Context::default()),
+        (0x8000000c, Kind::new_auipc(5, 0x0))
+    }
+    payload::AddressInfo {
+        address: 18,
+        notify: true,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000010, UNCOMPRESSED),
+        (0x80000014, Kind::new_auipc(11, 0)),
+        (0x80000018, UNCOMPRESSED),
+        (0x8000001c, COMPRESSED),
+        (0x8000001e, UNCOMPRESSED)
+    }
+    sync::Support {
+        ienable: true,
+        qual_status: sync::QualStatus::EndedNtr,
         ..Default::default()
     } => {}
 );
