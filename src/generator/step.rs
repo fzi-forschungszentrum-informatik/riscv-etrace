@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tracing encoder inputs associated to single execution steps
 
-use crate::instruction;
+use crate::instruction::{self, Instruction};
 use crate::types::{trap, Context};
 
 use super::hart2enc::{CType, JumpType};
+
+use instruction::info::Info;
 
 /// Tracing data emitted by a HART in a single execution step
 pub trait Step {
@@ -123,5 +125,54 @@ impl Kind {
             Self::Branch { insn_size, .. } => Some(insn_size),
             Self::Jump { insn_size, .. } => Some(insn_size),
         }
+    }
+
+    /// Create a step kind from a retired [`Instruction`]
+    pub fn from_instruction<I: Info>(
+        insn: Instruction<I>,
+        branch_taken: bool,
+        prev_immediate: Option<I::Register>,
+    ) -> Self {
+        let insn_size = insn.size;
+        if insn.is_return_from_trap() {
+            return Self::TrapReturn { insn_size };
+        };
+
+        if insn.is_branch() {
+            return Self::Branch {
+                insn_size,
+                taken: branch_taken,
+            };
+        }
+
+        if let Some((target, _)) = insn.uninferable_jump_target() {
+            let kind = if insn.is_call() {
+                JumpType::UnferCall
+            } else if insn.is_return() {
+                JumpType::Return
+            } else {
+                JumpType::UnferOther
+            };
+
+            return Self::Jump {
+                insn_size,
+                kind,
+                sequentially_inferable: Some(target) == prev_immediate,
+            };
+        } else if insn.is_inferable_jump() {
+            let kind = if insn.is_call() {
+                JumpType::InferCall
+            } else {
+                JumpType::InferOther
+            };
+
+            return Self::Jump {
+                insn_size,
+                kind,
+                sequentially_inferable: false,
+            };
+        }
+
+        Self::Retirement { insn_size }
     }
 }
