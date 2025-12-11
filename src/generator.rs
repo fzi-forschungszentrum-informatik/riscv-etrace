@@ -195,15 +195,12 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
                 .map(Into::into);
         }
 
-        let exc_retirement = matches!(
-            kind,
-            Kind::Trap {
-                insn_size: Some(_),
-                ..
-            }
-        );
-        if exc_retirement {
-            return builder.report_address(state::Reason::Other).map(Into::into);
+        if let Kind::Trap { insn_size, .. } = kind {
+            return if insn_size.is_some() {
+                builder.report_address(state::Reason::Other).map(Into::into)
+            } else {
+                Ok(None)
+            };
         }
 
         let have_branches = builder.branches() != 0;
