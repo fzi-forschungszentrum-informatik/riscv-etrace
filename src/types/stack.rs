@@ -111,3 +111,123 @@ impl ReturnStack for NoStack {
         0
     }
 }
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[derive(Clone, Debug)]
+#[cfg(feature = "alloc")]
+pub struct VecStack {
+    data: Vec<u64>,
+    max_depth: usize,
+    depth: usize,
+    base: usize,
+}
+
+#[cfg(feature = "alloc")]
+use alloc::vec;
+#[cfg(feature = "alloc")]
+impl ReturnStack for VecStack {
+    fn new(max_depth: usize) -> Option<Self> {
+        if max_depth <= 0 {
+            None
+        } else {
+            Some(Self {
+                max_depth: max_depth,
+                data: vec![0u64; max_depth],
+                depth: 0,
+                base: 0,
+            })
+        }
+    }
+
+    fn push(&mut self, addr: u64) {
+        if self.max_depth == 0 {
+            return;
+        }
+        let index = (self.base + self.depth) % self.max_depth;
+        self.data[index] = addr;
+
+        if self.depth < self.max_depth {
+            self.depth += 1;
+        } else {
+            self.base = (self.base + 1) % self.max_depth;
+        }
+    }
+
+    fn pop(&mut self) -> Option<u64> {
+        if self.depth == 0 {
+            return None;
+        }
+        self.depth -= 1;
+        let index = (self.base + self.depth) % self.max_depth;
+        Some(self.data[index])
+    }
+
+    fn depth(&self) -> usize {
+        self.depth
+    }
+
+    fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+}
+
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+#[derive(Clone, Debug)]
+#[cfg(feature = "alloc")]
+pub struct BoxStack {
+    data: Box<[u64]>,
+    max_depth: usize,
+    depth: usize,
+    base: usize,
+}
+
+#[cfg(feature = "alloc")]
+impl ReturnStack for BoxStack {
+    fn new(max_depth: usize) -> Option<Self> {
+        if max_depth <= 0 {
+            None
+        } else {
+            Some(Self {
+                data: vec![0u64; max_depth].into_boxed_slice(),
+                max_depth,
+                depth: 0,
+                base: 0,
+            })
+        }
+    }
+
+    fn push(&mut self, addr: u64) {
+        if self.max_depth == 0 {
+            return;
+        }
+        let index = (self.base + self.depth) % self.max_depth;
+        self.data[index] = addr;
+
+        if self.depth < self.max_depth {
+            self.depth += 1;
+        } else {
+            self.base = (self.base + 1) % self.max_depth;
+        }
+    }
+
+    fn pop(&mut self) -> Option<u64> {
+        if self.depth == 0 {
+            return None;
+        }
+
+        self.depth -= 1;
+        let index = (self.base + self.depth) % self.max_depth;
+        Some(self.data[index])
+    }
+
+    fn depth(&self) -> usize {
+        self.depth
+    }
+
+    fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+}
