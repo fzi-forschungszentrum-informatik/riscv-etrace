@@ -110,4 +110,18 @@ impl Kind {
             false
         }
     }
+
+    /// Retrieve the [`instruction::Size`] of this step's final retirement
+    ///
+    /// Returns the size of the final instruction retired in this step, if any.
+    /// [`Self::Trap`] is the only step kind that may not have a retirement.
+    pub fn instruction_size(self) -> Option<instruction::Size> {
+        match self {
+            Self::Retirement { insn_size } => Some(insn_size),
+            Self::Trap { insn_size, .. } => insn_size,
+            Self::TrapReturn { insn_size } => Some(insn_size),
+            Self::Branch { insn_size, .. } => Some(insn_size),
+            Self::Jump { insn_size, .. } => Some(insn_size),
+        }
+    }
 }
