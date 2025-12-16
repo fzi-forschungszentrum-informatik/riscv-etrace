@@ -61,6 +61,9 @@ macro_rules! trace_test_helper {
                         }
                         items -= 1;
                     }
+                    let (min, max) = tracer.size_hint();
+                    assert_eq!(min, 0);
+                    assert_ne!(max, Some(0));
                     assert_eq!(tracer.next(), None);
                 )*
             }
