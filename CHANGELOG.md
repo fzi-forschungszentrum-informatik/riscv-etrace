@@ -78,6 +78,15 @@ is based on https://keepachangelog.com/en/1.1.0/.
   updating a selection of `Features`.
 - A fn `tracer::Tracer::features` for retrieving the current selection of
   `Features`.
+- A module `generator` for tracing payload generation, with submodules
+  `generator::error` and `generator::state`.
+- An error type `generator::error::Error`.
+- A type `generator::state::State` for basic state being used and maintained
+  during payload generation.
+- A type `generator::state::PayloadBuilder` for producing specific tracing
+  payloads based on state held in a `generator::state::State`.
+- A type `generator::state::Reason` for expressing the reason an address needs
+  to be reported.
 
 ### Fixed
 

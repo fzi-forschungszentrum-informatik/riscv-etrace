@@ -117,6 +117,7 @@ mod tests;
 
 pub mod binary;
 pub mod config;
+pub mod generator;
 pub mod instruction;
 pub mod packet;
 pub mod tracer;
