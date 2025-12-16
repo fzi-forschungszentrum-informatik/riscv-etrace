@@ -75,7 +75,7 @@ macro_rules! trace_check_def {
     ($t:ident, ($a:literal, $i:expr)) => {
         assert_eq!($t.next(), Some(Ok(Item::new($a, $i.into()))));
     };
-    ($t:ident, ($n:literal, $($i:tt),*)) => {
+    ($t:ident, [$($i:tt),*; $n:literal]) => {
         (0..$n).for_each(|_| {
             trace_check_def!($t, $($i),*);
         });
@@ -89,6 +89,6 @@ macro_rules! trace_check_def {
 
 macro_rules! trace_item_count {
     (($a:literal, $i:expr)) => { 1 };
-    (($n:literal, $($i:tt),*)) => { $n * trace_item_count!($($i),*) };
+    ([$($i:tt),*; $n:literal]) => { $n * trace_item_count!($($i),*) };
     ($($i:tt),*) => { 0usize $( + trace_item_count!($i) )* };
 }

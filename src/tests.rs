@@ -27,17 +27,25 @@ trace_test!(
         (0x80000010, UNCOMPRESSED)
     }
     payload::Branch {
-        branch_map: branch::Map::new(31, 0),
+        branch_map: branch::Map::new(31, 1 << 30),
         address: None,
     } => {
-        (
-            31,
+        [
             (0x80000014, COMPRESSED),
             (0x80000016, COMPRESSED),
             (0x80000018, COMPRESSED),
             (0x8000001a, COMPRESSED),
-            (0x8000001c, Kind::new_bltu(11, 12, -8))
-        )
+            (0x8000001c, Kind::new_bltu(11, 12, -8));
+            31
+        ]
+    }
+    payload::AddressInfo {
+        address: 0x20 - 0x10,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000020, Kind::fence_i)
     }
 );
 
