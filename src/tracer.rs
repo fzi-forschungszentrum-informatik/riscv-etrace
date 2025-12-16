@@ -373,8 +373,8 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Iterator for Trace
             IterationState::SingleItem => (1, Some(1)),
 
             // Minimum 1 item, but could also be infinite
-            IterationState::FollowExec => (1, None),
-            IterationState::Depleting => (1, None),
+            IterationState::FollowExec => (0, None),
+            IterationState::Depleting => (0, None),
         }
     }
 }
