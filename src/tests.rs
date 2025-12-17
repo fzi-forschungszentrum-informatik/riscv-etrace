@@ -214,4 +214,3 @@ fn test_bin_1() -> [(u64, instruction::Instruction); 17] {
         (0x80000034, Kind::new_c_j(0, -4).into()),
     ]
 }
-

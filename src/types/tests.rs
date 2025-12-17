@@ -4,71 +4,68 @@
 mod tests {
     use crate::types::stack::BoxStack;
     use crate::types::stack::ReturnStack;
+    use crate::types::stack::StaticStack;
     use crate::types::stack::VecStack;
-    #[test]
-    fn test_vec_stack() {
-        let mut s = VecStack::new(4).unwrap();
-        assert_eq!(s.max_depth(), 4);
-        s.push(50);
-        s.push(44);
-        s.push(30);
-        s.push(35);
-        assert_eq!(s.depth(), 4);
-        s.push(24);
-        assert_eq!(s.depth(), 4);
-        s.pop();
-        s.pop();
-        assert_eq!(s.depth(), 2);
-        s.pop();
-        s.pop();
-        assert_eq!(s.depth(), 0);
+
+    macro_rules! underflow_test {
+        ($n:ident, $stack_type:ty) => {
+            #[test]
+            fn $n() {
+                let mut s = <$stack_type>::new(2).unwrap();
+                assert_eq!(s.pop(), None);
+                assert_eq!(s.depth(), 0);
+
+                s.push(10);
+                s.pop();
+                assert_eq!(s.pop(), None);
+            }
+        };
+    }
+
+    macro_rules! return_stack_implementation {
+        ($n:ident, $stack_type:ty) => {
+            #[test]
+            fn $n() {
+                let mut s = <$stack_type>::new(3).unwrap();
+                s.push(1);
+                s.push(2);
+                s.push(3);
+                assert_eq!(s.depth(), 3);
+                assert_eq!(s.max_depth(), 3);
+
+                s.push(4);
+                assert_eq!(s.depth(), 3);
+                assert_eq!(s.pop(), Some(4));
+                assert_eq!(s.pop(), Some(3));
+                assert_eq!(s.pop(), Some(2));
+                assert_eq!(s.pop(), None);
+            }
+        };
+    }
+
+    macro_rules! none_return_stack {
+        ($n:ident, $stack_type:ty) => {
+            #[test]
+            fn $n() {
+                let mut s = <$stack_type>::new(0);
+                assert!(s.is_none());
+            }
+        };
     }
 
     #[test]
-    fn test_vec_stack_overflow() {
-        let mut vec_stack = VecStack::new(3).unwrap();
-        vec_stack.push(33);
-        vec_stack.push(0);
-        vec_stack.push(1101);
-        vec_stack.push(100); // leaves out 33
-
-        assert_eq!(vec_stack.pop(), Some(100));
-        assert_eq!(vec_stack.pop(), Some(1101));
-        assert_eq!(vec_stack.pop(), Some(0));
-        assert_eq!(vec_stack.pop(), None);
+    fn none_return_static() {
+        let mut s = StaticStack::<2>::new(3);
+        assert!(s.is_none());
     }
+    underflow_test!(vector_stack_under, VecStack);
+    underflow_test!(box_stack_under, BoxStack);
+    underflow_test!(static_stack_under, StaticStack<2>);
 
-    #[test]
-    fn test_box_stack() {
-        let mut box_stack = BoxStack::new(4).unwrap();
-        assert_eq!(box_stack.max_depth(), 4);
-        box_stack.push(34);
-        box_stack.push(55);
-        assert_eq!(box_stack.depth(), 2);
-        box_stack.push(100);
-        box_stack.push(2000);
-        box_stack.push(640);
-        assert_eq!(box_stack.depth(), 4);
-        for _i in 0..5 {
-            box_stack.pop();
-        }
-        assert_eq!(box_stack.depth(), 0);
-    }
+    return_stack_implementation!(vector_implementation, VecStack);
+    return_stack_implementation!(box_implmentation, BoxStack);
+    return_stack_implementation!(static_implementation, StaticStack<3>);
 
-    #[test]
-    fn test_box_overflow() {
-        let mut box_stack = BoxStack::new(3).unwrap();
-        for n in 1..10 {
-            box_stack.push(n)
-        }
-
-        let mut box_stack_copy = box_stack.clone();
-        assert_eq!(box_stack.pop(), Some(9));
-        assert_eq!(box_stack.pop(), Some(8));
-        assert_eq!(box_stack.pop(), Some(7));
-        assert_eq!(box_stack.pop(), None);
-
-        assert_eq!(box_stack_copy.pop(), Some(9));
-        assert_eq!(box_stack_copy.depth(), 2)
-    }
+    none_return_stack!(vector_return_none, VecStack);
+    none_return_stack!(box_return_none, BoxStack);
 }

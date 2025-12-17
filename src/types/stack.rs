@@ -129,7 +129,7 @@ use alloc::vec;
 #[cfg(feature = "alloc")]
 impl ReturnStack for VecStack {
     fn new(max_depth: usize) -> Option<Self> {
-        if max_depth <= 0 {
+        if max_depth == 0 {
             None
         } else {
             Some(Self {
@@ -187,7 +187,7 @@ pub struct BoxStack {
 #[cfg(feature = "alloc")]
 impl ReturnStack for BoxStack {
     fn new(max_depth: usize) -> Option<Self> {
-        if max_depth <= 0 {
+        if max_depth == 0 {
             None
         } else {
             Some(Self {
