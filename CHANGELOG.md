@@ -78,8 +78,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   updating a selection of `Features`.
 - A fn `tracer::Tracer::features` for retrieving the current selection of
   `Features`.
-- A module `generator` for tracing payload generation, with submodules
-  `generator::error` and `generator::state`.
+- A module `generator` for tracing payload generation, with submodules `error`,
+  `hart2enc`, `state` and `step`.
 - An error type `generator::error::Error`.
 - A type `generator::state::State` for basic state being used and maintained
   during payload generation.
@@ -87,6 +87,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
   payloads based on state held in a `generator::state::State`.
 - A type `generator::state::Reason` for expressing the reason an address needs
   to be reported.
+- Types `generator::hart2enc::IType`, `generator::hart2enc::JumpType` and
+  `generator::hart2enc::CType` for modelling parts of the hart to encoder
+  interface.
+- A trait `generator::step::Step` as an interface for data fed to a trace
+  encoder.
+- A type `generator::step::Kind` representing kinds of `generator::step::Step`s.
 
 ### Fixed
 
