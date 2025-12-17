@@ -40,7 +40,7 @@ trace_test!(
         address: 0x8000001c,
     } => {
         (0x8000001c, Context::default()),
-        (0x8000001c, Kind::new_bltu(11, 12, -8))
+        (0x8000001c, Kind::new_bltu(11, 12, -8), branch_taken)
     }
     sync::Trap {
         branch: true,

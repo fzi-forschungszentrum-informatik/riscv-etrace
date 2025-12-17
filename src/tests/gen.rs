@@ -75,7 +75,7 @@ macro_rules! trace_test_helper {
 }
 
 macro_rules! trace_check_def {
-    ($t:ident, ($a:literal, $i:expr)) => {
+    ($t:ident, ($a:literal, $i:expr $(, $h:ident)*)) => {
         assert_eq!($t.next(), Some(Ok(Item::new($a, $i.into()))));
     };
     ($t:ident, [$($i:tt),*; $n:literal]) => {
@@ -91,7 +91,20 @@ macro_rules! trace_check_def {
 }
 
 macro_rules! trace_item_count {
-    (($a:literal, $i:expr)) => { 1 };
+    (($a:literal, $i:expr $(, $h:ident)*)) => { 1 };
     ([$($i:tt),*; $n:literal]) => { $n * trace_item_count!($($i),*) };
     ($($i:tt),*) => { 0usize $( + trace_item_count!($i) )* };
+}
+
+/// Hints attached to individual test items
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ItemHints {
+    /// Issue a sync event on this item
+    pub sync: bool,
+    /// Issue a notify event on this item
+    pub notify: bool,
+    /// This branch was taken
+    pub branch_taken: bool,
+    /// Integrate this item with the next one
+    pub integrate_next: bool,
 }

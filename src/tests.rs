@@ -16,6 +16,7 @@ use crate::packet::{payload, sync};
 use crate::tracer;
 use crate::types::{branch, stack, trap, Context};
 
+use gen::ItemHints;
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use tracer::item::Item;
 
@@ -108,7 +109,7 @@ trace_test!(
         (0x80000008, UNCOMPRESSED),
         (0x8000000c, Kind::new_auipc(1, 0x0)),
         (0x80000010, Context::default()),
-        (0x80000010, UNCOMPRESSED)
+        (0x80000010, UNCOMPRESSED, sync)
     }
 );
 
@@ -143,7 +144,7 @@ trace_test!(
         (0x80000008, UNCOMPRESSED),
         (0x8000000c, Kind::new_auipc(1, 0x0)),
         (0x80000010, UNCOMPRESSED),
-        (0x80000014, COMPRESSED)
+        (0x80000014, COMPRESSED, notify)
     }
 );
 
