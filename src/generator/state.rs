@@ -74,6 +74,7 @@ impl State {
 /// This builder allows issuing paylods based on a recorded [`State`]. The
 /// issuing process will advance the state, i.e. update the branch map and
 /// recorded address as is appropriate for the payload generated.
+#[derive(Debug)]
 pub struct PayloadBuilder<'s> {
     state: &'s mut State,
     address: u64,
