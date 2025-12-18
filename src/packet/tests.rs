@@ -209,6 +209,52 @@ bitstream_test!(
     params(&PARAMS_32)
 );
 
+bitstream_test!(
+    interrupt_ecause7,
+    b"\x77\x00\x00\x00\x80\x33\x36\x00\x00\x10",
+    InstructionTrace::Synchronization(
+        sync::Trap {
+            branch: true,
+            ctx: sync::Context {
+                privilege: types::Privilege::Machine,
+                time: None,
+                context: 0,
+            },
+            thaddr: true,
+            address: 0x800001b0,
+            info: types::trap::Info {
+                ecause: 7,
+                tval: None
+            },
+        }
+        .into()
+    ),
+    params(&PARAMS_64)
+);
+
+bitstream_test!(
+    exception_ecause2,
+    b"\x77\x00\x00\x00\x00\x41\x44\x00\x00\x10",
+    InstructionTrace::Synchronization(
+        sync::Trap {
+            branch: true,
+            ctx: sync::Context {
+                privilege: types::Privilege::Machine,
+                time: None,
+                context: 0,
+            },
+            thaddr: false,
+            address: 0x80000222,
+            info: types::trap::Info {
+                ecause: 2,
+                tval: Some(0)
+            }
+        }
+        .into()
+    ),
+    params(&PARAMS_64)
+);
+
 const PARAMS_32: config::Parameters = config::Parameters {
     cache_size_p: 0,
     call_counter_size_p: 0,
