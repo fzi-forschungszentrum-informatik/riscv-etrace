@@ -27,7 +27,9 @@ pub trait Step {
     fn context(&self) -> Context;
 
     /// Timestamp
-    fn timestamp(&self) -> Option<u64>;
+    fn timestamp(&self) -> Option<u64> {
+        None
+    }
 
     /// Refine this step's data with information from the next step
     fn refine(&mut self, _next: &Self) {}
