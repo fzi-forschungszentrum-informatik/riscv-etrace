@@ -5,7 +5,7 @@
 use crate::instruction::{self, Instruction};
 use crate::types::{trap, Context};
 
-use super::hart2enc::{CType, JumpType};
+use super::hart2enc::{CType, IType, JumpType};
 
 use instruction::info::Info;
 
@@ -176,5 +176,37 @@ impl Kind {
         }
 
         Self::Retirement { insn_size }
+    }
+
+    /// Create a step kind from values usually exposed via signals by a HART
+    pub fn from_hart(
+        itype: IType,
+        ecause: u16,
+        tval: u64,
+        insn_size: instruction::Size,
+        retired: bool,
+        sequentially_inferable: bool,
+    ) -> Self {
+        match itype {
+            IType::Other => Self::Retirement { insn_size },
+            IType::Exception => Self::Trap {
+                insn_size: retired.then_some(insn_size),
+                info: trap::Info {
+                    ecause,
+                    tval: Some(tval),
+                },
+            },
+            IType::Interrupt => Self::Trap {
+                insn_size: retired.then_some(insn_size),
+                info: trap::Info { ecause, tval: None },
+            },
+            IType::ExReturn => Self::TrapReturn { insn_size },
+            IType::Branch { taken } => Self::Branch { insn_size, taken },
+            IType::Jump(kind) => Self::Jump {
+                insn_size,
+                kind,
+                sequentially_inferable,
+            },
+        }
     }
 }
