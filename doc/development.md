@@ -26,13 +26,20 @@ We assume that the repository is already cloned and the instructions for
 instruction trace testing in `referenceFlow/README` were followed. Those result
 in the presence of a regression directory, e.g. `regression_20250425_190845`
 containing a directory `spike` and one or more test suite specific directories
-such as `itype3_basic`. Some commands below will assume that the latter
-directory's path is held in the shell variable `${suite}`.
+such as `itype3_basic`. Commands below will assume that the latter directory's
+path is held in the shell variable `${suite}`.
 
 The `simple` example can be executed in reference checking mode for all tests
-in a suite for which a trace exists by running a test-script from the project's
-root directory:
+in a suite for which a trace exists by invoking the `test-reference.mk` using
+`make`, with the `SUITE` variable pointing at the suite directory:
 
 ```sh
-doc/test-reference.sh ${suite}
+make -f doc/test-reference.mk SUITE=${suite}
+```
+
+When running tests in parallel, we advise to instruct `make` to collate the
+output for each target:
+
+```sh
+make -f doc/test-reference.mk SUITE=${suite} -j$(nproc) -Otarget
 ```
