@@ -129,16 +129,12 @@ use alloc::vec;
 #[cfg(feature = "alloc")]
 impl ReturnStack for VecStack {
     fn new(max_depth: usize) -> Option<Self> {
-        if max_depth == 0 {
-            None
-        } else {
-            Some(Self {
-                max_depth: max_depth,
-                data: vec![0u64; max_depth],
-                depth: 0,
-                base: 0,
-            })
-        }
+        Some(Self {
+            max_depth: max_depth,
+            data: vec![0u64; max_depth],
+            depth: 0,
+            base: 0,
+        })
     }
 
     fn push(&mut self, addr: u64) {
@@ -187,16 +183,12 @@ pub struct BoxStack {
 #[cfg(feature = "alloc")]
 impl ReturnStack for BoxStack {
     fn new(max_depth: usize) -> Option<Self> {
-        if max_depth == 0 {
-            None
-        } else {
-            Some(Self {
-                data: vec![0u64; max_depth].into_boxed_slice(),
-                max_depth,
-                depth: 0,
-                base: 0,
-            })
-        }
+        Some(Self {
+            data: vec![0u64; max_depth].into_boxed_slice(),
+            max_depth,
+            depth: 0,
+            base: 0,
+        })
     }
 
     fn push(&mut self, addr: u64) {
