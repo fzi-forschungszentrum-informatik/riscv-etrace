@@ -19,6 +19,8 @@ PK := $(TEST_FILE_DIR)pk.riscv
 
 TRACES ?= $(basename $(notdir $(wildcard $(SUITE)/*.te_inst_raw)))
 REFERENCE_TRACES := $(addprefix reference/,$(TRACES))
+NOSYNC_TRACES := $(addprefix nosync/,$(TRACES))
+SYNC_TRACES := $(addprefix sync/,$(TRACES))
 
 PROJ_DIR := $(dir $(real $(lastword $(MAKEFILE_LIST))))
 EXAMPLES_DIR := $(PROJ_DIR)target/debug/examples/
@@ -48,14 +50,47 @@ DECODER_RULE = $(let base,$(basename $(notdir $(1))),$(let elf,\
 	)\
 ))
 
-all: reference_tests
+define DO_ENCODER_RULE =
+$(1): $(2) $(3) $(EXAMPLES_DIR)encoder
+	@$(MKDIR) $(dir $(1))
+	$(EXAMPLES_DIR)encoder $(2) -p $(3) -o $(1) $(4)
+endef
+
+ENCODER_RULE = $(let base,$(basename $(notdir $(1))),\
+	$(call DO_ENCODER_RULE,\
+		$(2)$(base).te_inst_raw,\
+		$(SUITE)$(base).encoder_input,\
+		$(call ELF_PARAMS,$(wildcard \
+			$(addprefix $(TEST_FILE_DIR)$(base),.riscv .pk))\
+		),\
+		$(3)\
+	)\
+)
+
+all: reference_tests nosync_tests sync_tests
 
 clean:
 	$(RM) $(PARAMS_FILES)
+	$(RM) $(addsuffix .encoder_input,$(addprefix traces/,$(NOSYNC_TRACES)))
+	$(RM) $(addsuffix .encoder_input,$(addprefix traces/,$(SYNC_TRACES)))
 
 reference_tests: $(REFERENCE_TRACES)
 
 $(foreach trace,$(REFERENCE_TRACES),$(eval $(call DECODER_RULE,$(trace),$(SUITE))))
+
+nosync_tests: $(NOSYNC_TRACES)
+
+$(foreach trace,$(NOSYNC_TRACES),\
+	$(eval $(call ENCODER_RULE,$(trace),traces/nosync/))\
+	$(eval $(call DECODER_RULE,$(trace),traces/nosync/))\
+)
+
+sync_tests: $(SYNC_TRACES)
+
+$(foreach trace,$(SYNC_TRACES),\
+	$(eval $(call ENCODER_RULE,$(trace),traces/sync/,--max-sync 1024))\
+	$(eval $(call DECODER_RULE,$(trace),traces/sync/))\
+)
 
 PARAMS_FILES := params_32.toml params_64.toml
 
