@@ -44,6 +44,9 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
         ioptions
             .update_features(&mut self.features)
             .map_err(Error::UnsupportedFeature)?;
+        if self.features.implicit_returns {
+            return Err(Error::UnsupportedFeature("implicit return"));
+        }
         if let Some(mode) = ioptions.address_mode() {
             self.state.set_address_mode(mode);
         }
