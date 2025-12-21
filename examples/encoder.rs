@@ -6,8 +6,11 @@
 //! reference flow. The encoder input is supplied as a positional paramter, the
 //! output file may be either derived from the input's file name or specified
 //! explicitly. Optionally, parameters may be supplied in the form of a TOML
-//! file (such as `params.toml` in this directory).
+//! file (such as `params.toml` in this directory). If a max sync coutner value
+//! is specified via the `--max-sync` option, a resync is triggered after that
+//! many CSV lines.
 
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use riscv_etrace::{generator, instruction, types};
@@ -32,6 +35,10 @@ fn main() {
         .arg(
             clap::arg!(--"hart-index-width" <WIDTH> "Width of the hart index field")
                 .value_parser(clap::value_parser!(u8)),
+        )
+        .arg(
+            clap::arg!(--"max-sync" <NUM> "Maximum value for the sync counter")
+                .value_parser(clap::value_parser!(NonZeroUsize)),
         )
         .arg(
             clap::arg!(-d --debug "Enable additional debug output")
@@ -118,6 +125,8 @@ fn main() {
         .expect("Could not start qualification");
     encode(packet.into());
 
+    let max_sync = matches.get_one::<NonZeroUsize>("max-sync").cloned();
+    let mut sync_counter: usize = 0;
     input
         .map(|l| {
             l.expect("Could not read line")
@@ -125,8 +134,14 @@ fn main() {
                 .expect("Could not parse line")
         })
         .filter_map(|s| {
+            let sync = Some(sync_counter) == max_sync.map(NonZeroUsize::get);
+            if sync {
+                sync_counter = 0;
+            } else {
+                sync_counter += 1;
+            }
             generator
-                .process_step(s, None)
+                .process_step(s, sync.then_some(generator::Event::ReSync))
                 .expect("Could not process step")
         })
         .for_each(&mut encode);
