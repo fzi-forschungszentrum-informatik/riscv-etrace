@@ -93,6 +93,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A trait `generator::step::Step` as an interface for data fed to a trace
   encoder.
 - A type `generator::step::Kind` representing kinds of `generator::step::Step`s.
+- Types `generator::Builder`, `generator::Drain`, `generator::Event` and
+  `generator::Generator`.
+- A fn `generator::builder` for creating a `generator::Builder`.
 
 ### Fixed
 
