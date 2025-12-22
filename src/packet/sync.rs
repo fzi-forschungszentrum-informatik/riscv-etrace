@@ -201,6 +201,7 @@ impl<U> Encode<'_, U> for Trap {
         encoder.write_bits(self.info.ecause, encoder.widths().ecause.get())?;
         encoder.write_bit(self.info.tval.is_none())?;
         encoder.write_bit(self.thaddr)?;
+        util::write_address(encoder, self.address)?;
         if let Some(tval) = self.info.tval {
             encoder.write_bits(tval, encoder.widths().iaddress.get())?;
         }
