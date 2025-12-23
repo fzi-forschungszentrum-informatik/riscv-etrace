@@ -11,12 +11,13 @@ mod traps;
 
 use crate::binary;
 use crate::config;
+use crate::generator;
 use crate::instruction;
 use crate::packet::{payload, sync};
 use crate::tracer;
 use crate::types::{branch, stack, trap, Context};
 
-use gen::ItemHints;
+use gen::{ItemConverter, ItemHints, TestStep};
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use tracer::item::Item;
 

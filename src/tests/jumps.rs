@@ -129,6 +129,7 @@ trace_test!(
     ir_return_stack,
     test_bin_fncalls(),
     @implicit_return true
+    @encode false
     @params {
         return_stack_size_p: 2
     }

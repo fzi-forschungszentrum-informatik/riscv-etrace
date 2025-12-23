@@ -56,6 +56,7 @@ trace_test!(
 trace_test!(
     regular_ntr,
     test_bin_jr_loop(),
+    @encode false
     start_packet(0x8000000c) => {
         (0x8000000c, Context::default()),
         (0x8000000c, Kind::new_auipc(5, 0x0))
@@ -132,6 +133,7 @@ trace_test!(
 trace_test!(
     updiscon_rep,
     test_bin_jr_loop(),
+    @encode false
     start_packet(0x8000000c) => {
         (0x8000000c, Context::default()),
         (0x8000000c, Kind::new_auipc(5, 0x0))
@@ -296,6 +298,7 @@ trace_test!(
 trace_test!(
     notify_rep,
     test_bin_jr_loop(),
+    @encode false
     start_packet(0x8000000c) => {
         (0x8000000c, Context::default()),
         (0x8000000c, Kind::new_auipc(5, 0x0))
