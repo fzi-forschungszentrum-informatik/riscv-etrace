@@ -5,37 +5,6 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## 0.6.0 - 2025-12-23
 
-### Changed
-
-- Adjust documentation and impls of `intruction::info::Info` fns regarding the
-  classification of jumps as calls or returns to be in line with the
-  specification.
-- A `types::branch::Map` now holds at most 32 branches. This is reflected in a
-  changed value for `MAX_BRANCHES` and `raw_map` returning an `u32`.
-- The `decoder` module was renamed to `packet`.
-- The `packet::Decoder` was moved to a new, dedicated module `packet::decoder`.
-- `packet::payload::AddressInfo::address` is now an `i64` which is always
-  sign-extended.
-- `packet::Builder::build` was renamed to `decoder`.
-- `packet::error::Error` now has two new variants `BufferTooSmall` and
-  `PayloadTooBig`, which may be emitted during encoding attempts.
-- `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
-- `packet::smi::Packet` is now generic over its payload.
-- `packet::smi::Packet::payload` was renamed to `decode_payload` and is only
-  availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
-  to a simple accessor fn.
-- `packet::encap::Packet` and `packet::encap::Normal` are now generic over their
-  payload.
-- `packet::encap::Normal::payload` was renamed to `decode_payload` and is only
-  availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
-  to a simple accessor fn.
-- The `tracer::stack` module was moved to `types`.
-- `Iterator::size_hint` is now implemented explicitly (and not as a provided fn)
-  for `tracer::Tracer`.
-- `tracer::item::Context` was moved to `types`.
-- `packet::sync::Context::context` is now a plain `u64` which is decoded as `0`
-  if the field is absent.
-
 ### Added
 
 - A fn `tracer::Builder::with_implicit_return` for initially (un)setting the
@@ -98,6 +67,37 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `generator::builder` for creating a `generator::Builder`.
 - An `encoder` example which allows generating traces from CSVs providing the
   encoder inputs.
+
+### Changed
+
+- Adjust documentation and impls of `intruction::info::Info` fns regarding the
+  classification of jumps as calls or returns to be in line with the
+  specification.
+- A `types::branch::Map` now holds at most 32 branches. This is reflected in a
+  changed value for `MAX_BRANCHES` and `raw_map` returning an `u32`.
+- The `decoder` module was renamed to `packet`.
+- The `packet::Decoder` was moved to a new, dedicated module `packet::decoder`.
+- `packet::payload::AddressInfo::address` is now an `i64` which is always
+  sign-extended.
+- `packet::Builder::build` was renamed to `decoder`.
+- `packet::error::Error` now has two new variants `BufferTooSmall` and
+  `PayloadTooBig`, which may be emitted during encoding attempts.
+- `instruction::Kind` now has variants for the `nop` and `c.nop` instructions.
+- `packet::smi::Packet` is now generic over its payload.
+- `packet::smi::Packet::payload` was renamed to `decode_payload` and is only
+  availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
+  to a simple accessor fn.
+- `packet::encap::Packet` and `packet::encap::Normal` are now generic over their
+  payload.
+- `packet::encap::Normal::payload` was renamed to `decode_payload` and is only
+  availible if the payload is a `packet::decoder::Scoped`. `payload` now refers
+  to a simple accessor fn.
+- The `tracer::stack` module was moved to `types`.
+- `Iterator::size_hint` is now implemented explicitly (and not as a provided fn)
+  for `tracer::Tracer`.
+- `tracer::item::Context` was moved to `types`.
+- `packet::sync::Context::context` is now a plain `u64` which is decoded as `0`
+  if the field is absent.
 
 ### Fixed
 
