@@ -24,6 +24,10 @@ toml = { version = "0.9", features = ["parse", "serde"], default-features = fals
 name = "simple"
 required-features = ["alloc", "elf", "serde"]
 
+[[example]]
+name = "encoder"
+required-features = ["serde"]
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]

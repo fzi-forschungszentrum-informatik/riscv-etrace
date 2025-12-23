@@ -96,6 +96,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Types `generator::Builder`, `generator::Drain`, `generator::Event` and
   `generator::Generator`.
 - A fn `generator::builder` for creating a `generator::Builder`.
+- An `encoder` example which allows generating traces from CSVs providing the
+  encoder inputs.
 
 ### Fixed
 
