@@ -103,15 +103,14 @@ impl Kind {
     /// discontinuity, i.e. a jump. Sequentially inferable jumps are considered
     /// uninferable unless `true` if passed for `infer_sequentially`.
     pub fn is_updiscon(self, infer_sequentially: bool) -> bool {
-        if let Self::Jump {
-            kind,
-            sequentially_inferable,
-            ..
-        } = self
-        {
-            !(kind.is_inferable() || (infer_sequentially && sequentially_inferable))
-        } else {
-            false
+        match self {
+            Self::TrapReturn { .. } => true,
+            Self::Jump {
+                kind,
+                sequentially_inferable,
+                ..
+            } => !(kind.is_inferable() || (infer_sequentially && sequentially_inferable)),
+            _ => false,
         }
     }
 

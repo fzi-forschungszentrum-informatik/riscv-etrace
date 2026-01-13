@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Fixed
+
+- `generator::step::Kind::is_updiscon` now returns `true` for
+  `generator::step::Kind::TrapReturn`.
+
 ## 0.6.0 - 2025-12-23
 
 ### Added
