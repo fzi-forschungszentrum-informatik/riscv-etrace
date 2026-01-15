@@ -293,6 +293,11 @@ pub fn builder() -> Builder {
 }
 
 /// Builder for [`Generator`]s
+///
+/// A builder will build a single [`Generator`] for a single RISC-V hart.
+///
+/// If multiple harts are to be traced, multiple [`Generator`]s need to be
+/// built.
 #[derive(Copy, Clone, Default)]
 pub struct Builder {
     features: Features,
