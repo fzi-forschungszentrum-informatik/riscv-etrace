@@ -41,7 +41,7 @@
 //! The following [E-Trace][etrace] options are supported:
 //! * delta/full address mode
 //! * sequentially inferred jumps
-//! * implicit return
+//! * implicit return ([tracer] only, known to be broken by specification)
 //!
 //! # Crate features
 //!
