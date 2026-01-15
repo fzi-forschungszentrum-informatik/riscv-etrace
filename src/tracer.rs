@@ -38,6 +38,8 @@ use stack::ReturnStack;
 /// tracer. Feeding a payload while the items generated from the last payload
 /// are not exhaused results in an error.
 ///
+/// Tracers are constructed using a [`Builder`].
+///
 /// # Example
 ///
 /// The following example demonstrates feeding a payload to a tracer and then
