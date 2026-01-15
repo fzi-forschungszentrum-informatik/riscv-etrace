@@ -194,11 +194,16 @@ impl PayloadBuilder<'_> {
 pub enum Reason {
     /// A notification was requested for the current address
     Notify,
-    /// The current lies between an updiscon and a sync payload being issued
+    /// The current step lies between an updiscon and an event warranting resync
     ///
     /// The current instruction is immediately following an uninferable PC
     /// discontinuity and is the instruction just before an exception, privilege
     /// change or resync.
     Updiscon,
+    /// The address payload is issued for another reason
+    ///
+    /// Other reasons include instructions following an uninferable PC
+    /// discontinuity —without an exception, privilege change or resync
+    /// following it.
     Other,
 }
