@@ -12,6 +12,7 @@ use crate::packet::{payload, sync, unit};
 use crate::types::Privilege;
 
 use error::Error;
+use payload::InstructionTrace;
 
 /// Generator for tracing payloads
 #[derive(Clone, Debug)]
@@ -85,7 +86,7 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
         &mut self,
         step: S,
         event: Option<Event>,
-    ) -> Result<Option<payload::InstructionTrace<I, D>>, Error> {
+    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
         if let Some(current) = self.current.as_mut() {
             current.refine(&step);
         }
@@ -248,12 +249,12 @@ pub enum Event {
 /// Output potentially produced by the [`Generator`]
 #[derive(Debug)]
 enum StepOutput<'s, I: unit::IOptions, D> {
-    Payload(payload::InstructionTrace<I, D>),
+    Payload(InstructionTrace<I, D>),
     Builder(state::PayloadBuilder<'s>),
 }
 
-impl<I: unit::IOptions, D> From<payload::InstructionTrace<I, D>> for Option<StepOutput<'_, I, D>> {
-    fn from(payload: payload::InstructionTrace<I, D>) -> Self {
+impl<I: unit::IOptions, D> From<InstructionTrace<I, D>> for Option<StepOutput<'_, I, D>> {
+    fn from(payload: InstructionTrace<I, D>) -> Self {
         Some(StepOutput::Payload(payload))
     }
 }
@@ -341,7 +342,7 @@ pub struct Drain<'g, S: step::Step, I: unit::IOptions, D> {
 }
 
 impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Drain<'_, S, I, D> {
-    type Item = Result<payload::InstructionTrace<I, D>, Error>;
+    type Item = Result<InstructionTrace<I, D>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.gen.do_step(None, None) {
