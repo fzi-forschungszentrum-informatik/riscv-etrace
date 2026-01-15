@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //! # Decoder and tracer for RISC-V E-Traces
 //!
-//! This library provides a [`packet::decoder`] and a [tracer] for the
-//! instruction tracing defined in the [Efficient Trace for RISC-V][etrace]
-//! specification. Given trace packets previously retrieved from an encoder and
-//! the traced program, these allow reconstruction of the execution path.
+//! This library provides a [packet] decoder and encoder a [tracer] as well as
+//! a payload [generator] for the instruction tracing defined in the [Efficient
+//! Trace for RISC-V][etrace] specification. Given trace packets previously
+//! retrieved from an encoder and the traced program, the [tracer] allows
+//! reconstructing the execution path. The [generator], on the other hand,
+//! serves as a software implementation for a trace encoder.
 //!
 //! This library also features a limited [instruction] database with decoding
 //! functionality. Currently, only decoding of RV32IC and RV64IC instructions
