@@ -1,6 +1,9 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! Payload generators
+//! Payload generation utilities
+//!
+//! This module provides the payload [`Generator`], which processes
+//! [`Step`][step::Step]s payloads and generates [`InstructionTrace`]s.
 
 pub mod error;
 pub mod hart2enc;
