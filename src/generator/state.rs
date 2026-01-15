@@ -166,6 +166,8 @@ impl PayloadBuilder<'_> {
     }
 
     /// Issue a [`payload::Branch`] if the branch map is full
+    ///
+    /// Returns [`None`] if the branch does not contain at least 31 branches.
     pub fn report_full_branchmap(&mut self) -> Option<payload::Branch> {
         (self.branches() >= 31).then(|| payload::Branch {
             branch_map: self.state.branches.take(31),
