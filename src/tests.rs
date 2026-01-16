@@ -15,7 +15,7 @@ use crate::generator;
 use crate::instruction;
 use crate::packet::{payload, sync};
 use crate::tracer;
-use crate::types::{branch, stack, trap, Context};
+use crate::types::{branch, stack, trap, Context, Privilege};
 
 use gen::{ItemConverter, ItemHints, TestStep};
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};

@@ -32,6 +32,34 @@ trace_test!(
 );
 
 trace_test!(
+    exception_with_priv_change,
+    test_bin_1(),
+    start_packet(0x80000016) => {
+        (0x80000016, Context::default()),
+        (0x80000016, COMPRESSED)
+    }
+    sync::Trap {
+        branch: true,
+        ctx: sync::Context { privilege: Privilege::Supervisor, ..Default::default() },
+        thaddr: true,
+        address: 0x80000030,
+        info: trap::Info { ecause: 2, tval: Some(0) },
+    } => {
+        (0x80000018, trap::Info { ecause: 2, tval: Some(0) }),
+        (0x80000030, Context { privilege: Privilege::Supervisor, ..Default::default() }),
+        (0x80000030, Kind::wfi)
+    }
+    payload::AddressInfo {
+        address: 4,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000034, Kind::new_c_j(0, -4))
+    }
+);
+
+trace_test!(
     exception_after_branch_taken,
     test_bin_1(),
     sync::Start {
