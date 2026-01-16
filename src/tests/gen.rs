@@ -240,8 +240,9 @@ impl ItemConverter {
                 self.trap = Some(info);
                 None
             }
-            Kind::Context(context) => {
-                self.context = context;
+            Kind::Context(new_context) => {
+                let context = self.context;
+                self.context = new_context;
                 if hints.integrate_next {
                     None
                 } else {
