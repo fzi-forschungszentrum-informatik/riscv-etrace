@@ -65,13 +65,56 @@ mod box_stack_test {
     }
 }
 
+#[cfg(feature = "alloc")]
+mod vec_stack_test {
+    use super::*;
     use crate::types::stack::VecStack;
 
-    underflow_test!(vector_stack_under, VecStack);
-    underflow_test!(box_stack_under, BoxStack);
+    #[test]
+    fn test_aliases_vec_return_stack() {
+        let mut vec_stack = VecStack::new(4).unwrap();
+        vec_stack.push(5);
+        vec_stack.push(10);
+        vec_stack.push(15);
 
-    return_stack_implementation!(vector_implementation, VecStack);
-    return_stack_implementation!(box_implmentation, BoxStack);
+        assert_eq!(vec_stack.pop(), Some(15));
+        assert_eq!(vec_stack.max_depth(), 4)
+    }
+
+    #[test]
+    fn test_vec_push_overflow() {
+        let mut vec_stack = VecStack::new(3).unwrap();
+        vec_stack.push_back(5);
+        vec_stack.push_back(10);
+        vec_stack.push_back(15);
+        vec_stack.push_front(0);
+
+        assert_eq!(vec_stack.pop_back(), Some(10));
+        assert_eq!(vec_stack.pop_front(), Some(0));
+        assert_eq!(vec_stack.depth(), 1);
+        assert_eq!(vec_stack.pop_back(), Some(5));
+        assert_eq!(vec_stack.pop_back(), None);
+    }
+
+    #[test]
+    fn test_vec_stack_reusability () {
+        let mut vec_stack = VecStack::new(2).unwrap();
+        vec_stack.push(1);
+        vec_stack.push(2);
+        vec_stack.pop();
+        vec_stack.pop();
+        vec_stack.push(3);
+        assert_eq!(vec_stack.pop(), Some(3));
+        assert_eq!(vec_stack.depth(), 0)
+    }
+
+    #[test]
+    fn test_vec_zero_cap() {
+        let mut vec_stack = VecStack::new(0).unwrap();
+        vec_stack.push(1);
+        assert_eq!(vec_stack.depth(), 0);
+        assert_eq!(vec_stack.pop(), None);
+    }
 }
 
 #[test]

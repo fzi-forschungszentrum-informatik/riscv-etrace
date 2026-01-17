@@ -113,59 +113,71 @@ impl ReturnStack for NoStack {
 }
 
 #[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-
+use alloc::collections::VecDeque;
 #[derive(Clone, Debug)]
 #[cfg(feature = "alloc")]
 pub struct VecStack {
-    data: Vec<u64>,
+    data: VecDeque<u64>,
     max_depth: usize,
-    depth: usize,
-    base: usize,
 }
 
 #[cfg(feature = "alloc")]
-use alloc::vec;
-#[cfg(feature = "alloc")]
 impl ReturnStack for VecStack {
-    fn new(max_depth: usize) -> Option<Self> {
+    fn new(max_size: usize) -> Option<Self> {
         Some(Self {
-            max_depth: max_depth,
-            data: vec![0u64; max_depth],
-            depth: 0,
-            base: 0,
+            data: VecDeque::with_capacity(max_size),
+            max_depth: max_size,
         })
     }
 
+    fn depth(&self) -> usize {
+        self.data.len()
+    }
+
+    // ReturnStack Aliases
     fn push(&mut self, addr: u64) {
+        self.push_back(addr);
+    }
+    fn pop(&mut self) -> Option<u64> {
+        self.pop_back()
+    }
+    fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl VecStack {
+    // Pushes to top of stack, like push in vector
+    pub fn push_back(&mut self, addr: u64) {
         if self.max_depth == 0 {
             return;
         }
-        let index = (self.base + self.depth) % self.max_depth;
-        self.data[index] = addr;
-
-        if self.depth < self.max_depth {
-            self.depth += 1;
-        } else {
-            self.base = (self.base + 1) % self.max_depth;
+        if self.data.len() == self.max_depth {
+            self.data.pop_front();
         }
+        self.data.push_back(addr);
     }
 
-    fn pop(&mut self) -> Option<u64> {
-        if self.depth == 0 {
-            return None;
+    // Pushes to bottom of stack
+    pub fn push_front(&mut self, addr: u64) {
+        if self.max_depth == 0 {
+            return;
         }
-        self.depth -= 1;
-        let index = (self.base + self.depth) % self.max_depth;
-        Some(self.data[index])
+        if self.data.len() == self.max_depth {
+            self.data.pop_back();
+        }
+        self.data.push_front(addr);
     }
 
-    fn depth(&self) -> usize {
-        self.depth
+    // Pops top element of stack
+    pub fn pop_back(&mut self) -> Option<u64> {
+        self.data.pop_back()
     }
 
-    fn max_depth(&self) -> usize {
-        self.max_depth
+    // Pops most bottom element of stack
+    pub fn pop_front(&mut self) -> Option<u64> {
+        self.data.pop_front()
     }
 }
 
