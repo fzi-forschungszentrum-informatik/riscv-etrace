@@ -65,9 +65,14 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
 
     /// End qualifiation, returning an [`Iterator`] over remaining payloads
     ///
-    /// Ends qualification and returns an [`Iterator`] over at most one payload
-    /// indicating an address and one [`sync::Support`] payload with the given
-    /// `ienable` value.
+    /// Ends qualification and returns an [`Iterator`] over at most two items: a
+    /// payload indicating an address and one [`sync::Support`] payload with the
+    /// given `ienable` value.
+    ///
+    /// The address payload is included if the current address was not yet
+    /// reported due to other reasons. The support payload is included if
+    /// [`begin_qualification`][Self::begin_qualification] was called on this
+    /// generator before.
     pub fn end_qualification(&mut self, ienable: bool) -> Drain<'_, S, I, D> {
         Drain::new(self, ienable)
     }
