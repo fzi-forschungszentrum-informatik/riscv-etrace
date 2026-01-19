@@ -15,7 +15,7 @@ use crate::generator;
 use crate::instruction;
 use crate::packet::{payload, sync};
 use crate::tracer;
-use crate::types::{branch, stack, trap, Context};
+use crate::types::{branch, stack, trap, Context, Privilege};
 
 use gen::{ItemConverter, ItemHints, TestStep};
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
@@ -111,6 +111,38 @@ trace_test!(
         (0x8000000c, Kind::new_auipc(1, 0x0)),
         (0x80000010, Context::default()),
         (0x80000010, UNCOMPRESSED, sync)
+    }
+);
+
+trace_test!(
+    sync_with_branches,
+    test_bin_1(),
+    start_packet(0x80000010) => {
+        (0x80000010, Context::default()),
+        (0x80000010, UNCOMPRESSED)
+    }
+    payload::Branch {
+        branch_map: branch::Map::new(3, 1 << 2),
+        address: Some(payload::AddressInfo {
+            address: 0x20 - 0x10,
+            notify: false,
+            updiscon: false,
+            irdepth: None,
+        }),
+    } => {
+        [
+            (0x80000014, COMPRESSED),
+            (0x80000016, COMPRESSED),
+            (0x80000018, COMPRESSED),
+            (0x8000001a, COMPRESSED),
+            (0x8000001c, Kind::new_bltu(11, 12, -8));
+            3
+        ],
+        (0x80000020, Kind::fence_i)
+    }
+    start_packet(0x80000024) => {
+        (0x80000024, Context::default()),
+        (0x80000024, Kind::new_c_jr(1), sync)
     }
 );
 

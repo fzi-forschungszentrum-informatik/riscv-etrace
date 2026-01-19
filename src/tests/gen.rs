@@ -194,13 +194,12 @@ pub struct ItemHints {
     pub notify: bool,
     /// This branch was taken
     pub branch_taken: bool,
-    /// Integrate this item with the next one
-    pub integrate_next: bool,
 }
 
 /// Helper for constructing [`TestStep`]s from trace item definitions
 #[derive(Default)]
 pub struct ItemConverter {
+    insn: Option<Instruction>,
     trap: Option<trap::Info>,
     ctype: CType,
     context: Context,
@@ -225,36 +224,50 @@ impl ItemConverter {
         match kind {
             Kind::Regular(insn) => {
                 self.upper_immediate = insn.upper_immediate(address).map(|(r, _)| r);
-                let cycle = TestStep {
-                    address,
-                    insn: Some(insn),
-                    trap: self.trap.take(),
-                    ctype,
-                    context: self.context,
-                    branch_taken: hints.branch_taken,
-                    prev_upper_immediate,
-                };
-                Some(cycle)
-            }
-            Kind::Trap(info) => {
-                self.trap = Some(info);
-                None
-            }
-            Kind::Context(context) => {
-                self.context = context;
-                if hints.integrate_next {
+                if insn.is_ecall_or_ebreak() {
+                    self.insn = Some(insn);
                     None
                 } else {
-                    self.trap.take().map(|trap| TestStep {
+                    let cycle = TestStep {
                         address,
-                        insn: None,
-                        trap: Some(trap),
+                        insn: Some(insn),
+                        trap: self.trap.take(),
                         ctype,
-                        context,
-                        branch_taken: false,
+                        context: self.context,
+                        branch_taken: hints.branch_taken,
+                        prev_upper_immediate,
+                    };
+                    Some(cycle)
+                }
+            }
+            Kind::Trap(info) => {
+                if let Some(insn) = self.insn.take() {
+                    Some(TestStep {
+                        address,
+                        insn: Some(insn),
+                        trap: Some(info),
+                        ctype,
+                        context: self.context,
+                        branch_taken: hints.branch_taken,
                         prev_upper_immediate,
                     })
+                } else {
+                    self.trap = Some(info);
+                    None
                 }
+            }
+            Kind::Context(new_context) => {
+                let context = self.context;
+                self.context = new_context;
+                self.trap.take().map(|trap| TestStep {
+                    address,
+                    insn: self.insn.take(),
+                    trap: Some(trap),
+                    ctype,
+                    context,
+                    branch_taken: false,
+                    prev_upper_immediate,
+                })
             }
         }
     }
