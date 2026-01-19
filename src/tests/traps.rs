@@ -375,6 +375,37 @@ trace_test!(
     }
 );
 
+trace_test!(
+    ecall_after_branch,
+    ecall(),
+    start_packet(0x80000000) => {
+        (0x80000000, Context::default()),
+        (0x80000000, Kind::new_auipc(13, 0x0))
+    }
+    payload::AddressInfo {
+        address: 0x44,
+        notify: false,
+        updiscon: false,
+        irdepth: None,
+    } => {
+        (0x80000004, UNCOMPRESSED),
+        (0x80000008, UNCOMPRESSED),
+        (0x8000000c, Kind::new_c_j(0, 0x44 - 0x0c)),
+        (0x80000044, Kind::ecall)
+    }
+    sync::Trap {
+        branch: true,
+        ctx: Default::default(),
+        thaddr: true,
+        address: 0x80000010,
+        info: trap::Info { ecause: 11, tval: Some(0) }
+    } => {
+        (0x80000044, trap::Info { ecause: 11, tval: Some(0) }),
+        (0x80000010, Context::default()),
+        (0x80000010, COMPRESSED)
+    }
+);
+
 fn ecall() -> [(u64, instruction::Instruction); 26] {
     [
         (0x80000000, Kind::new_auipc(13, 0x0).into()),
