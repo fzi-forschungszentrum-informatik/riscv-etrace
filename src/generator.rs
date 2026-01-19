@@ -69,11 +69,7 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
     /// indicating an address and one [`sync::Support`] payload with the given
     /// `ienable` value.
     pub fn end_qualification(&mut self, ienable: bool) -> Drain<'_, S, I, D> {
-        Drain {
-            gen: self,
-            ienable,
-            payload_generated: false,
-        }
+        Drain::new(self, ienable)
     }
 
     /// Process a single [Step][step::Step], potentially producing a payload
@@ -338,6 +334,17 @@ pub struct Drain<'g, S: step::Step, I: unit::IOptions, D> {
     gen: &'g mut Generator<S, I, D>,
     ienable: bool,
     payload_generated: bool,
+}
+
+impl<'g, S: step::Step, I: unit::IOptions, D> Drain<'g, S, I, D> {
+    /// Create a new draining [`Iterator`]
+    fn new(gen: &'g mut Generator<S, I, D>, ienable: bool) -> Self {
+        Drain {
+            gen,
+            ienable,
+            payload_generated: false,
+        }
+    }
 }
 
 impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Drain<'_, S, I, D> {
