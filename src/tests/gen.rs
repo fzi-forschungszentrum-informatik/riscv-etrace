@@ -194,8 +194,6 @@ pub struct ItemHints {
     pub notify: bool,
     /// This branch was taken
     pub branch_taken: bool,
-    /// Integrate this item with the next one
-    pub integrate_next: bool,
 }
 
 /// Helper for constructing [`TestStep`]s from trace item definitions
@@ -261,19 +259,15 @@ impl ItemConverter {
             Kind::Context(new_context) => {
                 let context = self.context;
                 self.context = new_context;
-                if hints.integrate_next {
-                    None
-                } else {
-                    self.trap.take().map(|trap| TestStep {
-                        address,
-                        insn: self.insn.take(),
-                        trap: Some(trap),
-                        ctype,
-                        context,
-                        branch_taken: false,
-                        prev_upper_immediate,
-                    })
-                }
+                self.trap.take().map(|trap| TestStep {
+                    address,
+                    insn: self.insn.take(),
+                    trap: Some(trap),
+                    ctype,
+                    context,
+                    branch_taken: false,
+                    prev_upper_immediate,
+                })
             }
         }
     }
