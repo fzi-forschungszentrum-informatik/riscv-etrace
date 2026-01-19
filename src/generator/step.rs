@@ -100,8 +100,9 @@ impl Kind {
     /// Determint whether this is an uninferable PC dicontinuity
     ///
     /// Returns `true` if this step kind refers to an uninferable PC
-    /// discontinuity, i.e. a jump. Sequentially inferable jumps are considered
-    /// uninferable unless `true` if passed for `infer_sequentially`.
+    /// discontinuity, i.e. a `c.jr`. Sequentially inferable jumps are
+    /// considered uninferable unless `true` if passed for
+    /// `infer_sequentially`.
     pub fn is_updiscon(self, infer_sequentially: bool) -> bool {
         match self {
             Self::TrapReturn { .. } => true,
