@@ -65,15 +65,16 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
 
     /// End qualifiation, returning an [`Iterator`] over remaining payloads
     ///
-    /// Ends qualification and returns an [`Iterator`] over at most one payload
-    /// indicating an address and one [`sync::Support`] payload with the given
-    /// `ienable` value.
+    /// Ends qualification and returns an [`Iterator`] over at most two items: a
+    /// payload indicating an address and one [`sync::Support`] payload with the
+    /// given `ienable` value.
+    ///
+    /// The address payload is included if the current address was not yet
+    /// reported due to other reasons. The support payload is included if
+    /// [`begin_qualification`][Self::begin_qualification] was called on this
+    /// generator before.
     pub fn end_qualification(&mut self, ienable: bool) -> Drain<'_, S, I, D> {
-        Drain {
-            gen: self,
-            ienable,
-            payload_generated: false,
-        }
+        Drain::new(self, ienable)
     }
 
     /// Process a single [Step][step::Step], potentially producing a payload
@@ -337,7 +338,18 @@ impl Builder {
 pub struct Drain<'g, S: step::Step, I: unit::IOptions, D> {
     gen: &'g mut Generator<S, I, D>,
     ienable: bool,
-    payload_generated: bool,
+    qual_status: Option<sync::QualStatus>,
+}
+
+impl<'g, S: step::Step, I: unit::IOptions, D> Drain<'g, S, I, D> {
+    /// Create a new draining [`Iterator`]
+    fn new(gen: &'g mut Generator<S, I, D>, ienable: bool) -> Self {
+        Drain {
+            gen,
+            ienable,
+            qual_status: Some(sync::QualStatus::EndedRep),
+        }
+    }
 }
 
 impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Drain<'_, S, I, D> {
@@ -346,20 +358,12 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Dr
     fn next(&mut self) -> Option<Self::Item> {
         match self.gen.do_step(None, None) {
             Ok(Some(StepOutput::Payload(p))) => {
-                self.payload_generated = true;
+                self.qual_status = Some(sync::QualStatus::EndedNtr);
                 Some(Ok(p))
             }
-            Ok(Some(StepOutput::Builder(b))) => {
-                self.payload_generated = false;
-                Some(b.report_address(state::Reason::Other))
-            }
-            Ok(None) => {
-                let qual_status = if self.payload_generated {
-                    sync::QualStatus::EndedNtr
-                } else {
-                    sync::QualStatus::EndedRep
-                };
-                self.gen.options.take().map(|(ioptions, doptions)| {
+            Ok(Some(StepOutput::Builder(b))) => Some(b.report_address(state::Reason::Other)),
+            Ok(None) => Option::zip(self.gen.options.clone(), self.qual_status.take()).map(
+                |((ioptions, doptions), qual_status)| {
                     Ok(sync::Support {
                         ienable: self.ienable,
                         encoder_mode: sync::EncoderMode::BranchTrace,
@@ -370,8 +374,8 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Dr
                         doptions,
                     }
                     .into())
-                })
-            }
+                },
+            ),
             Err(e) => Some(Err(e)),
         }
     }

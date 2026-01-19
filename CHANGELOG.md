@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Changed
+
+- `generator::Drain` does not clear the `ioptions` and `doptions` of the
+  underlying `generator::Generator` any more.
+
 ### Fixed
 
 - `generator::step::Kind::is_updiscon` now returns `true` for
