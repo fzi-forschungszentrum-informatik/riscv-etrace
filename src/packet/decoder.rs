@@ -194,7 +194,10 @@ impl<'d, U> Decoder<'d, U> {
     }
 
     /// Retrieve the remaining inner data, including the current byte
-    pub(super) fn remaining_data(&self) -> &'d [u8] {
+    ///
+    /// If the current bit position is at a byte buondary, e.g. after successful
+    /// decoding of a packet, the returned buffer contains only undecoded data.
+    pub fn remaining_data(&self) -> &'d [u8] {
         self.data
             .split_at_checked(self.bit_pos >> 3)
             .unwrap_or_default()

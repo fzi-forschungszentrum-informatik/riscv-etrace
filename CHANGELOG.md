@@ -5,6 +5,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Changed
+
+- The associated fn `packet::decoder::Decoder::remaining_data` was made public.
+
 ## 0.6.1 - 2026-01-19
 
 ### Changed
