@@ -292,7 +292,11 @@ impl<'d, U> Decoder<'d, U> {
     }
 }
 
-pub(super) trait Decode<'a, 'd, U>: Sized {
+/// Decodable item
+///
+/// Items implementing this trait may be decoded using an [`Decoder`].
+pub trait Decode<'a, 'd, U>: Sized {
+    /// Decode an item of this type
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
 }
 
