@@ -127,6 +127,17 @@ impl<'d, U> Decoder<'d, U> {
         self.data = data;
     }
 
+    /// Decode a single item
+    ///
+    /// Decodes a single item, consuming the associated data from the input and
+    /// sign-extending the input if neccessary. Depending on the item's type and
+    /// [`Decode`] implementation, the decoder may be left at a _bit_ boundary
+    /// following the item after successful operation. A failure may leave the
+    /// decoder in an unspecified state.
+    pub fn decode<'a, T: Decode<'a, 'd, U>>(&'a mut self) -> Result<T, Error> {
+        Decode::decode(self)
+    }
+
     /// Decode a single [`encap::Packet`]
     ///
     /// Decodes a single [`encap::Packet`], which will consume all associated
