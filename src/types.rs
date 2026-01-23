@@ -7,17 +7,12 @@ pub mod stack;
 pub mod trap;
 
 /// RISC-V priviledge levels
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub enum Privilege {
+    #[default]
     User,
     Supervisor,
     Machine,
-}
-
-impl Default for Privilege {
-    fn default() -> Self {
-        Self::User
-    }
 }
 
 impl TryFrom<u8> for Privilege {
