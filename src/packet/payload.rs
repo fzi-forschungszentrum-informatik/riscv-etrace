@@ -66,7 +66,7 @@ pub enum BranchFmt {
     AddrFail = 3,
 }
 
-impl<U> Decode<'_, '_, U> for BranchFmt {
+impl<U> Decode<'_, U> for BranchFmt {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b00 => Ok(BranchFmt::NoAddr),
@@ -98,7 +98,7 @@ pub enum InstructionTrace<I = unit::ReferenceIOptions, D = unit::ReferenceDOptio
     Synchronization(sync::Synchronization<I, D>),
 }
 
-impl<U: unit::Unit> Decode<'_, '_, U> for InstructionTrace<U::IOptions, U::DOptions> {
+impl<U: unit::Unit> Decode<'_, U> for InstructionTrace<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b00 => Extension::decode(decoder).map(Into::into),
@@ -245,7 +245,7 @@ pub enum Extension {
     JumpTargetIndex(JumpTargetIndex),
 }
 
-impl<U> Decode<'_, '_, U> for Extension {
+impl<U> Decode<'_, U> for Extension {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits(decoder.widths().format0_subformat)? {
             0 => BranchCount::decode(decoder).map(Self::BranchCount),
@@ -276,7 +276,7 @@ pub struct BranchCount {
     pub address: Option<AddressInfo>,
 }
 
-impl<U> Decode<'_, '_, U> for BranchCount {
+impl<U> Decode<'_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch_count = decoder.read_bits::<u32>(32)? - 31;
         let branch_fmt = BranchFmt::decode(decoder)?;
@@ -317,7 +317,7 @@ pub struct JumpTargetIndex {
     pub irdepth: Option<usize>,
 }
 
-impl<U> Decode<'_, '_, U> for JumpTargetIndex {
+impl<U> Decode<'_, U> for JumpTargetIndex {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let index = decoder.read_bits(decoder.widths().cache_index)?;
         let branch_map = util::BranchCount::decode(decoder)?.read_branch_map(decoder)?;
@@ -353,7 +353,7 @@ pub struct Branch {
     pub address: Option<AddressInfo>,
 }
 
-impl<U> Decode<'_, '_, U> for Branch {
+impl<U> Decode<'_, U> for Branch {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         use util::BranchCount;
 
@@ -423,7 +423,7 @@ pub struct AddressInfo {
     pub irdepth: Option<usize>,
 }
 
-impl<U> Decode<'_, '_, U> for AddressInfo {
+impl<U> Decode<'_, U> for AddressInfo {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let address = util::read_address(decoder)?;
         let notify = decoder.read_differential_bit()?;

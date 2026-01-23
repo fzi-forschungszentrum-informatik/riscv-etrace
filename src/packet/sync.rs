@@ -77,7 +77,7 @@ impl<I, D> From<Support<I, D>> for Synchronization<I, D> {
     }
 }
 
-impl<U: Unit> Decode<'_, '_, U> for Synchronization<U::IOptions, U::DOptions> {
+impl<U: Unit> Decode<'_, U> for Synchronization<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
             0b00 => Start::decode(decoder).map(Into::into),
@@ -131,7 +131,7 @@ pub struct Start {
     pub address: u64,
 }
 
-impl<U> Decode<'_, '_, U> for Start {
+impl<U> Decode<'_, U> for Start {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
@@ -171,7 +171,7 @@ pub struct Trap {
     pub info: trap::Info,
 }
 
-impl<U> Decode<'_, '_, U> for Trap {
+impl<U> Decode<'_, U> for Trap {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch = decoder.read_bit()?;
         let ctx = Context::decode(decoder)?;
@@ -236,7 +236,7 @@ impl From<Context> for types::Context {
     }
 }
 
-impl<U> Decode<'_, '_, U> for Context {
+impl<U> Decode<'_, U> for Context {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let privilege = decoder
             .read_bits::<u8>(decoder.widths().privilege.get())?
@@ -284,7 +284,7 @@ pub struct Support<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
     pub doptions: D,
 }
 
-impl<U: Unit> Decode<'_, '_, U> for Support<U::IOptions, U::DOptions> {
+impl<U: Unit> Decode<'_, U> for Support<U::IOptions, U::DOptions> {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let ienable = decoder.read_bit()?;
         let encoder_mode = decoder
@@ -347,7 +347,7 @@ pub enum QualStatus {
     EndedNtr,
 }
 
-impl<U> Decode<'_, '_, U> for QualStatus {
+impl<U> Decode<'_, U> for QualStatus {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         Ok(match decoder.read_bits::<u8>(2)? {
             0b00 => QualStatus::NoChange,

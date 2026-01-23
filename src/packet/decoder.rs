@@ -133,7 +133,7 @@ impl<'d, U> Decoder<'d, U> {
     /// [`Decode`] implementation, the decoder may be left at a _bit_ boundary
     /// following the item after successful operation. A failure may leave the
     /// decoder in an unspecified state.
-    pub fn decode<'a, T: Decode<'a, 'd, U>>(&'a mut self) -> Result<T, Error> {
+    pub fn decode<T: Decode<'d, U>>(&mut self) -> Result<T, Error> {
         Decode::decode(self)
     }
 
@@ -318,7 +318,7 @@ impl<'d, U> Decoder<'d, U> {
 /// Decodable item
 ///
 /// Items implementing this trait may be decoded using an [`Decoder`].
-pub trait Decode<'a, 'd, U>: Sized {
+pub trait Decode<'d, U>: Sized {
     /// Decode an item of this type
-    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error>;
 }

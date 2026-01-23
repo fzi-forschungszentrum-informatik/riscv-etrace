@@ -73,7 +73,7 @@ where
     }
 }
 
-impl<'d, U> Decode<'_, 'd, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
+impl<'d, U> Decode<'d, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
 where
     U: unit::Unit + Clone,
 {
@@ -82,7 +82,7 @@ where
     }
 }
 
-impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
+impl<'d, U: Clone> Decode<'d, U> for Packet<Decoder<'d, U>> {
     fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
             // We need to make sure we don't decode a series of `null` packets
