@@ -140,11 +140,14 @@ impl<'d, U> Decoder<'d, U> {
 
     /// Decode a single [`encap::Packet`]
     ///
-    /// Decodes a single [`encap::Packet`], which will consume all associated
-    /// data from the input when [dropped][Drop::drop], leaving the decoder at
-    /// the byte boundary following the packet. If an error is returned, the
-    /// decoder may be in an unspecified state.
-    pub fn decode_encap_packet(&mut self) -> Result<encap::Packet<Scoped<'_, 'd, U>>, Error> {
+    /// Decodes a single [`encap::Packet`], consuming the associated data from
+    /// the input. After successful operation, the decoder is left at the byte
+    /// boundary following the packet, ready to decode the next one. A failure
+    /// may leave the decoder in an unspecified state.
+    pub fn decode_encap_packet(&mut self) -> Result<encap::Packet<Self>, Error>
+    where
+        U: Clone,
+    {
         Decode::decode(self)
     }
 
