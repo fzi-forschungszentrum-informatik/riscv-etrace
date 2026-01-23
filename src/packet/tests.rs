@@ -4,7 +4,7 @@
 extern crate alloc;
 
 #[macro_use]
-mod gen;
+mod test_gen;
 
 mod basic;
 mod encap_tests;

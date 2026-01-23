@@ -4,10 +4,10 @@
 
 use core::borrow::BorrowMut;
 
-use crate::instruction::{info, Instruction};
+use crate::instruction::{Instruction, info};
 
-use super::error::{MaybeMiss, Miss};
 use super::Binary;
+use super::error::{MaybeMiss, Miss};
 
 /// Set of [`Binary`] acting as a single [`Binary`]
 #[derive(Copy, Clone, Default, Debug)]

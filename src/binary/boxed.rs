@@ -4,10 +4,10 @@
 
 use alloc::boxed::Box;
 
-use crate::instruction::{info, Instruction};
+use crate::instruction::{Instruction, info};
 
-use super::error::MaybeMissError;
 use super::Binary;
+use super::error::MaybeMissError;
 
 /// [`Binary`] returning a boxed, dynamically dispatched `Error`
 ///

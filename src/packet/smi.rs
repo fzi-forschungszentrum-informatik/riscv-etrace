@@ -6,7 +6,7 @@ use core::fmt;
 
 use super::decoder::{self, Decode, Decoder};
 use super::encoder::{Encode, Encoder};
-use super::{payload, unit, Error};
+use super::{Error, payload, unit};
 
 /// A Siemens Messaging Infrastructure (SMI) Packet
 ///

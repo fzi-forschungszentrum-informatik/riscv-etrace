@@ -5,7 +5,7 @@
 use crate::generator;
 use crate::instruction::{self, Instruction};
 use crate::tracer::item;
-use crate::types::{trap, Context};
+use crate::types::{Context, trap};
 
 use generator::hart2enc::CType;
 use generator::step;

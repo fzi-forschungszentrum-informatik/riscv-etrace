@@ -7,7 +7,7 @@ use core::num::NonZeroU8;
 use crate::binary::Binary;
 use crate::config::Features;
 use crate::instruction::{self, Instruction};
-use crate::types::{branch, Context, Privilege};
+use crate::types::{Context, Privilege, branch};
 
 use super::error::Error;
 use super::stack::ReturnStack;
@@ -181,10 +181,10 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
         binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
-        if self.insn.is_uninferable_discon() {
-            if let Some(epc) = packet_epc {
-                return Ok(epc);
-            }
+        if self.insn.is_uninferable_discon()
+            && let Some(epc) = packet_epc
+        {
+            return Ok(epc);
         }
 
         if self.insn.is_ecall_or_ebreak() {

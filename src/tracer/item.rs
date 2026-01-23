@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tracing item
 
-use crate::instruction::{self, info, Instruction};
-use crate::types::{trap, Context};
+use crate::instruction::{self, Instruction, info};
+use crate::types::{Context, trap};
 
 /// Tracing item
 ///

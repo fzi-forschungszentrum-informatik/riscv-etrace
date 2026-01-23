@@ -5,7 +5,7 @@
 //! This module provides definitions for representing RISC-V base instruction
 //! set variants such as `RV32I` and utilities for decoding instructions.
 
-use super::{format, info, Kind};
+use super::{Kind, format, info};
 
 /// RISC-V base instruction set variant
 ///

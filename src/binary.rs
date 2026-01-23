@@ -75,7 +75,7 @@ mod tests;
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
-pub use basic::{from_fn, from_map, from_segment, from_sorted_map, Empty};
+pub use basic::{Empty, from_fn, from_map, from_segment, from_sorted_map};
 pub use combinators::Multi;
 
 use crate::instruction::{self, Instruction};
