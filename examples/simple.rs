@@ -163,9 +163,6 @@ fn main() {
         let packet = decoder
             .decode_smi_packet()
             .expect("Could not decode packet");
-        if debug {
-            eprintln!("Decoded packet: {packet:?}");
-        }
         pcount += 1;
 
         // and dispatch it to the tracer tracing the specified hart.

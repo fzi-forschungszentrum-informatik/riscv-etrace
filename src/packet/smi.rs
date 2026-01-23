@@ -4,7 +4,7 @@
 
 use core::fmt;
 
-use super::decoder::{self, Decode, Decoder};
+use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
 use super::{Error, payload, unit};
 
@@ -73,7 +73,7 @@ impl<P> Packet<P> {
     }
 }
 
-impl<U: unit::Unit> Packet<decoder::Scoped<'_, '_, U>> {
+impl<U: unit::Unit> Packet<Decoder<'_, U>> {
     /// Decode the packet's E-Trace payload
     pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
         let trace_type = self
@@ -82,15 +82,43 @@ impl<U: unit::Unit> Packet<decoder::Scoped<'_, '_, U>> {
             .map_err(Error::UnknownTraceType)?;
         match trace_type {
             TraceType::Instruction => {
-                Decode::decode(self.payload.decoder_mut()).map(payload::Payload::InstructionTrace)
+                Decode::decode(&mut self.payload).map(payload::Payload::InstructionTrace)
             }
             TraceType::Data => Ok(payload::Payload::DataTrace),
         }
     }
 }
 
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
-    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
+impl<U> TryFrom<Packet<Decoder<'_, U>>> for Packet<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+{
+    type Error = Error;
+
+    fn try_from(packet: Packet<Decoder<'_, U>>) -> Result<Self, Self::Error> {
+        let trace_type = packet.raw_trace_type();
+        let time_tag = packet.time_tag();
+        let hart = packet.hart();
+        let res = Self::new(trace_type, hart, packet.decode_payload()?);
+        if let Some(time_tag) = time_tag {
+            Ok(res.with_time_tag(time_tag))
+        } else {
+            Ok(res)
+        }
+    }
+}
+
+impl<'d, U> Decode<'_, 'd, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit + Clone,
+{
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
+        Packet::<Decoder<_>>::decode(decoder).and_then(TryFrom::try_from)
+    }
+}
+
+impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
         let trace_type = decoder.read_bits::<u8>(2)?;
         let time_tag = decoder
@@ -99,7 +127,7 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
             .transpose()?;
         let hart = decoder.read_bits(decoder.hart_index_width())?;
         decoder.advance_to_byte();
-        decoder::Scoped::new(decoder, payload_len).map(|payload| Self {
+        decoder.split_off_to(payload_len).map(|payload| Self {
             trace_type,
             time_tag,
             hart,

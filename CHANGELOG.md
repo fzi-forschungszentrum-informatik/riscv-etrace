@@ -16,6 +16,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::encap::Normal<packet::payload::Payload>`.
 - `packet::encap::Normal::decode_payload` for `packet::decoder::Decoder` as
   payload.
+- `TryFrom<packet::smi::Packet<packet::decoder::Decoder>>` impl for
+  `packet::smi::Packet<packet::payload::Payload>`.
+- `packet::smi::Normal::decode_payload` for `packet::decoder::Decoder` as
+  payload.
 
 ### Changed
 
@@ -23,6 +27,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `packet::decoder::Decoder::decode_encap_packet` now returns a
   `packet::encap::Packet<packet::decoder::Decoder>` and requires the
   `packet::unit::Unit` used to be `Clone`.
+- `packet::decoder::Decoder::decode_smi_packet` now returns a
+  `packet::smi::Packet<packet::decoder::Decoder>` and requires the
+  `packet::unit::Unit` used to be `Clone`.
+- The simple example no longer dumps every packet before decoding its payload.
 
 ## 0.6.2 - 2026-01-20
 

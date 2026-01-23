@@ -157,7 +157,10 @@ impl<'d, U> Decoder<'d, U> {
     /// input. After successful operation, the decoder is left at the byte
     /// boundary following the packet, ready to decode the next one. A failure
     /// may leave the decoder in an unspecified state.
-    pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<Scoped<'_, 'd, U>>, Error> {
+    pub fn decode_smi_packet(&mut self) -> Result<smi::Packet<Self>, Error>
+    where
+        U: Clone,
+    {
         Decode::decode(self)
     }
 
