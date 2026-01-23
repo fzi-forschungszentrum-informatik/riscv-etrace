@@ -14,9 +14,10 @@
 ///
 /// The type implements `TryFrom<u8>`, allowing conversion from the numerical
 /// representations mandated by the specification.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum IType {
     /// Other itype
+    #[default]
     Other,
     /// Exception
     Exception,
@@ -28,12 +29,6 @@ pub enum IType {
     Branch { taken: bool },
     /// Jump
     Jump(JumpType),
-}
-
-impl Default for IType {
-    fn default() -> Self {
-        Self::Other
-    }
 }
 
 impl TryFrom<u8> for IType {
