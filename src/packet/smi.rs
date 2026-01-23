@@ -89,6 +89,25 @@ impl<U: unit::Unit> Packet<Decoder<'_, U>> {
     }
 }
 
+impl<U> TryFrom<Packet<Decoder<'_, U>>> for Packet<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+{
+    type Error = Error;
+
+    fn try_from(packet: Packet<Decoder<'_, U>>) -> Result<Self, Self::Error> {
+        let trace_type = packet.raw_trace_type();
+        let time_tag = packet.time_tag();
+        let hart = packet.hart();
+        let res = Self::new(trace_type, hart, packet.decode_payload()?);
+        if let Some(time_tag) = time_tag {
+            Ok(res.with_time_tag(time_tag))
+        } else {
+            Ok(res)
+        }
+    }
+}
+
 impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
     fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
