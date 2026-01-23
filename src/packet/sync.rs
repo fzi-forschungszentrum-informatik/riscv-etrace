@@ -332,9 +332,10 @@ where
 }
 
 /// Representation of a change to the filter qualification
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum QualStatus {
     /// No change to filter qualification.
+    #[default]
     NoChange,
     /// Qualification ended, preceding packet sent explicitly to indicate last
     /// qualification instruction.
@@ -344,12 +345,6 @@ pub enum QualStatus {
     /// Qualification ended, preceding packet would have been sent anyway due to
     /// an updiscon, even if it wasn’t the last qualified instruction
     EndedNtr,
-}
-
-impl Default for QualStatus {
-    fn default() -> Self {
-        Self::NoChange
-    }
 }
 
 impl<U> Decode<'_, '_, U> for QualStatus {
@@ -377,15 +372,10 @@ impl<U> Encode<'_, U> for QualStatus {
 }
 
 /// Mode the encoder is operating in
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum EncoderMode {
+    #[default]
     BranchTrace,
-}
-
-impl Default for EncoderMode {
-    fn default() -> Self {
-        Self::BranchTrace
-    }
 }
 
 impl TryFrom<u8> for EncoderMode {

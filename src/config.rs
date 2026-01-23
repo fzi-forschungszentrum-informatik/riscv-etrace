@@ -87,11 +87,12 @@ pub struct Features {
 }
 
 /// Address mode
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum AddressMode {
     /// Any addresses is assumed to be a full, absolute addresses
     Full,
     /// An addresses is assumed to be relative to the previous address
+    #[default]
     Delta,
 }
 
@@ -102,21 +103,10 @@ impl AddressMode {
     }
 }
 
-impl Default for AddressMode {
-    fn default() -> Self {
-        Self::Delta
-    }
-}
-
 /// Trace protocol version
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum Version {
     V1,
+    #[default]
     V2,
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Self::V2
-    }
 }
