@@ -205,6 +205,18 @@ impl<P> Normal<P> {
     }
 }
 
+impl<'d, U: unit::Unit> Normal<Decoder<'d, U>> {
+    /// Decode the packet's E-Trace payload
+    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+        let width = self.payload.trace_type_width();
+        match self.payload.read_bits::<u8>(width)? {
+            0 => Decode::decode(&mut self.payload).map(payload::Payload::InstructionTrace),
+            1 => Ok(payload::Payload::DataTrace),
+            unknown => Err(Error::UnknownTraceType(unknown)),
+        }
+    }
+}
+
 impl<'d, U> TryFrom<Normal<decoder::Scoped<'_, 'd, U>>>
     for Normal<payload::Payload<U::IOptions, U::DOptions>>
 where
