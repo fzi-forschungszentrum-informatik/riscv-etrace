@@ -87,6 +87,45 @@ where
     }
 }
 
+impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
+        if decoder.bytes_left() == 0 {
+            // We need to make sure we don't decode a series of `null` packets
+            // from nothing because of transparent decompression. Normal packets
+            // are taken care of by `Decoder::split_data`.
+            return Err(Error::InsufficientData(core::num::NonZeroUsize::MIN));
+        }
+        let length = decoder.read_bits(5)?;
+        let flow = decoder.read_bits(2)?;
+        let extend = decoder.read_bit()?;
+
+        match core::num::NonZeroU8::new(length) {
+            Some(length) => {
+                let src_id_width = decoder.hart_index_width();
+                let timestamp_width = decoder.timestamp_width();
+                let length = usize::from(length.get())
+                    + usize::from(src_id_width >> 3)
+                    + usize::from(timestamp_width);
+
+                let mut payload = decoder.split_off_to(length)?;
+                let src_id = payload.read_bits(src_id_width)?;
+                let timestamp = extend
+                    .then(|| payload.read_bits(8 * timestamp_width))
+                    .transpose()?;
+                Ok(Normal {
+                    flow,
+                    src_id,
+                    timestamp,
+                    payload,
+                }
+                .into())
+            }
+            _ if extend => Ok(Self::NullAlign { flow }),
+            _ => Ok(Self::NullIdle { flow }),
+        }
+    }
+}
+
 impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
