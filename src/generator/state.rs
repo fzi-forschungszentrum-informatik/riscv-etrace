@@ -4,7 +4,7 @@
 
 use crate::config::AddressMode;
 use crate::packet::{payload, sync};
-use crate::types::{branch, trap, Context};
+use crate::types::{Context, branch, trap};
 
 use super::error::Error;
 

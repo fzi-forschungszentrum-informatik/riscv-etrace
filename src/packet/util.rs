@@ -8,7 +8,7 @@ use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
-use super::{truncate, Error};
+use super::{Error, truncate};
 
 /// Read an address
 ///
@@ -61,11 +61,7 @@ pub fn read_implicit_return<U>(decoder: &mut Decoder<U>) -> Result<Option<usize>
         .stack_depth
         .map(|w| decoder.read_bits(w.get()))
         .transpose()?;
-    if report {
-        Ok(depth)
-    } else {
-        Ok(None)
-    }
+    if report { Ok(depth) } else { Ok(None) }
 }
 
 /// Write the `irreport` and `irdepth` fields

@@ -98,11 +98,7 @@ pub enum AddressMode {
 impl AddressMode {
     /// Create an address mode from a [`bool`] indicating full address mode
     pub const fn from_full(full: bool) -> Self {
-        if full {
-            Self::Full
-        } else {
-            Self::Delta
-        }
+        if full { Self::Full } else { Self::Delta }
     }
 }
 

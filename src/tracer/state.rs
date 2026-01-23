@@ -7,7 +7,7 @@ use core::num::NonZeroU8;
 use crate::binary::Binary;
 use crate::config::Features;
 use crate::instruction::{self, Instruction};
-use crate::types::{branch, Context, Privilege};
+use crate::types::{Context, Privilege, branch};
 
 use super::error::Error;
 use super::stack::ReturnStack;

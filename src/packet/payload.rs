@@ -6,7 +6,7 @@ use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
-use super::{sync, unit, util, Error};
+use super::{Error, sync, unit, util};
 
 /// An E-Trace payload
 #[derive(Copy, Clone, Debug, PartialEq)]

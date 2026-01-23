@@ -3,7 +3,7 @@
 //! Tracing encoder inputs associated to single execution steps
 
 use crate::instruction::{self, Instruction};
-use crate::types::{trap, Context};
+use crate::types::{Context, trap};
 
 use super::hart2enc::{CType, IType, JumpType};
 

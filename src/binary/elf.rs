@@ -5,12 +5,12 @@
 use core::borrow::Borrow;
 use core::fmt;
 
-use elf::endian::EndianParse;
 use elf::ElfBytes;
+use elf::endian::EndianParse;
 
-use crate::instruction::{base, info, Instruction};
+use crate::instruction::{Instruction, base, info};
 
-use super::{error, Binary};
+use super::{Binary, error};
 
 /// Static ELF [`Binary`]
 ///

@@ -10,7 +10,7 @@
 
 use super::decoder::{self, Decode, Decoder};
 use super::encoder::{Encode, Encoder};
-use super::{payload, unit, Error};
+use super::{Error, payload, unit};
 
 /// RISC-V Packet Encapsulation
 ///

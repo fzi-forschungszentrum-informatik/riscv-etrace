@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Basic [`Binary`]s and adapters
 
-use crate::instruction::{info, Instruction};
+use crate::instruction::{Instruction, info};
 
-use super::error;
 use super::Binary;
+use super::error;
 
 /// [`Binary`] adapter for an [`FnMut`]
 ///

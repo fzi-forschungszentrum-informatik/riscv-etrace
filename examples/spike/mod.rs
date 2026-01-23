@@ -55,8 +55,8 @@ impl<R: BufRead> Iterator for CSVTrace<R> {
     type Item = Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use instruction::info::Info;
         use instruction::Instruction;
+        use instruction::info::Info;
         use riscv_etrace::types::trap;
 
         if let Some(item) = self.intermediate.take() {

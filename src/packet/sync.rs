@@ -6,12 +6,12 @@
 //! defined in section 7.1 Format 3 packets of the specification. This includes
 //! the [`Synchronization`] type which may hold any of the subformats.
 
-use crate::types::{self, trap, Privilege};
+use crate::types::{self, Privilege, trap};
 
 use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
 use super::unit::{self, Unit};
-use super::{util, Error};
+use super::{Error, util};
 
 /// Synchronization payload
 ///
