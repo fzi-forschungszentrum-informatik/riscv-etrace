@@ -309,18 +309,13 @@ impl fmt::Display for Kind {
 }
 
 /// Length of a single RISC-V [`Instruction`]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum Size {
     Compressed = 2,
+    #[default]
     Normal = 4,
     Wide = 6,
     ExtraWide = 8,
-}
-
-impl Default for Size {
-    fn default() -> Self {
-        Self::Normal
-    }
 }
 
 impl From<Size> for u64 {
