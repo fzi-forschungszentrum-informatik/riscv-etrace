@@ -87,11 +87,12 @@ pub struct Features {
 }
 
 /// Address mode
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum AddressMode {
     /// Any addresses is assumed to be a full, absolute addresses
     Full,
     /// An addresses is assumed to be relative to the previous address
+    #[default]
     Delta,
 }
 
@@ -99,12 +100,6 @@ impl AddressMode {
     /// Create an address mode from a [`bool`] indicating full address mode
     pub const fn from_full(full: bool) -> Self {
         if full { Self::Full } else { Self::Delta }
-    }
-}
-
-impl Default for AddressMode {
-    fn default() -> Self {
-        Self::Delta
     }
 }
 
