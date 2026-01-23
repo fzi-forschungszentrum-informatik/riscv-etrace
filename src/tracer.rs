@@ -266,6 +266,15 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
         Ok(())
     }
 
+    /// Determine whether this tracer is in the tracing state
+    ///
+    /// A tracer enters the tracing state when processing a [`sync::Start`]
+    /// payload and leaves the state when receiving a [`sync::Support`] payload
+    /// indicating end or loss of trace.
+    pub fn is_tracing(&self) -> bool {
+        self.iter_state.is_tracing()
+    }
+
     /// Create a [`state::Initializer`] for [`sync::Synchronization`] variants
     fn sync_init(
         &mut self,

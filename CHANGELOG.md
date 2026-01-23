@@ -20,6 +20,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::smi::Packet<packet::payload::Payload>`.
 - `packet::smi::Normal::decode_payload` for `packet::decoder::Decoder` as
   payload.
+- A fn `tracer::Tracer::is_tracing` for determining whether a `tracer::Tracer`
+  is in the tracing state.
 
 ### Changed
 
