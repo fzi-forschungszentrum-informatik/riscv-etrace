@@ -107,9 +107,10 @@ impl JumpType {
 ///
 /// The type implements `TryFrom<u8>`, allowing conversion from the numerical
 /// representations mandated by the specification.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum CType {
     /// The change is not reported
+    #[default]
     Unreported,
     /// The change is reported imprecisely
     Imprecisely,
@@ -117,12 +118,6 @@ pub enum CType {
     Precisely,
     /// The change is reported as an asynchronous discontinuity
     AsyncDiscon,
-}
-
-impl Default for CType {
-    fn default() -> Self {
-        Self::Unreported
-    }
 }
 
 impl TryFrom<u8> for CType {
