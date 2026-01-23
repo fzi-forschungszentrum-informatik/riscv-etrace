@@ -372,15 +372,10 @@ impl<U> Encode<'_, U> for QualStatus {
 }
 
 /// Mode the encoder is operating in
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum EncoderMode {
+    #[default]
     BranchTrace,
-}
-
-impl Default for EncoderMode {
-    fn default() -> Self {
-        Self::BranchTrace
-    }
 }
 
 impl TryFrom<u8> for EncoderMode {
