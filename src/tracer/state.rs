@@ -452,7 +452,7 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
 /// This type represents various conditions for stopping instruction tracing.
 /// They correspond to conditions for breaking the tracing loop in the fns
 /// `follow_execution_path` and `process_support` of the reference pseudo-code.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum StopCondition {
     /// Stop when instructions/PCs can no longer be inferred
     NotInferred,
@@ -463,11 +463,6 @@ pub enum StopCondition {
     /// Stop at synchonization point (defined in sync packet)
     Sync { context: Context },
     /// The state is already fused and shall not be advanced
+    #[default]
     Fused,
-}
-
-impl Default for StopCondition {
-    fn default() -> Self {
-        Self::Fused
-    }
 }
