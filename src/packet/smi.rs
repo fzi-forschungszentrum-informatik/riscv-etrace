@@ -4,7 +4,7 @@
 
 use core::fmt;
 
-use super::decoder::{self, Decode, Decoder};
+use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
 use super::{payload, unit, Error};
 
@@ -100,25 +100,6 @@ impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
         let hart = decoder.read_bits(decoder.hart_index_width())?;
         decoder.advance_to_byte();
         decoder.split_off_to(payload_len).map(|payload| Self {
-            trace_type,
-            time_tag,
-            hart,
-            payload,
-        })
-    }
-}
-
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
-    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
-        let payload_len: usize = decoder.read_bits(5)?;
-        let trace_type = decoder.read_bits::<u8>(2)?;
-        let time_tag = decoder
-            .read_bit()?
-            .then(|| decoder.read_bits(16))
-            .transpose()?;
-        let hart = decoder.read_bits(decoder.hart_index_width())?;
-        decoder.advance_to_byte();
-        decoder::Scoped::new(decoder, payload_len).map(|payload| Self {
             trace_type,
             time_tag,
             hart,
