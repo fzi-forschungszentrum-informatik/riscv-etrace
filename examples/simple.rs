@@ -199,10 +199,10 @@ fn main() {
                     item::Kind::Context(ctx) => println!("Context! priv: {:?}", ctx.privilege),
                 }
 
-                if let Some(reference) = reference.as_mut() {
-                    if let Some(payload) = payload.as_instruction_trace() {
-                        spike::check_reference(reference, &item, payload, icount);
-                    }
+                if let Some(reference) = reference.as_mut()
+                    && let Some(payload) = payload.as_instruction_trace()
+                {
+                    spike::check_reference(reference, &item, payload, icount);
                 }
 
                 icount += 1;
