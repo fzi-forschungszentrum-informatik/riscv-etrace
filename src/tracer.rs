@@ -520,7 +520,7 @@ impl<B: Default> Default for Builder<B> {
 }
 
 /// [`Tracer`] iteration states
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 enum IterationState {
     /// The [`Tracer`] reports a single item (the current one)
     SingleItem,
@@ -540,13 +540,8 @@ enum IterationState {
     /// We follow the execution path based on the current packet's data
     FollowExec,
     /// We follow the execution path as long as it's inferable
+    #[default]
     Depleting,
-}
-
-impl Default for IterationState {
-    fn default() -> Self {
-        Self::Depleting
-    }
 }
 
 impl IterationState {
