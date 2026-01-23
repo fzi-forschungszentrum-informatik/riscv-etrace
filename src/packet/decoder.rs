@@ -245,24 +245,6 @@ impl<'d, U> Decoder<'d, U> {
         }
     }
 
-    /// Split the inner data at the given position
-    ///
-    /// On success, the inner data is set restricted to the half up to the given
-    /// position, i.e. its length will be `mid`. The remaining data will be
-    /// returned.
-    pub(super) fn split_data(&mut self, mid: usize) -> Result<&'d [u8], Error> {
-        if let Some((data, remaining)) = self.data.split_at_checked(mid) {
-            self.data = data;
-            Ok(remaining)
-        } else {
-            let need = mid
-                .checked_sub(self.data.len())
-                .and_then(NonZeroUsize::new)
-                .unwrap_or(NonZeroUsize::MIN);
-            Err(Error::InsufficientData(need))
-        }
-    }
-
     /// Read a single bit
     pub(super) fn read_bit(&mut self) -> Result<bool, Error> {
         let res = (self.get_byte(self.bit_pos >> 3)? >> (self.bit_pos & 0x07)) & 0x1;
