@@ -73,6 +73,22 @@ impl<P> Packet<P> {
     }
 }
 
+impl<U: unit::Unit> Packet<Decoder<'_, U>> {
+    /// Decode the packet's E-Trace payload
+    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+        let trace_type = self
+            .raw_trace_type()
+            .try_into()
+            .map_err(Error::UnknownTraceType)?;
+        match trace_type {
+            TraceType::Instruction => {
+                Decode::decode(&mut self.payload).map(payload::Payload::InstructionTrace)
+            }
+            TraceType::Data => Ok(payload::Payload::DataTrace),
+        }
+    }
+}
+
 impl<U: unit::Unit> Packet<decoder::Scoped<'_, '_, U>> {
     /// Decode the packet's E-Trace payload
     pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
