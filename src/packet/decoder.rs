@@ -127,6 +127,17 @@ impl<'d, U> Decoder<'d, U> {
         self.data = data;
     }
 
+    /// Decode a single item
+    ///
+    /// Decodes a single item, consuming the associated data from the input and
+    /// sign-extending the input if neccessary. Depending on the item's type and
+    /// [`Decode`] implementation, the decoder may be left at a _bit_ boundary
+    /// following the item after successful operation. A failure may leave the
+    /// decoder in an unspecified state.
+    pub fn decode<'a, T: Decode<'a, 'd, U>>(&'a mut self) -> Result<T, Error> {
+        Decode::decode(self)
+    }
+
     /// Decode a single [`encap::Packet`]
     ///
     /// Decodes a single [`encap::Packet`], which will consume all associated
@@ -202,6 +213,31 @@ impl<'d, U> Decoder<'d, U> {
             .split_at_checked(self.bit_pos >> 3)
             .unwrap_or_default()
             .1
+    }
+
+    /// Split off a sub-decoder covering the data to the given position
+    ///
+    /// On success, the inner data will be reset to the portion of the original
+    /// data starting at and including byte `pos` past the current
+    /// [byte position][Self::byte_pos]. A decoder with the original bit
+    /// position covering the first half of the buffer will be returned.
+    pub fn split_off_to(&mut self, pos: usize) -> Result<Self, Error>
+    where
+        U: Clone,
+    {
+        let pos = self.byte_pos().saturating_add(pos);
+        if let Some((data, remaining)) = self.data.split_at_checked(pos) {
+            let mut res = self.clone();
+            res.data = data;
+            self.reset(remaining);
+            Ok(res)
+        } else {
+            let need = pos
+                .checked_sub(self.data.len())
+                .and_then(NonZeroUsize::new)
+                .unwrap_or(NonZeroUsize::MIN);
+            Err(Error::InsufficientData(need))
+        }
     }
 
     /// Split the inner data at the given position
@@ -292,7 +328,11 @@ impl<'d, U> Decoder<'d, U> {
     }
 }
 
-pub(super) trait Decode<'a, 'd, U>: Sized {
+/// Decodable item
+///
+/// Items implementing this trait may be decoded using an [`Decoder`].
+pub trait Decode<'a, 'd, U>: Sized {
+    /// Decode an item of this type
     fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error>;
 }
 

@@ -5,6 +5,16 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- A fn `packet::decoder::Decoder::decode` for decoding items implementing
+  `packet::decoder::Decode`.
+- A fn `packet::decoder::Decoder::split_off_to` for splitting of a sub-decoder.
+
+### Changed
+
+- The trait `packet::decoder::Decode`  was made public.
+
 ## 0.6.2 - 2026-01-20
 
 ### Changed
