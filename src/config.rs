@@ -104,14 +104,9 @@ impl AddressMode {
 }
 
 /// Trace protocol version
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum Version {
     V1,
+    #[default]
     V2,
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Self::V2
-    }
 }
