@@ -32,6 +32,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::unit::Unit` used to be `Clone`.
 - The simple example no longer dumps every packet before decoding its payload.
 
+### Removed
+
+- Type `packet::decoder::Scoped`, which was sued for ephemeral packets. We now
+  use `packet::decoder::Decoder` directly.
+
 ## 0.6.2 - 2026-01-20
 
 ### Changed
