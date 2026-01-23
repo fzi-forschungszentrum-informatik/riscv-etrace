@@ -217,6 +217,25 @@ impl<'d, U: unit::Unit> Normal<Decoder<'d, U>> {
     }
 }
 
+impl<'d, U> TryFrom<Normal<Decoder<'d, U>>> for Normal<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit,
+{
+    type Error = Error;
+
+    fn try_from(normal: Normal<Decoder<'d, U>>) -> Result<Self, Self::Error> {
+        let flow = normal.flow();
+        let src_id = normal.src_id();
+        let timestamp = normal.timestamp();
+        let res = Self::new(flow, src_id, normal.decode_payload()?);
+        if let Some(timestamp) = timestamp {
+            Ok(res.with_timestamp(timestamp))
+        } else {
+            Ok(res)
+        }
+    }
+}
+
 impl<'d, U> TryFrom<Normal<decoder::Scoped<'_, 'd, U>>>
     for Normal<payload::Payload<U::IOptions, U::DOptions>>
 where
