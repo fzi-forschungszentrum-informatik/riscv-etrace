@@ -108,6 +108,15 @@ where
     }
 }
 
+impl<'d, U> Decode<'_, 'd, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
+where
+    U: unit::Unit + Clone,
+{
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
+        Packet::<Decoder<_>>::decode(decoder).and_then(TryFrom::try_from)
+    }
+}
+
 impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
     fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
         let payload_len: usize = decoder.read_bits(5)?;
