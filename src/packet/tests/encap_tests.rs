@@ -8,13 +8,13 @@ fn encap_stop() {
     let mut decoder = Builder::new().decoder(b"\x00\x00\x00\x00");
     for _ in 0..4 {
         assert_eq!(
-            decoder.decode_encap_packet(),
+            decoder.decode::<encap::Packet>(),
             Ok(encap::Packet::NullIdle { flow: 0 }),
         );
     }
     assert_eq!(decoder.bytes_left(), 0, "Not at end of buffer");
     assert_eq!(
-        decoder.decode_encap_packet(),
+        decoder.decode::<encap::Packet>(),
         Err(Error::InsufficientData(NonZeroUsize::MIN)),
     );
 }
