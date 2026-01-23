@@ -46,10 +46,12 @@ return_stack_implementation!(static_implementation, StaticStack<3>);
 mod box_stack_test {
     use super::*;
     use crate::types::stack::BoxStack;
-    use crate::types::stack::ReturnStackBox;
+
+    return_stack_implementation!(boxstack_implementation, BoxStack);
+    underflow_test!(boxstack_stack_under, BoxStack);
     #[test]
     fn test_box_return_stack() {
-        let mut box_stack = ReturnStackBox::new().unwrap();
+        let mut box_stack = BoxStack::new(3).unwrap();
         assert!(box_stack.pop().is_none(), "Expected box to be empty");
         box_stack.push(10);
         box_stack.push(555);
@@ -62,6 +64,13 @@ mod box_stack_test {
         assert_eq!(box_stack.pop(), Some(35));
         assert_eq!(box_stack.pop(), Some(10));
         assert_eq!(box_stack.pop(), None);
+        assert_eq!(box_stack.pop(), None);
+    }
+
+    #[test]
+    fn test_boxstack_zero_size() {
+        let box_stack = BoxStack::new(0);
+        assert!(box_stack.is_none());
     }
 }
 
@@ -97,7 +106,7 @@ mod vec_stack_test {
     }
 
     #[test]
-    fn test_vec_stack_reusability () {
+    fn test_vec_stack_reusability() {
         let mut vec_stack = VecStack::new(2).unwrap();
         vec_stack.push(1);
         vec_stack.push(2);

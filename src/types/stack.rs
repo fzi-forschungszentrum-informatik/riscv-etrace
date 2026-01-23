@@ -182,38 +182,51 @@ impl VecStack {
 }
 
 #[cfg(feature = "alloc")]
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec};
 #[derive(Clone, Debug)]
 #[cfg(feature = "alloc")]
 pub struct BoxStack {
-    data: u64,
-    next: Option<Box<BoxStack>>,
-}
-
-#[derive(Clone, Debug)]
-#[cfg(feature = "alloc")]
-pub struct ReturnStackBox {
-    head: Option<Box<BoxStack>>,
+    data: Box<[u64]>,
+    depth: usize,
+    base: usize,
 }
 
 #[cfg(feature = "alloc")]
-impl ReturnStackBox {
-    pub fn new() -> Option<Self> {
-        Some(Self { head: None })
-    }
-
-    pub fn push(&mut self, addr: u64) {
-        let new_node = Box::new(BoxStack {
-            data: addr,
-            next: self.head.take(),
-        });
-        self.head = Some(new_node);
-    }
-
-    pub fn pop(&mut self) -> Option<u64> {
-        self.head.take().map(|node| {
-            self.head = node.next;
-            node.data
+impl ReturnStack for BoxStack {
+    fn new(max_depth: usize) -> Option<Self> {
+        if max_depth == 0 {
+            return None;
+        }
+        Some(Self {
+            data: vec![0u64; max_depth].into_boxed_slice(),
+            depth: 0,
+            base: 0,
         })
+    }
+
+    fn push(&mut self, addr: u64) {
+        let max_len = self.data.len();
+        let index = (self.depth + self.base) % max_len;
+        self.data[index] = addr;
+
+        if self.depth < max_len {
+            self.depth += 1;
+        } else {
+            self.base = (self.base + 1) % max_len;
+        }
+    }
+
+    fn pop(&mut self) -> Option<u64> {
+        let depth = self.depth.checked_sub(1)?;
+        self.depth = depth;
+        Some(self.data[(self.base + depth) % self.data.len()])
+    }
+
+    fn depth(&self) -> usize {
+        self.depth
+    }
+
+    fn max_depth(&self) -> usize {
+        self.data.len()
     }
 }
