@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[macro_use]
-mod gen;
+mod test_gen;
 
 mod chapter12;
 mod jumps;
@@ -17,7 +17,7 @@ use crate::packet::{payload, sync};
 use crate::tracer;
 use crate::types::{branch, stack, trap, Context, Privilege};
 
-use gen::{ItemConverter, ItemHints, TestStep};
+use test_gen::{ItemConverter, ItemHints, TestStep};
 use instruction::{Kind, COMPRESSED, UNCOMPRESSED};
 use tracer::item::Item;
 
