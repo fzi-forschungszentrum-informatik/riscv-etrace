@@ -8,7 +8,7 @@
 //!
 //! [encap]: <https://github.com/riscv-non-isa/e-trace-encap/>
 
-use super::decoder::{self, Decode, Decoder};
+use super::decoder::{Decode, Decoder};
 use super::encoder::{Encode, Encoder};
 use super::{Error, payload, unit};
 
@@ -58,16 +58,13 @@ impl<P> From<Normal<P>> for Packet<P> {
     }
 }
 
-impl<'d, U> TryFrom<Packet<decoder::Scoped<'_, 'd, U>>>
-    for Packet<payload::Payload<U::IOptions, U::DOptions>>
+impl<'d, U> TryFrom<Packet<Decoder<'d, U>>> for Packet<payload::Payload<U::IOptions, U::DOptions>>
 where
     U: unit::Unit,
-    U::IOptions: Encode<'d, U>,
-    U::DOptions: Encode<'d, U>,
 {
     type Error = Error;
 
-    fn try_from(packet: Packet<decoder::Scoped<'_, 'd, U>>) -> Result<Self, Self::Error> {
+    fn try_from(packet: Packet<Decoder<'d, U>>) -> Result<Self, Self::Error> {
         match packet {
             Packet::NullIdle { flow } => Ok(Self::NullIdle { flow }),
             Packet::NullAlign { flow } => Ok(Self::NullAlign { flow }),
@@ -78,17 +75,15 @@ where
 
 impl<'d, U> Decode<'_, 'd, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
 where
-    U: unit::Unit,
-    U::IOptions: Encode<'d, U>,
-    U::DOptions: Encode<'d, U>,
+    U: unit::Unit + Clone,
 {
     fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
-        Packet::<decoder::Scoped<_>>::decode(decoder).and_then(TryFrom::try_from)
+        Packet::<Decoder<_>>::decode(decoder).and_then(TryFrom::try_from)
     }
 }
 
-impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
-    fn decode(decoder: &'a mut Decoder<'d, U>) -> Result<Self, Error> {
+impl<'d, U: Clone> Decode<'_, 'd, U> for Packet<Decoder<'d, U>> {
+    fn decode(decoder: &mut Decoder<'d, U>) -> Result<Self, Error> {
         if decoder.bytes_left() == 0 {
             // We need to make sure we don't decode a series of `null` packets
             // from nothing because of transparent decompression. Normal packets
@@ -107,10 +102,10 @@ impl<'a, 'd, U> Decode<'a, 'd, U> for Packet<decoder::Scoped<'a, 'd, U>> {
                     + usize::from(src_id_width >> 3)
                     + usize::from(timestamp_width);
 
-                let mut payload = decoder::Scoped::new(decoder, length)?;
-                let src_id = payload.decoder_mut().read_bits(src_id_width)?;
+                let mut payload = decoder.split_off_to(length)?;
+                let src_id = payload.read_bits(src_id_width)?;
                 let timestamp = extend
-                    .then(|| payload.decoder_mut().read_bits(8 * timestamp_width))
+                    .then(|| payload.read_bits(8 * timestamp_width))
                     .transpose()?;
                 Ok(Normal {
                     flow,
@@ -205,16 +200,25 @@ impl<P> Normal<P> {
     }
 }
 
-impl<'d, U> TryFrom<Normal<decoder::Scoped<'_, 'd, U>>>
-    for Normal<payload::Payload<U::IOptions, U::DOptions>>
+impl<'d, U: unit::Unit> Normal<Decoder<'d, U>> {
+    /// Decode the packet's E-Trace payload
+    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
+        let width = self.payload.trace_type_width();
+        match self.payload.read_bits::<u8>(width)? {
+            0 => Decode::decode(&mut self.payload).map(payload::Payload::InstructionTrace),
+            1 => Ok(payload::Payload::DataTrace),
+            unknown => Err(Error::UnknownTraceType(unknown)),
+        }
+    }
+}
+
+impl<'d, U> TryFrom<Normal<Decoder<'d, U>>> for Normal<payload::Payload<U::IOptions, U::DOptions>>
 where
     U: unit::Unit,
-    U::IOptions: Encode<'d, U>,
-    U::DOptions: Encode<'d, U>,
 {
     type Error = Error;
 
-    fn try_from(normal: Normal<decoder::Scoped<'_, 'd, U>>) -> Result<Self, Self::Error> {
+    fn try_from(normal: Normal<Decoder<'d, U>>) -> Result<Self, Self::Error> {
         let flow = normal.flow();
         let src_id = normal.src_id();
         let timestamp = normal.timestamp();
@@ -223,19 +227,6 @@ where
             Ok(res.with_timestamp(timestamp))
         } else {
             Ok(res)
-        }
-    }
-}
-
-impl<'a, 'd, U: unit::Unit> Normal<decoder::Scoped<'a, 'd, U>> {
-    /// Decode the packet's E-Trace payload
-    pub fn decode_payload(mut self) -> Result<payload::Payload<U::IOptions, U::DOptions>, Error> {
-        let decoder = self.payload.decoder_mut();
-        let width = decoder.trace_type_width();
-        match decoder.read_bits::<u8>(width)? {
-            0 => Decode::decode(decoder).map(payload::Payload::InstructionTrace),
-            1 => Ok(payload::Payload::DataTrace),
-            unknown => Err(Error::UnknownTraceType(unknown)),
         }
     }
 }

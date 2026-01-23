@@ -10,10 +10,19 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A fn `packet::decoder::Decoder::decode` for decoding items implementing
   `packet::decoder::Decode`.
 - A fn `packet::decoder::Decoder::split_off_to` for splitting of a sub-decoder.
+- `TryFrom<packet::encap::Packet<packet::decoder::Decoder>>` impl for
+  `packet::encap::Packet<packet::payload::Payload>`.
+- `TryFrom<packet::encap::Normal<packet::decoder::Decoder>>` impl for
+  `packet::encap::Normal<packet::payload::Payload>`.
+- `packet::encap::Normal::decode_payload` for `packet::decoder::Decoder` as
+  payload.
 
 ### Changed
 
-- The trait `packet::decoder::Decode`  was made public.
+- The trait `packet::decoder::Decode` was made public.
+- `packet::decoder::Decoder::decode_encap_packet` now returns a
+  `packet::encap::Packet<packet::decoder::Decoder>` and requires the
+  `packet::unit::Unit` used to be `Clone`.
 
 ## 0.6.2 - 2026-01-20
 
