@@ -204,6 +204,31 @@ impl<'d, U> Decoder<'d, U> {
             .1
     }
 
+    /// Split off a sub-decoder covering the data to the given position
+    ///
+    /// On success, the inner data will be reset to the portion of the original
+    /// data starting at and including byte `pos` past the current
+    /// [byte position][Self::byte_pos]. A decoder with the original bit
+    /// position covering the first half of the buffer will be returned.
+    pub fn split_off_to(&mut self, pos: usize) -> Result<Self, Error>
+    where
+        U: Clone,
+    {
+        let pos = self.byte_pos().saturating_add(pos);
+        if let Some((data, remaining)) = self.data.split_at_checked(pos) {
+            let mut res = self.clone();
+            res.data = data;
+            self.reset(remaining);
+            Ok(res)
+        } else {
+            let need = pos
+                .checked_sub(self.data.len())
+                .and_then(NonZeroUsize::new)
+                .unwrap_or(NonZeroUsize::MIN);
+            Err(Error::InsufficientData(need))
+        }
+    }
+
     /// Split the inner data at the given position
     ///
     /// On success, the inner data is set restricted to the half up to the given
