@@ -181,10 +181,10 @@ impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
         binary: &mut B,
         packet_epc: Option<u64>,
     ) -> Result<u64, Error<B::Error>> {
-        if self.insn.is_uninferable_discon() {
-            if let Some(epc) = packet_epc {
-                return Ok(epc);
-            }
+        if self.insn.is_uninferable_discon()
+            && let Some(epc) = packet_epc
+        {
+            return Ok(epc);
         }
 
         if self.insn.is_ecall_or_ebreak() {
