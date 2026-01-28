@@ -9,6 +9,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - Types `types::stack::VecStack` and `types::stack::BoxStack` which impl
   `types::stack::ReturnStack` and are availible with the `alloc` feature.
+- Fns `tracer::Tracer::binary` and `tracer::Tracer::binary_mut` for retrieving
+  a (mutable) referencec to the `binary::Binary` used.
 
 ### Changed
 

@@ -92,6 +92,16 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         self.state.features()
     }
 
+    /// Get a reference of the [`Binary`] used by this tracer
+    pub fn binary(&self) -> &B {
+        &self.binary
+    }
+
+    /// Get a mutable reference of the [`Binary`] used by this tracer
+    pub fn binary_mut(&mut self) -> &mut B {
+        &mut self.binary
+    }
+
     /// Process an [`Payload`]
     ///
     /// The tracer will yield new trace [`Item`]s after receiving most types of
