@@ -6,6 +6,9 @@ pub mod branch;
 pub mod stack;
 pub mod trap;
 
+#[cfg(test)]
+mod tests;
+
 /// RISC-V priviledge levels
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub enum Privilege {

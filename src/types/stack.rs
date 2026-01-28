@@ -111,3 +111,122 @@ impl ReturnStack for NoStack {
         0
     }
 }
+
+#[cfg(feature = "alloc")]
+use alloc::collections::VecDeque;
+#[derive(Clone, Debug)]
+#[cfg(feature = "alloc")]
+pub struct VecStack {
+    data: VecDeque<u64>,
+    max_depth: usize,
+}
+
+#[cfg(feature = "alloc")]
+impl ReturnStack for VecStack {
+    fn new(max_size: usize) -> Option<Self> {
+        Some(Self {
+            data: VecDeque::with_capacity(max_size),
+            max_depth: max_size,
+        })
+    }
+
+    fn depth(&self) -> usize {
+        self.data.len()
+    }
+
+    // ReturnStack Aliases
+    fn push(&mut self, addr: u64) {
+        self.push_back(addr);
+    }
+    fn pop(&mut self) -> Option<u64> {
+        self.pop_back()
+    }
+    fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl VecStack {
+    // Pushes to top of stack, like push in vector
+    pub fn push_back(&mut self, addr: u64) {
+        if self.max_depth == 0 {
+            return;
+        }
+        if self.data.len() == self.max_depth {
+            self.data.pop_front();
+        }
+        self.data.push_back(addr);
+    }
+
+    // Pushes to bottom of stack
+    pub fn push_front(&mut self, addr: u64) {
+        if self.max_depth == 0 {
+            return;
+        }
+        if self.data.len() == self.max_depth {
+            self.data.pop_back();
+        }
+        self.data.push_front(addr);
+    }
+
+    // Pops top element of stack
+    pub fn pop_back(&mut self) -> Option<u64> {
+        self.data.pop_back()
+    }
+
+    // Pops most bottom element of stack
+    pub fn pop_front(&mut self) -> Option<u64> {
+        self.data.pop_front()
+    }
+}
+
+#[cfg(feature = "alloc")]
+use alloc::{boxed::Box, vec};
+#[derive(Clone, Debug)]
+#[cfg(feature = "alloc")]
+pub struct BoxStack {
+    data: Box<[u64]>,
+    depth: usize,
+    base: usize,
+}
+
+#[cfg(feature = "alloc")]
+impl ReturnStack for BoxStack {
+    fn new(max_depth: usize) -> Option<Self> {
+        if max_depth == 0 {
+            return None;
+        }
+        Some(Self {
+            data: vec![0u64; max_depth].into_boxed_slice(),
+            depth: 0,
+            base: 0,
+        })
+    }
+
+    fn push(&mut self, addr: u64) {
+        let max_len = self.data.len();
+        let index = (self.depth + self.base) % max_len;
+        self.data[index] = addr;
+
+        if self.depth < max_len {
+            self.depth += 1;
+        } else {
+            self.base = (self.base + 1) % max_len;
+        }
+    }
+
+    fn pop(&mut self) -> Option<u64> {
+        let depth = self.depth.checked_sub(1)?;
+        self.depth = depth;
+        Some(self.data[(self.base + depth) % self.data.len()])
+    }
+
+    fn depth(&self) -> usize {
+        self.depth
+    }
+
+    fn max_depth(&self) -> usize {
+        self.data.len()
+    }
+}

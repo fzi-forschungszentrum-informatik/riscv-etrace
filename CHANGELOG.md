@@ -5,6 +5,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- Types `types::stack::VecStack` and `types::stack::BoxStack` which impl
+  `types::stack::ReturnStack` and are availible with the `alloc` feature.
+
 ## 0.7.0 - 2026-01-24
 
 ### Added
