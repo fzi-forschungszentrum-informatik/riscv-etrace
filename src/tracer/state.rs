@@ -363,7 +363,7 @@ pub struct Initializer<'a, S: ReturnStack, B: Binary<I>, I: Info> {
     binary: &'a mut B,
 }
 
-impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
+impl<S: ReturnStack, B: Binary<I>, I: Info> Initializer<'_, S, B, I> {
     /// Set an absolute address
     ///
     /// Set an absolute address and clear the inferred address.
@@ -441,7 +441,7 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
         self.state.pc = address;
         self.state.insn = insn;
         self.state.last_pc = address;
-        self.state.last_insn = Default::default();
+        self.state.last_insn = Info::ignored();
 
         Ok(())
     }
