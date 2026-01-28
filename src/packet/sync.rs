@@ -6,6 +6,8 @@
 //! defined in section 7.1 Format 3 packets of the specification. This includes
 //! the [`Synchronization`] type which may hold any of the subformats.
 
+use core::fmt;
+
 use crate::types::{self, Privilege, trap};
 
 use super::decoder::{Decode, Decoder};
@@ -368,6 +370,17 @@ impl<U> Encode<'_, U> for QualStatus {
             Self::EndedNtr => 0b11,
         };
         encoder.write_bits(value, 2)
+    }
+}
+
+impl fmt::Display for QualStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoChange => write!(f, "no change"),
+            Self::EndedRep => write!(f, "ended rep"),
+            Self::TraceLost => write!(f, "trace lost"),
+            Self::EndedNtr => write!(f, "ended ntr"),
+        }
     }
 }
 
