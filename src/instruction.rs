@@ -256,6 +256,10 @@ impl Info for Kind {
             _ => false,
         }
     }
+
+    fn ignored() -> Self {
+        Self::nop
+    }
 }
 
 impl fmt::Display for Kind {
@@ -411,6 +415,13 @@ impl<I: Info> Info for Instruction<I> {
 
     fn is_return(&self) -> bool {
         self.info.is_return()
+    }
+
+    fn ignored() -> Self {
+        Self {
+            info: I::ignored(),
+            size: Default::default(),
+        }
     }
 }
 
