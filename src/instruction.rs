@@ -329,7 +329,7 @@ impl From<Size> for u64 {
 }
 
 /// A single RISC-V instruction
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Instruction<I: Info = Option<Kind>> {
     /// [`Size`] of the instruction
     pub size: Size,
@@ -355,6 +355,12 @@ impl<I: Info> Instruction<I> {
         let size = bits.size();
         let info = base.decode_bits(bits);
         Self { size, info }
+    }
+}
+
+impl<I: Info> Default for Instruction<I> {
+    fn default() -> Self {
+        Info::ignored()
     }
 }
 
