@@ -8,7 +8,7 @@ use core::fmt;
 use crate::instruction::{Instruction, info};
 
 use super::Binary;
-use super::error::{self, MaybeMissError};
+use super::error;
 
 /// [`Binary`] returning a boxed, dynamically dispatched [`Error`]
 ///
@@ -36,7 +36,7 @@ impl<B> From<B> for BoxedError<B> {
 impl<B, I> Binary<I> for BoxedError<B>
 where
     B: Binary<I>,
-    B::Error: MaybeMissError + 'static,
+    B::Error: error::MaybeMissError + 'static,
     I: info::Info,
 {
     type Error = Error;
