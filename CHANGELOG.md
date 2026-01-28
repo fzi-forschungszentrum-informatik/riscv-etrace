@@ -10,6 +10,14 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Types `types::stack::VecStack` and `types::stack::BoxStack` which impl
   `types::stack::ReturnStack` and are availible with the `alloc` feature.
 
+### Changed
+
+- `instruction::info::Info` gained a new fn for producing an "ignored"
+  instruction.
+- `instruction::Instruction` now impls `Default` for all `info::Info`s, not only
+  for `info::Info`s that impl `Default`.
+- `tracer::Tracer` no longer requires `info::Info` to impl `Default`.
+
 ## 0.7.0 - 2026-01-24
 
 ### Added

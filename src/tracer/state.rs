@@ -57,14 +57,14 @@ pub struct State<S: ReturnStack, I: Info> {
     features: Features,
 }
 
-impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
+impl<S: ReturnStack, I: Info + Clone> State<S, I> {
     /// Create a new, initial state for tracing
     pub fn new(return_stack: S, address_width: NonZeroU8, features: Features) -> Self {
         Self {
             pc: 0,
-            insn: Default::default(),
+            insn: Info::ignored(),
             last_pc: 0,
-            last_insn: Default::default(),
+            last_insn: Info::ignored(),
             address: 0,
             branch_map: Default::default(),
             stop_condition: Default::default(),
@@ -363,7 +363,7 @@ pub struct Initializer<'a, S: ReturnStack, B: Binary<I>, I: Info> {
     binary: &'a mut B,
 }
 
-impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
+impl<S: ReturnStack, B: Binary<I>, I: Info> Initializer<'_, S, B, I> {
     /// Set an absolute address
     ///
     /// Set an absolute address and clear the inferred address.
@@ -441,7 +441,7 @@ impl<S: ReturnStack, B: Binary<I>, I: Info + Default> Initializer<'_, S, B, I> {
         self.state.pc = address;
         self.state.insn = insn;
         self.state.last_pc = address;
-        self.state.last_insn = Default::default();
+        self.state.last_insn = Info::ignored();
 
         Ok(())
     }

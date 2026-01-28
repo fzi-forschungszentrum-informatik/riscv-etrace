@@ -128,6 +128,14 @@ pub trait Info {
     fn is_uninferable_discon(&self) -> bool {
         self.is_uninferable_jump() || self.is_return_from_trap() || self.is_ecall_or_ebreak()
     }
+
+    /// Create an instruction that is to be ignored
+    ///
+    /// Create a valid instruction that does not have any effect on control flow
+    /// and is not used for construction of addresses, such as a `nop` or an
+    /// "unknown" or "unimplemented" instruction. If this instruction does have
+    /// a known size, it is a 32bit (uncompressed) instruction.
+    fn ignored() -> Self;
 }
 
 impl<T: Info> Info for Option<T> {
@@ -165,6 +173,10 @@ impl<T: Info> Info for Option<T> {
 
     fn is_return(&self) -> bool {
         self.as_ref().map(Info::is_return).unwrap_or(false)
+    }
+
+    fn ignored() -> Self {
+        None
     }
 }
 
@@ -232,6 +244,10 @@ impl Info for riscv_isa::Instruction {
             Self::JALR { rd, rs1: 5, .. } => *rd != 1 && *rd != 5,
             _ => false,
         }
+    }
+
+    fn ignored() -> Self {
+        Self::UNIMP
     }
 }
 

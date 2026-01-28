@@ -86,7 +86,7 @@ where
     phantom: core::marker::PhantomData<I>,
 }
 
-impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
+impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
     /// Retrieve the current selection of optional [Features]
     pub fn features(&self) -> Features {
         self.state.features()
@@ -308,7 +308,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Tracer<B, S, I> {
     }
 }
 
-impl<B: Binary<I>, S: ReturnStack, I: Info + Clone + Default> Iterator for Tracer<B, S, I> {
+impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I> {
     type Item = Result<Item<I>, Error<B::Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -495,7 +495,7 @@ impl<B> Builder<B> {
     where
         B: Binary<I>,
         S: ReturnStack,
-        I: Info + Clone + Default,
+        I: Info + Clone,
     {
         let state = state::State::new(
             S::new(self.max_stack_depth)
