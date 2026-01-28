@@ -57,14 +57,14 @@ pub struct State<S: ReturnStack, I: Info> {
     features: Features,
 }
 
-impl<S: ReturnStack, I: Info + Clone + Default> State<S, I> {
+impl<S: ReturnStack, I: Info + Clone> State<S, I> {
     /// Create a new, initial state for tracing
     pub fn new(return_stack: S, address_width: NonZeroU8, features: Features) -> Self {
         Self {
             pc: 0,
-            insn: Default::default(),
+            insn: Info::ignored(),
             last_pc: 0,
-            last_insn: Default::default(),
+            last_insn: Info::ignored(),
             address: 0,
             branch_map: Default::default(),
             stop_condition: Default::default(),
