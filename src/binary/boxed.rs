@@ -1,20 +1,21 @@
 // Copyright (C) 2025 FZI Forschungszentrum Informatik
 // SPDX-License-Identifier: Apache-2.0
-//! [`Binary`] requiring [`Box`] and other types from alloc [`alloc`]
+//! [`Binary`][BinTrait] requiring [`Box`] and other types from alloc [`alloc`]
 
 use alloc::boxed::Box;
 use core::fmt;
 
 use crate::instruction::{Instruction, info};
 
-use super::Binary;
+use super::Binary as BinTrait;
 use super::error;
 
-/// [`Binary`] returning a boxed, dynamically dispatched [`Error`]
+/// [`Binary`][BinTrait] returning a boxed, dynamically dispatched [`Error`]
 ///
-/// This [`Binary`] adapter boxes and type-erases errors returned by the wrapped
-/// [`Binary`]. This allows dynamically dispatching [`Binary`]s with differrent
-/// [`Binary::Error`] types.
+/// This [`Binary`][BinTrait] adapter boxes and type-erases errors returned by
+/// the wrapped [`Binary`][BinTrait]. This allows dynamically dispatching
+/// [`Binary`][BinTrait]s with differrent [`Binary::Error`][BinTrait::Error]
+/// types.
 #[derive(Copy, Clone, Debug)]
 pub struct BoxedError<B> {
     inner: B,
@@ -33,9 +34,9 @@ impl<B> From<B> for BoxedError<B> {
     }
 }
 
-impl<B, I> Binary<I> for BoxedError<B>
+impl<B, I> BinTrait<I> for BoxedError<B>
 where
-    B: Binary<I>,
+    B: BinTrait<I>,
     B::Error: error::MaybeMissError + 'static,
     I: info::Info,
 {
