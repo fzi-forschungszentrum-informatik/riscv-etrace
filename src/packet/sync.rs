@@ -409,3 +409,11 @@ impl From<EncoderMode> for u8 {
         }
     }
 }
+
+impl fmt::Display for EncoderMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BranchTrace => write!(f, "branch trace"),
+        }
+    }
+}
