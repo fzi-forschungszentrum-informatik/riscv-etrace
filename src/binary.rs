@@ -24,7 +24,7 @@
 //! requires the [`Binary`]s themselves to be of the same type. If the `alloc`
 //! feature is enabled, the error type may be erased through the provided method
 //! [`Binary::boxed`]. The lifetime of the original [`Binary`] is preserved in
-//! the resulting [`BoxedBinary`]. This is relevant when using an [`elf::Elf`]
+//! the resulting [`boxed::Binary`]. This is relevant when using an [`elf::Elf`]
 //! or when...
 //!
 //! # Sharing [`Binary`]s between [`Tracer`] instances
@@ -112,7 +112,7 @@ pub trait Binary<I: Info> {
     /// This allows combining binaries of different types with (originally)
     /// different [`Error`][Self::Error] types in [combinators].
     #[cfg(feature = "alloc")]
-    fn boxed<'a>(self) -> BoxedBinary<'a, I>
+    fn boxed<'a>(self) -> boxed::Binary<'a, I>
     where
         Self: Sized + 'a,
         Self::Error: error::MaybeMissError + 'static,
@@ -195,7 +195,3 @@ where
             .and_then(|a| self.inner.get_insn(a))
     }
 }
-
-/// a [`Binary`] boxed for dynamic dispatch
-#[cfg(feature = "alloc")]
-pub type BoxedBinary<'a, I> = Box<dyn Binary<I, Error = boxed::Error> + 'a>;

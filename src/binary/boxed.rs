@@ -80,3 +80,6 @@ impl fmt::Display for Error {
         fmt::Display::fmt(self.0.as_ref(), f)
     }
 }
+
+/// a [`Binary`][BinTrait] boxed for dynamic dispatch
+pub type Binary<'a, I> = Box<dyn BinTrait<I, Error = Error> + 'a>;
