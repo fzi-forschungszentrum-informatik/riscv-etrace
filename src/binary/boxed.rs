@@ -3,11 +3,12 @@
 //! [`Binary`] requiring [`Box`] and other types from alloc [`alloc`]
 
 use alloc::boxed::Box;
+use core::fmt;
 
 use crate::instruction::{Instruction, info};
 
 use super::Binary;
-use super::error::MaybeMissError;
+use super::error::{self, MaybeMissError};
 
 /// [`Binary`] returning a boxed, dynamically dispatched `Error`
 ///
@@ -44,5 +45,39 @@ where
         self.inner
             .get_insn(address)
             .map_err(|e| -> Box<dyn MaybeMissError> { Box::new(e) })
+    }
+}
+
+/// Dynamically dispatched error
+#[derive(Debug)]
+pub struct Error(Box<dyn error::MaybeMissError>);
+
+impl<E: error::MaybeMissError + 'static> From<Box<E>> for Error {
+    fn from(err: Box<E>) -> Self {
+        Self(err)
+    }
+}
+
+impl error::Miss for Error {
+    fn miss(address: u64) -> Self {
+        Self(Box::new(error::NoInstruction::miss(address)))
+    }
+}
+
+impl error::MaybeMiss for Error {
+    fn is_miss(&self) -> bool {
+        error::MaybeMiss::is_miss(self.0.as_ref())
+    }
+}
+
+impl core::error::Error for Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        core::error::Error::source(self.0.as_ref())
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.0.as_ref(), f)
     }
 }
