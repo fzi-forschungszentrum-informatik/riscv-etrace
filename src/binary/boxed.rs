@@ -10,7 +10,7 @@ use crate::instruction::{Instruction, info};
 use super::Binary;
 use super::error::{self, MaybeMissError};
 
-/// [`Binary`] returning a boxed, dynamically dispatched `Error`
+/// [`Binary`] returning a boxed, dynamically dispatched [`Error`]
 ///
 /// This [`Binary`] adapter boxes and type-erases errors returned by the wrapped
 /// [`Binary`]. This allows dynamically dispatching [`Binary`]s with differrent
@@ -39,12 +39,10 @@ where
     B::Error: MaybeMissError + 'static,
     I: info::Info,
 {
-    type Error = Box<dyn MaybeMissError>;
+    type Error = Error;
 
     fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
-        self.inner
-            .get_insn(address)
-            .map_err(|e| -> Box<dyn MaybeMissError> { Box::new(e) })
+        self.inner.get_insn(address).map_err(|e| Box::new(e).into())
     }
 }
 

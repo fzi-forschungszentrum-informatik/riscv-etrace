@@ -198,4 +198,4 @@ where
 
 /// a [`Binary`] boxed for dynamic dispatch
 #[cfg(feature = "alloc")]
-pub type BoxedBinary<'a, I> = Box<dyn Binary<I, Error = Box<dyn error::MaybeMissError>> + 'a>;
+pub type BoxedBinary<'a, I> = Box<dyn Binary<I, Error = boxed::Error> + 'a>;
