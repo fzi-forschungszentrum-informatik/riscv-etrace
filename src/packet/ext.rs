@@ -86,6 +86,17 @@ impl<U> Encode<'_, U> for BranchCount {
     }
 }
 
+impl fmt::Display for BranchCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} branches predicted correctly", self.branch_count)?;
+        match self.kind {
+            BranchKind::NoAddr => Ok(()),
+            BranchKind::Addr(info) => write!(f, ", including branch at {info}"),
+            BranchKind::AddrFail(info) => write!(f, ", excluding branch at {info}"),
+        }
+    }
+}
+
 /// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BranchKind {
