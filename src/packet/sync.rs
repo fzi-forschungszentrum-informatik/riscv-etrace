@@ -154,6 +154,17 @@ impl<U> Encode<'_, U> for Start {
     }
 }
 
+impl fmt::Display for Start {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let address = self.address;
+        write!(f, "{address:#x}")?;
+        if !self.branch {
+            write!(f, ", branch taken")?;
+        }
+        write!(f, ", {}", self.ctx)
+    }
+}
+
 /// Trap packet
 ///
 /// Represents a format 3, subformat 1 packet. It is sent by the encoder
