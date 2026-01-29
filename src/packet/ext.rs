@@ -25,7 +25,7 @@ impl Extension {
     /// [`None`] if it does not contain one.
     pub fn get_address_info(&self) -> Option<&AddressInfo> {
         match self {
-            Self::BranchCount(branch_count) => branch_count.address.as_ref(),
+            Self::BranchCount(b) => b.kind.address_info(),
             _ => None,
         }
     }
@@ -33,7 +33,7 @@ impl Extension {
     /// Retrieve the implicit return depth
     pub fn implicit_return_depth(&self) -> Option<usize> {
         match self {
-            Self::BranchCount(b) => b.address.and_then(|a| a.irdepth),
+            Self::BranchCount(b) => b.kind.address_info().and_then(|a| a.irdepth),
             Self::JumpTargetIndex(j) => j.irdepth,
         }
     }
@@ -66,78 +66,80 @@ impl<U> Encode<'_, U> for Extension {
 pub struct BranchCount {
     /// Count of the number of correctly predicted branches, minus 31.
     pub branch_count: u32,
-    pub branch_fmt: BranchFmt,
-    pub address: Option<AddressInfo>,
+    pub kind: BranchKind,
 }
 
 impl<U> Decode<'_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         let branch_count = decoder.read_bits::<u32>(32)? - 31;
-        let branch_fmt = BranchFmt::decode(decoder)?;
-        let address = if branch_fmt == BranchFmt::NoAddr {
-            None
-        } else {
-            Some(AddressInfo::decode(decoder)?)
-        };
-        Ok(BranchCount {
-            branch_count,
-            address,
-            branch_fmt,
-        })
+        let kind = BranchKind::decode(decoder)?;
+        Ok(BranchCount { branch_count, kind })
     }
 }
 
 impl<U> Encode<'_, U> for BranchCount {
     fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bits(self.branch_count + 31, 32)?;
-        encoder.encode(&self.branch_fmt)?;
-        if let Some(address) = self.address.as_ref() {
-            encoder.encode(address)?;
-        }
-        Ok(())
+        encoder.encode(&self.kind)
     }
 }
 
 /// Determines the layout of [`BranchCount`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum BranchFmt {
+pub enum BranchKind {
     /// No address
     ///
     /// The packet does not contain an address, and the branch following the
     /// last correct prediction failed.
-    NoAddr = 0,
+    NoAddr,
     /// Address, success
     ///
     /// The packet contains an address. If this points to a branch instruction,
     /// then the branch was predicted correctly.
-    Addr = 2,
+    Addr(AddressInfo),
     /// Address, failure
     ///
     /// The packet contains an address that points to a branch instruction. The
     /// prediction for that branch failed.
-    AddrFail = 3,
+    AddrFail(AddressInfo),
 }
 
-impl<U> Decode<'_, U> for BranchFmt {
+impl BranchKind {
+    /// Retrieve the [`AddressInfo`] in this branch kind
+    pub fn address_info(&self) -> Option<&AddressInfo> {
+        match self {
+            Self::Addr(a) => Some(a),
+            Self::AddrFail(a) => Some(a),
+            _ => None,
+        }
+    }
+}
+
+impl<U> Decode<'_, U> for BranchKind {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits::<u8>(2)? {
-            0b00 => Ok(BranchFmt::NoAddr),
+            0b00 => Ok(Self::NoAddr),
             0b01 => Err(Error::BadBranchFmt),
-            0b10 => Ok(BranchFmt::Addr),
-            0b11 => Ok(BranchFmt::AddrFail),
+            0b10 => decoder.decode().map(Self::Addr),
+            0b11 => decoder.decode().map(Self::AddrFail),
             _ => unreachable!(),
         }
     }
 }
 
-impl<U> Encode<'_, U> for BranchFmt {
+impl<U> Encode<'_, U> for BranchKind {
     fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
-        let value: u8 = match self {
-            Self::NoAddr => 0b00,
-            Self::Addr => 0b10,
-            Self::AddrFail => 0b11,
-        };
-        encoder.write_bits(value, 2)
+        match self {
+            Self::NoAddr => encoder.write_bits(0b00u8, 2),
+            Self::Addr(info) => {
+                encoder.write_bits(0b10u8, 2)?;
+                encoder.encode(info)
+            }
+            Self::AddrFail(info) => {
+                encoder.write_bits(0b11u8, 2)?;
+                encoder.encode(info)
+            }
+        }
     }
 }
 
