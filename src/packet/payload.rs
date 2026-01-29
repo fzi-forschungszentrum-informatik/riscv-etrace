@@ -194,6 +194,17 @@ impl<I, D> From<sync::Support<I, D>> for InstructionTrace<I, D> {
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for InstructionTrace<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Extension(e) => fmt::Display::fmt(e, f),
+            Self::Branch(b) => write!(f, "BRANCH {b}"),
+            Self::Address(a) => write!(f, "ADDR {a}"),
+            Self::Synchronization(s) => fmt::Display::fmt(s, f),
+        }
+    }
+}
+
 /// Branch payload
 ///
 /// Represents a format 1 packet. This packet includes branch information. It is
