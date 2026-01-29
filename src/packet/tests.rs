@@ -23,7 +23,7 @@ use payload::{AddressInfo, InstructionTrace};
 bitstream_test!(
     extension_jti_1,
     b"\x00\x7f\x05",
-    payload::JumpTargetIndex {
+    ext::JumpTargetIndex {
         index: 768,
         branch_map: branch::Map::new(31, 10),
         irdepth: None
@@ -33,7 +33,7 @@ bitstream_test!(
 bitstream_test!(
     extension_jti_2,
     b"\xff\x03",
-    payload::JumpTargetIndex {
+    ext::JumpTargetIndex {
         index: 1023,
         branch_map: Default::default(),
         irdepth: None

@@ -13,6 +13,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
   a (mutable) referencec to the `binary::Binary` used.
 - A type `binary::boxed::Error` intended as an `Error` type for boxed
   `binary::Binary`s such as `binary::boxed::BoxedError`.
+- A new type `packet::ext::BranchKind` used in `packet::ext::BranchCount`.
 
 ### Changed
 
@@ -24,6 +25,15 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `binary::error::MaybeMissError` now depends on `Send` and `Sync`.
 - `binary::boxed::BoxedError::Error` is now `binary::boxed::Error`.
 - `binary::BoxedBinary` is now `binary::boxed::Binary`.
+- `packet::payload::Extension`, `packet::payload::BranchCount` and
+  `packet::payload::JumpTargetIndex` were moved to the new submodule
+  `packet::ext`.
+- `packet::ext::BranchCount` was redefined: former `address` and `branch_fmt`
+  are now conveyed via a new data mamber `kind`.
+
+### Removed
+
+- `packet::payload::BranchFmt` was replaced by `packet::ext::BranchKind`.
 
 ## 0.7.0 - 2026-01-24
 
