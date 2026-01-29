@@ -95,6 +95,23 @@ impl Map {
     }
 }
 
+impl fmt::Display for Map {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use fmt::Write;
+
+        write!(f, "{} branches", self.count())?;
+        if self.count() > 0 {
+            write!(f, ": ")?;
+            let mut map = *self;
+            core::iter::from_fn(|| map.pop_taken()).try_for_each(|t| match t {
+                true => f.write_char('t'),
+                false => f.write_char('_'),
+            })?;
+        }
+        Ok(())
+    }
+}
+
 /// Errors produced by [`Map`]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
