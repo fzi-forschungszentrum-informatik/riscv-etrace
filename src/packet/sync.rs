@@ -333,6 +333,37 @@ where
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for Support<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ienable = util::Enabled(self.ienable);
+        let mode = self.encoder_mode;
+        let qual = self.qual_status;
+        write!(f, "itrace {ienable} ({mode}) {qual}")?;
+        if let Some(mode) = self.ioptions.address_mode() {
+            write!(f, ", {mode} address mode")?;
+        }
+        if self.ioptions.implicit_return() == Some(true) {
+            write!(f, ", implicit return")?;
+        }
+        if self.ioptions.implicit_exception() == Some(true) {
+            write!(f, ", implicit exception")?;
+        }
+        if self.ioptions.branch_prediction() == Some(true) {
+            write!(f, ", branch prediction")?;
+        }
+        if self.ioptions.jump_target_cache() == Some(true) {
+            write!(f, ", jump target cache")?;
+        }
+
+        write!(f, "; dtrace {}", util::Enabled(self.denable))?;
+        if self.dloss {
+            write!(f, " dloss")?;
+        }
+
+        Ok(())
+    }
+}
+
 /// Representation of a change to the filter qualification
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum QualStatus {
