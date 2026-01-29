@@ -14,7 +14,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A type `binary::boxed::Error` intended as an `Error` type for boxed
   `binary::Binary`s such as `binary::boxed::BoxedError`.
 - A new type `packet::ext::BranchKind` used in `packet::ext::BranchCount`.
-- `Display` impl for `config::AddressMode`.
+- `Display` impl for `config::AddressMode`, `types::Privilege`,
+  `types::branch::Map` and `types::trap::Info`.
 
 ### Changed
 
