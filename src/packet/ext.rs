@@ -60,6 +60,15 @@ impl<U> Encode<'_, U> for Extension {
     }
 }
 
+impl fmt::Display for Extension {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BranchCount(b) => write!(f, "BRANCH COUNT {b}"),
+            Self::JumpTargetIndex(j) => write!(f, "JTI {j}"),
+        }
+    }
+}
+
 /// Branch count payload
 ///
 /// Represents a format 0, subformat 0 packet. It informs about the number of
