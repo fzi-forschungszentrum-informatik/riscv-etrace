@@ -211,6 +211,22 @@ impl<U> Encode<'_, U> for Trap {
     }
 }
 
+impl fmt::Display for Trap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let info = self.info;
+        let address = self.address;
+        let addr_type = match self.thaddr {
+            true => "handler",
+            false => "EPC",
+        };
+        write!(f, "{info}, {addr_type}: {address:#x}")?;
+        if !self.branch {
+            write!(f, ", branch taken")?;
+        }
+        write!(f, ", {}", self.ctx)
+    }
+}
+
 /// Context packet
 ///
 /// Represents a format 3, subformat 2 packet. It informs about a changed
