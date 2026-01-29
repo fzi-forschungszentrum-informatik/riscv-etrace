@@ -272,6 +272,16 @@ impl<U> Encode<'_, U> for Context {
     }
 }
 
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} mode", self.privilege)?;
+        if let Some(time) = self.time {
+            write!(f, ", time: {time}")?;
+        }
+        write!(f, ", context: {}", self.context)
+    }
+}
+
 /// Supporting information for the decoder.
 ///
 /// Represents a format 3, subformat 3 packet.
