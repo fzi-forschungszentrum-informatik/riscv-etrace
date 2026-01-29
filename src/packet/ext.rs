@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Extension payloads
 
+use core::fmt;
+
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
@@ -58,6 +60,15 @@ impl<U> Encode<'_, U> for Extension {
     }
 }
 
+impl fmt::Display for Extension {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BranchCount(b) => write!(f, "BRANCH COUNT {b}"),
+            Self::JumpTargetIndex(j) => write!(f, "JTI {j}"),
+        }
+    }
+}
+
 /// Branch count payload
 ///
 /// Represents a format 0, subformat 0 packet. It informs about the number of
@@ -81,6 +92,17 @@ impl<U> Encode<'_, U> for BranchCount {
     fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bits(self.branch_count + 31, 32)?;
         encoder.encode(&self.kind)
+    }
+}
+
+impl fmt::Display for BranchCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} branches predicted correctly", self.branch_count)?;
+        match self.kind {
+            BranchKind::NoAddr => Ok(()),
+            BranchKind::Addr(info) => write!(f, ", including branch at {info}"),
+            BranchKind::AddrFail(info) => write!(f, ", excluding branch at {info}"),
+        }
     }
 }
 
@@ -176,5 +198,15 @@ impl<U> Encode<'_, U> for JumpTargetIndex {
         encoder.encode(&count)?;
         encoder.write_bits(self.branch_map.raw_map(), count.field_length())?;
         util::write_implicit_return(encoder, self.irdepth)
+    }
+}
+
+impl fmt::Display for JumpTargetIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "index: {}, {}", self.index, self.branch_map)?;
+        if let Some(irdepth) = self.irdepth {
+            write!(f, ", irdepth: {irdepth}")?;
+        }
+        Ok(())
     }
 }

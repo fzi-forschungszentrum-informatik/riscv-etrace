@@ -169,7 +169,7 @@ fn main() {
         if packet.hart() == target_hart {
             let payload = packet.decode_payload().expect("Could not decode payload");
             if debug {
-                eprintln!("Payload: {payload:?}");
+                eprintln!("Payload: {payload}");
             }
             // We process the packet's contents ...
             tracer
@@ -183,16 +183,7 @@ fn main() {
                 let pc = item.pc();
                 match item.kind() {
                     item::Kind::Regular(insn) => println!("{pc:0x}\t{insn}"),
-                    item::Kind::Trap(info) => {
-                        if let Some(tval) = info.tval {
-                            println!(
-                                "Exception! epc: 0x{pc:0x}, ecause: {}, tval: 0x{tval:0x}",
-                                info.ecause,
-                            );
-                        } else {
-                            println!("Interrupt! ecause: {}", info.ecause);
-                        }
-                    }
+                    item::Kind::Trap(info) => println!("Trap! {info}"),
                     item::Kind::Context(ctx) => println!("Context! priv: {:?}", ctx.privilege),
                 }
 

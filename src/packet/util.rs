@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Utilities for decoding specific items of packets/payloads
 
-use core::ops;
+use core::{fmt, ops};
 
 use crate::types::branch;
 
@@ -121,5 +121,18 @@ impl<U> Decode<'_, U> for BranchCount {
 impl<U> Encode<'_, U> for BranchCount {
     fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
         encoder.write_bits(self.0, 5)
+    }
+}
+
+/// Utility for displaying a [`bool`] as "enabled" or "disabled"
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Enabled(pub bool);
+
+impl fmt::Display for Enabled {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            true => write!(f, "enabled"),
+            false => write!(f, "disabled"),
+        }
     }
 }

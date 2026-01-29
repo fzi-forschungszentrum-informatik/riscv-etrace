@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Definitions of various payloads
 
+use core::fmt;
+
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
@@ -42,6 +44,15 @@ impl<I, D> TryFrom<Payload<I, D>> for InstructionTrace<I, D> {
         match payload {
             Payload::InstructionTrace(p) => Ok(p),
             p => Err(p),
+        }
+    }
+}
+
+impl<I: unit::IOptions, D> fmt::Display for Payload<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InstructionTrace(i) => fmt::Display::fmt(i, f),
+            Self::DataTrace => write!(f, "DATA"),
         }
     }
 }
@@ -192,6 +203,17 @@ impl<I, D> From<sync::Support<I, D>> for InstructionTrace<I, D> {
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for InstructionTrace<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Extension(e) => fmt::Display::fmt(e, f),
+            Self::Branch(b) => write!(f, "BRANCH {b}"),
+            Self::Address(a) => write!(f, "ADDR {a}"),
+            Self::Synchronization(s) => fmt::Display::fmt(s, f),
+        }
+    }
+}
+
 /// Branch payload
 ///
 /// Represents a format 1 packet. This packet includes branch information. It is
@@ -238,6 +260,16 @@ impl<U> Encode<'_, U> for Branch {
             encoder.encode(&util::BranchCount(0))?;
             encoder.write_bits(self.branch_map.raw_map(), 31)
         }
+    }
+}
+
+impl fmt::Display for Branch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.branch_map, f)?;
+        if let Some(address) = self.address {
+            write!(f, ", {address}")?;
+        }
+        Ok(())
     }
 }
 
@@ -296,5 +328,24 @@ impl<U> Encode<'_, U> for AddressInfo {
         encoder.write_differential_bit(self.notify)?;
         encoder.write_differential_bit(self.updiscon)?;
         util::write_implicit_return(encoder, self.irdepth)
+    }
+}
+
+impl fmt::Display for AddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "address: {:0x}", self.address as u64)?;
+        if self.address < 0 {
+            write!(f, " ({:x})", self.address)?;
+        }
+        if self.notify {
+            write!(f, ", notify")?;
+        }
+        if self.updiscon {
+            write!(f, ", updiscon")?;
+        }
+        if let Some(irdepth) = self.irdepth {
+            write!(f, ", irdepth: {irdepth}")?;
+        }
+        Ok(())
     }
 }

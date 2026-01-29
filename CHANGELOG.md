@@ -15,7 +15,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `binary::Binary`s such as `binary::boxed::BoxedError`.
 - A new type `packet::ext::BranchKind` used in `packet::ext::BranchCount`.
 - `Display` impl for `config::AddressMode`, `types::Privilege`,
-  `types::branch::Map` and `types::trap::Info`.
+  `types::branch::Map`, `types::trap::Info`, `packet::payload::Payload`,
+  `packet::payload::InstructionTrace`, `packet::payload::Branch`,
+  `packet::payload::AddressInfo`, `packet::sync::Synchronization`,
+  `packet::sync::Start`, `packet::sync::Trap`, `packet::sync::Context`,
+  `packet::sync::Support`, `packet::sync::EncoderMode`,
+  `packet::sync::QualStatus`, `packet::ext::Extenstion`,
+  `packet::ext::BranchCount` and `packet::ext::JumpTargetIndex`.
 - Fns `binary::Offset::inner`, `binary::boxed::BoxedError::inner` and
   `binary::combinators::Multi::inner` for accessing wrapped `binary::Binary`s.
 - A fn `binary::Offset::offset` for retrieving the offset value.
@@ -35,6 +41,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::ext`.
 - `packet::ext::BranchCount` was redefined: former `address` and `branch_fmt`
   are now conveyed via a new data mamber `kind`.
+- The simple example now uses `Display` for printing `packet::payload::Payload`
+  and `types::trap::Info`.
 
 ### Removed
 

@@ -6,6 +6,8 @@
 //! defined in section 7.1 Format 3 packets of the specification. This includes
 //! the [`Synchronization`] type which may hold any of the subformats.
 
+use core::fmt;
+
 use crate::types::{self, Privilege, trap};
 
 use super::decoder::{Decode, Decoder};
@@ -117,6 +119,17 @@ where
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for Synchronization<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Start(s) => write!(f, "START {s}"),
+            Self::Trap(t) => write!(f, "TRAP {t}"),
+            Self::Context(c) => write!(f, "CTX {c}"),
+            Self::Support(s) => write!(f, "SUPP {s}"),
+        }
+    }
+}
+
 /// Start of trace
 ///
 /// Represents a format 3, subformat 0 packet. It is sent by the encoder for the
@@ -149,6 +162,17 @@ impl<U> Encode<'_, U> for Start {
         encoder.write_bit(self.branch)?;
         encoder.encode(&self.ctx)?;
         util::write_address(encoder, self.address)
+    }
+}
+
+impl fmt::Display for Start {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let address = self.address;
+        write!(f, "{address:#x}")?;
+        if !self.branch {
+            write!(f, ", branch taken")?;
+        }
+        write!(f, ", {}", self.ctx)
     }
 }
 
@@ -206,6 +230,22 @@ impl<U> Encode<'_, U> for Trap {
             encoder.write_bits(tval, encoder.widths().iaddress.get())?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Display for Trap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let info = self.info;
+        let address = self.address;
+        let addr_type = match self.thaddr {
+            true => "handler",
+            false => "EPC",
+        };
+        write!(f, "{info}, {addr_type}: {address:#x}")?;
+        if !self.branch {
+            write!(f, ", branch taken")?;
+        }
+        write!(f, ", {}", self.ctx)
     }
 }
 
@@ -270,6 +310,16 @@ impl<U> Encode<'_, U> for Context {
     }
 }
 
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} mode", self.privilege)?;
+        if let Some(time) = self.time {
+            write!(f, ", time: {time}")?;
+        }
+        write!(f, ", context: {}", self.context)
+    }
+}
+
 /// Supporting information for the decoder.
 ///
 /// Represents a format 3, subformat 3 packet.
@@ -331,6 +381,37 @@ where
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for Support<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ienable = util::Enabled(self.ienable);
+        let mode = self.encoder_mode;
+        let qual = self.qual_status;
+        write!(f, "itrace {ienable} ({mode}) {qual}")?;
+        if let Some(mode) = self.ioptions.address_mode() {
+            write!(f, ", {mode} address mode")?;
+        }
+        if self.ioptions.implicit_return() == Some(true) {
+            write!(f, ", implicit return")?;
+        }
+        if self.ioptions.implicit_exception() == Some(true) {
+            write!(f, ", implicit exception")?;
+        }
+        if self.ioptions.branch_prediction() == Some(true) {
+            write!(f, ", branch prediction")?;
+        }
+        if self.ioptions.jump_target_cache() == Some(true) {
+            write!(f, ", jump target cache")?;
+        }
+
+        write!(f, "; dtrace {}", util::Enabled(self.denable))?;
+        if self.dloss {
+            write!(f, " dloss")?;
+        }
+
+        Ok(())
+    }
+}
+
 /// Representation of a change to the filter qualification
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum QualStatus {
@@ -371,6 +452,17 @@ impl<U> Encode<'_, U> for QualStatus {
     }
 }
 
+impl fmt::Display for QualStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoChange => write!(f, "no change"),
+            Self::EndedRep => write!(f, "ended rep"),
+            Self::TraceLost => write!(f, "trace lost"),
+            Self::EndedNtr => write!(f, "ended ntr"),
+        }
+    }
+}
+
 /// Mode the encoder is operating in
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum EncoderMode {
@@ -393,6 +485,14 @@ impl From<EncoderMode> for u8 {
     fn from(mode: EncoderMode) -> Self {
         match mode {
             EncoderMode::BranchTrace => 0,
+        }
+    }
+}
+
+impl fmt::Display for EncoderMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BranchTrace => write!(f, "branch trace"),
         }
     }
 }
