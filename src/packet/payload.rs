@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Definitions of various payloads
 
+use core::fmt;
+
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
@@ -296,5 +298,24 @@ impl<U> Encode<'_, U> for AddressInfo {
         encoder.write_differential_bit(self.notify)?;
         encoder.write_differential_bit(self.updiscon)?;
         util::write_implicit_return(encoder, self.irdepth)
+    }
+}
+
+impl fmt::Display for AddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "address: {:0x}", self.address as u64)?;
+        if self.address < 0 {
+            write!(f, " ({:x})", self.address)?;
+        }
+        if self.notify {
+            write!(f, ", notify")?;
+        }
+        if self.updiscon {
+            write!(f, ", updiscon")?;
+        }
+        if let Some(irdepth) = self.irdepth {
+            write!(f, ", irdepth: {irdepth}")?;
+        }
+        Ok(())
     }
 }
