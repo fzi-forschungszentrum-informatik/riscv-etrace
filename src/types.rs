@@ -9,6 +9,8 @@ pub mod trap;
 #[cfg(test)]
 mod tests;
 
+use core::fmt;
+
 /// RISC-V priviledge levels
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub enum Privilege {
@@ -37,6 +39,16 @@ impl From<Privilege> for u8 {
             Privilege::User => 0b00,
             Privilege::Supervisor => 0b01,
             Privilege::Machine => 0b11,
+        }
+    }
+}
+
+impl fmt::Display for Privilege {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Privilege::User => write!(f, "U"),
+            Privilege::Supervisor => write!(f, "S"),
+            Privilege::Machine => write!(f, "M"),
         }
     }
 }
