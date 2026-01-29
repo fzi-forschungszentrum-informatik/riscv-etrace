@@ -180,6 +180,18 @@ pub struct Offset<B> {
     offset: u64,
 }
 
+impl<B> Offset<B> {
+    /// Retrieve the inner [`Binary`]
+    pub fn inner(&self) -> &B {
+        &self.inner
+    }
+
+    /// Retrieve the offset
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+}
+
 impl<B, I> Binary<I> for Offset<B>
 where
     B: Binary<I>,
