@@ -68,9 +68,9 @@ impl<E: MaybeMiss + ?Sized> MaybeMiss for Box<E> {
 }
 
 /// [`MaybeMiss`] that is also an [`Error`][core::error::Error]
-pub trait MaybeMissError: MaybeMiss + core::error::Error {}
+pub trait MaybeMissError: MaybeMiss + core::error::Error + Sync + Send {}
 
-impl<T: MaybeMiss + core::error::Error + ?Sized> MaybeMissError for T {}
+impl<T: MaybeMiss + core::error::Error + Sync + Send + ?Sized> MaybeMissError for T {}
 
 /// An error for single segments of encoded [`Instruction`][super::Instruction]s
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

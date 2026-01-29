@@ -11,6 +11,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `types::stack::ReturnStack` and are availible with the `alloc` feature.
 - Fns `tracer::Tracer::binary` and `tracer::Tracer::binary_mut` for retrieving
   a (mutable) referencec to the `binary::Binary` used.
+- A type `binary::boxed::Error` intended as an `Error` type for boxed
+  `binary::Binary`s such as `binary::boxed::BoxedError`.
 
 ### Changed
 
@@ -19,6 +21,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `instruction::Instruction` now impls `Default` for all `info::Info`s, not only
   for `info::Info`s that impl `Default`.
 - `tracer::Tracer` no longer requires `info::Info` to impl `Default`.
+- `binary::error::MaybeMissError` now depends on `Send` and `Sync`.
+- `binary::boxed::BoxedError::Error` is now `binary::boxed::Error`.
+- `binary::BoxedBinary` is now `binary::boxed::Binary`.
 
 ## 0.7.0 - 2026-01-24
 
