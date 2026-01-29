@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Extension payloads
 
+use core::fmt;
+
 use crate::types::branch;
 
 use super::decoder::{Decode, Decoder};
@@ -176,5 +178,15 @@ impl<U> Encode<'_, U> for JumpTargetIndex {
         encoder.encode(&count)?;
         encoder.write_bits(self.branch_map.raw_map(), count.field_length())?;
         util::write_implicit_return(encoder, self.irdepth)
+    }
+}
+
+impl fmt::Display for JumpTargetIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "index: {}, {}", self.index, self.branch_map)?;
+        if let Some(irdepth) = self.irdepth {
+            write!(f, ", irdepth: {irdepth}")?;
+        }
+        Ok(())
     }
 }
