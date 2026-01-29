@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Combination of multiple [`Binary`]
 
-use core::borrow::BorrowMut;
+use core::borrow::{Borrow, BorrowMut};
 
 use crate::instruction::{Instruction, info};
 
@@ -25,6 +25,19 @@ impl<C: BorrowMut<[B]>, B> Multi<C, B> {
             last: 0,
             phantom: Default::default(),
         }
+    }
+}
+
+/// Accessors
+impl<C: Borrow<[B]> + BorrowMut<[B]>, B> Multi<C, B> {
+    /// Retrieve the inner [`Binary`]s
+    pub fn inner(&self) -> &[B] {
+        self.bins.borrow()
+    }
+
+    /// Retrieve an iterator over all inner [`Binary`]s
+    pub fn iter(&self) -> core::slice::Iter<'_, B> {
+        self.inner().iter()
     }
 }
 

@@ -16,6 +16,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A new type `packet::ext::BranchKind` used in `packet::ext::BranchCount`.
 - `Display` impl for `config::AddressMode`, `types::Privilege`,
   `types::branch::Map` and `types::trap::Info`.
+- Fns `binary::Offset::inner`, `binary::boxed::BoxedError::inner` and
+  `binary::combinators::Multi::inner` for accessing wrapped `binary::Binary`s.
+- A fn `binary::Offset::offset` for retrieving the offset value.
 
 ### Changed
 

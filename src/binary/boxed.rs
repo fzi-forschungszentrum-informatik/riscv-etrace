@@ -26,6 +26,11 @@ impl<B> BoxedError<B> {
     pub fn new(inner: B) -> Self {
         Self { inner }
     }
+
+    /// Retrieve the inner [`Binary`]
+    pub fn inner(&self) -> &B {
+        &self.inner
+    }
 }
 
 impl<B> From<B> for BoxedError<B> {
