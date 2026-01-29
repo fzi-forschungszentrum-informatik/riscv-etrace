@@ -119,6 +119,17 @@ where
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for Synchronization<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Start(s) => write!(f, "START {s}"),
+            Self::Trap(t) => write!(f, "TRAP {t}"),
+            Self::Context(c) => write!(f, "CTX {c}"),
+            Self::Support(s) => write!(f, "SUPP {s}"),
+        }
+    }
+}
+
 /// Start of trace
 ///
 /// Represents a format 3, subformat 0 packet. It is sent by the encoder for the
