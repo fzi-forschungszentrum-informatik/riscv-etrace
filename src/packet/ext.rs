@@ -18,6 +18,27 @@ pub enum Extension {
     JumpTargetIndex(JumpTargetIndex),
 }
 
+impl Extension {
+    /// Retrieve the [`AddressInfo`] in this payload
+    ///
+    /// Returns a reference to the [`AddressInfo`] contained in this payload or
+    /// [`None`] if it does not contain one.
+    pub fn get_address_info(&self) -> Option<&AddressInfo> {
+        match self {
+            Self::BranchCount(branch_count) => branch_count.address.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the implicit return depth
+    pub fn implicit_return_depth(&self) -> Option<usize> {
+        match self {
+            Self::BranchCount(b) => b.address.and_then(|a| a.irdepth),
+            Self::JumpTargetIndex(j) => j.irdepth,
+        }
+    }
+}
+
 impl<U> Decode<'_, U> for Extension {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
         match decoder.read_bits(decoder.widths().format0_subformat)? {

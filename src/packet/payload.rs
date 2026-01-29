@@ -104,9 +104,7 @@ impl<I, D> InstructionTrace<I, D> {
         match self {
             Self::Address(addr) => Some(addr),
             Self::Branch(branch) => branch.address.as_ref(),
-            Self::Extension(ext::Extension::BranchCount(branch_count)) => {
-                branch_count.address.as_ref()
-            }
+            Self::Extension(e) => e.get_address_info(),
             _ => None,
         }
     }
@@ -128,8 +126,7 @@ impl<I, D> InstructionTrace<I, D> {
         match self {
             Self::Address(a) => a.irdepth,
             Self::Branch(b) => b.address.and_then(|a| a.irdepth),
-            Self::Extension(ext::Extension::BranchCount(b)) => b.address.and_then(|a| a.irdepth),
-            Self::Extension(ext::Extension::JumpTargetIndex(j)) => j.irdepth,
+            Self::Extension(e) => e.implicit_return_depth(),
             _ => None,
         }
     }
