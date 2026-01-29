@@ -5,6 +5,7 @@
 #[cfg(feature = "serde")]
 mod serde_utils;
 
+use core::fmt;
 use core::num::NonZeroU8;
 
 /// Encoder parameters
@@ -100,6 +101,15 @@ impl AddressMode {
     /// Create an address mode from a [`bool`] indicating full address mode
     pub const fn from_full(full: bool) -> Self {
         if full { Self::Full } else { Self::Delta }
+    }
+}
+
+impl fmt::Display for AddressMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Full => write!(f, "full"),
+            Self::Delta => write!(f, "delta"),
+        }
     }
 }
 
