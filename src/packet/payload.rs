@@ -48,6 +48,15 @@ impl<I, D> TryFrom<Payload<I, D>> for InstructionTrace<I, D> {
     }
 }
 
+impl<I: unit::IOptions, D> fmt::Display for Payload<I, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InstructionTrace(i) => fmt::Display::fmt(i, f),
+            Self::DataTrace => write!(f, "DATA"),
+        }
+    }
+}
+
 /// An instruction trace payload
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum InstructionTrace<I = unit::ReferenceIOptions, D = unit::ReferenceDOptions> {
