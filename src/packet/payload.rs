@@ -243,6 +243,16 @@ impl<U> Encode<'_, U> for Branch {
     }
 }
 
+impl fmt::Display for Branch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.branch_map, f)?;
+        if let Some(address) = self.address {
+            write!(f, ", {address}")?;
+        }
+        Ok(())
+    }
+}
+
 /// Address info payload
 ///
 /// Represents a format 2 packet. This payload contains only an instruction
