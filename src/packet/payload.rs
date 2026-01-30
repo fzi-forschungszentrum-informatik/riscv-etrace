@@ -334,8 +334,8 @@ impl<U> Encode<'_, U> for AddressInfo {
 impl fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {:0x}", self.address as u64)?;
-        if self.address < 0 {
-            write!(f, " ({:x})", self.address)?;
+        if self.address < 0 && let Some(addr) = self.address.checked_neg() {
+            write!(f, " (-{addr:x})")?;
         }
         if self.notify {
             write!(f, ", notify")?;
