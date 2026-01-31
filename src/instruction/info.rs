@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Instruction information
 
+use crate::config::Parameters;
+
 use super::bits::Bits;
 
 /// Instruction information
@@ -323,6 +325,22 @@ pub trait MakeDecode {
     /// it. It is not configured according to limitations of a specific target
     /// CPU.
     fn rv64i_full() -> Self;
+
+    /// Infer a [`Decode`] value from the given [`Parameters`]
+    ///
+    /// The value is (currently) inferred from the `iaddress_width_p` parameter.
+    /// The base set with the lowest general purpose register greater than
+    /// `iaddress_width_p` will be selected.
+    fn infer_from_params(params: &Parameters) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match params.iaddress_width_p.get() {
+            0..=32 => Some(Self::rv32i_full()),
+            33..=64 => Some(Self::rv64i_full()),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(feature = "riscv-isa")]

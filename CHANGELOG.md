@@ -25,6 +25,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Fns `binary::Offset::inner`, `binary::boxed::BoxedError::inner` and
   `binary::combinators::Multi::inner` for accessing wrapped `binary::Binary`s.
 - A fn `binary::Offset::offset` for retrieving the offset value.
+- A provided `instruction::info::MakeDecode` fn for inferring its value from
+  `config::Parameters`.
 
 ### Changed
 
