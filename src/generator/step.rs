@@ -48,6 +48,11 @@ pub trait Step {
         None
     }
 
+    /// Determine whether this step represents a single instruction or trap
+    fn is_single(&self) -> bool {
+        self.last_offset() == 0
+    }
+
     /// Refine this step's data with information from the next step
     fn refine(&mut self, _next: &Self) {}
 }
