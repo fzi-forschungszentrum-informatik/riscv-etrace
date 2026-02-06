@@ -10,12 +10,24 @@ use super::hart2enc::{CType, IType, JumpType};
 use instruction::info::Info;
 
 /// Tracing data emitted by a HART in a single execution step
+///
+/// An execution step covers either a sequence of instruction retirements (i.e.
+/// the retirement of a block of instrucitons) or a single trap (in wihch case
+/// [`kind`][Self::kind] returns [`Kind::Trap`]). If the step covers instruction
+/// retirements, all but the last instructions in the block must not have any
+/// effect on the control flow. The value of [`kind`][Self::kind] will
+/// correspond to the last instruction only.
 pub trait Step {
     /// Address relevant for this step
     ///
-    /// For instruction retirement, this value if the address of the retired
-    /// instruction.
+    /// For instruction retirement, this value points to the first instruction
+    /// in the block (or simply "the" instruction for single retirement).
     fn address(&self) -> u64;
+
+    /// Offset of the block's final instruction from [`address`][Self::address]
+    fn last_offset(&self) -> u64 {
+        0
+    }
 
     /// Step kind
     fn kind(&self) -> Kind;
