@@ -497,6 +497,64 @@ impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
 
         Ok(None)
     }
+
+    /// Handle the end of the given block, potentially issuing a payload
+    fn do_block_end(
+        &mut self,
+        current: &S,
+        event: Option<Event>,
+    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
+        use hart2enc::CType;
+
+        let mut builder = self.generator.state.payload_builder(
+            current.address(),
+            current.context(),
+            current.timestamp(),
+        );
+
+        // The following correspond to `resync_br or er_n?` in spec
+        if event == Some(Event::Notify) {
+            return builder.report_address(state::Reason::Notify).map(Some);
+        }
+
+        if let step::Kind::Trap { insn_size, .. } = current.kind() {
+            // We return for traps in any case since payload generation is only
+            // valid for non-trap steps for any of all of the remaining cases.
+            return if insn_size.is_some() {
+                builder.report_address(state::Reason::Other).map(Some)
+            } else {
+                Ok(None)
+            };
+        }
+
+        // The following correspond to `Next inst is exc_only, ppccd_br or
+        // unqualified?` in spec
+        let OutputKind::Regular { next, next_event } = &self.kind else {
+            return Ok(None);
+        };
+
+        let have_branches = builder.branches() != 0;
+        if *next_event == Some(Event::ReSync) && have_branches {
+            return builder.report_address(state::Reason::Other).map(Some);
+        }
+
+        let ppccd = next.context().privilege != current.context().privilege
+            || matches!(next.ctype(), CType::Precisely | CType::AsyncDiscon);
+        if next.kind().is_exc_only() || (ppccd && have_branches) {
+            return builder.report_address(state::Reason::Other).map(Some);
+        }
+
+        // Corresponds to `rpt_br?` in spec
+        if let Some(branches) = builder.report_full_branchmap() {
+            return Ok(Some(branches.into()));
+        }
+
+        // Corresponds to `cci?` in spec
+        match current.ctype() {
+            CType::Imprecisely => Ok(Some(builder.context().into())),
+            _ => Ok(None),
+        }
+    }
 }
 
 /// State of the [`Output`]
