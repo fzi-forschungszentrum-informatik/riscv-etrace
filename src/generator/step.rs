@@ -29,6 +29,11 @@ pub trait Step {
         0
     }
 
+    /// Address of the final instruction in the block
+    fn last_address(&self) -> u64 {
+        self.address().wrapping_add(self.last_offset())
+    }
+
     /// Step kind
     fn kind(&self) -> Kind;
 
