@@ -557,6 +557,81 @@ impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
     }
 }
 
+impl<S: step::Step, I: unit::IOptions + Clone, D: Clone> Iterator for Output<'_, S, I, D> {
+    type Item = Result<InstructionTrace<I, D>, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state.take()? {
+            OutputState::First {
+                previous,
+                current,
+                event,
+            } => {
+                let res = self.do_block_start(previous, &current, event).transpose();
+                if res.is_none() {
+                    self.state = Some(OutputState::Last { current, event });
+                    return self.next();
+                }
+                if let OutputKind::Draining { ienable } = &self.kind {
+                    self.state = Some(OutputState::End {
+                        ienable: *ienable,
+                        qual_status: sync::QualStatus::EndedNtr,
+                    });
+                }
+                res
+            }
+            OutputState::Last { current, event } => {
+                let res = self.do_block_end(&current, event).transpose();
+                let OutputKind::Draining { ienable } = &self.kind else {
+                    return res;
+                };
+
+                let qual_status = match res.is_some() {
+                    true => sync::QualStatus::EndedNtr,
+                    false => sync::QualStatus::EndedRep,
+                };
+                self.state = Some(OutputState::End {
+                    ienable: *ienable,
+                    qual_status,
+                });
+                res.or_else(|| {
+                    let res = self
+                        .generator
+                        .state
+                        .payload_builder(current.address(), current.context(), current.timestamp())
+                        .report_address(state::Reason::Other);
+                    Some(res)
+                })
+            }
+            OutputState::End {
+                ienable,
+                qual_status,
+            } => {
+                let (ioptions, doptions) = self.generator.options.clone()?;
+                Some(Ok(sync::Support {
+                    ienable,
+                    encoder_mode: sync::EncoderMode::BranchTrace,
+                    qual_status,
+                    ioptions,
+                    denable: false,
+                    dloss: false,
+                    doptions,
+                }
+                .into()))
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.state {
+            Some(OutputState::First { .. }) => (1, Some(3)),
+            Some(OutputState::Last { .. }) => (1, Some(2)),
+            Some(OutputState::End { .. }) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
+}
+
 /// State of the [`Output`]
 #[derive(Copy, Clone, Debug)]
 enum OutputState<S> {
