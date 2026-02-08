@@ -453,3 +453,18 @@ enum OutputKind<S> {
     /// Draining a [`Generator`]'s inner state
     Draining { ienable: bool },
 }
+
+impl<S: step::Step> OutputKind<S> {
+    /// Determine whether the next [`Step`] warrants address with updiscon flag
+    pub fn is_updiscon_cause(&self, privilege: Privilege) -> Option<bool> {
+        let Self::Regular { next, next_event } = self else {
+            return None;
+        };
+
+        let res = *next_event == Some(Event::ReSync)
+            || matches!(next.kind(), step::Kind::Trap { .. })
+            || !matches!(next.ctype(), hart2enc::CType::Unreported)
+            || privilege != next.context().privilege;
+        Some(res)
+    }
+}
