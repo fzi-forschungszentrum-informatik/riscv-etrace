@@ -133,7 +133,7 @@ fn main() {
                 .parse::<CSVLine>()
                 .expect("Could not parse line")
         })
-        .filter_map(|s| {
+        .for_each(|s| {
             let sync = Some(sync_counter) == max_sync.map(NonZeroUsize::get);
             if sync {
                 sync_counter = 0;
@@ -142,9 +142,8 @@ fn main() {
             }
             generator
                 .process_step(s, sync.then_some(generator::Event::ReSync))
-                .expect("Could not process step")
-        })
-        .for_each(&mut encode);
+                .for_each(|p| encode(p.expect("Could not generate packet")));
+        });
 
     generator
         .end_qualification(true)

@@ -108,11 +108,7 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
     /// Drives the inner state, feeding the given `step` and optional `event`
     /// for the next step. If a payload is produced for the current step, that
     /// payload is returned.
-    pub fn process_step(
-        &mut self,
-        step: S,
-        event: Option<Event>,
-    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
+    pub fn process_step(&mut self, step: S, event: Option<Event>) -> Output<'_, S, I, D> {
         if let Some(current) = self.current.as_mut() {
             current.refine(&step);
         }
@@ -121,7 +117,7 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
             next: step,
             next_event: event,
         };
-        self.do_step(kind).next().transpose()
+        self.do_step(kind)
     }
 
     /// Drive the inner state by a single step, potentially producing a payload
