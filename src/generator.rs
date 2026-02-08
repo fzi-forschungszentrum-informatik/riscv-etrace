@@ -424,6 +424,81 @@ where
     state: Option<OutputState<S>>,
 }
 
+impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
+    /// Handle the start of the given block, potentially issuing a payload
+    fn do_block_start(
+        &mut self,
+        previous: Option<(step::Kind, Privilege)>,
+        current: &S,
+        event: Option<Event>,
+    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
+        use hart2enc::CType;
+
+        let kind = current.kind();
+
+        let reported_exception = self.generator.reported_exception;
+        self.generator.reported_exception = false;
+
+        let mut builder = self.generator.state.payload_builder(
+            current.address(),
+            current.context(),
+            current.timestamp(),
+        );
+
+        // Corresponds to `Branch?` in spec
+        if let step::Kind::Branch { taken, .. } = kind {
+            builder.add_branch(taken)?;
+        }
+
+        // Corresponds to `Exception previous?` in spec
+        if let Some((step::Kind::Trap { info, .. }, _)) = previous {
+            let payload = if kind.is_exc_only() {
+                builder.report_trap(false, info).into()
+            } else if reported_exception {
+                builder.report_sync().into()
+            } else {
+                builder.report_trap(true, info).into()
+            };
+            return Ok(Some(payload));
+        }
+
+        // Corresponds to `Inst is 1st qualified, ppccd or >max_resync?` in spec
+        if event == Some(Event::ReSync)
+            || matches!(current.ctype(), CType::Precisely | CType::AsyncDiscon)
+            || previous.map(|(_, p)| p) != Some(current.context().privilege)
+        {
+            return Ok(Some(builder.report_sync().into()));
+        }
+
+        // Corresponds to `Updiscon previous?` in spec
+        let sijumps = self.generator.features.sequentially_inferred_jumps;
+        if previous.map(|(k, _)| k.is_updiscon(sijumps)) == Some(true) {
+            return if let step::Kind::Trap {
+                insn_size: None,
+                info,
+            } = kind
+            {
+                self.generator.reported_exception = true;
+                Ok(builder.report_trap(false, info).into())
+            } else {
+                let reason = if self
+                    .kind
+                    .is_updiscon_cause(current.context().privilege)
+                    .unwrap_or(self.generator.options.is_some())
+                {
+                    state::Reason::Updiscon
+                } else {
+                    state::Reason::Other
+                };
+                builder.report_address(reason)
+            }
+            .map(Some);
+        }
+
+        Ok(None)
+    }
+}
+
 /// State of the [`Output`]
 #[derive(Copy, Clone, Debug)]
 enum OutputState<S> {
