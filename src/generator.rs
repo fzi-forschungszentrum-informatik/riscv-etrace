@@ -256,54 +256,6 @@ impl Builder {
     }
 }
 
-/// Payload draining [`Iterator`]
-#[derive(Debug)]
-pub struct Drain<'g, S: step::Step, I: unit::IOptions, D> {
-    generator: &'g mut Generator<S, I, D>,
-    ienable: bool,
-    qual_status: Option<sync::QualStatus>,
-}
-
-impl<'g, S: step::Step, I: unit::IOptions, D> Drain<'g, S, I, D> {
-    /// Create a new draining [`Iterator`]
-    fn new(generator: &'g mut Generator<S, I, D>, ienable: bool) -> Self {
-        Drain {
-            generator,
-            ienable,
-            qual_status: Some(sync::QualStatus::EndedRep),
-        }
-    }
-}
-
-impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Drain<'_, S, I, D> {
-    type Item = Result<InstructionTrace<I, D>, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match todo!() {
-            Ok(Some(StepOutput::Payload(p))) => {
-                self.qual_status = Some(sync::QualStatus::EndedNtr);
-                Some(Ok(p))
-            }
-            Ok(Some(StepOutput::Builder(b))) => Some(b.report_address(state::Reason::Other)),
-            Ok(None) => Option::zip(self.generator.options.clone(), self.qual_status.take()).map(
-                |((ioptions, doptions), qual_status)| {
-                    Ok(sync::Support {
-                        ienable: self.ienable,
-                        encoder_mode: sync::EncoderMode::BranchTrace,
-                        qual_status,
-                        ioptions,
-                        denable: false,
-                        dloss: false,
-                        doptions,
-                    }
-                    .into())
-                },
-            ),
-            Err(e) => Some(Err(e)),
-        }
-    }
-}
-
 /// Output produced by a [`Generator`] for a single [`Step`][step::Step]
 #[derive(Debug)]
 pub struct Output<'g, S, I = unit::ReferenceIOptions, D = unit::ReferenceDOptions>
