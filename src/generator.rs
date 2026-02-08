@@ -411,3 +411,45 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Dr
         }
     }
 }
+
+/// Output produced by a [`Generator`] for a single [`Step`][step::Step]
+#[derive(Debug)]
+pub struct Output<'g, S, I = unit::ReferenceIOptions, D = unit::ReferenceDOptions>
+where
+    S: step::Step,
+    I: unit::IOptions,
+{
+    generator: &'g mut Generator<S, I, D>,
+    kind: OutputKind<S>,
+    state: Option<OutputState<S>>,
+}
+
+/// State of the [`Output`]
+#[derive(Copy, Clone, Debug)]
+enum OutputState<S> {
+    /// Handling the first instruction in the block
+    First {
+        previous: Option<(step::Kind, Privilege)>,
+        current: S,
+        event: Option<Event>,
+    },
+    /// Handling the last instruction in the block
+    Last { current: S, event: Option<Event> },
+    /// End-of-trace condition
+    End {
+        ienable: bool,
+        qual_status: sync::QualStatus,
+    },
+}
+
+/// Kind of [`Output`]
+#[derive(Clone, Debug)]
+enum OutputKind<S> {
+    /// Regular tracing operation
+    ///
+    /// A new [`Step`]s was fed to the [`Generator`], resulting in this
+    /// [`Output`].
+    Regular { next: S, next_event: Option<Event> },
+    /// Draining a [`Generator`]'s inner state
+    Draining { ienable: bool },
+}
