@@ -164,25 +164,6 @@ pub enum Event {
     Notify,
 }
 
-/// Output potentially produced by the [`Generator`]
-#[derive(Debug)]
-enum StepOutput<'s, I: unit::IOptions, D> {
-    Payload(InstructionTrace<I, D>),
-    Builder(state::PayloadBuilder<'s>),
-}
-
-impl<I: unit::IOptions, D> From<InstructionTrace<I, D>> for Option<StepOutput<'_, I, D>> {
-    fn from(payload: InstructionTrace<I, D>) -> Self {
-        Some(StepOutput::Payload(payload))
-    }
-}
-
-impl<'s, I: unit::IOptions, D> From<state::PayloadBuilder<'s>> for Option<StepOutput<'s, I, D>> {
-    fn from(builder: state::PayloadBuilder<'s>) -> Self {
-        Some(StepOutput::Builder(builder))
-    }
-}
-
 /// Create a new [`Builder`] for [`Generator`]s
 pub fn builder() -> Builder {
     Default::default()
