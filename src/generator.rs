@@ -272,7 +272,7 @@ impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
 
         // Corresponds to `Branch?` in spec
         if let step::Kind::Branch { taken, .. } = kind {
-            builder.add_branch(taken)?;
+            builder.add_branch(taken, true)?;
         }
 
         // Corresponds to `Exception previous?` in spec
