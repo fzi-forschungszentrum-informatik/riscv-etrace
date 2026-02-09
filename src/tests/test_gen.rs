@@ -159,14 +159,7 @@ macro_rules! generator_check_def {
             $($h: true,)*
             ..Default::default()
         };
-        let event = if hints.sync {
-            Some(generator::Event::ReSync)
-        } else if hints.notify {
-            Some(generator::Event::Notify)
-        } else {
-            None
-        };
-        if let Some(step) = $c.feed_item($a, $i.into(), hints) {
+        if let Some((step, event)) = $c.feed_item($a, $i.into(), hints) {
             $g.process_step(step, event).for_each(|r| {
                 let packet = r.expect("Error while generating packet");
                 assert_eq!(Some(&packet), $p.split_off_first());
@@ -213,13 +206,21 @@ impl ItemConverter {
         address: u64,
         kind: item::Kind,
         hints: ItemHints,
-    ) -> Option<TestStep> {
+    ) -> Option<(TestStep, Option<generator::Event>)> {
         use item::Kind;
 
         let ctype = self.ctype;
         self.ctype = CType::Unreported;
 
         let prev_upper_immediate = self.upper_immediate.take();
+
+        let event = if hints.sync {
+            Some(generator::Event::ReSync)
+        } else if hints.notify {
+            Some(generator::Event::Notify)
+        } else {
+            None
+        };
 
         match kind {
             Kind::Regular(insn) => {
@@ -237,12 +238,12 @@ impl ItemConverter {
                         branch_taken: hints.branch_taken,
                         prev_upper_immediate,
                     };
-                    Some(cycle)
+                    Some((cycle, event))
                 }
             }
             Kind::Trap(info) => {
                 if let Some(insn) = self.insn.take() {
-                    Some(TestStep {
+                    let step = TestStep {
                         address,
                         insn: Some(insn),
                         trap: Some(info),
@@ -250,7 +251,8 @@ impl ItemConverter {
                         context: self.context,
                         branch_taken: hints.branch_taken,
                         prev_upper_immediate,
-                    })
+                    };
+                    Some((step, event))
                 } else {
                     self.trap = Some(info);
                     None
@@ -259,14 +261,17 @@ impl ItemConverter {
             Kind::Context(new_context) => {
                 let context = self.context;
                 self.context = new_context;
-                self.trap.take().map(|trap| TestStep {
-                    address,
-                    insn: self.insn.take(),
-                    trap: Some(trap),
-                    ctype,
-                    context,
-                    branch_taken: false,
-                    prev_upper_immediate,
+                self.trap.take().map(|trap| {
+                    let step = TestStep {
+                        address,
+                        insn: self.insn.take(),
+                        trap: Some(trap),
+                        ctype,
+                        context,
+                        branch_taken: false,
+                        prev_upper_immediate,
+                    };
+                    (step, event)
                 })
             }
         }
