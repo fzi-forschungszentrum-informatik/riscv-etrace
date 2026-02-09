@@ -305,6 +305,19 @@ impl ItemConverter {
             }
         }
     }
+
+    pub fn get_left_over(self) -> Option<TestStep> {
+        Option::zip(self.current_address, self.last).map(|(c, (i, a))| TestStep {
+            address: c,
+            last_offset: a - c,
+            insn: Some(i),
+            trap: None,
+            ctype: self.ctype,
+            context: self.context,
+            branch_taken: false,
+            prev_upper_immediate: None,
+        })
+    }
 }
 
 /// [`step::Step`] impl for testing
