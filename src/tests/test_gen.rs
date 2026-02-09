@@ -192,14 +192,23 @@ pub struct ItemHints {
 /// Helper for constructing [`TestStep`]s from trace item definitions
 #[derive(Default)]
 pub struct ItemConverter {
-    insn: Option<Instruction>,
+    current_address: Option<u64>,
+    last: Option<(Instruction, u64)>,
     trap: Option<trap::Info>,
     ctype: CType,
     context: Context,
     upper_immediate: Option<<instruction::Kind as Info>::Register>,
+    make_blocks: bool,
 }
 
 impl ItemConverter {
+    pub fn for_blocks(self) -> Self {
+        Self {
+            make_blocks: true,
+            ..self
+        }
+    }
+
     /// Feed a trace item definition, potentially producing a [`TestStep`]
     pub fn feed_item(
         &mut self,
@@ -222,16 +231,25 @@ impl ItemConverter {
             None
         };
 
+        let may_skip = self.make_blocks && event.is_none();
         match kind {
+            Kind::Regular(insn) if may_skip && insn.info.is_none() => {
+                if self.current_address.is_none() {
+                    self.current_address = Some(address);
+                }
+                self.last = Some((insn, address));
+                None
+            }
             Kind::Regular(insn) => {
                 self.upper_immediate = insn.upper_immediate(address).map(|(r, _)| r);
                 if insn.is_ecall_or_ebreak() {
-                    self.insn = Some(insn);
+                    self.last = Some((insn, address));
                     None
                 } else {
+                    let current_address = self.current_address.take().unwrap_or(address);
                     let cycle = TestStep {
-                        address,
-                        last_offset: 0,
+                        address: current_address,
+                        last_offset: address - current_address,
                         insn: Some(insn),
                         trap: self.trap.take(),
                         ctype,
@@ -243,26 +261,34 @@ impl ItemConverter {
                 }
             }
             Kind::Trap(info) => {
-                if let Some(insn) = self.insn.take() {
-                    let step = TestStep {
-                        address,
-                        last_offset: 0,
-                        insn: Some(insn),
-                        trap: Some(info),
-                        ctype,
-                        context: self.context,
-                        branch_taken: hints.branch_taken,
-                        prev_upper_immediate,
-                    };
-                    Some((step, event))
+                let Some((insn, address)) = self.last.take() else {
+                    self.trap = Some(info);
+                    return None;
+                };
+
+                let trap = if insn.is_ecall_or_ebreak() {
+                    Some(info)
                 } else {
                     self.trap = Some(info);
                     None
-                }
+                };
+                let current_address = self.current_address.take().unwrap_or(address);
+                let step = TestStep {
+                    address: current_address,
+                    last_offset: address - current_address,
+                    insn: Some(insn),
+                    trap,
+                    ctype,
+                    context: self.context,
+                    branch_taken: hints.branch_taken,
+                    prev_upper_immediate,
+                };
+                Some((step, event))
             }
             Kind::Context(new_context) => {
                 let context = self.context;
                 self.context = new_context;
+                self.current_address = None;
                 self.trap.take().map(|trap| {
                     let step = TestStep {
                         address,
