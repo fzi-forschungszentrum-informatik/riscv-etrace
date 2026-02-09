@@ -34,9 +34,9 @@ use payload::InstructionTrace;
 ///
 /// Once all relevant [`Step`][step::Step]s of execution were processed, users
 /// may end qualification, extracting any pending [`InstructionTrace`] payloads
-/// by calling [`end_qualification`][Self::end_qualification], which returns a
-/// [`Drain`] [`Iterator`] over those payloads. If qualification was initiated
-/// properly via [`begin_qualification`][Self::begin_qualification], [`Drain`]
+/// by calling [`end_qualification`][Self::end_qualification], which returns an
+/// [`Output`] [`Iterator`] over those payloads. If qualification was initiated
+/// properly via [`begin_qualification`][Self::begin_qualification], [`Output`]
 /// will also yield a [`sync::Support`] payload indicating end of qualification.
 ///
 /// Generators are constructed using a [`Builder`].
@@ -99,8 +99,8 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
     /// reported due to other reasons. The support payload is included if
     /// [`begin_qualification`][Self::begin_qualification] was called on this
     /// generator before.
-    pub fn end_qualification(&mut self, ienable: bool) -> Drain<'_, S, I, D> {
-        Drain::new(self, ienable)
+    pub fn end_qualification(&mut self, ienable: bool) -> Output<'_, S, I, D> {
+        self.do_step(OutputKind::Draining { ienable })
     }
 
     /// Process a single [Step][step::Step], potentially producing a payload
@@ -108,157 +108,49 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
     /// Drives the inner state, feeding the given `step` and optional `event`
     /// for the next step. If a payload is produced for the current step, that
     /// payload is returned.
-    pub fn process_step(
-        &mut self,
-        step: S,
-        event: Option<Event>,
-    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
+    pub fn process_step(&mut self, step: S, event: Option<Event>) -> Output<'_, S, I, D> {
         if let Some(current) = self.current.as_mut() {
             current.refine(&step);
         }
 
-        self.do_step(Some(step), event).map(|p| {
-            if let Some(StepOutput::Payload(payload)) = p {
-                Some(payload)
-            } else {
-                None
-            }
-        })
+        let kind = OutputKind::Regular {
+            next: step,
+            next_event: event,
+        };
+        self.do_step(kind)
     }
 
     /// Drive the inner state by a single step, potentially producing a payload
-    fn do_step(
-        &mut self,
-        next: Option<S>,
-        next_event: Option<Event>,
-    ) -> Result<Option<StepOutput<'_, I, D>>, Error> {
-        use hart2enc::CType;
-        use step::Kind;
-
+    fn do_step(&mut self, kind: OutputKind<S>) -> Output<'_, S, I, D> {
         let current = self.current.take();
-        self.current = next.clone();
+        let event = self.event.take();
+        let previous = self.previous.take();
 
-        let Some(current) = current else {
+        if let OutputKind::Regular { next, next_event } = &kind {
+            self.current = Some(next.clone());
+            self.event = *next_event;
+        }
+
+        let state = if let Some(current) = current {
+            self.previous = Some((current.kind(), current.context().privilege));
+
+            Some(OutputState::First {
+                previous,
+                current,
+                event,
+            })
+        } else {
             // We cannot and do not generate a payload without a current step.
             // This corresponds to the `N` vertex for the `Qualified?` node in
             // the spec.
-            self.previous = None;
             self.reported_exception = false;
-            self.event = None;
-            return Ok(None);
+            None
         };
 
-        let kind = current.kind();
-
-        let previous = self.previous.take();
-        self.previous = Some((kind, current.context().privilege));
-
-        let reported_exception = self.reported_exception;
-        self.reported_exception = false;
-
-        let event = self.event.take();
-        self.event = next_event;
-
-        let mut builder =
-            self.state
-                .payload_builder(current.address(), current.context(), current.timestamp());
-
-        // Corresponds to `Branch?` in spec
-        if let Kind::Branch { taken, .. } = kind {
-            builder.add_branch(taken)?;
-        }
-
-        // Corresponds to `Exception previous?` in spec
-        if let Some((Kind::Trap { info, .. }, _)) = previous {
-            let payload = if kind.is_exc_only() {
-                builder.report_trap(false, info).into()
-            } else if reported_exception {
-                builder.report_sync().into()
-            } else {
-                builder.report_trap(true, info).into()
-            };
-            return Ok(Some(StepOutput::Payload(payload)));
-        }
-
-        // Corresponds to `Inst is 1st qualified, ppccd or >max_resync?` in spec
-        if event == Some(Event::ReSync)
-            || matches!(current.ctype(), CType::Precisely | CType::AsyncDiscon)
-            || previous.map(|(_, p)| p) != Some(current.context().privilege)
-        {
-            return Ok(Some(StepOutput::Payload(builder.report_sync().into())));
-        }
-
-        // Corresponds to `Updiscon previous?` in spec
-        let sijumps = self.features.sequentially_inferred_jumps;
-        if previous.map(|(k, _)| k.is_updiscon(sijumps)) == Some(true) {
-            return if let Kind::Trap {
-                insn_size: None,
-                info,
-            } = kind
-            {
-                self.reported_exception = true;
-                Ok(builder.report_trap(false, info).into())
-            } else {
-                let reason = if next
-                    .as_ref()
-                    .map(|n| {
-                        next_event == Some(Event::ReSync)
-                            || matches!(n.kind(), Kind::Trap { .. })
-                            || !matches!(n.ctype(), CType::Unreported)
-                            || current.context().privilege != n.context().privilege
-                    })
-                    .unwrap_or(self.options.is_some())
-                {
-                    state::Reason::Updiscon
-                } else {
-                    state::Reason::Other
-                };
-                builder.report_address(reason)
-            }
-            .map(Into::into);
-        }
-
-        // The following correspond to `resync_br or er_n?` in spec
-        if event == Some(Event::Notify) {
-            return builder
-                .report_address(state::Reason::Notify)
-                .map(Into::into);
-        }
-
-        if let Kind::Trap { insn_size, .. } = kind {
-            return if insn_size.is_some() {
-                builder.report_address(state::Reason::Other).map(Into::into)
-            } else {
-                Ok(None)
-            };
-        }
-
-        let have_branches = builder.branches() != 0;
-        if next_event == Some(Event::ReSync) && have_branches {
-            return builder.report_address(state::Reason::Other).map(Into::into);
-        }
-
-        // The following correspond to `Next inst is exc_only, ppccd_br or
-        // unqualified?` in spec
-        let Some(next) = next else {
-            return Ok(builder.into());
-        };
-
-        let ppccd = next.context().privilege != current.context().privilege
-            || matches!(next.ctype(), CType::Precisely | CType::AsyncDiscon);
-        if next.kind().is_exc_only() || (ppccd && have_branches) {
-            return builder.report_address(state::Reason::Other).map(Into::into);
-        }
-
-        // Corresponds to `rpt_br?` in spec
-        if let Some(branches) = builder.report_full_branchmap() {
-            return Ok(Some(StepOutput::Payload(branches.into())));
-        }
-
-        // Corresponds to `cci?` in spec
-        match current.ctype() {
-            CType::Imprecisely => Ok(Some(StepOutput::Payload(builder.context().into()))),
-            _ => Ok(None),
+        Output {
+            generator: self,
+            kind,
+            state,
         }
     }
 }
@@ -270,25 +162,6 @@ pub enum Event {
     ReSync,
     /// Notification was requested for this step
     Notify,
-}
-
-/// Output potentially produced by the [`Generator`]
-#[derive(Debug)]
-enum StepOutput<'s, I: unit::IOptions, D> {
-    Payload(InstructionTrace<I, D>),
-    Builder(state::PayloadBuilder<'s>),
-}
-
-impl<I: unit::IOptions, D> From<InstructionTrace<I, D>> for Option<StepOutput<'_, I, D>> {
-    fn from(payload: InstructionTrace<I, D>) -> Self {
-        Some(StepOutput::Payload(payload))
-    }
-}
-
-impl<'s, I: unit::IOptions, D> From<state::PayloadBuilder<'s>> for Option<StepOutput<'s, I, D>> {
-    fn from(builder: state::PayloadBuilder<'s>) -> Self {
-        Some(StepOutput::Builder(builder))
-    }
 }
 
 /// Create a new [`Builder`] for [`Generator`]s
@@ -364,50 +237,267 @@ impl Builder {
     }
 }
 
-/// Payload draining [`Iterator`]
+/// Output produced by a [`Generator`] for a single [`Step`][step::Step]
 #[derive(Debug)]
-pub struct Drain<'g, S: step::Step, I: unit::IOptions, D> {
+pub struct Output<'g, S, I = unit::ReferenceIOptions, D = unit::ReferenceDOptions>
+where
+    S: step::Step,
+    I: unit::IOptions,
+{
     generator: &'g mut Generator<S, I, D>,
-    ienable: bool,
-    qual_status: Option<sync::QualStatus>,
+    kind: OutputKind<S>,
+    state: Option<OutputState<S>>,
 }
 
-impl<'g, S: step::Step, I: unit::IOptions, D> Drain<'g, S, I, D> {
-    /// Create a new draining [`Iterator`]
-    fn new(generator: &'g mut Generator<S, I, D>, ienable: bool) -> Self {
-        Drain {
-            generator,
-            ienable,
-            qual_status: Some(sync::QualStatus::EndedRep),
+impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
+    /// Handle the start of the given block, potentially issuing a payload
+    fn do_block_start(
+        &mut self,
+        previous: Option<(step::Kind, Privilege)>,
+        current: &S,
+        event: Option<Event>,
+    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
+        use hart2enc::CType;
+
+        let kind = current.kind();
+
+        let reported_exception = self.generator.reported_exception;
+        self.generator.reported_exception = false;
+
+        let mut builder = self.generator.state.payload_builder(
+            current.address(),
+            current.context(),
+            current.timestamp(),
+        );
+
+        // Corresponds to `Branch?` in spec
+        if let step::Kind::Branch { taken, .. } = kind {
+            builder.add_branch(taken)?;
+        }
+
+        // Corresponds to `Exception previous?` in spec
+        if let Some((step::Kind::Trap { info, .. }, _)) = previous {
+            let payload = if kind.is_exc_only() {
+                builder.report_trap(false, info).into()
+            } else if reported_exception {
+                builder.report_sync().into()
+            } else {
+                builder.report_trap(true, info).into()
+            };
+            return Ok(Some(payload));
+        }
+
+        // Corresponds to `Inst is 1st qualified, ppccd or >max_resync?` in spec
+        if event == Some(Event::ReSync)
+            || matches!(current.ctype(), CType::Precisely | CType::AsyncDiscon)
+            || previous.map(|(_, p)| p) != Some(current.context().privilege)
+        {
+            return Ok(Some(builder.report_sync().into()));
+        }
+
+        // Corresponds to `Updiscon previous?` in spec
+        let sijumps = self.generator.features.sequentially_inferred_jumps;
+        if previous.map(|(k, _)| k.is_updiscon(sijumps)) == Some(true) {
+            return if let step::Kind::Trap {
+                insn_size: None,
+                info,
+            } = kind
+            {
+                self.generator.reported_exception = true;
+                Ok(builder.report_trap(false, info).into())
+            } else {
+                let reason = if self
+                    .kind
+                    .is_updiscon_cause(current.context().privilege)
+                    .unwrap_or(self.generator.options.is_some())
+                {
+                    state::Reason::Updiscon
+                } else {
+                    state::Reason::Other
+                };
+                builder.report_address(reason)
+            }
+            .map(Some);
+        }
+
+        Ok(None)
+    }
+
+    /// Handle the end of the given block, potentially issuing a payload
+    fn do_block_end(
+        &mut self,
+        current: &S,
+        event: Option<Event>,
+    ) -> Result<Option<InstructionTrace<I, D>>, Error> {
+        use hart2enc::CType;
+
+        let mut builder = self.generator.state.payload_builder(
+            current.address(),
+            current.context(),
+            current.timestamp(),
+        );
+
+        // The following correspond to `resync_br or er_n?` in spec
+        if event == Some(Event::Notify) {
+            return builder.report_address(state::Reason::Notify).map(Some);
+        }
+
+        if let step::Kind::Trap { insn_size, .. } = current.kind() {
+            // We return for traps in any case since payload generation is only
+            // valid for non-trap steps for any of all of the remaining cases.
+            return if insn_size.is_some() {
+                builder.report_address(state::Reason::Other).map(Some)
+            } else {
+                Ok(None)
+            };
+        }
+
+        // The following correspond to `Next inst is exc_only, ppccd_br or
+        // unqualified?` in spec
+        let OutputKind::Regular { next, next_event } = &self.kind else {
+            return Ok(None);
+        };
+
+        let have_branches = builder.branches() != 0;
+        if *next_event == Some(Event::ReSync) && have_branches {
+            return builder.report_address(state::Reason::Other).map(Some);
+        }
+
+        let ppccd = next.context().privilege != current.context().privilege
+            || matches!(next.ctype(), CType::Precisely | CType::AsyncDiscon);
+        if next.kind().is_exc_only() || (ppccd && have_branches) {
+            return builder.report_address(state::Reason::Other).map(Some);
+        }
+
+        // Corresponds to `rpt_br?` in spec
+        if let Some(branches) = builder.report_full_branchmap() {
+            return Ok(Some(branches.into()));
+        }
+
+        // Corresponds to `cci?` in spec
+        match current.ctype() {
+            CType::Imprecisely => Ok(Some(builder.context().into())),
+            _ => Ok(None),
         }
     }
 }
 
-impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Iterator for Drain<'_, S, I, D> {
+impl<S: step::Step, I: unit::IOptions + Clone, D: Clone> Iterator for Output<'_, S, I, D> {
     type Item = Result<InstructionTrace<I, D>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.generator.do_step(None, None) {
-            Ok(Some(StepOutput::Payload(p))) => {
-                self.qual_status = Some(sync::QualStatus::EndedNtr);
-                Some(Ok(p))
+        match self.state.take()? {
+            OutputState::First {
+                previous,
+                current,
+                event,
+            } => {
+                let res = self.do_block_start(previous, &current, event).transpose();
+                if res.is_none() {
+                    self.state = Some(OutputState::Last { current, event });
+                    return self.next();
+                }
+                if let OutputKind::Draining { ienable } = &self.kind {
+                    self.state = Some(OutputState::End {
+                        ienable: *ienable,
+                        qual_status: sync::QualStatus::EndedNtr,
+                    });
+                }
+                res
             }
-            Ok(Some(StepOutput::Builder(b))) => Some(b.report_address(state::Reason::Other)),
-            Ok(None) => Option::zip(self.generator.options.clone(), self.qual_status.take()).map(
-                |((ioptions, doptions), qual_status)| {
-                    Ok(sync::Support {
-                        ienable: self.ienable,
-                        encoder_mode: sync::EncoderMode::BranchTrace,
-                        qual_status,
-                        ioptions,
-                        denable: false,
-                        dloss: false,
-                        doptions,
-                    }
-                    .into())
-                },
-            ),
-            Err(e) => Some(Err(e)),
+            OutputState::Last { current, event } => {
+                let res = self.do_block_end(&current, event).transpose();
+                let OutputKind::Draining { ienable } = &self.kind else {
+                    return res;
+                };
+
+                let qual_status = match res.is_some() {
+                    true => sync::QualStatus::EndedNtr,
+                    false => sync::QualStatus::EndedRep,
+                };
+                self.state = Some(OutputState::End {
+                    ienable: *ienable,
+                    qual_status,
+                });
+                res.or_else(|| {
+                    let res = self
+                        .generator
+                        .state
+                        .payload_builder(current.address(), current.context(), current.timestamp())
+                        .report_address(state::Reason::Other);
+                    Some(res)
+                })
+            }
+            OutputState::End {
+                ienable,
+                qual_status,
+            } => {
+                let (ioptions, doptions) = self.generator.options.clone()?;
+                Some(Ok(sync::Support {
+                    ienable,
+                    encoder_mode: sync::EncoderMode::BranchTrace,
+                    qual_status,
+                    ioptions,
+                    denable: false,
+                    dloss: false,
+                    doptions,
+                }
+                .into()))
+            }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.state {
+            Some(OutputState::First { .. }) => (1, Some(3)),
+            Some(OutputState::Last { .. }) => (1, Some(2)),
+            Some(OutputState::End { .. }) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
+}
+
+/// State of the [`Output`]
+#[derive(Copy, Clone, Debug)]
+enum OutputState<S> {
+    /// Handling the first instruction in the block
+    First {
+        previous: Option<(step::Kind, Privilege)>,
+        current: S,
+        event: Option<Event>,
+    },
+    /// Handling the last instruction in the block
+    Last { current: S, event: Option<Event> },
+    /// End-of-trace condition
+    End {
+        ienable: bool,
+        qual_status: sync::QualStatus,
+    },
+}
+
+/// Kind of [`Output`]
+#[derive(Clone, Debug)]
+enum OutputKind<S> {
+    /// Regular tracing operation
+    ///
+    /// A new [`Step`]s was fed to the [`Generator`], resulting in this
+    /// [`Output`].
+    Regular { next: S, next_event: Option<Event> },
+    /// Draining a [`Generator`]'s inner state
+    Draining { ienable: bool },
+}
+
+impl<S: step::Step> OutputKind<S> {
+    /// Determine whether the next [`Step`] warrants address with updiscon flag
+    pub fn is_updiscon_cause(&self, privilege: Privilege) -> Option<bool> {
+        let Self::Regular { next, next_event } = self else {
+            return None;
+        };
+
+        let res = *next_event == Some(Event::ReSync)
+            || matches!(next.kind(), step::Kind::Trap { .. })
+            || !matches!(next.ctype(), hart2enc::CType::Unreported)
+            || privilege != next.context().privilege;
+        Some(res)
     }
 }

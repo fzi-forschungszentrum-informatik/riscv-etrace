@@ -166,11 +166,11 @@ macro_rules! generator_check_def {
         } else {
             None
         };
-        let packet = $c
-            .feed_item($a, $i.into(), hints)
-            .and_then(|c| $g.process_step(c, event).expect("Could not process step"));
-        if let Some(packet) = packet {
-            assert_eq!(Some(&packet), $p.split_off_first());
+        if let Some(step) = $c.feed_item($a, $i.into(), hints) {
+            $g.process_step(step, event).for_each(|r| {
+                let packet = r.expect("Error while generating packet");
+                assert_eq!(Some(&packet), $p.split_off_first());
+            });
         }
     };
     ($g:ident, $c:ident, $p:ident, [$($i:tt),*; $n:literal]) => {

@@ -9,6 +9,18 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - A fn `tracer::Tracer::qual_status` for retrieving the qualification status
   after a trace has ended or was lost.
+- An `Iterator` type `generator::Output` that yields payloads resulting from
+  processing a `generator::step::Step`.
+
+### Changed
+
+- `generator::Generator` fns `process_step` and `end_qualification` are now
+  infallible and return a `generator::Output`.
+
+### Removed
+
+- `generator::Drain` was replaced by `generator::Output` as a return type for
+  `generator::Generator::end_qualification` and removed.
 
 ## 0.8.0 - 2026-01-31
 
