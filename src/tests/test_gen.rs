@@ -149,6 +149,43 @@ macro_rules! generator_test {
             }
             assert_eq!(packets, &[]);
         }
+
+        #[test]
+        fn block_encode() {
+            let mut generator: generator::Generator<TestStep> = $g
+                .build()
+                .expect("Could not build generator");
+            let mut converter = ItemConverter::default().for_blocks();
+            let packets: [payload::InstructionTrace; _] = [
+                $($p.into(),)*
+            ];
+            let mut packets: &[_] = &packets;
+            if let Some(
+                payload::InstructionTrace::Synchronization(
+                    sync::Synchronization::Support(sync::Support { ioptions, doptions, .. })
+                )
+            ) = packets.last() {
+                generator
+                    .begin_qualification(ioptions.clone(), doptions.clone())
+                    .expect("Could not start qualification");
+            }
+            $(
+                generator_check_def!(generator, converter, packets, $($i),*);
+            )*
+            if let Some(step) = converter.get_left_over() {
+                generator.process_step(step, None).for_each(|r| {
+                    let packet = r.expect("Error while generating packet from leftovers");
+                    assert_eq!(Some(&packet), packets.split_off_first());
+                });
+            }
+            for packet in generator.end_qualification(true) {
+                assert_eq!(
+                    Some(&packet.expect("Could not drain packet")),
+                    packets.split_off_first(),
+                );
+            }
+            assert_eq!(packets, &[]);
+        }
     };
     ($g:expr, false, $($p:expr => { $($i:tt),* })*) => {};
 }
