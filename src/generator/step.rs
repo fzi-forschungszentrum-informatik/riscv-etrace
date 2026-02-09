@@ -10,12 +10,35 @@ use super::hart2enc::{CType, IType, JumpType};
 use instruction::info::Info;
 
 /// Tracing data emitted by a HART in a single execution step
+///
+/// An execution step covers either a sequence of instruction retirements (i.e.
+/// the retirement of a block of instrucitons) or a single trap (in wihch case
+/// [`kind`][Self::kind] returns [`Kind::Trap`]). If the step covers instruction
+/// retirements, all but the last instructions in the block must not have any
+/// effect on the control flow. The value of [`kind`][Self::kind] will
+/// correspond to the last instruction only.
+///
+/// # For implementers
+///
+/// Both [`last_address`][Self::last_address] and [`is_single`][Self::is_single]
+/// are implemented based on [`last_offset`][Self::last_offset]. Therefore, only
+/// the latter needs to be implemented for block retirement.
 pub trait Step {
     /// Address relevant for this step
     ///
-    /// For instruction retirement, this value if the address of the retired
-    /// instruction.
+    /// For instruction retirement, this value points to the first instruction
+    /// in the block (or simply "the" instruction for single retirement).
     fn address(&self) -> u64;
+
+    /// Offset of the block's final instruction from [`address`][Self::address]
+    fn last_offset(&self) -> u64 {
+        0
+    }
+
+    /// Address of the final instruction in the block
+    fn last_address(&self) -> u64 {
+        self.address().wrapping_add(self.last_offset())
+    }
 
     /// Step kind
     fn kind(&self) -> Kind;
@@ -29,6 +52,11 @@ pub trait Step {
     /// Timestamp
     fn timestamp(&self) -> Option<u64> {
         None
+    }
+
+    /// Determine whether this step represents a single instruction or trap
+    fn is_single(&self) -> bool {
+        self.last_offset() == 0
     }
 
     /// Refine this step's data with information from the next step

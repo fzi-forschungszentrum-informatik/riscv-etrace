@@ -11,11 +11,17 @@ is based on https://keepachangelog.com/en/1.1.0/.
   after a trace has ended or was lost.
 - An `Iterator` type `generator::Output` that yields payloads resulting from
   processing a `generator::step::Step`.
+- Provided `generator::step::Step` fns `last_offset`, `last_address` and
+  `is_single` for expressing block retirement. These are handled by when
+  generating traces via `generator::Generator` and `generator::Output`.
 
 ### Changed
 
 - `generator::Generator` fns `process_step` and `end_qualification` are now
   infallible and return a `generator::Output`.
+- `generator::state::PayloadBuilder::add_branch` gained an additional parameter
+  for controlling whether or not the branch will be used for the `branch` field
+  in sync payloads.
 
 ### Removed
 

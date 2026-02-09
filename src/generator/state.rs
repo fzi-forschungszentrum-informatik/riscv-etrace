@@ -86,9 +86,13 @@ pub struct PayloadBuilder<'s> {
 /// State mutation and queries
 impl PayloadBuilder<'_> {
     /// Add a branch being taken or not taken from the current address
-    pub fn add_branch(&mut self, branch_taken: bool) -> Result<(), Error> {
+    ///
+    /// Adds a branch to the associated [`State`]'s branch map. If `true` is
+    /// passed for `is_current`, is will also be used for the branch field in
+    /// [`sync::Start`] and [`sync::Trap`] payloads produced by this builder.
+    pub fn add_branch(&mut self, branch_taken: bool, is_current: bool) -> Result<(), Error> {
         self.state.add_branch(branch_taken)?;
-        self.is_branch = true;
+        self.is_branch = is_current;
         Ok(())
     }
 
