@@ -231,6 +231,7 @@ impl ItemConverter {
                 } else {
                     let cycle = TestStep {
                         address,
+                        last_offset: 0,
                         insn: Some(insn),
                         trap: self.trap.take(),
                         ctype,
@@ -245,6 +246,7 @@ impl ItemConverter {
                 if let Some(insn) = self.insn.take() {
                     let step = TestStep {
                         address,
+                        last_offset: 0,
                         insn: Some(insn),
                         trap: Some(info),
                         ctype,
@@ -264,6 +266,7 @@ impl ItemConverter {
                 self.trap.take().map(|trap| {
                     let step = TestStep {
                         address,
+                        last_offset: 0,
                         insn: self.insn.take(),
                         trap: Some(trap),
                         ctype,
@@ -282,6 +285,7 @@ impl ItemConverter {
 #[derive(Copy, Clone, Debug)]
 pub struct TestStep {
     address: u64,
+    last_offset: u64,
     insn: Option<Instruction>,
     trap: Option<trap::Info>,
     ctype: CType,
@@ -293,6 +297,10 @@ pub struct TestStep {
 impl step::Step for TestStep {
     fn address(&self) -> u64 {
         self.address
+    }
+
+    fn last_offset(&self) -> u64 {
+        self.last_offset
     }
 
     fn kind(&self) -> step::Kind {
@@ -326,7 +334,8 @@ impl step::Step for TestStep {
         use instruction::info::Info;
 
         if let Some(target) = self.insn.branch_target().filter(|_| next.insn.is_some()) {
-            self.branch_taken = self.address.wrapping_add_signed(target.into()) == next.address;
+            self.branch_taken =
+                self.last_address().wrapping_add_signed(target.into()) == next.address;
         }
     }
 }
