@@ -266,10 +266,11 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
 
         initer.set_stack_depth(None);
 
-        if support.qual_status != QualStatus::NoChange {
-            self.iter_state = IterationState::Depleting;
+        let qual_status = support.qual_status;
+        if qual_status != QualStatus::NoChange {
+            self.iter_state = IterationState::Depleting { qual_status };
 
-            if support.qual_status == QualStatus::EndedNtr && initer.update_inferred() {
+            if qual_status == QualStatus::EndedNtr && initer.update_inferred() {
                 initer.set_condition(state::StopCondition::NotInferred);
             }
         }
@@ -283,6 +284,18 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
     /// indicating end or loss of trace.
     pub fn is_tracing(&self) -> bool {
         self.iter_state.is_tracing()
+    }
+
+    /// Retrieve the current [`sync::QualStatus`] if availible
+    ///
+    /// After processing of a [`sync::Support`] signalling end or loss of trace,
+    /// this fn returns the associated [`sync::QualStatus`]. In addition, the
+    /// [`Default`] status will be returned before tracing start.
+    pub fn qual_status(&self) -> Option<sync::QualStatus> {
+        match &self.iter_state {
+            IterationState::Depleting { qual_status } => Some(*qual_status),
+            _ => None,
+        }
     }
 
     /// Create a [`state::Initializer`] for [`sync::Synchronization`] variants
@@ -360,7 +373,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
                 let pc = pc.unwrap_or(self.state.current_pc());
                 Some(Ok(Item::new(pc, context.into())))
             }
-            IterationState::FollowExec | IterationState::Depleting => {
+            IterationState::FollowExec | IterationState::Depleting { .. } => {
                 let res = self
                     .state
                     .next_item(&mut self.binary)
@@ -395,7 +408,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
 
             // Minimum 1 item, but could also be infinite
             IterationState::FollowExec => (0, None),
-            IterationState::Depleting => (0, None),
+            IterationState::Depleting { .. } => (0, None),
         }
     }
 }
@@ -539,7 +552,7 @@ impl<B: Default> Default for Builder<B> {
 }
 
 /// [`Tracer`] iteration states
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum IterationState {
     /// The [`Tracer`] reports a single item (the current one)
     SingleItem,
@@ -559,14 +572,21 @@ enum IterationState {
     /// We follow the execution path based on the current packet's data
     FollowExec,
     /// We follow the execution path as long as it's inferable
-    #[default]
-    Depleting,
+    Depleting { qual_status: sync::QualStatus },
 }
 
 impl IterationState {
     /// Check whether we are currently tracing, assuming we depleted all items
     pub fn is_tracing(&self) -> bool {
-        !matches!(self, Self::Depleting)
+        !matches!(self, Self::Depleting { .. })
+    }
+}
+
+impl Default for IterationState {
+    fn default() -> Self {
+        Self::Depleting {
+            qual_status: Default::default(),
+        }
     }
 }
 
