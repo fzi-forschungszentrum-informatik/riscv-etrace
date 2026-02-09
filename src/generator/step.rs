@@ -17,6 +17,12 @@ use instruction::info::Info;
 /// retirements, all but the last instructions in the block must not have any
 /// effect on the control flow. The value of [`kind`][Self::kind] will
 /// correspond to the last instruction only.
+///
+/// # For implementers
+///
+/// Both [`last_address`][Self::last_address] and [`is_single`][Self::is_single]
+/// are implemented based on [`last_offset`][Self::last_offset]. Therefore, only
+/// the latter needs to be implemented for block retirement.
 pub trait Step {
     /// Address relevant for this step
     ///
