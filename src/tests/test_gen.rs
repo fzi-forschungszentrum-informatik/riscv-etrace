@@ -267,7 +267,7 @@ impl ItemConverter {
                     let step = TestStep {
                         address,
                         last_offset: 0,
-                        insn: self.insn.take(),
+                        insn: None,
                         trap: Some(trap),
                         ctype,
                         context,
