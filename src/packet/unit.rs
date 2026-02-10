@@ -154,6 +154,33 @@ impl<T: IOptions + ?Sized> IOptions for Box<T> {
     }
 }
 
+#[cfg(feature = "either")]
+impl<L: IOptions, R: IOptions> IOptions for either::Either<L, R> {
+    fn address_mode(&self) -> Option<AddressMode> {
+        either::for_both!(self, o => o.address_mode())
+    }
+
+    fn sequentially_inferred_jumps(&self) -> Option<bool> {
+        either::for_both!(self, o => o.sequentially_inferred_jumps())
+    }
+
+    fn implicit_return(&self) -> Option<bool> {
+        either::for_both!(self, o => o.implicit_return())
+    }
+
+    fn implicit_exception(&self) -> Option<bool> {
+        either::for_both!(self, o => o.implicit_exception())
+    }
+
+    fn branch_prediction(&self) -> Option<bool> {
+        either::for_both!(self, o => o.branch_prediction())
+    }
+
+    fn jump_target_cache(&self) -> Option<bool> {
+        either::for_both!(self, o => o.jump_target_cache())
+    }
+}
+
 /// An [`IOptions`] that is [`Debug`][fmt::Debug]
 pub trait DebugIOptions: IOptions + fmt::Debug {}
 
