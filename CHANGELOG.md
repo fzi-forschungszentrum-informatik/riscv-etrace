@@ -17,6 +17,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `instruction::info::Info` impl for `riscv_isa::Compressed`.
 - `instruction::info::Decode<riscv_isa::Compressed>` impl for
   `riscv_isa::Target`.
+- An optional dependency on `either`.
+- `instruction::info::Info`, `binary::Binary`, `binary::error::MaybeMiss`,
+  `binary::error::Miss`, `packet::encoder::Encode` and `packet::unit::IOptions`
+  for `either::Either`.
 
 ### Changed
 

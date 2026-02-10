@@ -182,6 +182,52 @@ impl<T: Info> Info for Option<T> {
     }
 }
 
+#[cfg(feature = "either")]
+impl<L, R, T> Info for either::Either<L, R>
+where
+    L: Info<Register = T>,
+    R: Info<Register = T>,
+    T: Clone + PartialEq,
+{
+    type Register = T;
+
+    fn branch_target(&self) -> Option<i16> {
+        either::for_both!(self, i => i.branch_target())
+    }
+
+    fn inferable_jump_target(&self) -> Option<i32> {
+        either::for_both!(self, i => i.inferable_jump_target())
+    }
+
+    fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
+        either::for_both!(self, i => i.uninferable_jump_target())
+    }
+
+    fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
+        either::for_both!(self, i => i.upper_immediate(pc))
+    }
+
+    fn is_return_from_trap(&self) -> bool {
+        either::for_both!(self, i => i.is_return_from_trap())
+    }
+
+    fn is_ecall_or_ebreak(&self) -> bool {
+        either::for_both!(self, i => i.is_ecall_or_ebreak())
+    }
+
+    fn is_call(&self) -> bool {
+        either::for_both!(self, i => i.is_call())
+    }
+
+    fn is_return(&self) -> bool {
+        either::for_both!(self, i => i.is_return())
+    }
+
+    fn ignored() -> Self {
+        either::Left(Info::ignored())
+    }
+}
+
 #[cfg(feature = "riscv-isa")]
 impl Info for riscv_isa::Instruction {
     type Register = u32;
