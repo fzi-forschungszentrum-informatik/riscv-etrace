@@ -5,29 +5,29 @@ use super::*;
 
 #[allow(unused_macros)]
 macro_rules! compare_test {
-    ($n:ident, $b:expr) => {
+    ($n:ident, $t:ty, $b:expr) => {
         mod $n {
             use super::*;
 
             #[test]
             fn compare_16() {
-                compare_infos_16($b)
+                compare_infos_16::<_, $t>($b)
             }
 
-            compare_test!(compare_32_0, $b, 0, 29);
-            compare_test!(compare_32_1, $b, 1, 29);
-            compare_test!(compare_32_2, $b, 2, 29);
-            compare_test!(compare_32_3, $b, 3, 29);
-            compare_test!(compare_32_4, $b, 4, 29);
-            compare_test!(compare_32_5, $b, 5, 29);
-            compare_test!(compare_32_6, $b, 6, 29);
-            compare_test!(compare_32_7, $b, 7, 29);
+            compare_test!(compare_32_0, $b, $t, 0, 29);
+            compare_test!(compare_32_1, $b, $t, 1, 29);
+            compare_test!(compare_32_2, $b, $t, 2, 29);
+            compare_test!(compare_32_3, $b, $t, 3, 29);
+            compare_test!(compare_32_4, $b, $t, 4, 29);
+            compare_test!(compare_32_5, $b, $t, 5, 29);
+            compare_test!(compare_32_6, $b, $t, 6, 29);
+            compare_test!(compare_32_7, $b, $t, 7, 29);
         }
     };
-    ($n:ident, $b:expr, $i:expr, $o:expr) => {
+    ($n:ident, $b:expr, $t:ty, $i:expr, $o:expr) => {
         #[test]
         fn $n() {
-            compare_infos_32($b, $i, $o)
+            compare_infos_32::<_, $t>($b, $i, $o);
         }
     };
 }
@@ -40,11 +40,13 @@ mod compare_riscv_isa {
 
     compare_test!(
         rv32i,
+        riscv_isa::Instruction,
         riscv_isa::Target::rv32i_full()
     );
 
     compare_test!(
         rv64i,
+        riscv_isa::Instruction,
         riscv_isa::Target::rv64i_full()
     );
 }
