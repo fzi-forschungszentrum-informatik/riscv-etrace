@@ -36,30 +36,16 @@ macro_rules! compare_test {
 mod compare_riscv_isa {
     use super::*;
 
+    use info::MakeDecode;
+
     compare_test!(
         rv32i,
-        riscv_isa::Target {
-            xlen: riscv_isa::Xlen::Rv32,
-            privileged: true,
-            supervisor_mode: true,
-            c: true,
-            zicsr: true,
-            zifencei: true,
-            ..Default::default()
-        }
+        riscv_isa::Target::rv32i_full()
     );
 
     compare_test!(
         rv64i,
-        riscv_isa::Target {
-            xlen: riscv_isa::Xlen::Rv64,
-            privileged: true,
-            supervisor_mode: true,
-            c: true,
-            zicsr: true,
-            zifencei: true,
-            ..Default::default()
-        }
+        riscv_isa::Target::rv64i_full()
     );
 }
 
