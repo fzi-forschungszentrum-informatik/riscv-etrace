@@ -149,6 +149,43 @@ macro_rules! generator_test {
             }
             assert_eq!(packets, &[]);
         }
+
+        #[test]
+        fn block_encode() {
+            let mut generator: generator::Generator<TestStep> = $g
+                .build()
+                .expect("Could not build generator");
+            let mut converter = ItemConverter::default().for_blocks();
+            let packets: [payload::InstructionTrace; _] = [
+                $($p.into(),)*
+            ];
+            let mut packets: &[_] = &packets;
+            if let Some(
+                payload::InstructionTrace::Synchronization(
+                    sync::Synchronization::Support(sync::Support { ioptions, doptions, .. })
+                )
+            ) = packets.last() {
+                generator
+                    .begin_qualification(ioptions.clone(), doptions.clone())
+                    .expect("Could not start qualification");
+            }
+            $(
+                generator_check_def!(generator, converter, packets, $($i),*);
+            )*
+            if let Some(step) = converter.get_left_over() {
+                generator.process_step(step, None).for_each(|r| {
+                    let packet = r.expect("Error while generating packet from leftovers");
+                    assert_eq!(Some(&packet), packets.split_off_first());
+                });
+            }
+            for packet in generator.end_qualification(true) {
+                assert_eq!(
+                    Some(&packet.expect("Could not drain packet")),
+                    packets.split_off_first(),
+                );
+            }
+            assert_eq!(packets, &[]);
+        }
     };
     ($g:expr, false, $($p:expr => { $($i:tt),* })*) => {};
 }
@@ -159,14 +196,7 @@ macro_rules! generator_check_def {
             $($h: true,)*
             ..Default::default()
         };
-        let event = if hints.sync {
-            Some(generator::Event::ReSync)
-        } else if hints.notify {
-            Some(generator::Event::Notify)
-        } else {
-            None
-        };
-        if let Some(step) = $c.feed_item($a, $i.into(), hints) {
+        if let Some((step, event)) = $c.feed_item($a, $i.into(), hints) {
             $g.process_step(step, event).for_each(|r| {
                 let packet = r.expect("Error while generating packet");
                 assert_eq!(Some(&packet), $p.split_off_first());
@@ -199,21 +229,30 @@ pub struct ItemHints {
 /// Helper for constructing [`TestStep`]s from trace item definitions
 #[derive(Default)]
 pub struct ItemConverter {
-    insn: Option<Instruction>,
+    current_address: Option<u64>,
+    last: Option<(Instruction, u64)>,
     trap: Option<trap::Info>,
     ctype: CType,
     context: Context,
     upper_immediate: Option<<instruction::Kind as Info>::Register>,
+    make_blocks: bool,
 }
 
 impl ItemConverter {
+    pub fn for_blocks(self) -> Self {
+        Self {
+            make_blocks: true,
+            ..self
+        }
+    }
+
     /// Feed a trace item definition, potentially producing a [`TestStep`]
     pub fn feed_item(
         &mut self,
         address: u64,
         kind: item::Kind,
         hints: ItemHints,
-    ) -> Option<TestStep> {
+    ) -> Option<(TestStep, Option<generator::Event>)> {
         use item::Kind;
 
         let ctype = self.ctype;
@@ -221,15 +260,33 @@ impl ItemConverter {
 
         let prev_upper_immediate = self.upper_immediate.take();
 
+        let event = if hints.sync {
+            Some(generator::Event::ReSync)
+        } else if hints.notify {
+            Some(generator::Event::Notify)
+        } else {
+            None
+        };
+
+        let may_skip = self.make_blocks && event.is_none();
         match kind {
+            Kind::Regular(insn) if may_skip && insn.info.is_none() => {
+                if self.current_address.is_none() {
+                    self.current_address = Some(address);
+                }
+                self.last = Some((insn, address));
+                None
+            }
             Kind::Regular(insn) => {
                 self.upper_immediate = insn.upper_immediate(address).map(|(r, _)| r);
                 if insn.is_ecall_or_ebreak() {
-                    self.insn = Some(insn);
+                    self.last = Some((insn, address));
                     None
                 } else {
+                    let current_address = self.current_address.take().unwrap_or(address);
                     let cycle = TestStep {
-                        address,
+                        address: current_address,
+                        last_offset: address - current_address,
                         insn: Some(insn),
                         trap: self.trap.take(),
                         ctype,
@@ -237,39 +294,66 @@ impl ItemConverter {
                         branch_taken: hints.branch_taken,
                         prev_upper_immediate,
                     };
-                    Some(cycle)
+                    Some((cycle, event))
                 }
             }
             Kind::Trap(info) => {
-                if let Some(insn) = self.insn.take() {
-                    Some(TestStep {
-                        address,
-                        insn: Some(insn),
-                        trap: Some(info),
-                        ctype,
-                        context: self.context,
-                        branch_taken: hints.branch_taken,
-                        prev_upper_immediate,
-                    })
+                let Some((insn, address)) = self.last.take() else {
+                    self.trap = Some(info);
+                    return None;
+                };
+
+                let trap = if insn.is_ecall_or_ebreak() {
+                    Some(info)
                 } else {
                     self.trap = Some(info);
                     None
-                }
+                };
+                let current_address = self.current_address.take().unwrap_or(address);
+                let step = TestStep {
+                    address: current_address,
+                    last_offset: address - current_address,
+                    insn: Some(insn),
+                    trap,
+                    ctype,
+                    context: self.context,
+                    branch_taken: hints.branch_taken,
+                    prev_upper_immediate,
+                };
+                Some((step, event))
             }
             Kind::Context(new_context) => {
                 let context = self.context;
                 self.context = new_context;
-                self.trap.take().map(|trap| TestStep {
-                    address,
-                    insn: self.insn.take(),
-                    trap: Some(trap),
-                    ctype,
-                    context,
-                    branch_taken: false,
-                    prev_upper_immediate,
+                self.current_address = None;
+                self.trap.take().map(|trap| {
+                    let step = TestStep {
+                        address,
+                        last_offset: 0,
+                        insn: None,
+                        trap: Some(trap),
+                        ctype,
+                        context,
+                        branch_taken: false,
+                        prev_upper_immediate,
+                    };
+                    (step, event)
                 })
             }
         }
+    }
+
+    pub fn get_left_over(self) -> Option<TestStep> {
+        Option::zip(self.current_address, self.last).map(|(c, (i, a))| TestStep {
+            address: c,
+            last_offset: a - c,
+            insn: Some(i),
+            trap: None,
+            ctype: self.ctype,
+            context: self.context,
+            branch_taken: false,
+            prev_upper_immediate: None,
+        })
     }
 }
 
@@ -277,6 +361,7 @@ impl ItemConverter {
 #[derive(Copy, Clone, Debug)]
 pub struct TestStep {
     address: u64,
+    last_offset: u64,
     insn: Option<Instruction>,
     trap: Option<trap::Info>,
     ctype: CType,
@@ -288,6 +373,10 @@ pub struct TestStep {
 impl step::Step for TestStep {
     fn address(&self) -> u64 {
         self.address
+    }
+
+    fn last_offset(&self) -> u64 {
+        self.last_offset
     }
 
     fn kind(&self) -> step::Kind {
@@ -321,7 +410,8 @@ impl step::Step for TestStep {
         use instruction::info::Info;
 
         if let Some(target) = self.insn.branch_target().filter(|_| next.insn.is_some()) {
-            self.branch_taken = self.address.wrapping_add_signed(target.into()) == next.address;
+            self.branch_taken =
+                self.last_address().wrapping_add_signed(target.into()) == next.address;
         }
     }
 }
