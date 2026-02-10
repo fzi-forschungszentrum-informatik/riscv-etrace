@@ -38,6 +38,16 @@ mod compare_riscv_isa {
 
     use info::MakeDecode;
 
+    #[test]
+    fn compressed_rv32i() {
+        compare_infos_16::<_, riscv_isa::Compressed>(riscv_isa::Target::rv32i_full());
+    }
+
+    #[test]
+    fn compressed_rv64i() {
+        compare_infos_16::<_, riscv_isa::Compressed>(riscv_isa::Target::rv64i_full());
+    }
+
     compare_test!(
         rv32i,
         riscv_isa::Instruction,
