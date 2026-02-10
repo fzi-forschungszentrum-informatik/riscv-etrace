@@ -47,6 +47,7 @@
 //!
 //! Some functionality if controlled via crate features:
 //! * `alloc`: enables some features that require allocation
+//! * `either`: enables impls of various traits for [`either::Either`]
 //! * `elf`: enables the [`binary::elf`] module providing a
 //!   [`Binary`][binary::Binary] for static ELF files using the [`elf`] crate
 //! * `riscv-isa`: enables support for decoding and tracing
