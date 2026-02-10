@@ -237,3 +237,10 @@ pub trait Encode<'d, U>: Sized {
     /// Encode this item
     fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error>;
 }
+
+#[cfg(feature = "either")]
+impl<'d, L: Encode<'d, U>, R: Encode<'d, U>, U> Encode<'d, U> for either::Either<L, R> {
+    fn encode(&self, encoder: &mut Encoder<'d, U>) -> Result<(), Error> {
+        either::for_both!(self, e => e.encode(encoder))
+    }
+}
