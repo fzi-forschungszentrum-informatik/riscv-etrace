@@ -103,7 +103,7 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
     /// [`begin_qualification`][Self::begin_qualification] was called on this
     /// generator before.
     pub fn end_qualification(&mut self, ienable: bool) -> Output<'_, S, I, D> {
-        self.do_step(OutputKind::Draining { ienable })
+        self.do_step(OutputKind::Draining { ienable }, None)
     }
 
     /// Process a single [Step][step::Step], potentially producing a payload
@@ -117,20 +117,20 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
         }
 
         let kind = OutputKind::Regular {
-            next: step,
+            next: step.clone(),
             next_event: event,
         };
-        self.do_step(kind)
+        self.do_step(kind, Some(step))
     }
 
     /// Drive the inner state by a single step, potentially producing a payload
-    fn do_step(&mut self, kind: OutputKind<S>) -> Output<'_, S, I, D> {
+    fn do_step(&mut self, kind: OutputKind<S>, next: Option<S>) -> Output<'_, S, I, D> {
         let current = self.current.take();
         let event = self.event.take();
         let previous = self.previous.take();
 
-        if let OutputKind::Regular { next, next_event } = &kind {
-            self.current = Some(next.clone());
+        self.current = next;
+        if let OutputKind::Regular { next_event, .. } = &kind {
             self.event = *next_event;
         }
 
