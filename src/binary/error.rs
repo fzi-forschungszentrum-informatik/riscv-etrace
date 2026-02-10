@@ -67,6 +67,13 @@ impl<E: MaybeMiss + ?Sized> MaybeMiss for Box<E> {
     }
 }
 
+#[cfg(feature = "either")]
+impl<L: MaybeMiss, R: MaybeMiss> MaybeMiss for either::Either<L, R> {
+    fn is_miss(&self) -> bool {
+        either::for_both!(self, e => e.is_miss())
+    }
+}
+
 /// [`MaybeMiss`] that is also an [`Error`][core::error::Error]
 pub trait MaybeMissError: MaybeMiss + core::error::Error + Sync + Send {}
 
