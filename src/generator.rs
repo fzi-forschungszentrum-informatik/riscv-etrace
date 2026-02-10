@@ -15,6 +15,7 @@ use crate::packet::{payload, sync, unit};
 use crate::types::Privilege;
 
 use error::Error;
+use hart2enc::CType;
 use payload::InstructionTrace;
 
 /// Generator for tracing payloads
@@ -259,8 +260,6 @@ impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
         current: &S,
         event: Option<Event>,
     ) -> Result<Option<InstructionTrace<I, D>>, Error> {
-        use hart2enc::CType;
-
         let kind = current.kind();
 
         let reported_exception = self.generator.reported_exception;
@@ -331,8 +330,6 @@ impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
         current: &S,
         event: Option<Event>,
     ) -> Result<Option<InstructionTrace<I, D>>, Error> {
-        use hart2enc::CType;
-
         let mut builder = self.generator.state.payload_builder(
             current.last_address(),
             current.context(),
@@ -504,7 +501,7 @@ impl<S: step::Step> OutputKind<S> {
 
         let res = *next_event == Some(Event::ReSync)
             || matches!(next.kind(), step::Kind::Trap { .. })
-            || !matches!(next.ctype(), hart2enc::CType::Unreported)
+            || !matches!(next.ctype(), CType::Unreported)
             || privilege != next.context().privilege;
         Some(res)
     }
