@@ -21,6 +21,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `instruction::info::Info`, `binary::Binary`, `binary::error::MaybeMiss`,
   `binary::error::Miss`, `packet::encoder::Encode` and `packet::unit::IOptions`
   for `either::Either`.
+- An `instruction::info::Decode` impl for a specific `either::Either` combining
+  both `riscv_isa::Compressed` and `riscv_isa::Instruction`.
 
 ### Changed
 

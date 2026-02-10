@@ -451,6 +451,37 @@ impl Decode<riscv_isa::Compressed> for riscv_isa::Target {
     }
 }
 
+#[cfg(all(feature = "either", feature = "riscv-isa"))]
+impl Decode<either::Either<riscv_isa::Compressed, riscv_isa::Instruction>> for riscv_isa::Target {
+    fn decode_16(
+        &self,
+        insn: u16,
+    ) -> either::Either<riscv_isa::Compressed, riscv_isa::Instruction> {
+        either::Left(self.decode_16(insn))
+    }
+
+    fn decode_32(
+        &self,
+        insn: u32,
+    ) -> either::Either<riscv_isa::Compressed, riscv_isa::Instruction> {
+        either::Right(self.decode_32(insn))
+    }
+
+    fn decode_48(
+        &self,
+        insn: u64,
+    ) -> either::Either<riscv_isa::Compressed, riscv_isa::Instruction> {
+        either::Right(self.decode_48(insn))
+    }
+
+    fn decode_64(
+        &self,
+        insn: u64,
+    ) -> either::Either<riscv_isa::Compressed, riscv_isa::Instruction> {
+        either::Right(self.decode_64(insn))
+    }
+}
+
 /// Make a [`Decode`]
 ///
 /// This trait allows type agnostic creation of some [`Decode`] values, provided
