@@ -35,6 +35,13 @@ impl Miss for Box<dyn MaybeMissError> {
     }
 }
 
+#[cfg(feature = "either")]
+impl<L: Miss, R: MaybeMiss> Miss for either::Either<L, R> {
+    fn miss(address: u64) -> Self {
+        either::Left(Miss::miss(address))
+    }
+}
+
 /// May indicate that an address is not covered by a [`Binary`][super::Binary]
 ///
 /// A [`Binary`][super::Binary] usually only covers a subset of all possible
