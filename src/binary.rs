@@ -170,6 +170,20 @@ impl<B: Binary<I> + ?Sized, I: Info> Binary<I> for Box<B> {
     }
 }
 
+#[cfg(feature = "either")]
+impl<L, R, I, E> Binary<I> for either::Either<L, R>
+where
+    L: Binary<I, Error = E>,
+    R: Binary<I, Error = E>,
+    I: Info,
+{
+    type Error = E;
+
+    fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {
+        either::for_both!(self, b => b.get_insn(address))
+    }
+}
+
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
