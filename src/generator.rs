@@ -117,14 +117,16 @@ impl<S: step::Step + Clone, I: unit::IOptions + Clone, D: Clone> Generator<S, I,
         }
 
         let kind = OutputKind::Regular {
-            next: step.clone(),
+            next_kind: step.kind(),
+            next_ctype: step.ctype(),
+            next_priv: step.context().privilege,
             next_event: event,
         };
         self.do_step(kind, Some(step))
     }
 
     /// Drive the inner state by a single step, potentially producing a payload
-    fn do_step(&mut self, kind: OutputKind<S>, next: Option<S>) -> Output<'_, S, I, D> {
+    fn do_step(&mut self, kind: OutputKind, next: Option<S>) -> Output<'_, S, I, D> {
         let current = self.current.take();
         let event = self.event.take();
         let previous = self.previous.take();
@@ -248,7 +250,7 @@ where
     I: unit::IOptions,
 {
     generator: &'g mut Generator<S, I, D>,
-    kind: OutputKind<S>,
+    kind: OutputKind,
     state: Option<OutputState<S>>,
 }
 
@@ -353,18 +355,24 @@ impl<S: step::Step, I: unit::IOptions, D> Output<'_, S, I, D> {
 
         // The following correspond to `Next inst is exc_only, ppccd_br or
         // unqualified?` in spec
-        let OutputKind::Regular { next, next_event } = &self.kind else {
+        let OutputKind::Regular {
+            next_kind,
+            next_ctype,
+            next_priv,
+            next_event,
+        } = self.kind
+        else {
             return Ok(None);
         };
 
         let have_branches = builder.branches() != 0;
-        if *next_event == Some(Event::ReSync) && have_branches {
+        if next_event == Some(Event::ReSync) && have_branches {
             return builder.report_address(state::Reason::Other).map(Some);
         }
 
-        let ppccd = next.context().privilege != current.context().privilege
-            || matches!(next.ctype(), CType::Precisely | CType::AsyncDiscon);
-        if next.kind().is_exc_only() || (ppccd && have_branches) {
+        let ppccd = next_priv != current.context().privilege
+            || matches!(next_ctype, CType::Precisely | CType::AsyncDiscon);
+        if next_kind.is_exc_only() || (ppccd && have_branches) {
             return builder.report_address(state::Reason::Other).map(Some);
         }
 
@@ -481,28 +489,39 @@ enum OutputState<S> {
 }
 
 /// Kind of [`Output`]
-#[derive(Clone, Debug)]
-enum OutputKind<S> {
+#[derive(Copy, Clone, Debug)]
+enum OutputKind {
     /// Regular tracing operation
     ///
     /// A new [`Step`]s was fed to the [`Generator`], resulting in this
     /// [`Output`].
-    Regular { next: S, next_event: Option<Event> },
+    Regular {
+        next_kind: step::Kind,
+        next_ctype: CType,
+        next_priv: Privilege,
+        next_event: Option<Event>,
+    },
     /// Draining a [`Generator`]'s inner state
     Draining { ienable: bool },
 }
 
-impl<S: step::Step> OutputKind<S> {
+impl OutputKind {
     /// Determine whether the next [`Step`] warrants address with updiscon flag
     pub fn is_updiscon_cause(&self, privilege: Privilege) -> Option<bool> {
-        let Self::Regular { next, next_event } = self else {
+        let Self::Regular {
+            next_kind,
+            next_ctype,
+            next_priv,
+            next_event,
+        } = self
+        else {
             return None;
         };
 
         let res = *next_event == Some(Event::ReSync)
-            || matches!(next.kind(), step::Kind::Trap { .. })
-            || !matches!(next.ctype(), CType::Unreported)
-            || privilege != next.context().privilege;
+            || matches!(next_kind, step::Kind::Trap { .. })
+            || !matches!(next_ctype, CType::Unreported)
+            || privilege != *next_priv;
         Some(res)
     }
 }
