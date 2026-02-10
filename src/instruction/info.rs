@@ -377,6 +377,34 @@ impl Decode<riscv_isa::Instruction> for riscv_isa::Target {
     }
 }
 
+#[cfg(feature = "riscv-isa")]
+impl Decode<riscv_isa::Compressed> for riscv_isa::Target {
+    fn decode_16(&self, insn: u16) -> riscv_isa::Compressed {
+        use riscv_isa::Compressed;
+
+        // Version 0.3.1 of `riscv-isa` wrongly decodes some instructions as
+        // `c.lui`, `c.jr` or `c.jalr`.
+        match riscv_isa::decode_compressed(insn, self) {
+            Compressed::C_LUI { rd: 0, .. } => Compressed::UNIMP,
+            Compressed::C_JR { rs1: 0, .. } => Compressed::UNIMP,
+            Compressed::C_JALR { rs1: 0, .. } => Compressed::UNIMP,
+            insn => insn,
+        }
+    }
+
+    fn decode_32(&self, _insn: u32) -> riscv_isa::Compressed {
+        riscv_isa::Compressed::UNIMP
+    }
+
+    fn decode_48(&self, _insn: u64) -> riscv_isa::Compressed {
+        riscv_isa::Compressed::UNIMP
+    }
+
+    fn decode_64(&self, _insn: u64) -> riscv_isa::Compressed {
+        riscv_isa::Compressed::UNIMP
+    }
+}
+
 /// Make a [`Decode`]
 ///
 /// This trait allows type agnostic creation of some [`Decode`] values, provided
