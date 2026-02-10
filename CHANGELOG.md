@@ -14,6 +14,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Provided `generator::step::Step` fns `last_offset`, `last_address` and
   `is_single` for expressing block retirement. These are handled by when
   generating traces via `generator::Generator` and `generator::Output`.
+- `instruction::info::Info` impl for `riscv_isa::Compressed`.
+- `instruction::info::Decode<riscv_isa::Compressed>` impl for
+  `riscv_isa::Target`.
 
 ### Changed
 
