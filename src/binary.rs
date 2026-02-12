@@ -114,7 +114,7 @@ pub trait Binary<I: Info> {
     #[cfg(feature = "alloc")]
     fn boxed<'a>(self) -> boxed::Binary<'a, I>
     where
-        Self: Sized + 'a,
+        Self: Sized + Send + Sync + 'a,
         Self::Error: error::MaybeMissError + 'static,
     {
         Box::new(boxed::BoxedError::new(self))
