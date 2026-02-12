@@ -24,7 +24,7 @@ pub trait Unit<U = Self> {
     type IOptions: IOptions + 'static;
 
     /// Data trace options
-    type DOptions: 'static;
+    type DOptions: DOptions + 'static;
 
     /// Width of the encoder mode field
     fn encoder_mode_width(&self) -> u8;
@@ -428,7 +428,7 @@ impl IOptions for PULPIOptions {
 pub struct Plug {
     encoder_mode_width: u8,
     decode_ioptions: fn(&mut Decoder<Self>) -> Result<Box<dyn DebugIOptions>, Error>,
-    decode_doptions: fn(&mut Decoder<Self>) -> Result<Box<dyn fmt::Debug>, Error>,
+    decode_doptions: fn(&mut Decoder<Self>) -> Result<Box<dyn DebugDOptions>, Error>,
 }
 
 #[cfg(feature = "alloc")]
@@ -448,12 +448,12 @@ impl Plug {
             U::decode_ioptions(decoder).map(|r| -> Box<dyn DebugIOptions> { Box::new(r) })
         }
 
-        fn decode_doptions<U>(decoder: &mut Decoder<Plug>) -> Result<Box<dyn fmt::Debug>, Error>
+        fn decode_doptions<U>(decoder: &mut Decoder<Plug>) -> Result<Box<dyn DebugDOptions>, Error>
         where
             U: Unit<Plug>,
             U::DOptions: fmt::Debug,
         {
-            U::decode_doptions(decoder).map(|r| -> Box<dyn fmt::Debug> { Box::new(r) })
+            U::decode_doptions(decoder).map(|r| -> Box<dyn DebugDOptions> { Box::new(r) })
         }
 
         Self {
@@ -474,7 +474,7 @@ impl Default for Plug {
 #[cfg(feature = "alloc")]
 impl Unit for Plug {
     type IOptions = Box<dyn DebugIOptions>;
-    type DOptions = Box<dyn fmt::Debug>;
+    type DOptions = Box<dyn DebugDOptions>;
 
     fn encoder_mode_width(&self) -> u8 {
         self.encoder_mode_width
