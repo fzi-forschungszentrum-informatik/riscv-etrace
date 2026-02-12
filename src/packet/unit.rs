@@ -520,6 +520,13 @@ impl<'a> PlugsEntry<'a> {
     }
 }
 
+#[cfg(feature = "alloc")]
+impl Default for PlugsEntry<'_> {
+    fn default() -> Self {
+        PLUGS[0]
+    }
+}
+
 /// Type representing an empty set, zero-bit wide set of options
 #[derive(Copy, Clone, Debug, Default)]
 pub struct NoOptions;
