@@ -24,7 +24,7 @@ pub trait Unit<U = Self> {
     type IOptions: IOptions + 'static;
 
     /// Data trace options
-    type DOptions: 'static;
+    type DOptions: DOptions + 'static;
 
     /// Width of the encoder mode field
     fn encoder_mode_width(&self) -> u8;
@@ -52,7 +52,7 @@ pub trait Unit<U = Self> {
 /// This trait features fns that return either [`Some`] value reflecting an
 /// option or [`None`] if the type does not contain any information on the
 /// specific option.
-pub trait IOptions {
+pub trait IOptions: Send + Sync {
     /// Retrieve the encoder's address mode
     fn address_mode(&self) -> Option<AddressMode> {
         None
@@ -186,6 +186,20 @@ pub trait DebugIOptions: IOptions + fmt::Debug {}
 
 impl<T: IOptions + fmt::Debug> DebugIOptions for T {}
 
+/// Data trace options that may be communicated via support packets
+pub trait DOptions: Send + Sync {}
+
+#[cfg(feature = "alloc")]
+impl<T: DOptions + ?Sized> DOptions for Box<T> {}
+
+#[cfg(feature = "either")]
+impl<L: DOptions, R: DOptions> DOptions for either::Either<L, R> {}
+
+/// An `doptions` that are [`Debug`][fmt::Debug]
+pub trait DebugDOptions: DOptions + fmt::Debug {}
+
+impl<T: DOptions + fmt::Debug> DebugDOptions for T {}
+
 /// Reference trace [`Unit`]
 ///
 /// This unit is used in the reference flow (in the form of a model).
@@ -301,6 +315,8 @@ impl<U> Encode<'_, U> for ReferenceDOptions {
     }
 }
 
+impl DOptions for ReferenceDOptions {}
+
 /// PULP trace [`Unit`]
 ///
 /// Supports the [PULP rv tracer](https://github.com/pulp-platform/rv_tracer)
@@ -412,7 +428,7 @@ impl IOptions for PULPIOptions {
 pub struct Plug {
     encoder_mode_width: u8,
     decode_ioptions: fn(&mut Decoder<Self>) -> Result<Box<dyn DebugIOptions>, Error>,
-    decode_doptions: fn(&mut Decoder<Self>) -> Result<Box<dyn fmt::Debug>, Error>,
+    decode_doptions: fn(&mut Decoder<Self>) -> Result<Box<dyn DebugDOptions>, Error>,
 }
 
 #[cfg(feature = "alloc")]
@@ -432,12 +448,12 @@ impl Plug {
             U::decode_ioptions(decoder).map(|r| -> Box<dyn DebugIOptions> { Box::new(r) })
         }
 
-        fn decode_doptions<U>(decoder: &mut Decoder<Plug>) -> Result<Box<dyn fmt::Debug>, Error>
+        fn decode_doptions<U>(decoder: &mut Decoder<Plug>) -> Result<Box<dyn DebugDOptions>, Error>
         where
             U: Unit<Plug>,
             U::DOptions: fmt::Debug,
         {
-            U::decode_doptions(decoder).map(|r| -> Box<dyn fmt::Debug> { Box::new(r) })
+            U::decode_doptions(decoder).map(|r| -> Box<dyn DebugDOptions> { Box::new(r) })
         }
 
         Self {
@@ -458,7 +474,7 @@ impl Default for Plug {
 #[cfg(feature = "alloc")]
 impl Unit for Plug {
     type IOptions = Box<dyn DebugIOptions>;
-    type DOptions = Box<dyn fmt::Debug>;
+    type DOptions = Box<dyn DebugDOptions>;
 
     fn encoder_mode_width(&self) -> u8 {
         self.encoder_mode_width
@@ -498,3 +514,4 @@ impl<U> Encode<'_, U> for NoOptions {
 }
 
 impl IOptions for NoOptions {}
+impl DOptions for NoOptions {}

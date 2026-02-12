@@ -23,6 +23,12 @@ is based on https://keepachangelog.com/en/1.1.0/.
   for `either::Either`.
 - An `instruction::info::Decode` impl for a specific `either::Either` combining
   both `riscv_isa::Compressed` and `riscv_isa::Instruction`.
+- A trait `packet::unit::DOption` for types used for
+  `packet::unit::Unit::DOptions`.
+- A trait `packet::unit::DebugDOption` extending `packet::unit::DOption` with
+  `Debug` along side a blanket impl for all applicable types.
+- `packet::unit::DOption` impls for `packet::unit::ReferenceDOptions` and
+  `packet::unit::NoOptions`.
 
 ### Changed
 
@@ -31,6 +37,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `generator::state::PayloadBuilder::add_branch` gained an additional parameter
   for controlling whether or not the branch will be used for the `branch` field
   in sync payloads.
+- `packet::unit::IOptions` now requires both `Send` and `Sync`.
+- `packet::unit::Unit::DOptions` is now required to be a
+  `packet::unit::DOption`.
 
 ### Removed
 
