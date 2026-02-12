@@ -221,8 +221,8 @@ impl clap::builder::TypedValueParser for TraceUnitParser {
 
         packet::unit::PLUGS
             .iter()
-            .find(|(n, _)| *n == value)
-            .map(|(_, p)| p())
+            .find(|p| p.name() == value)
+            .map(|p| p.plug())
             .ok_or_else(|| {
                 let mut err =
                     clap::Error::new(clap::error::ErrorKind::ValueValidation).with_cmd(cmd);

@@ -475,10 +475,13 @@ impl Unit for Plug {
 
 /// List of [`Plug`] constructors for all [`Unit`]s provided by this library
 #[cfg(feature = "alloc")]
-#[allow(clippy::type_complexity)]
-pub const PLUGS: &[(&str, fn() -> Plug)] = &[
-    ("reference", || Plug::new(&Reference)),
-    ("pulp", || Plug::new(&PULP)),
+pub const PLUGS: &[PlugsEntry<'static>] = &[
+    PlugsEntry::new(
+        "reference",
+        "Reference flow's original encoder model",
+        || Plug::new(&Reference),
+    ),
+    PlugsEntry::new("pulp", "PULP plattform's rv_tracer", || Plug::new(&PULP)),
 ];
 
 /// A single entry in a list of [`Plug`]s
