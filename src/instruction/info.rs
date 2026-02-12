@@ -10,7 +10,7 @@ use super::bits::Bits;
 ///
 /// This trait defines fns for querying control flow relevant information of
 /// individual instructions.
-pub trait Info {
+pub trait Info: Send + Sync {
     /// Type for representing a register address
     type Register: Clone + PartialEq;
 

@@ -29,6 +29,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `Debug` along side a blanket impl for all applicable types.
 - `packet::unit::DOption` impls for `packet::unit::ReferenceDOptions` and
   `packet::unit::NoOptions`.
+- A trait `binary::boxed::SyncBinary` extending `binary::Binary` with `Send` and
+  `Sync`.
 
 ### Changed
 
@@ -40,6 +42,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `packet::unit::IOptions` now requires both `Send` and `Sync`.
 - `packet::unit::Unit::DOptions` is now required to be a
   `packet::unit::DOption`.
+- `instruction::info::Info` now requires `Send` and `Sync`
+- `binary::boxed::Binary` now encapsulated a `binary::boxed::SyncBinary`, which
+  is `Send` and `Sync`.
 
 ### Removed
 

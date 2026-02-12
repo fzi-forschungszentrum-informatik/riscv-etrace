@@ -114,7 +114,7 @@ pub trait Binary<I: Info> {
     #[cfg(feature = "alloc")]
     fn boxed<'a>(self) -> boxed::Binary<'a, I>
     where
-        Self: Sized + 'a,
+        Self: Sized + Send + Sync + 'a,
         Self::Error: error::MaybeMissError + 'static,
     {
         Box::new(boxed::BoxedError::new(self))
@@ -221,3 +221,8 @@ where
             .and_then(|a| self.inner.get_insn(a))
     }
 }
+
+/// A [`Binary`] which may be sent or synced between threads
+pub trait SyncBinary<I: Info>: Binary<I> + Send + Sync {}
+
+impl<I: Info, T: Binary<I> + Send + Sync> SyncBinary<I> for T {}
