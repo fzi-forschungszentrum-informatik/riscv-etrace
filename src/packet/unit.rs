@@ -186,6 +186,20 @@ pub trait DebugIOptions: IOptions + fmt::Debug {}
 
 impl<T: IOptions + fmt::Debug> DebugIOptions for T {}
 
+/// Data trace options that may be communicated via support packets
+pub trait DOptions: Send + Sync {}
+
+#[cfg(feature = "alloc")]
+impl<T: DOptions + ?Sized> DOptions for Box<T> {}
+
+#[cfg(feature = "either")]
+impl<L: DOptions, R: DOptions> DOptions for either::Either<L, R> {}
+
+/// An `doptions` that are [`Debug`][fmt::Debug]
+pub trait DebugDOptions: DOptions + fmt::Debug {}
+
+impl<T: DOptions + fmt::Debug> DebugDOptions for T {}
+
 /// Reference trace [`Unit`]
 ///
 /// This unit is used in the reference flow (in the form of a model).
@@ -300,6 +314,8 @@ impl<U> Encode<'_, U> for ReferenceDOptions {
         encoder.write_bit(self.full_data)
     }
 }
+
+impl DOptions for ReferenceDOptions {}
 
 /// PULP trace [`Unit`]
 ///
@@ -498,3 +514,4 @@ impl<U> Encode<'_, U> for NoOptions {
 }
 
 impl IOptions for NoOptions {}
+impl DOptions for NoOptions {}
