@@ -52,7 +52,7 @@ pub trait Unit<U = Self> {
 /// This trait features fns that return either [`Some`] value reflecting an
 /// option or [`None`] if the type does not contain any information on the
 /// specific option.
-pub trait IOptions {
+pub trait IOptions: Send + Sync {
     /// Retrieve the encoder's address mode
     fn address_mode(&self) -> Option<AddressMode> {
         None
