@@ -195,6 +195,11 @@ pub struct Offset<B> {
 }
 
 impl<B> Offset<B> {
+    /// Create a new offset [`Binary`]
+    pub fn new(inner: B, offset: u64) -> Self {
+        Self { inner, offset }
+    }
+
     /// Retrieve the inner [`Binary`]
     pub fn inner(&self) -> &B {
         &self.inner
