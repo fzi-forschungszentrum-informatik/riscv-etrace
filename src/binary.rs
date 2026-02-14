@@ -180,6 +180,24 @@ pub trait Adaptable: Sized {
     {
         Box::new(boxed::BoxedError::new(self))
     }
+
+    /// Transfer this binary into a factory producing boxed clones
+    ///
+    /// This fn returns a dynamically dispatched [`Fn`] which returns a
+    /// [`boxed::Binary`] as returned by [`boxed`][Self::boxed]. Unlike the
+    /// result, the wrapped [`Fn`] is [`Clone`] and can thus be used for
+    /// creating identical binaries for different tracers.
+    #[cfg(feature = "alloc")]
+    fn boxer<'a, I>(self) -> alloc::sync::Arc<dyn Fn() -> boxed::Binary<'a, I> + 'a>
+    where
+        I: Info,
+        Self: Binary<I>,
+        Self: Clone + Send + Sync + 'a,
+        Self::Error: error::MaybeMissError + 'static,
+    {
+        let boxed = boxed::BoxedError::new(self);
+        alloc::sync::Arc::new(move || Box::new(boxed.clone()))
+    }
 }
 
 impl<T> Adaptable for T {}
