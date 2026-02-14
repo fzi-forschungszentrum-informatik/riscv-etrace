@@ -67,7 +67,7 @@
 //! Encapsulation for RISC-V][encap] specification placed in a single buffer.
 //!
 //! ```
-//! use riscv_etrace::binary::{self, Binary};
+//! use riscv_etrace::binary::{self, Adaptable};
 //! use riscv_etrace::packet;
 //! use riscv_etrace::instruction::{base, Instruction};
 //! use riscv_etrace::tracer::{self, Tracer};

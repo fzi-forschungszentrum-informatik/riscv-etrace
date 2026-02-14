@@ -53,7 +53,7 @@ where
 /// The following example builds a segment at a specifig offset:
 ///
 /// ```
-/// use riscv_etrace::binary::{self, Binary};
+/// use riscv_etrace::binary::{self, Adaptable, Binary};
 /// use riscv_etrace::instruction::{self, base};
 ///
 /// let bootrom = b"\x97\x02\x00\x00\x93\x85\x02\x02\x73\x25\x40\xf1\x83\xb2\x82\x01\x67\x80\x02\x00";
