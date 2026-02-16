@@ -589,6 +589,15 @@ impl IterationState {
     pub fn is_recovering(&self) -> bool {
         matches!(self, Self::Recovering)
     }
+
+    /// Handle a [`Result`], entering recovery mode if it is an error
+    fn handle_result<T, E>(&mut self, res: Result<T, E>) -> Result<T, E> {
+        if res.is_err() {
+            *self = IterationState::Recovering;
+        }
+
+        res
+    }
 }
 
 impl Default for IterationState {
