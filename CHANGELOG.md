@@ -48,6 +48,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
   is `Send` and `Sync`.
 - `packet::unit::PLUGS` is now a slice of `packet::unit::PlugsEntry`s instead of
   tuples.
+- `binary::combinators::Multi` now impls `Default` whenever the underlying
+  container does. Previously, the element type also needed to be `Default`.
 
 ### Removed
 

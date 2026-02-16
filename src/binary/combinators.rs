@@ -10,7 +10,7 @@ use super::Binary;
 use super::error::{MaybeMiss, Miss};
 
 /// Set of [`Binary`] acting as a single [`Binary`]
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Multi<C: BorrowMut<[B]>, B> {
     bins: C,
     last: usize,
@@ -38,6 +38,12 @@ impl<C: Borrow<[B]> + BorrowMut<[B]>, B> Multi<C, B> {
     /// Retrieve an iterator over all inner [`Binary`]s
     pub fn iter(&self) -> core::slice::Iter<'_, B> {
         self.inner().iter()
+    }
+}
+
+impl<C: BorrowMut<[B]> + Default, B> Default for Multi<C, B> {
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 
