@@ -32,6 +32,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A trait `binary::boxed::SyncBinary` extending `binary::Binary` with `Send` and
   `Sync`.
 - A type `packet::unit::PlugsEntry` for entries in `packet::unit::PLUGS`.
+- A trait `binary::Adaptable` for adapting `Binary`s.
+- A fn `binary::Offset::new` for creating an `binary::Offset`.
 
 ### Changed
 
@@ -55,6 +57,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `generator::Drain` was replaced by `generator::Output` as a return type for
   `generator::Generator::end_qualification` and removed.
+- Provided fns `binary::Binary::with_offset` and `binary::Binary::boxed` were
+  removed. The funcionality is now provided via the `binary::Adaptable` trait.
 
 ## 0.8.0 - 2026-01-31
 

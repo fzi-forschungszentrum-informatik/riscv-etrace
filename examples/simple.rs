@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use riscv_etrace::packet;
 
 fn main() {
-    use riscv_etrace::binary::{self, Binary};
+    use riscv_etrace::binary::{self, Adaptable};
     use riscv_etrace::instruction;
     use riscv_etrace::tracer::{self, Tracer, item};
 

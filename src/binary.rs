@@ -13,7 +13,7 @@
 //! * [combinators] that allow tracing multiple programs or program parts such
 //!   as a firmware and an appliction,
 //! * modifiers such as [`Offset`] that are usually created through provided fns
-//!   of the [`Binary`] trait and
+//!   of the [`Adaptable`] trait and
 //! * feature-dependent [`Binary`]s, e.g. for using [ELF][elf] files as
 //!   [`Binary`]s.
 //!
@@ -23,9 +23,9 @@
 //! [`Binary::Error`] type. Combinators such as [`Multi`] in particular also
 //! requires the [`Binary`]s themselves to be of the same type. If the `alloc`
 //! feature is enabled, the error type may be erased through the provided method
-//! [`Binary::boxed`]. The lifetime of the original [`Binary`] is preserved in
-//! the resulting [`boxed::Binary`]. This is relevant when using an [`elf::Elf`]
-//! or when...
+//! [`Adaptable::boxed`]. The lifetime of the original [`Binary`] is preserved
+//! in the resulting [`boxed::Binary`]. This is relevant when using an
+//! [`elf::Elf`] or when...
 //!
 //! # Sharing [`Binary`]s between [`Tracer`] instances
 //!
@@ -41,13 +41,18 @@
 //! [`Binary`]s. For example, a [`basic::Segment`] may be created from a shared
 //! buffer or [`Arc`][alloc::sync::Arc] and then cloned.
 //!
+//! Unfortunately, [`Adaptable::boxed`] returns a [`boxed::Binary`] which cannot
+//! be cloned for this purpose. [`Adaptable::boxer`] may be used instead for
+//! creating a clonable factory of (non-clonable) [`boxed::Binary`]s. It may be
+//! necessary to construct new [combinators] from those for each new [`Tracer`].
+//!
 //! # Example
 //!
 //! The following constructs a [`Binary`] from a firmware image and a bootrom
 //! and clones it for use by a second [`Tracer`] instance.
 //!
 //! ```
-//! use riscv_etrace::binary::{self, Binary, Multi};
+//! use riscv_etrace::binary::{self, Adaptable, Multi};
 //! use riscv_etrace::instruction::base;
 //!
 //! # let bootrom = b"\x97\x02\x00\x00\x93\x85\x02\x02\x73\x25\x40\xf1\x83\xb2\x82\x01\x67\x80\x02\x00";
@@ -92,33 +97,6 @@ pub trait Binary<I: Info> {
 
     /// Retrieve the [`Instruction`] at the given address
     fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error>;
-
-    /// "Move" this binary by the given offset
-    ///
-    /// See [`Offset`] for more details.
-    fn with_offset(self, offset: u64) -> Offset<Self>
-    where
-        Self: Sized,
-        Self::Error: Miss,
-    {
-        Offset {
-            inner: self,
-            offset,
-        }
-    }
-
-    /// Box this binary for dynamic dispatching
-    ///
-    /// This allows combining binaries of different types with (originally)
-    /// different [`Error`][Self::Error] types in [combinators].
-    #[cfg(feature = "alloc")]
-    fn boxed<'a>(self) -> boxed::Binary<'a, I>
-    where
-        Self: Sized + Send + Sync + 'a,
-        Self::Error: error::MaybeMissError + 'static,
-    {
-        Box::new(boxed::BoxedError::new(self))
-    }
 }
 
 /// [`Binary`] implementation for a tuple of two binaries
@@ -184,6 +162,51 @@ where
     }
 }
 
+/// Helper trait that allows adapting a [`Binary`]
+pub trait Adaptable: Sized {
+    /// "Move" this binary by the given offset
+    ///
+    /// See [`Offset`] for more details.
+    fn with_offset(self, offset: u64) -> Offset<Self> {
+        Offset::new(self, offset)
+    }
+
+    /// Box this binary for dynamic dispatching
+    ///
+    /// This allows combining binaries of different types with (originally)
+    /// different [`Binary::Error`] types in [combinators].
+    #[cfg(feature = "alloc")]
+    fn boxed<'a, I>(self) -> boxed::Binary<'a, I>
+    where
+        I: Info,
+        Self: Binary<I>,
+        Self: Send + Sync + 'a,
+        Self::Error: error::MaybeMissError + 'static,
+    {
+        Box::new(boxed::BoxedError::new(self))
+    }
+
+    /// Transfer this binary into a factory producing boxed clones
+    ///
+    /// This fn returns a dynamically dispatched [`Fn`] which returns a
+    /// [`boxed::Binary`] as returned by [`boxed`][Self::boxed]. Unlike the
+    /// result, the wrapped [`Fn`] is [`Clone`] and can thus be used for
+    /// creating identical binaries for different tracers.
+    #[cfg(feature = "alloc")]
+    fn boxer<'a, I>(self) -> alloc::sync::Arc<dyn Fn() -> boxed::Binary<'a, I> + 'a>
+    where
+        I: Info,
+        Self: Binary<I>,
+        Self: Clone + Send + Sync + 'a,
+        Self::Error: error::MaybeMissError + 'static,
+    {
+        let boxed = boxed::BoxedError::new(self);
+        alloc::sync::Arc::new(move || Box::new(boxed.clone()))
+    }
+}
+
+impl<T> Adaptable for T {}
+
 /// [`Binary`] moved by a fixed offset
 ///
 /// Accesses will be mapped by subtracting the fixed offset from the address.
@@ -195,6 +218,11 @@ pub struct Offset<B> {
 }
 
 impl<B> Offset<B> {
+    /// Create a new offset [`Binary`]
+    pub fn new(inner: B, offset: u64) -> Self {
+        Self { inner, offset }
+    }
+
     /// Retrieve the inner [`Binary`]
     pub fn inner(&self) -> &B {
         &self.inner
