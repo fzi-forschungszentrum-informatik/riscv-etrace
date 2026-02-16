@@ -491,11 +491,57 @@ impl Unit for Plug {
 
 /// List of [`Plug`] constructors for all [`Unit`]s provided by this library
 #[cfg(feature = "alloc")]
-#[allow(clippy::type_complexity)]
-pub const PLUGS: &[(&str, fn() -> Plug)] = &[
-    ("reference", || Plug::new(&Reference)),
-    ("pulp", || Plug::new(&PULP)),
+pub const PLUGS: &[PlugsEntry<'static>] = &[
+    PlugsEntry::new(
+        "reference",
+        "Reference flow's original encoder model",
+        || Plug::new(&Reference),
+    ),
+    PlugsEntry::new("pulp", "PULP plattform's rv_tracer", || Plug::new(&PULP)),
 ];
+
+/// A single entry in a list of [`Plug`]s
+#[cfg(feature = "alloc")]
+#[derive(Copy, Clone, Debug)]
+pub struct PlugsEntry<'a> {
+    name: &'a str,
+    description: &'a str,
+    ctor: fn() -> Plug,
+}
+
+#[cfg(feature = "alloc")]
+impl<'a> PlugsEntry<'a> {
+    /// Create a new entry
+    pub const fn new(name: &'a str, description: &'a str, ctor: fn() -> Plug) -> Self {
+        Self {
+            name,
+            description,
+            ctor,
+        }
+    }
+
+    /// Retrieve the name associated to the [`Plug`]
+    pub fn name(&self) -> &str {
+        self.name
+    }
+
+    /// Retrieve a description of the [`Plug`]
+    pub fn description(&self) -> &str {
+        self.description
+    }
+
+    /// Create the [`Plug`] associated to this entry
+    pub fn plug(&self) -> Plug {
+        (self.ctor)()
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Default for PlugsEntry<'_> {
+    fn default() -> Self {
+        PLUGS[0]
+    }
+}
 
 /// Type representing an empty set, zero-bit wide set of options
 #[derive(Copy, Clone, Debug, Default)]

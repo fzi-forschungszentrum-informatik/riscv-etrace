@@ -31,6 +31,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::unit::NoOptions`.
 - A trait `binary::boxed::SyncBinary` extending `binary::Binary` with `Send` and
   `Sync`.
+- A type `packet::unit::PlugsEntry` for entries in `packet::unit::PLUGS`.
 
 ### Changed
 
@@ -45,6 +46,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `instruction::info::Info` now requires `Send` and `Sync`
 - `binary::boxed::Binary` now encapsulated a `binary::boxed::SyncBinary`, which
   is `Send` and `Sync`.
+- `packet::unit::PLUGS` is now a slice of `packet::unit::PlugsEntry`s instead of
+  tuples.
 
 ### Removed
 
