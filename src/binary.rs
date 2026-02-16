@@ -41,6 +41,11 @@
 //! [`Binary`]s. For example, a [`basic::Segment`] may be created from a shared
 //! buffer or [`Arc`][alloc::sync::Arc] and then cloned.
 //!
+//! Unfortunately, [`Adaptable::boxed`] returns a [`boxed::Binary`] which cannot
+//! be cloned for this purpose. [`Adaptable::boxer`] may be used instead for
+//! creating a clonable factory of (non-clonable) [`boxed::Binary`]s. It may be
+//! necessary to construct new [combinators] from those for each new [`Tracer`].
+//!
 //! # Example
 //!
 //! The following constructs a [`Binary`] from a firmware image and a bootrom
