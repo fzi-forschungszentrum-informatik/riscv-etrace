@@ -521,12 +521,12 @@ impl<'a> PlugsEntry<'a> {
     }
 
     /// Retrieve the name associated to the [`Plug`]
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &'a str {
         self.name
     }
 
     /// Retrieve a description of the [`Plug`]
-    pub fn description(&self) -> &str {
+    pub fn description(&self) -> &'a str {
         self.description
     }
 
