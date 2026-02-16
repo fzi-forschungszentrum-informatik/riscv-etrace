@@ -584,6 +584,11 @@ impl IterationState {
     pub fn is_tracing(&self) -> bool {
         !matches!(self, Self::Depleting { .. })
     }
+
+    /// Check whether we are currently recovering from a failure
+    pub fn is_recovering(&self) -> bool {
+        matches!(self, Self::Recovering)
+    }
 }
 
 impl Default for IterationState {
