@@ -388,6 +388,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
                     });
                 Some(res)
             }
+            IterationState::Recovering => None,
         }
     }
 
@@ -409,6 +410,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
             // Minimum 1 item, but could also be infinite
             IterationState::FollowExec => (0, None),
             IterationState::Depleting { .. } => (0, None),
+            IterationState::Recovering => (0, Some(0)),
         }
     }
 }
@@ -573,6 +575,8 @@ enum IterationState {
     FollowExec,
     /// We follow the execution path as long as it's inferable
     Depleting { qual_status: sync::QualStatus },
+    /// We are recovering from some error
+    Recovering,
 }
 
 impl IterationState {
