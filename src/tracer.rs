@@ -188,7 +188,8 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
                     });
                 } else {
                     initer.set_context(start.ctx.into());
-                    initer.reset_to_address()?;
+                    let res = initer.reset_to_address();
+                    self.iter_state.handle_result(res)?;
                     self.iter_state = IterationState::ContextItem {
                         pc: None,
                         context: start.ctx.into(),
@@ -207,16 +208,17 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
                 } else {
                     self.state.current_pc()
                 };
-                if !thaddr {
+                let res = if !thaddr {
                     let mut initer = self.state.initializer(&mut self.binary)?;
                     initer.set_stack_depth(None);
                     initer.set_address(trap.address);
-                    initer.reset_to_address()?;
+                    initer.reset_to_address()
                 } else {
                     let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
                     initer.set_context(trap.ctx.into());
-                    initer.reset_to_address()?;
-                }
+                    initer.reset_to_address()
+                };
+                self.iter_state.handle_result(res)?;
                 self.iter_state = IterationState::TrapItem {
                     epc,
                     info: trap.info,
