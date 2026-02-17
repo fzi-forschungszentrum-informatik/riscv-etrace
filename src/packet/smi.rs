@@ -108,6 +108,14 @@ where
     }
 }
 
+impl<U: unit::Unit> TryFrom<Packet<Decoder<'_, U>>> for payload::Payload<U::IOptions, U::DOptions> {
+    type Error = Error;
+
+    fn try_from(packet: Packet<Decoder<'_, U>>) -> Result<Self, Self::Error> {
+        packet.decode_payload()
+    }
+}
+
 impl<'d, U> Decode<'d, U> for Packet<payload::Payload<U::IOptions, U::DOptions>>
 where
     U: unit::Unit + Clone,
