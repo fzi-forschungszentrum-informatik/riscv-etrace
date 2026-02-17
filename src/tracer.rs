@@ -288,6 +288,11 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         self.iter_state.is_tracing()
     }
 
+    /// Determine whether this tracer is recovering from some failure
+    pub fn is_recovering(&self) -> bool {
+        self.iter_state.is_recovering()
+    }
+
     /// Retrieve the current [`sync::QualStatus`] if availible
     ///
     /// After processing of a [`sync::Support`] signalling end or loss of trace,
