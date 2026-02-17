@@ -231,6 +231,14 @@ where
     }
 }
 
+impl<U: unit::Unit> TryFrom<Normal<Decoder<'_, U>>> for payload::Payload<U::IOptions, U::DOptions> {
+    type Error = Error;
+
+    fn try_from(normal: Normal<Decoder<'_, U>>) -> Result<Self, Self::Error> {
+        normal.decode_payload()
+    }
+}
+
 impl<'d, U> Encode<'d, U> for Normal<payload::Payload<U::IOptions, U::DOptions>>
 where
     U: unit::Unit,
