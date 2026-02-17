@@ -310,7 +310,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         let insn = self
             .binary
             .get_insn(address)
-            .map_err(|e| Error::CannotGetInstruction(e, address))?;
+            .map_err(|e| Error::CannotGetInstruction(e, address));
         let mut initer = self.state.initializer(&mut self.binary)?;
 
         initer.set_address(address);
@@ -319,9 +319,10 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         if reset_branch_map {
             *branch_map = Default::default();
         }
-        if insn.is_branch() {
-            branch_map
-                .push_branch_taken(branch_taken)
+        if self.iter_state.handle_result(insn)?.is_branch() {
+            let res = branch_map.push_branch_taken(branch_taken);
+            self.iter_state
+                .handle_result(res)
                 .map_err(Error::CannotAddBranches)?;
         }
 
