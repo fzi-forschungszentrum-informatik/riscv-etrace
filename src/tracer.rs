@@ -128,6 +128,27 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
 
         if let InstructionTrace::Synchronization(sync) = payload {
             self.process_sync(sync)
+        } else if self.is_recovering() {
+            // For payloads that are not `InstructionTrace::Synchronization`, we
+            // try to recover by resetting to the address if present. And we
+            // would normally only reach it after exhausting the recorded
+            // branches.
+            self.previous = None;
+            let Some(info) = payload.get_address_info() else {
+                return Ok(());
+            };
+
+            let mut initer = self.state.initializer(&mut self.binary)?;
+            initer.set_stack_depth(payload.implicit_return_depth());
+            *(initer.get_branch_map_mut()) = Default::default();
+            match self.address_mode {
+                AddressMode::Full => initer.set_address(0u64.wrapping_add_signed(info.address)),
+                AddressMode::Delta => initer.set_rel_address(info.address),
+            }
+            self.iter_state.handle_result(initer.reset_to_address())?;
+            self.iter_state = IterationState::SingleItem;
+
+            Ok(())
         } else {
             let previous = self.previous.take();
             let updiscon_prev = self.state.previous_insn().is_uninferable_discon();
@@ -179,7 +200,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         let previous = self.previous.take();
         match sync {
             Synchronization::Start(start) => {
-                let is_tracing = self.iter_state.is_tracing();
+                let is_tracing = self.is_tracing() && !self.is_recovering();
 
                 let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
                 if is_tracing && previous != Some(Event::Trap { thaddr: false }) {
@@ -200,7 +221,13 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
             Synchronization::Trap(trap) => {
                 let thaddr = trap.thaddr;
                 self.previous = Some(Event::Trap { thaddr });
-                let epc = if trap.info.is_exception()
+
+                let epc = if self.is_recovering() {
+                    if !thaddr {
+                        return Ok(());
+                    }
+                    0
+                } else if trap.info.is_exception()
                     && previous != Some(Event::Trap { thaddr: false })
                 {
                     let epc = (!trap.thaddr).then_some(trap.address);
