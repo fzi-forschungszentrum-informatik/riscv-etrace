@@ -8,16 +8,17 @@ use alloc::string::ToString;
 
 use crate::instruction::format::{TypeR, TypeS};
 
+macro_rules! format_test {
+    ($n:ident, $k:expr, $l:literal) => {
+        #[test]
+        fn $n() {
+            assert_eq!($k.to_string(), $l);
+        }
+    };
+}
+
 pub mod kind_tests {
     use super::*;
-    macro_rules! format_test {
-        ($n:ident, $k:expr, $l:literal) => {
-            #[test]
-            fn $n() {
-                assert_eq!($k.to_string(), $l);
-            }
-        };
-    }
 
     format_test!(c_jr, Kind::new_c_jr(12), "c.jr x12");
     format_test!(c_jalr, Kind::new_c_jalr(31), "c.jalr x31");
