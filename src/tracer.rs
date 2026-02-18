@@ -386,7 +386,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
                             Item::new(p, i.into())
                         }
                     });
-                Some(res)
+                Some(self.iter_state.handle_result(res))
             }
             IterationState::Recovering => None,
         }
