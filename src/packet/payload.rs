@@ -29,6 +29,15 @@ impl<I, D> Payload<I, D> {
             _ => None,
         }
     }
+
+    /// View this payload as a [`Support`][sync::Support]
+    ///
+    /// Returns the inner [`Support`][sync::Support] if it is one, [`None`]
+    /// otherwise.
+    pub fn as_support(&self) -> Option<&sync::Support<I, D>> {
+        self.as_instruction_trace()
+            .and_then(InstructionTrace::as_support)
+    }
 }
 
 impl<I, D> From<InstructionTrace<I, D>> for Payload<I, D> {
