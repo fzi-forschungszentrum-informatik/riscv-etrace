@@ -92,3 +92,12 @@ pub mod type_tests {
         "x7, x13, 0x46F3"
     );
 }
+
+pub mod bits_tests {
+    use super::*;
+
+    format_test!(nop16, Bits::Bit16(1), "0001");
+    format_test!(nop32, Bits::Bit32(0x13), "00000013");
+    format_test!(invalid48, Bits::Bit48(0), "000000000000");
+    format_test!(invalid64, Bits::Bit64(0), "0000000000000000");
+}

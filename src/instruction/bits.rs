@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Utilities for dissecting a bunch of bytes into instruction [`Bits`]
 
+use core::fmt;
+
 use super::Size;
 
 /// Bits from which [`Instruction`][super::Instruction]s can be disassembled
@@ -93,6 +95,17 @@ impl TryFrom<u64> for Bits {
             num.try_into()
                 .map_err(|_| num)
                 .and_then(|n: u32| n.try_into().map_err(Into::into))
+        }
+    }
+}
+
+impl fmt::Display for Bits {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bit16(v) => write!(f, "{v:04x}"),
+            Self::Bit32(v) => write!(f, "{v:08x}"),
+            Self::Bit48(v) => write!(f, "{v:012x}"),
+            Self::Bit64(v) => write!(f, "{v:016x}"),
         }
     }
 }
