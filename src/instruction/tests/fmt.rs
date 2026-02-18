@@ -54,21 +54,12 @@ pub mod kind_tests {
 pub mod instruction_tests {
     use super::*;
 
-    macro_rules! instruction_format_test {
-        ($name:ident, $instruction:expr, $string_literal:expr) => {
-            #[test]
-            fn $name() {
-                assert_eq!($instruction.to_string(), $string_literal);
-            }
-        };
-    }
-
-    instruction_format_test!(
+    format_test!(
         instruction_with_kind,
         Instruction::from(Kind::new_beq(5, 12, 0x4F)),
         "beq x5, x12, 0x4F"
     );
-    instruction_format_test!(
+    format_test!(
         instruction_without_kind,
         Instruction {
             size: Size::Normal,
