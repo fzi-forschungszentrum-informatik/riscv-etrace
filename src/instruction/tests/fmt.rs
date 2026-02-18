@@ -71,25 +71,24 @@ pub mod instruction_tests {
 
 pub mod type_tests {
     use super::*;
-    #[test]
-    fn type_r_format_test() {
-        let format_type = TypeR {
+
+    format_test!(
+        type_r,
+        TypeR {
             rd: 5,
             rs1: 3,
-            rs2: 12,
-        }
-        .to_string();
-        assert_eq!(format_type, "x5, x3, x12");
-    }
+            rs2: 12
+        },
+        "x5, x3, x12"
+    );
 
-    #[test]
-    fn type_s_format_test() {
-        let format_type = TypeS {
+    format_test!(
+        type_s,
+        TypeS {
             rs1: 7,
             rs2: 13,
-            imm: 0x46F3,
-        }
-        .to_string();
-        assert_eq!(format_type, "x7, x13, 0x46F3");
-    }
+            imm: 0x46F3
+        },
+        "x7, x13, 0x46F3"
+    );
 }
