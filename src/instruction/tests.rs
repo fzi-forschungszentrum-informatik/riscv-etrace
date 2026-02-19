@@ -4,7 +4,7 @@
 extern crate alloc;
 
 mod compare;
-mod decode;
+mod decode_tests;
 mod extract;
 mod fmt;
 mod insn_fmt;
