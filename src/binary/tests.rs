@@ -18,12 +18,12 @@ macro_rules! retrieval_test {
         }
     };
     ($b:ident, $a:literal, $i:expr) => {
-        let res = $b.get_insn($a);
+        let res: Result<Instruction, _> = $b.get_insn($a);
         assert_eq!(res, $i);
         assert!(!res.is_miss());
     };
     ($b:ident, $a:literal) => {
-        let res: Result<instruction::Instruction, _> = $b.get_insn($a);
+        let res: Result<Instruction, _> = $b.get_insn($a);
         assert_eq!(res, Err(Miss::miss($a)));
         assert!(res.is_miss());
     };
