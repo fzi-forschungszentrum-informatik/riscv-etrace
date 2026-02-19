@@ -1,5 +1,7 @@
-// Add tests for ReturnStack for VecStack
-#[cfg(test)]
+// Copyright (C) 2026 FZI Forschungszentrum Informatik
+// SPDX-License-Identifier: Apache-2.0
+//! Tests for ReturnStack for VecStack
+
 use crate::types::stack::ReturnStack;
 use crate::types::stack::StaticStack;
 
