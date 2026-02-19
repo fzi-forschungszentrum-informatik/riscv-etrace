@@ -39,6 +39,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::payload::Payload::as_support` for accessing the
   `packet::sync::Support` they may hold.
 - `Display` impl for `instruction::bits::Bits`.
+- Fns `packet::encap::Normal::payload_mut` and
+  `packet::smi::Packet::payload_mut` for mutable access to the inner payload.
+- `TryFrom<packet::encap::Normal<packet::decoder::decoder>>` and
+  `TryFrom<packet::smi::Packet<packet::decoder::decoder>>` impls for
+  `packet::payload::Payload`.
 
 ### Changed
 

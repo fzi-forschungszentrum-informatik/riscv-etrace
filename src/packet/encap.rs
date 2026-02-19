@@ -198,6 +198,11 @@ impl<P> Normal<P> {
     pub fn payload(&self) -> &P {
         &self.payload
     }
+
+    /// Get a mutable reference to the packet's payload
+    pub fn payload_mut(&mut self) -> &mut P {
+        &mut self.payload
+    }
 }
 
 impl<'d, U: unit::Unit> Normal<Decoder<'d, U>> {
@@ -228,6 +233,14 @@ where
         } else {
             Ok(res)
         }
+    }
+}
+
+impl<U: unit::Unit> TryFrom<Normal<Decoder<'_, U>>> for payload::Payload<U::IOptions, U::DOptions> {
+    type Error = Error;
+
+    fn try_from(normal: Normal<Decoder<'_, U>>) -> Result<Self, Self::Error> {
+        normal.decode_payload()
     }
 }
 
