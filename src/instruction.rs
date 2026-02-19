@@ -16,11 +16,12 @@
 //!
 //! [`Instruction`]s are usually decoded by first extracting the [`Bits`]
 //! associated to an [`Instruction`] based on RISC-V's instruction length
-//! encoding and then decoding the [`Info`] using an [`info::Decode`] capturing
+//! encoding and then decoding the [`Info`] using an [`Decode`] capturing
 //! decoding parameters such as [`base::Set`].
 
 pub mod base;
 pub mod bits;
+pub mod decode;
 pub mod format;
 pub mod info;
 
@@ -30,6 +31,7 @@ mod tests;
 use core::fmt;
 
 use bits::Bits;
+use decode::Decode;
 use format::Register;
 use info::Info;
 
@@ -342,16 +344,16 @@ impl<I: Info> Instruction<I> {
     ///
     /// Try to extract [`Bits`] from the beginning of the given slice, then
     /// decode them into an [`Instruction`]. See [`Bits::extract`] and
-    /// [`info::Decode`] for details.
-    pub fn extract<'d, D: info::Decode<I>>(data: &'d [u8], base: &D) -> Option<(Self, &'d [u8])> {
+    /// [`Decode`] for details.
+    pub fn extract<'d, D: Decode<I>>(data: &'d [u8], base: &D) -> Option<(Self, &'d [u8])> {
         Bits::extract(data).map(|(b, r)| (Self::decode(b, base), r))
     }
 
     /// Decode an instruction from the given [`Bits`]
     ///
     /// Decode the given [`Bits`] into an [`Instruction`] using the given
-    /// [`info::Decode`].
-    pub fn decode<D: info::Decode<I>>(bits: Bits, base: &D) -> Self {
+    /// [`Decode`].
+    pub fn decode<D: Decode<I>>(bits: Bits, base: &D) -> Self {
         let size = bits.size();
         let info = base.decode_bits(bits);
         Self { size, info }

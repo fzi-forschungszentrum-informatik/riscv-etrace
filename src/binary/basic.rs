@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Basic [`Binary`]s and adapters
 
-use crate::instruction::{Instruction, info};
+use crate::instruction::{Instruction, decode, info};
 
 use super::Binary;
 use super::error;
@@ -77,7 +77,7 @@ impl<T: AsRef<[u8]>, B> Segment<T, B> {
     }
 }
 
-impl<T: AsRef<[u8]>, B: info::Decode<I>, I: info::Info> Binary<I> for Segment<T, B> {
+impl<T: AsRef<[u8]>, B: decode::Decode<I>, I: info::Info> Binary<I> for Segment<T, B> {
     type Error = error::SegmentError;
 
     fn get_insn(&mut self, address: u64) -> Result<Instruction<I>, Self::Error> {

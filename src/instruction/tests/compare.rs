@@ -36,7 +36,7 @@ macro_rules! compare_test {
 mod compare_riscv_isa {
     use super::*;
 
-    use info::MakeDecode;
+    use decode::MakeDecode;
 
     #[test]
     fn compressed_rv32i() {

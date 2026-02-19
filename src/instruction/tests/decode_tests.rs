@@ -114,7 +114,6 @@ macro_rules! decode_test {
     ($name:ident, $bits:expr, $set:expr, None) => {
         #[test]
         fn $name() {
-            use info::Decode;
             let bits = $bits;
             let instruction = $set.decode_bits(bits);
 

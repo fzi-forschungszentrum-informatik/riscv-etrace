@@ -8,7 +8,7 @@ use core::fmt;
 use elf::ElfBytes;
 use elf::endian::EndianParse;
 
-use crate::instruction::{Instruction, base, info};
+use crate::instruction::{Instruction, base, decode, info};
 
 use super::{Binary, error};
 
@@ -33,7 +33,7 @@ impl<'d, E, P, D> Elf<'d, E, P, D>
 where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
-    D: info::MakeDecode,
+    D: decode::MakeDecode,
 {
     /// Create a new ELF [`Binary`]
     pub fn new(elf: E) -> Result<Self, Error> {
@@ -46,8 +46,8 @@ where
             Err(Error::UnsupportedEndianess)
         } else {
             let base = match hdr.class {
-                elf::file::Class::ELF32 => info::MakeDecode::rv32i_full(),
-                elf::file::Class::ELF64 => info::MakeDecode::rv64i_full(),
+                elf::file::Class::ELF32 => decode::MakeDecode::rv32i_full(),
+                elf::file::Class::ELF64 => decode::MakeDecode::rv64i_full(),
             };
 
             Ok(Self {
@@ -75,7 +75,7 @@ where
     E: Borrow<ElfBytes<'d, P>>,
     P: EndianParse,
     I: info::Info,
-    D: info::Decode<I>,
+    D: decode::Decode<I>,
 {
     type Error = Error;
 
