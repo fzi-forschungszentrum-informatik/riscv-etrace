@@ -32,6 +32,29 @@ pub trait Decode<I: Info> {
     }
 }
 
+impl<D, I> Decode<(I, Bits)> for D
+where
+    D: Decode<I>,
+    I: Info,
+    (I, Bits): Info,
+{
+    fn decode_16(&self, insn: u16) -> (I, Bits) {
+        (self.decode_16(insn), Bits::Bit16(insn))
+    }
+
+    fn decode_32(&self, insn: u32) -> (I, Bits) {
+        (self.decode_32(insn), Bits::Bit32(insn))
+    }
+
+    fn decode_48(&self, insn: u64) -> (I, Bits) {
+        (self.decode_48(insn), Bits::Bit48(insn))
+    }
+
+    fn decode_64(&self, insn: u64) -> (I, Bits) {
+        (self.decode_64(insn), Bits::Bit64(insn))
+    }
+}
+
 #[cfg(feature = "riscv-isa")]
 impl Decode<riscv_isa::Instruction> for riscv_isa::Target {
     fn decode_16(&self, insn: u16) -> riscv_isa::Instruction {
