@@ -53,6 +53,17 @@ impl<I, D> Synchronization<I, D> {
             _ => None,
         }
     }
+
+    /// View this payload as a [`Support`]
+    ///
+    /// Returns the inner [`Support`] if this is a [`Support`][Self::Support],
+    /// [`None`] otherwise.
+    pub fn as_support(&self) -> Option<&Support<I, D>> {
+        match self {
+            Self::Support(supp) => Some(supp),
+            _ => None,
+        }
+    }
 }
 
 impl<I, D> From<Start> for Synchronization<I, D> {

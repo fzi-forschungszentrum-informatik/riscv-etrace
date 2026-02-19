@@ -29,6 +29,15 @@ impl<I, D> Payload<I, D> {
             _ => None,
         }
     }
+
+    /// View this payload as a [`Support`][sync::Support]
+    ///
+    /// Returns the inner [`Support`][sync::Support] if it is one, [`None`]
+    /// otherwise.
+    pub fn as_support(&self) -> Option<&sync::Support<I, D>> {
+        self.as_instruction_trace()
+            .and_then(InstructionTrace::as_support)
+    }
 }
 
 impl<I, D> From<InstructionTrace<I, D>> for Payload<I, D> {
@@ -138,6 +147,17 @@ impl<I, D> InstructionTrace<I, D> {
             Self::Address(a) => a.irdepth,
             Self::Branch(b) => b.address.and_then(|a| a.irdepth),
             Self::Extension(e) => e.implicit_return_depth(),
+            _ => None,
+        }
+    }
+
+    /// View this payload as a [`Support`][sync::Support]
+    ///
+    /// Returns the inner [`Support`][sync::Support] if it is one, [`None`]
+    /// otherwise.
+    pub fn as_support(&self) -> Option<&sync::Support<I, D>> {
+        match self {
+            Self::Synchronization(sync) => sync.as_support(),
             _ => None,
         }
     }

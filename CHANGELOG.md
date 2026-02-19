@@ -34,6 +34,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - A type `packet::unit::PlugsEntry` for entries in `packet::unit::PLUGS`.
 - A trait `binary::Adaptable` for adapting `Binary`s.
 - A fn `binary::Offset::new` for creating an `binary::Offset`.
+- Convenience fns `packet::sync::Synchronization::as_support`,
+  `packet::payload::InstructionTrace::as_support` and
+  `packet::payload::Payload::as_support` for accessing the
+  `packet::sync::Support` they may hold.
 
 ### Changed
 
