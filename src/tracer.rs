@@ -40,6 +40,19 @@ use stack::ReturnStack;
 ///
 /// Tracers are constructed using a [`Builder`].
 ///
+/// # Recovery from failures
+///
+/// A tracer may be able to recover from some failures such as missing portions
+/// of code being traced. After a tracer fn returned an error, the potential for
+/// recovery may be checked via [`is_recovering`][Self::is_recovering]. Recovery
+/// is performed by simply continuing to feed payloads and pull items.
+///
+/// Note that the tracer may not yield items for some payloads (particularly
+/// [branch][InstructionTrace::Branch] payloads) until an address could be
+/// extracted. Recovery is done on a best-effort basis, i.e. the following trace
+/// may be faulty in some cases. Recovery works best with [`sync::Start`]
+/// payloads.
+///
 /// # Example
 ///
 /// The following example demonstrates feeding a payload to a tracer and then
