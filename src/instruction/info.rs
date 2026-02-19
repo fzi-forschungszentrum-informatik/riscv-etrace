@@ -178,6 +178,51 @@ impl<T: Info> Info for Option<T> {
     }
 }
 
+impl<I, T> Info for (I, T)
+where
+    I: Info,
+    T: Default,
+    Self: Sync + Send,
+{
+    type Register = I::Register;
+
+    fn branch_target(&self) -> Option<i16> {
+        self.0.branch_target()
+    }
+
+    fn inferable_jump_target(&self) -> Option<i32> {
+        self.0.inferable_jump_target()
+    }
+
+    fn uninferable_jump_target(&self) -> Option<(Self::Register, i16)> {
+        self.0.uninferable_jump_target()
+    }
+
+    fn upper_immediate(&self, pc: u64) -> Option<(Self::Register, u64)> {
+        self.0.upper_immediate(pc)
+    }
+
+    fn is_return_from_trap(&self) -> bool {
+        self.0.is_return_from_trap()
+    }
+
+    fn is_ecall_or_ebreak(&self) -> bool {
+        self.0.is_ecall_or_ebreak()
+    }
+
+    fn is_call(&self) -> bool {
+        self.0.is_call()
+    }
+
+    fn is_return(&self) -> bool {
+        self.0.is_return()
+    }
+
+    fn ignored() -> Self {
+        (Info::ignored(), Default::default())
+    }
+}
+
 #[cfg(feature = "either")]
 impl<L, R, T> Info for either::Either<L, R>
 where
