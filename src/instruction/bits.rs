@@ -57,6 +57,12 @@ impl Bits {
     }
 }
 
+impl Default for Bits {
+    fn default() -> Self {
+        Self::Bit32(0)
+    }
+}
+
 impl TryFrom<u16> for Bits {
     type Error = u16;
 

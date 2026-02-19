@@ -70,7 +70,7 @@ fn extract_test() {
     assert_eq!(bytes_reverse, [0x17, 0xC8, 0x45, 0x14]);
 
     // extract instruction
-    let (instruction, remaining) = Instruction::extract(&bytes_reverse, &Rv32I)
+    let (instruction, remaining) = Instruction::<Option<Kind>>::extract(&bytes_reverse, &Rv32I)
         .expect("Cannot extract instruction from data stream!");
 
     // Ensure Instruction Size and Kind are correctly extracted

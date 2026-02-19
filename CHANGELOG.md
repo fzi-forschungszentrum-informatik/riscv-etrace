@@ -48,6 +48,11 @@ is based on https://keepachangelog.com/en/1.1.0/.
   `packet::payload::Payload`.
 - A fn `tracer::Tracer::is_recovering` for checking whether the `tracer::Tracer`
   may recover from some failure when feeding more payloads.
+- `instruction::info::Info` impl for 2-tuples with `instruction::info::Info` as
+  the first element.
+- `instruction::decode::Decode` impl for 2-tuples with `instruction::info::Info`
+  as the first and `instruction::bits::Bits` as the second element.
+- `Default` impl for `instruction::bits::Bits`.
 
 ### Changed
 
