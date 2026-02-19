@@ -8,16 +8,17 @@ use alloc::string::ToString;
 
 use crate::instruction::format::{TypeR, TypeS};
 
+macro_rules! format_test {
+    ($n:ident, $k:expr, $l:literal) => {
+        #[test]
+        fn $n() {
+            assert_eq!($k.to_string(), $l);
+        }
+    };
+}
+
 pub mod kind_tests {
     use super::*;
-    macro_rules! format_test {
-        ($n:ident, $k:expr, $l:literal) => {
-            #[test]
-            fn $n() {
-                assert_eq!($k.to_string(), $l);
-            }
-        };
-    }
 
     format_test!(c_jr, Kind::new_c_jr(12), "c.jr x12");
     format_test!(c_jalr, Kind::new_c_jalr(31), "c.jalr x31");
@@ -53,21 +54,12 @@ pub mod kind_tests {
 pub mod instruction_tests {
     use super::*;
 
-    macro_rules! instruction_format_test {
-        ($name:ident, $instruction:expr, $string_literal:expr) => {
-            #[test]
-            fn $name() {
-                assert_eq!($instruction.to_string(), $string_literal);
-            }
-        };
-    }
-
-    instruction_format_test!(
+    format_test!(
         instruction_with_kind,
         Instruction::from(Kind::new_beq(5, 12, 0x4F)),
         "beq x5, x12, 0x4F"
     );
-    instruction_format_test!(
+    format_test!(
         instruction_without_kind,
         Instruction {
             size: Size::Normal,
@@ -79,25 +71,24 @@ pub mod instruction_tests {
 
 pub mod type_tests {
     use super::*;
-    #[test]
-    fn type_r_format_test() {
-        let format_type = TypeR {
+
+    format_test!(
+        type_r,
+        TypeR {
             rd: 5,
             rs1: 3,
-            rs2: 12,
-        }
-        .to_string();
-        assert_eq!(format_type, "x5, x3, x12");
-    }
+            rs2: 12
+        },
+        "x5, x3, x12"
+    );
 
-    #[test]
-    fn type_s_format_test() {
-        let format_type = TypeS {
+    format_test!(
+        type_s,
+        TypeS {
             rs1: 7,
             rs2: 13,
-            imm: 0x46F3,
-        }
-        .to_string();
-        assert_eq!(format_type, "x7, x13, 0x46F3");
-    }
+            imm: 0x46F3
+        },
+        "x7, x13, 0x46F3"
+    );
 }
