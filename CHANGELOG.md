@@ -44,6 +44,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `TryFrom<packet::encap::Normal<packet::decoder::decoder>>` and
   `TryFrom<packet::smi::Packet<packet::decoder::decoder>>` impls for
   `packet::payload::Payload`.
+- A fn `tracer::Tracer::is_recovering` for checking whether the `tracer::Tracer`
+  may recover from some failure when feeding more payloads.
 
 ### Changed
 
@@ -62,6 +64,9 @@ is based on https://keepachangelog.com/en/1.1.0/.
   tuples.
 - `binary::combinators::Multi` now impls `Default` whenever the underlying
   container does. Previously, the element type also needed to be `Default`.
+- `tracer::Tracer` now enforces that not more `tracer::item::Item`s can be
+  pulled after a failure until the next payload is processed.
+- `tracer::Tracer` may now recover from some failures.
 
 ### Removed
 

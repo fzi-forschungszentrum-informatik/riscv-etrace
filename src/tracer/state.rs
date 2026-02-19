@@ -115,7 +115,9 @@ impl<S: ReturnStack, I: Info + Clone> State<S, I> {
         }
 
         if let Some(address) = self.inferred_address {
-            let (pc, insn, end) = self.next_pc(binary, address)?;
+            let (pc, insn, end) = self
+                .next_pc(binary, address)
+                .inspect_err(|_| self.stop_condition = StopCondition::Fused)?;
             if end {
                 self.inferred_address = None;
             }
@@ -125,7 +127,9 @@ impl<S: ReturnStack, I: Info + Clone> State<S, I> {
             self.stop_condition = StopCondition::Fused;
             Ok(None)
         } else {
-            let (pc, insn, end) = self.next_pc(binary, self.address)?;
+            let (pc, insn, end) = self
+                .next_pc(binary, self.address)
+                .inspect_err(|_| self.stop_condition = StopCondition::Fused)?;
 
             let is_branch = self.insn.is_branch();
             let branch_limit = if is_branch { 1 } else { 0 };

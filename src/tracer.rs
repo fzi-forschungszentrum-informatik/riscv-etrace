@@ -40,6 +40,19 @@ use stack::ReturnStack;
 ///
 /// Tracers are constructed using a [`Builder`].
 ///
+/// # Recovery from failures
+///
+/// A tracer may be able to recover from some failures such as missing portions
+/// of code being traced. After a tracer fn returned an error, the potential for
+/// recovery may be checked via [`is_recovering`][Self::is_recovering]. Recovery
+/// is performed by simply continuing to feed payloads and pull items.
+///
+/// Note that the tracer may not yield items for some payloads (particularly
+/// [branch][InstructionTrace::Branch] payloads) until an address could be
+/// extracted. Recovery is done on a best-effort basis, i.e. the following trace
+/// may be faulty in some cases. Recovery works best with [`sync::Start`]
+/// payloads.
+///
 /// # Example
 ///
 /// The following example demonstrates feeding a payload to a tracer and then
@@ -128,6 +141,27 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
 
         if let InstructionTrace::Synchronization(sync) = payload {
             self.process_sync(sync)
+        } else if self.is_recovering() {
+            // For payloads that are not `InstructionTrace::Synchronization`, we
+            // try to recover by resetting to the address if present. And we
+            // would normally only reach it after exhausting the recorded
+            // branches.
+            self.previous = None;
+            let Some(info) = payload.get_address_info() else {
+                return Ok(());
+            };
+
+            let mut initer = self.state.initializer(&mut self.binary)?;
+            initer.set_stack_depth(payload.implicit_return_depth());
+            *(initer.get_branch_map_mut()) = Default::default();
+            match self.address_mode {
+                AddressMode::Full => initer.set_address(0u64.wrapping_add_signed(info.address)),
+                AddressMode::Delta => initer.set_rel_address(info.address),
+            }
+            self.iter_state.handle_result(initer.reset_to_address())?;
+            self.iter_state = IterationState::SingleItem;
+
+            Ok(())
         } else {
             let previous = self.previous.take();
             let updiscon_prev = self.state.previous_insn().is_uninferable_discon();
@@ -136,9 +170,9 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
             initer.set_stack_depth(payload.implicit_return_depth());
 
             if let InstructionTrace::Branch(branch) = payload {
-                initer
-                    .get_branch_map_mut()
-                    .append(branch.branch_map)
+                let res = initer.get_branch_map_mut().append(branch.branch_map);
+                self.iter_state
+                    .handle_result(res)
                     .map_err(Error::CannotAddBranches)?;
             }
             let condition = if let Some(info) = payload.get_address_info() {
@@ -179,7 +213,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         let previous = self.previous.take();
         match sync {
             Synchronization::Start(start) => {
-                let is_tracing = self.iter_state.is_tracing();
+                let is_tracing = self.is_tracing() && !self.is_recovering();
 
                 let mut initer = self.sync_init(start.address, !is_tracing, !start.branch)?;
                 if is_tracing && previous != Some(Event::Trap { thaddr: false }) {
@@ -188,7 +222,8 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
                     });
                 } else {
                     initer.set_context(start.ctx.into());
-                    initer.reset_to_address()?;
+                    let res = initer.reset_to_address();
+                    self.iter_state.handle_result(res)?;
                     self.iter_state = IterationState::ContextItem {
                         pc: None,
                         context: start.ctx.into(),
@@ -199,7 +234,13 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
             Synchronization::Trap(trap) => {
                 let thaddr = trap.thaddr;
                 self.previous = Some(Event::Trap { thaddr });
-                let epc = if trap.info.is_exception()
+
+                let epc = if self.is_recovering() {
+                    if !thaddr {
+                        return Ok(());
+                    }
+                    0
+                } else if trap.info.is_exception()
                     && previous != Some(Event::Trap { thaddr: false })
                 {
                     let epc = (!trap.thaddr).then_some(trap.address);
@@ -207,16 +248,17 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
                 } else {
                     self.state.current_pc()
                 };
-                if !thaddr {
+                let res = if !thaddr {
                     let mut initer = self.state.initializer(&mut self.binary)?;
                     initer.set_stack_depth(None);
                     initer.set_address(trap.address);
-                    initer.reset_to_address()?;
+                    initer.reset_to_address()
                 } else {
                     let mut initer = self.sync_init(trap.address, false, !trap.branch)?;
                     initer.set_context(trap.ctx.into());
-                    initer.reset_to_address()?;
-                }
+                    initer.reset_to_address()
+                };
+                self.iter_state.handle_result(res)?;
                 self.iter_state = IterationState::TrapItem {
                     epc,
                     info: trap.info,
@@ -286,6 +328,11 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         self.iter_state.is_tracing()
     }
 
+    /// Determine whether this tracer is recovering from some failure
+    pub fn is_recovering(&self) -> bool {
+        self.iter_state.is_recovering()
+    }
+
     /// Retrieve the current [`sync::QualStatus`] if availible
     ///
     /// After processing of a [`sync::Support`] signalling end or loss of trace,
@@ -310,7 +357,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         let insn = self
             .binary
             .get_insn(address)
-            .map_err(|e| Error::CannotGetInstruction(e, address))?;
+            .map_err(|e| Error::CannotGetInstruction(e, address));
         let mut initer = self.state.initializer(&mut self.binary)?;
 
         initer.set_address(address);
@@ -319,9 +366,10 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Tracer<B, S, I> {
         if reset_branch_map {
             *branch_map = Default::default();
         }
-        if insn.is_branch() {
-            branch_map
-                .push_branch_taken(branch_taken)
+        if self.iter_state.handle_result(insn)?.is_branch() {
+            let res = branch_map.push_branch_taken(branch_taken);
+            self.iter_state
+                .handle_result(res)
                 .map_err(Error::CannotAddBranches)?;
         }
 
@@ -386,8 +434,9 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
                             Item::new(p, i.into())
                         }
                     });
-                Some(res)
+                Some(self.iter_state.handle_result(res))
             }
+            IterationState::Recovering => None,
         }
     }
 
@@ -409,6 +458,7 @@ impl<B: Binary<I>, S: ReturnStack, I: Info + Clone> Iterator for Tracer<B, S, I>
             // Minimum 1 item, but could also be infinite
             IterationState::FollowExec => (0, None),
             IterationState::Depleting { .. } => (0, None),
+            IterationState::Recovering => (0, Some(0)),
         }
     }
 }
@@ -573,12 +623,28 @@ enum IterationState {
     FollowExec,
     /// We follow the execution path as long as it's inferable
     Depleting { qual_status: sync::QualStatus },
+    /// We are recovering from some error
+    Recovering,
 }
 
 impl IterationState {
     /// Check whether we are currently tracing, assuming we depleted all items
     pub fn is_tracing(&self) -> bool {
         !matches!(self, Self::Depleting { .. })
+    }
+
+    /// Check whether we are currently recovering from a failure
+    pub fn is_recovering(&self) -> bool {
+        matches!(self, Self::Recovering)
+    }
+
+    /// Handle a [`Result`], entering recovery mode if it is an error
+    fn handle_result<T, E>(&mut self, res: Result<T, E>) -> Result<T, E> {
+        if res.is_err() {
+            *self = IterationState::Recovering;
+        }
+
+        res
     }
 }
 
