@@ -10,7 +10,8 @@ macro_rules! decode_test {
         #[test]
         fn $n() {
             let insn = $l.try_into().expect("Could not decode");
-            let insn = $s.decode_bits(insn).expect("Could not decode");
+            let insn: Option<Kind> = $s.decode_bits(insn);
+            let insn = insn.expect("Could not decode");
             assert_eq!(insn, $k);
             assert_eq!(insn.branch_target(), $bt);
             assert_eq!(insn.inferable_jump_target(), $jt);
@@ -21,7 +22,8 @@ macro_rules! decode_test {
         #[test]
         fn $n() {
             let insn = $l.try_into().expect("Could not decode");
-            assert_eq!($s.decode_bits(insn), None);
+            let insn: Option<Kind> = $s.decode_bits(insn);
+            assert_eq!(insn, None);
         }
     };
     ($s:ident, $n:ident, $l:literal, $k:expr, b, $t:expr) => {
@@ -115,7 +117,7 @@ macro_rules! decode_test {
         #[test]
         fn $name() {
             let bits = $bits;
-            let instruction = $set.decode_bits(bits);
+            let instruction: Option<Kind> = $set.decode_bits(bits);
 
             assert_eq!(instruction, None);
         }
@@ -124,7 +126,7 @@ macro_rules! decode_test {
         #[test]
         fn $name() {
             let bits = $bits;
-            let instruction = $set.decode_bits(bits);
+            let instruction: Option<Kind> = $set.decode_bits(bits);
             assert_eq!(instruction, Some($expected_kind));
         }
     };
