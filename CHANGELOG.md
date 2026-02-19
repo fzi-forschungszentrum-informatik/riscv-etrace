@@ -14,14 +14,16 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - Provided `generator::step::Step` fns `last_offset`, `last_address` and
   `is_single` for expressing block retirement. These are handled by when
   generating traces via `generator::Generator` and `generator::Output`.
+- A module `instruction::decode` which now contains `Decode` and `MakeDecode`
+  that were previously part of `instruction::info`.
 - `instruction::info::Info` impl for `riscv_isa::Compressed`.
-- `instruction::info::Decode<riscv_isa::Compressed>` impl for
+- `instruction::decode::Decode<riscv_isa::Compressed>` impl for
   `riscv_isa::Target`.
 - An optional dependency on `either`.
 - `instruction::info::Info`, `binary::Binary`, `binary::error::MaybeMiss`,
   `binary::error::Miss`, `packet::encoder::Encode` and `packet::unit::IOptions`
   for `either::Either`.
-- An `instruction::info::Decode` impl for a specific `either::Either` combining
+- An `instruction::decode::Decode` impl for a specific `either::Either` combining
   both `riscv_isa::Compressed` and `riscv_isa::Instruction`.
 - A trait `packet::unit::DOption` for types used for
   `packet::unit::Unit::DOptions`.
@@ -67,6 +69,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `tracer::Tracer` now enforces that not more `tracer::item::Item`s can be
   pulled after a failure until the next payload is processed.
 - `tracer::Tracer` may now recover from some failures.
+- `instruction::info::Decode` and `instruction::info::MakeDecode` were moved to
+  a new `instruction::decode` submodule.
 
 ### Removed
 

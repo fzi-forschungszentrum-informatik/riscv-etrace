@@ -5,7 +5,7 @@
 //! This module provides definitions for representing RISC-V base instruction
 //! set variants such as `RV32I` and utilities for decoding instructions.
 
-use super::{Kind, format, info};
+use super::{Kind, decode, format};
 
 /// RISC-V base instruction set variant
 ///
@@ -31,10 +31,10 @@ impl From<riscv_isa::Target> for Set {
 
 /// Decoding of instruction [`Kind`]s
 ///
-/// This [`info::Decode`] impl decodes [`Kind`] if possible, that is if that
-/// instruction is known. As only relatively few RISC-V instructions are
+/// This [`Decode`][decode::Decode] impl decodes [`Kind`] if possible, that is
+/// if that instruction is known. As only relatively few RISC-V instructions are
 /// relevant, we don't consider unknown instructions an error.
-impl info::Decode<Option<Kind>> for Set {
+impl decode::Decode<Option<Kind>> for Set {
     #[allow(clippy::unusual_byte_groupings)]
     fn decode_32(&self, insn: u32) -> Option<Kind> {
         let funct3 = (insn >> 12) & 0x7;
@@ -112,7 +112,7 @@ impl info::Decode<Option<Kind>> for Set {
     }
 }
 
-impl info::MakeDecode for Set {
+impl decode::MakeDecode for Set {
     fn rv32i_full() -> Self {
         Self::Rv32I
     }

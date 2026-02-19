@@ -4,7 +4,7 @@
 extern crate alloc;
 
 mod compare;
-mod decode;
+mod decode_tests;
 mod extract;
 mod fmt;
 mod insn_fmt;
@@ -12,7 +12,8 @@ mod insn_fmt;
 use super::*;
 
 use base::Set::{Rv32I, Rv64I};
-use info::{Decode, Info};
+use decode::Decode;
+use info::Info;
 
 macro_rules! upper_immediate_test {
     ($name:ident, $ctor:ident($rd:expr, $imm:expr), $expected:expr) => {
