@@ -71,6 +71,11 @@ impl<P> Packet<P> {
     pub fn payload(&self) -> &P {
         &self.payload
     }
+
+    /// Get a mutable reference to the packet's payload
+    pub fn payload_mut(&mut self) -> &mut P {
+        &mut self.payload
+    }
 }
 
 impl<U: unit::Unit> Packet<Decoder<'_, U>> {
