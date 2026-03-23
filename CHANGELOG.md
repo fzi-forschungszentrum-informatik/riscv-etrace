@@ -21,6 +21,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
   inferred jumps.
 - Removed likely faulty and superfluous logic for handling version 1 traces. As
   a result, the version setting for `tracer::Tracer` currently has no effect.
+- Fixed decoding of branch count in `decoder::payload::BranchCount`
 
 ## 0.3.0 - 2025-08-16
 
