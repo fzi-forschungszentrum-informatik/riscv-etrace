@@ -16,6 +16,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - 32bit instructions were previously decoded as `jalr` based solely on the
   opcode. The "funct3"-field, which must be `0` for `jalr`, was not considered.
 - Decoding of `c.lui` instructions' immediate was faulty.
+- Fixed decoding of branch count in `decoder::payload::BranchCount`
 
 ## 0.1.0 - 2025-05-19
 
