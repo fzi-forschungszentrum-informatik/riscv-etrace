@@ -9,6 +9,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `packet::encap::Packet`s were not correctly decoded if the width of the srcID
   field was not a multiple of 8 bits.
+- Fixed decoding of branch count in `decoder::payload::BranchCount`
 
 ## 0.5.2 - 2025-11-03
 

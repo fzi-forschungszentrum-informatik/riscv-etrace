@@ -212,7 +212,7 @@ pub struct BranchCount {
 
 impl<U> Decode<'_, '_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        let branch_count = decoder.read_bits::<u32>(32)? - 31;
+        let branch_count = decoder.read_bits(32)?;
         let branch_fmt = BranchFmt::decode(decoder)?;
         let address = if branch_fmt == BranchFmt::NoAddr {
             None
