@@ -5,6 +5,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Fixed
+
+- Fixed decoding of branch count in `decoder::payload::BranchCount`
+
 ## 0.6.2 - 2026-01-20
 
 ### Changed
