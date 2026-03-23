@@ -23,6 +23,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
   a result, the version setting for `tracer::Tracer` currently has no effect.
 - `packet::encap::Packet`s were not correctly decoded if the width of the srcID
   field was not a multiple of 8 bits.
+- Fixed decoding of branch count in `decoder::payload::BranchCount`
 
 ## 0.4.0 - 2025-09-10
 
