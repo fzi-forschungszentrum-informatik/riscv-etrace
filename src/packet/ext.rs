@@ -82,7 +82,7 @@ pub struct BranchCount {
 
 impl<U> Decode<'_, U> for BranchCount {
     fn decode(decoder: &mut Decoder<U>) -> Result<Self, Error> {
-        let branch_count = decoder.read_bits::<u32>(32)? - 31;
+        let branch_count = decoder.read_bits(32)?;
         let kind = BranchKind::decode(decoder)?;
         Ok(BranchCount { branch_count, kind })
     }
@@ -90,7 +90,7 @@ impl<U> Decode<'_, U> for BranchCount {
 
 impl<U> Encode<'_, U> for BranchCount {
     fn encode(&self, encoder: &mut Encoder<U>) -> Result<(), Error> {
-        encoder.write_bits(self.branch_count + 31, 32)?;
+        encoder.write_bits(self.branch_count, 32)?;
         encoder.encode(&self.kind)
     }
 }
