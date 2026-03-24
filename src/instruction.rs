@@ -315,7 +315,7 @@ impl fmt::Display for Kind {
 }
 
 /// Length of a single RISC-V [`Instruction`]
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Size {
     Compressed = 2,
     #[default]

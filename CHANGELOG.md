@@ -5,6 +5,10 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- `Ord`, `PartialOrd` and `Hash` impl for `instruction::Size`.
+
 ### Fixed
 
 - Fixed decoding of branch count in `decoder::payload::BranchCount`

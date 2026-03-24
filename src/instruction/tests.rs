@@ -69,3 +69,10 @@ from_kind_test!(
     Kind::new_auipc(12, 0b11110000101000101100),
     Size::Normal
 );
+
+#[test]
+fn size_ord() {
+    assert!(Size::Compressed < Size::Normal);
+    assert!(Size::Normal < Size::Wide);
+    assert!(Size::Wide < Size::ExtraWide);
+}
