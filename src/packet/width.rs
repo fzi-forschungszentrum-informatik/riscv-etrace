@@ -37,7 +37,7 @@ impl From<&Parameters> for Widths {
             time: (!params.notime_p).then_some(params.time_width_p),
             ecause: params.ecause_width_p,
             format0_subformat: params.f0s_width_p,
-            iaddress_lsb: params.iaddress_lsb_p.get(),
+            iaddress_lsb: params.iaddress_lsb_p,
             iaddress: params.iaddress_width_p,
             privilege: params.privilege_width_p,
             stack_depth: NonZeroU8::new(stack_depth),
