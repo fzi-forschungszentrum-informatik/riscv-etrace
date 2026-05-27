@@ -8,7 +8,7 @@ use core::fmt;
 use crate::instruction::{Instruction, info};
 
 use super::Binary as BinTrait;
-use super::{SyncBinary, error};
+use super::error;
 
 /// [`Binary`][BinTrait] returning a boxed, dynamically dispatched [`Error`]
 ///
@@ -87,4 +87,4 @@ impl fmt::Display for Error {
 }
 
 /// A [`Binary`][BinTrait] boxed for dynamic dispatch
-pub type Binary<'a, I> = Box<dyn SyncBinary<I, Error = Error> + 'a>;
+pub type Binary<'a, I> = Box<dyn BinTrait<I, Error = Error> + Send + Sync + 'a>;

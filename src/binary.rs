@@ -249,8 +249,3 @@ where
             .and_then(|a| self.inner.get_insn(a))
     }
 }
-
-/// A [`Binary`] which may be sent or synced between threads
-pub trait SyncBinary<I: Info>: Binary<I> + Send + Sync {}
-
-impl<I: Info, T: Binary<I> + Send + Sync> SyncBinary<I> for T {}

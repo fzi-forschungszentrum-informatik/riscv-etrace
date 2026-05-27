@@ -5,6 +5,15 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Changed
+
+- `binary::boxed::Binary` is now defined in terms of `binary::Binary`, without
+  resorting to `binary::SyncBinary`.
+
+### Removed
+
+- The trait `binary::SyncBinary` was removed.
+
 ## 0.9.1 - 2026-04-02
 
 ### Added
