@@ -30,7 +30,7 @@ pub struct Parameters {
     pub time_width_p: NonZeroU8,
     pub ecause_width_p: NonZeroU8,
     pub f0s_width_p: u8,
-    pub iaddress_lsb_p: NonZeroU8,
+    pub iaddress_lsb_p: u8,
     pub iaddress_width_p: NonZeroU8,
     #[cfg_attr(feature = "serde", serde(with = "serde_utils::Flag"))]
     pub nocontext_p: bool,
@@ -57,7 +57,7 @@ pub const PARAMETERS: Parameters = Parameters {
     time_width_p: NonZeroU8::MIN,
     ecause_width_p: NonZeroU8::new(6).unwrap(),
     f0s_width_p: 0,
-    iaddress_lsb_p: NonZeroU8::MIN,
+    iaddress_lsb_p: 1,
     iaddress_width_p: NonZeroU8::new(32).unwrap(),
     nocontext_p: true,
     notime_p: true,

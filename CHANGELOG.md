@@ -9,6 +9,8 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 - `binary::boxed::Binary` is now defined in terms of `binary::Binary`, without
   resorting to `binary::SyncBinary`.
+- `config::Parameters::iaddress_lsb_p` is now an `u8` rather than a
+  `core::num::NonZeroU8`.
 
 ### Removed
 

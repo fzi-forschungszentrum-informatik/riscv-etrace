@@ -24,7 +24,7 @@ where
         + truncate::TruncateNum,
 {
     let widths = decoder.widths();
-    let lsb = widths.iaddress_lsb.get();
+    let lsb = widths.iaddress_lsb;
     let width = widths.iaddress.get().saturating_sub(lsb);
     decoder.read_bits::<T>(width).map(|v| v << lsb)
 }
@@ -42,7 +42,7 @@ where
         + truncate::TruncateNum,
 {
     let widths = encoder.widths();
-    let lsb = widths.iaddress_lsb.get();
+    let lsb = widths.iaddress_lsb;
     let width = widths.iaddress.get().saturating_sub(lsb);
     encoder.write_bits(address >> lsb.into(), width)
 }

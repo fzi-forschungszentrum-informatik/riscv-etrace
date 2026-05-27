@@ -14,7 +14,7 @@ pub struct Widths {
     pub time: Option<NonZeroU8>,
     pub ecause: NonZeroU8,
     pub format0_subformat: u8,
-    pub iaddress_lsb: NonZeroU8,
+    pub iaddress_lsb: u8,
     pub iaddress: NonZeroU8,
     pub privilege: NonZeroU8,
     pub stack_depth: Option<NonZeroU8>,
