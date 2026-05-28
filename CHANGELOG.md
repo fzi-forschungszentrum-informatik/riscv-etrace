@@ -12,6 +12,7 @@ is based on https://keepachangelog.com/en/1.1.0/.
 - `config::Parameters::iaddress_lsb_p` is now an `u8` rather than a
   `core::num::NonZeroU8`.
 - The optional `either` dependency was upgraded to version 1.16.
+- `types::Privilege` gained variants for `D`, `VU` and `VS` mode.
 
 ### Removed
 

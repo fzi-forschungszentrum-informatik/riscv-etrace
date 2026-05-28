@@ -18,6 +18,9 @@ pub enum Privilege {
     User,
     Supervisor,
     Machine,
+    Debug,
+    VirtUser,
+    VirtSupervisor,
 }
 
 impl TryFrom<u8> for Privilege {
@@ -25,9 +28,12 @@ impl TryFrom<u8> for Privilege {
 
     fn try_from(num: u8) -> Result<Self, Self::Error> {
         match num {
-            0b00 => Ok(Self::User),
-            0b01 => Ok(Self::Supervisor),
-            0b11 => Ok(Self::Machine),
+            0 => Ok(Self::User),
+            1 => Ok(Self::Supervisor),
+            3 => Ok(Self::Machine),
+            4 => Ok(Self::Debug),
+            5 => Ok(Self::VirtUser),
+            6 => Ok(Self::VirtSupervisor),
             err => Err(err),
         }
     }
@@ -36,9 +42,12 @@ impl TryFrom<u8> for Privilege {
 impl From<Privilege> for u8 {
     fn from(p: Privilege) -> Self {
         match p {
-            Privilege::User => 0b00,
-            Privilege::Supervisor => 0b01,
-            Privilege::Machine => 0b11,
+            Privilege::User => 0,
+            Privilege::Supervisor => 1,
+            Privilege::Machine => 3,
+            Privilege::Debug => 4,
+            Privilege::VirtUser => 5,
+            Privilege::VirtSupervisor => 6,
         }
     }
 }
@@ -49,6 +58,9 @@ impl fmt::Display for Privilege {
             Privilege::User => write!(f, "U"),
             Privilege::Supervisor => write!(f, "S"),
             Privilege::Machine => write!(f, "M"),
+            Privilege::Debug => write!(f, "D"),
+            Privilege::VirtUser => write!(f, "VU"),
+            Privilege::VirtSupervisor => write!(f, "VS"),
         }
     }
 }
