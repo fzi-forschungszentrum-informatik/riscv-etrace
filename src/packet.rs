@@ -12,6 +12,7 @@ pub mod error;
 pub mod ext;
 pub mod payload;
 pub mod smi;
+pub mod esp32;
 pub mod sync;
 pub mod truncate;
 pub mod unit;
