@@ -5,6 +5,13 @@ is based on https://keepachangelog.com/en/1.1.0/.
 
 ## Unreleased
 
+### Added
+
+- A module `packet::esp32` providing types for decoding and representing packets
+  emitted by the trace unit found on th ESP32-C6.
+- A fn `packet::decoder::Decoder::decode_esp32_packet` for decoding an
+  `packet::esp32::Packet`.
+
 ### Changed
 
 - `binary::boxed::Binary` is now defined in terms of `binary::Binary`, without

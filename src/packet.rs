@@ -9,6 +9,7 @@ pub mod decoder;
 pub mod encap;
 pub mod encoder;
 pub mod error;
+pub mod esp32;
 pub mod ext;
 pub mod payload;
 pub mod smi;

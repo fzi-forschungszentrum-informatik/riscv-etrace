@@ -24,6 +24,10 @@ pub enum Error {
     UnknownPrivilege(u8),
     /// Encountered an unknown encoder mode
     UnknownEncoderMode(u8),
+    // ESP32: length smaller than minimum header size
+    InvalidDataLength(u8),
+    // Placeholder of ESP32
+    PlaceholderNonZero(u8),
 }
 
 impl core::error::Error for Error {}
@@ -40,6 +44,8 @@ impl fmt::Display for Error {
             Self::PayloadTooBig(s) => write!(f, "Payload is too large: {s} bytes"),
             Self::UnknownPrivilege(p) => write!(f, "Unknown priviledge level {p}"),
             Self::UnknownEncoderMode(m) => write!(f, "Unknown encoder mode {m}"),
+            Self::InvalidDataLength(l) => write!(f, "Length in header is too small: {l}"),
+            Self::PlaceholderNonZero(z) => write!(f, "Placeholder value is non zero, but : {z}"),
         }
     }
 }
