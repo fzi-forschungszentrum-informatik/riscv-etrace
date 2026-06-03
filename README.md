@@ -18,8 +18,9 @@ specification. It provides:
 The following packet formats are supported directly by this library:
 
 * [Unformatted Trace & Diagnostic Data Packet Encapsulation for
-  RISC-V](https://github.com/riscv-non-isa/e-trace-encap/) and
-* Siemens Messaging Infrastructure.
+  RISC-V](https://github.com/riscv-non-isa/e-trace-encap/),
+* Siemens Messaging Infrastructure and
+* Packets emitted by the trace unit found on the ESP32-C6 (experimental).
 
 ## Supported external instruction information types
 
