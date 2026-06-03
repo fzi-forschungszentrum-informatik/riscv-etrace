@@ -97,7 +97,6 @@ impl<'d, U: Clone> Decode<'d, U> for Packet<Decoder<'d, U>> {
     }
 }
 
-
 /// Normal RISC-V ESP32 [Packet]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Normal<P> {

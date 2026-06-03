@@ -10,7 +10,7 @@ use super::payload::InstructionTrace;
 use super::truncate::TruncateNum;
 use super::unit::Unit;
 use super::width::Widths;
-use super::{encap, smi, esp32};
+use super::{encap, esp32, smi};
 
 /// A decoder for individual packets and/or [payloads][super::payload]
 ///
@@ -164,11 +164,11 @@ impl<'d, U> Decoder<'d, U> {
     }
 
     pub fn decode_esp32_packet(&mut self) -> Result<esp32::Packet<Self>, Error>
-    where 
+    where
         U: Clone,
-        {
-            Decode::decode(self)
-        }
+    {
+        Decode::decode(self)
+    }
 
     /// Decode a single, stand-alone [`InstructionTrace`] payload
     ///
